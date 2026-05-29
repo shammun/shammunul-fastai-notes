@@ -147,6 +147,22 @@ code {
   border: 1px solid rgba(108, 92, 231, 0.12);
 }
 
+/* Inline code inside headings — must reset the H1 gradient text-fill,
+   otherwise the <code> inherits -webkit-text-fill-color: transparent
+   and disappears. Also scale down a touch and de-emphasize the chip. */
+h1 code, h2 code, h3 code, h4 code, h5 code, h6 code {
+  -webkit-text-fill-color: initial;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  background: rgba(108, 92, 231, 0.10);
+  color: var(--ce-purple-dark);
+  border: 1px solid rgba(108, 92, 231, 0.18);
+  font-size: 0.82em;
+  font-weight: 600;
+  padding: 1px 7px;
+  vertical-align: 0.04em;
+}
+
 /* ---------- Code blocks ---------- */
 pre {
   background: #f9fafb;
