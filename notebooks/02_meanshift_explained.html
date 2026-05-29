@@ -7532,31 +7532,31 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h1 id="Notebook-02:-Clustering-with-Mean-Shift">Notebook 02: Clustering with Mean Shift<a class="anchor-link" href="#Notebook-02:-Clustering-with-Mean-Shift">¶</a></h1><hr/>
-<h2 id="What-This-Notebook-Covers">What This Notebook Covers<a class="anchor-link" href="#What-This-Notebook-Covers">¶</a></h2><p>This notebook builds the <strong>Mean Shift</strong> clustering algorithm from scratch — first as a Python loop over individual points, then as a GPU-accelerated batched implementation. Along the way we develop the <em>exact</em> shape-manipulation patterns that show up in attention mechanisms, diffusion models, and any tensor-heavy code. We will learn:</p>
+<h2 id="What-This-Notebook-Covers">What This Notebook Covers<a class="anchor-link" href="#What-This-Notebook-Covers">¶</a></h2><p>This notebook builds the <strong>Mean Shift</strong> clustering algorithm from scratch &mdash; first as a Python loop over individual points, then as a GPU-accelerated batched implementation. Along the way we develop the <em>exact</em> shape-manipulation patterns that show up in attention mechanisms, diffusion models, and any tensor-heavy code. We will learn:</p>
 <ol>
-<li><strong>Generating synthetic clustered data</strong> — multivariate-normal sampling, covariance matrices, building a 1,500-point dataset with 6 known cluster centers as ground truth</li>
-<li><strong>The mean shift algorithm</strong> — what it does, why it's clever, and what makes it different from K-Means (no need to specify <em>k</em>; clusters can be any shape)</li>
-<li><strong>The Gaussian and triangular kernels</strong> — converting distances to weights, and what the bandwidth parameter controls geometrically</li>
-<li><strong>Broadcasting for pairwise distances</strong> — the <code>a[None] - b[:, None]</code> pattern that lets us compute every point-to-point distance in one tensor expression</li>
-<li><strong>Batched mean shift</strong> — replacing a Python loop over points with a matmul, the same move that buys us 100×+ speedups in notebook 01</li>
-<li><strong>Connecting mean shift to attention</strong> — the surprising fact that the structure of the batched update is <em>literally</em> the structure of softmax attention</li>
-<li><strong>GPU acceleration</strong> — the one-line move that takes us from ~500 ms to ~2 ms for the full algorithm</li>
+<li><strong>Generating synthetic clustered data</strong> &mdash; multivariate-normal sampling, covariance matrices, building a 1,500-point dataset with 6 known cluster centers as ground truth</li>
+<li><strong>The mean shift algorithm</strong> &mdash; what it does, why it's clever, and what makes it different from K-Means (no need to specify <em>k</em>; clusters can be any shape)</li>
+<li><strong>The Gaussian and triangular kernels</strong> &mdash; converting distances to weights, and what the bandwidth parameter controls geometrically</li>
+<li><strong>Broadcasting for pairwise distances</strong> &mdash; the <code>a[None] - b[:, None]</code> pattern that lets us compute every point-to-point distance in one tensor expression</li>
+<li><strong>Batched mean shift</strong> &mdash; replacing a Python loop over points with a matmul, the same move that buys us 100&times;+ speedups in notebook 01</li>
+<li><strong>Connecting mean shift to attention</strong> &mdash; the surprising fact that the structure of the batched update is <em>literally</em> the structure of softmax attention</li>
+<li><strong>GPU acceleration</strong> &mdash; the one-line move that takes us from ~500 ms to ~2 ms for the full algorithm</li>
 </ol>
 <hr/>
-<h2 id="Why-Mean-Shift?">Why Mean Shift?<a class="anchor-link" href="#Why-Mean-Shift?">¶</a></h2><p>Mean shift is the <em>natural</em> clustering algorithm for someone trying to find dense regions in data with no labels and no prior on the cluster count. Unlike K-Means, which forces you to pick <em>k</em> up front and only works for blob-shaped clusters, mean shift just <em>finds</em> the modes of the density — however many there are, whatever shapes they have. As a teaching vehicle it's almost ideal:</p>
+<h2 id="Why-Mean-Shift?">Why Mean Shift?<a class="anchor-link" href="#Why-Mean-Shift?">¶</a></h2><p>Mean shift is the <em>natural</em> clustering algorithm for someone trying to find dense regions in data with no labels and no prior on the cluster count. Unlike K-Means, which forces you to pick <em>k</em> up front and only works for blob-shaped clusters, mean shift just <em>finds</em> the modes of the density &mdash; however many there are, whatever shapes they have. As a teaching vehicle it's almost ideal:</p>
 <ul>
 <li>The algorithm itself is concrete enough to implement in 10 lines.</li>
-<li>The "why does it converge?" question has a beautiful answer (gradient ascent on a kernel density estimate) — deep-dived in §6.</li>
+<li>The "why does it converge?" question has a beautiful answer (gradient ascent on a kernel density estimate) &mdash; deep-dived in &sect;6.</li>
 <li>The vectorization story is the <em>same</em> story as matmul in notebook 01, but with one new wrinkle: the pairwise-distance computation needs an extra broadcasting axis.</li>
-<li>The final batched update step <code>(weight @ X) / weight.sum(...)</code> is <em>the same operation</em> as attention's value-aggregation step — deep-dived in §8.</li>
+<li>The final batched update step <code>(weight @ X) / weight.sum(...)</code> is <em>the same operation</em> as attention's value-aggregation step &mdash; deep-dived in &sect;8.</li>
 </ul>
 <p>So we get a useful clustering algorithm and a clean preview of attention from one notebook.</p>
 <hr/>
 <h2 id="Prerequisites">Prerequisites<a class="anchor-link" href="#Prerequisites">¶</a></h2><p>Comfortable with:</p>
 <ul>
-<li><strong>Notebook 01</strong> — broadcasting rules, einsum decoding, the <code>@</code> operator. The pairwise-distance derivation here is exactly Example 4 of the broadcasting deep dive from 01.</li>
+<li><strong>Notebook 01</strong> &mdash; broadcasting rules, einsum decoding, the <code>@</code> operator. The pairwise-distance derivation here is exactly Example 4 of the broadcasting deep dive from 01.</li>
 <li>The idea of a <strong>Gaussian distribution</strong> in one dimension. The kernel and the multivariate-normal sampler both extend the 1-D bell curve to 2-D.</li>
-<li>Basic <strong>PyTorch tensors</strong> — slicing, <code>.shape</code>, <code>.sum(dim=...)</code>, <code>.clone()</code>.</li>
+<li>Basic <strong>PyTorch tensors</strong> &mdash; slicing, <code>.shape</code>, <code>.sum(dim=...)</code>, <code>.clone()</code>.</li>
 </ul>
 <p>If any of those are rusty, run through the relevant sections of <code>01_matmul_explained.ipynb</code> first.</p>
 <hr/>
@@ -7564,14 +7564,14 @@ a.anchor-link {
 <ol>
 <li>The standard <code>_explained</code> top-of-file structure (what you're reading now).</li>
 <li><strong>Three deep-dive sections:</strong><ul>
-<li><em>Kernels and Bandwidth</em> — the math behind kernel choice and the geometry of bandwidth</li>
-<li><em>Why Mean Shift Converges</em> — the algorithm as gradient ascent on a KDE</li>
-<li><em>From Sequential to Batched (and Attention)</em> — the literal structural equivalence to attention</li>
+<li><em>Kernels and Bandwidth</em> &mdash; the math behind kernel choice and the geometry of bandwidth</li>
+<li><em>Why Mean Shift Converges</em> &mdash; the algorithm as gradient ascent on a KDE</li>
+<li><em>From Sequential to Batched (and Attention)</em> &mdash; the literal structural equivalence to attention</li>
 </ul>
 </li>
 <li><strong>"What does the code above do?" cells</strong> after non-self-explanatory code, with explicit shape arithmetic and back-references to the broadcasting/einsum deep dives in notebook 01.</li>
 </ol>
-<p>The historical <code>02_meanshift.ipynb</code> stays untouched per the 01–03 naming convention.</p>
+<p>The historical <code>02_meanshift.ipynb</code> stays untouched per the 01&ndash;03 naming convention.</p>
 <hr/>
 </div>
 </div>
@@ -7659,7 +7659,7 @@ a.anchor-link {
 <tbody>
 <tr>
 <td><code>math</code></td>
-<td>Stdlib — used for <code>sqrt(2π)</code> inside the Gaussian kernel normalizer.</td>
+<td>Stdlib &mdash; used for <code>sqrt(2π)</code> inside the Gaussian kernel normalizer.</td>
 </tr>
 <tr>
 <td><code>matplotlib.pyplot</code></td>
@@ -7675,11 +7675,11 @@ a.anchor-link {
 </tr>
 <tr>
 <td><code>functools.partial</code></td>
-<td>Lets us pre-fill kernel arguments — e.g. <code>partial(gaussian, bw=2.5)</code> becomes a function of just the distance. We need this to pass parameterized kernels to <code>plot_func</code>.</td>
+<td>Lets us pre-fill kernel arguments &mdash; e.g. <code>partial(gaussian, bw=2.5)</code> becomes a function of just the distance. We need this to pass parameterized kernels to <code>plot_func</code>.</td>
 </tr>
 </tbody>
 </table>
-<p>The two <code>print</code> lines at the bottom are a sanity check: which PyTorch version is loaded, and is a CUDA-capable GPU visible? The GPU check matters in §8 — without a GPU, the GPU-accelerated mean shift will silently run on CPU (still correct, just less dramatic speedup).</p>
+<p>The two <code>print</code> lines at the bottom are a sanity check: which PyTorch version is loaded, and is a CUDA-capable GPU visible? The GPU check matters in &sect;8 &mdash; without a GPU, the GPU-accelerated mean shift will silently run on CPU (still correct, just less dramatic speedup).</p>
 </div>
 </div>
 </div>
@@ -7749,7 +7749,7 @@ a.anchor-link {
 <span class="c1"># How many points per cluster?</span>
 <span class="n">n_samples</span> <span class="o">=</span> <span class="mi">250</span>
 
-<span class="c1"># Total points will be: 6 clusters × 250 samples = 1,500 points</span>
+<span class="c1"># Total points will be: 6 clusters &times; 250 samples = 1,500 points</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"We will create </span><span class="si">{</span><span class="n">n_clusters</span><span class="si">}</span><span class="s2"> clusters with </span><span class="si">{</span><span class="n">n_samples</span><span class="si">}</span><span class="s2"> points each"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Total data points: </span><span class="si">{</span><span class="n">n_clusters</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">n_samples</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
@@ -7952,9 +7952,9 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Defines <code>sample(m)</code> — a function that returns 250 random 2-D points drawn from a Gaussian centered at the input <code>m</code> with covariance <code>diag([5, 5])</code> (a circular blob of radius ~√5 ≈ 2.2).</p>
+<p>Defines <code>sample(m)</code> &mdash; a function that returns 250 random 2-D points drawn from a Gaussian centered at the input <code>m</code> with covariance <code>diag([5, 5])</code> (a circular blob of radius ~&radic;5 &asymp; 2.2).</p>
 <p>The Python stdlib has <code>random.gauss</code> for scalar Gaussians, but for <em>multivariate</em> (correlated 2-D-and-up) Gaussians we use <code>torch.distributions.MultivariateNormal</code>. It takes a mean vector and a covariance matrix and exposes a <code>.sample()</code> method that draws from the resulting distribution. The covariance matrix controls cluster <em>shape</em>: <code>diag([5, 5])</code> is circular (no x/y correlation, same spread in both axes), <code>diag([20, 2])</code> would be a horizontal ellipse, and a non-diagonal matrix like <code>[[5, 4], [4, 5]]</code> would be a tilted ellipse.</p>
-<p>The test call at the end shows that calling <code>sample(centroids[0])</code> returns 250 points clustered around the first centroid — exactly what we'll repeat for the other 5 centroids in the next cell.</p>
+<p>The test call at the end shows that calling <code>sample(centroids[0])</code> returns 250 points clustered around the first centroid &mdash; exactly what we'll repeat for the other 5 centroids in the next cell.</p>
 </div>
 </div>
 </div>
@@ -8066,9 +8066,9 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Defines <code>plot_data</code> — a helper that visualizes the clustered data with each cluster in its own color and the true centroids marked with black-and-magenta X's.</p>
-<p>The clever bit is the loop over clusters: since the data was concatenated cluster-by-cluster (250 points per cluster, in order), points 0–249 belong to cluster 0, 250–499 to cluster 1, etc. The slice <code>data[i*n_samples : (i+1)*n_samples]</code> extracts cluster <code>i</code> — no labels needed, just arithmetic on indices. This works because we <em>know</em> the underlying structure of the synthetic data. On real data without labels we'd just scatter all points in one color and let the clustering algorithm do its thing.</p>
-<p>The double-X plotting trick (one large black, one small magenta) is a common matplotlib idiom for making markers visible regardless of background color — the black X provides contrast against any light background; the magenta provides contrast against any dark background.</p>
+<p>Defines <code>plot_data</code> &mdash; a helper that visualizes the clustered data with each cluster in its own color and the true centroids marked with black-and-magenta X's.</p>
+<p>The clever bit is the loop over clusters: since the data was concatenated cluster-by-cluster (250 points per cluster, in order), points 0&ndash;249 belong to cluster 0, 250&ndash;499 to cluster 1, etc. The slice <code>data[i*n_samples : (i+1)*n_samples]</code> extracts cluster <code>i</code> &mdash; no labels needed, just arithmetic on indices. This works because we <em>know</em> the underlying structure of the synthetic data. On real data without labels we'd just scatter all points in one color and let the clustering algorithm do its thing.</p>
+<p>The double-X plotting trick (one large black, one small magenta) is a common matplotlib idiom for making markers visible regardless of background color &mdash; the black X provides contrast against any light background; the magenta provides contrast against any dark background.</p>
 </div>
 </div>
 </div>
@@ -8165,12 +8165,12 @@ Step 2: Calculate distances from A to all points:
         d(A,A) = 0,  d(A,B) = 1,  d(A,C) = 10,  d(A,D) = 11
 
 Step 3: Apply Gaussian kernel (bandwidth=2) to get weights:
-        w_A = 0.199,  w_B = 0.176,  w_C ≈ 0,  w_D ≈ 0
+        w_A = 0.199,  w_B = 0.176,  w_C &asymp; 0,  w_D &asymp; 0
         (Notice: C and D are so far that their weights are essentially 0!)
 
 Step 4: Compute weighted average:
-        new_A = (0.199×A + 0.176×B + 0×C + 0×D) / (0.199 + 0.176 + 0 + 0)
-              = (0.199×[0,0] + 0.176×[1,0]) / 0.375
+        new_A = (0.199&times;A + 0.176&times;B + 0&times;C + 0&times;D) / (0.199 + 0.176 + 0 + 0)
+              = (0.199&times;[0,0] + 0.176&times;[1,0]) / 0.375
               = [0,0] + [0.176,0]) / 0.375
               = [0.47, 0]
 
@@ -8186,8 +8186,8 @@ Step 4: Compute weighted average:
 <h3 id="Understanding-Step-3:-How-the-Gaussian-Kernel-Works">Understanding Step 3: How the Gaussian Kernel Works<a class="anchor-link" href="#Understanding-Step-3:-How-the-Gaussian-Kernel-Works">¶</a></h3><p><strong>What is the Gaussian Kernel?</strong></p>
 <p>The Gaussian kernel is a mathematical function that converts <strong>distances</strong> into <strong>weights</strong>:</p>
 <ul>
-<li><strong>Close points</strong> (small distance) → <strong>High weight</strong> (strong influence)</li>
-<li><strong>Far points</strong> (large distance) → <strong>Low weight</strong> (weak/no influence)</li>
+<li><strong>Close points</strong> (small distance) &rarr; <strong>High weight</strong> (strong influence)</li>
+<li><strong>Far points</strong> (large distance) &rarr; <strong>Low weight</strong> (weak/no influence)</li>
 </ul>
 <p><strong>Simple Analogy:</strong></p>
 <p>Imagine you're in a crowd trying to find the "center" of people:</p>
@@ -8196,9 +8196,9 @@ Step 4: Compute weighted average:
 <li><strong>With Gaussian kernel</strong>: Nearby people have a LOUD voice, distant people are barely heard</li>
 </ul>
 <p><strong>The Formula:</strong></p>
-<pre><code>weight = exp(-0.5 × (distance/bandwidth)²) / (bandwidth × √(2π))
+<pre><code>weight = exp(-0.5 &times; (distance/bandwidth)<sup>2</sup>) / (bandwidth &times; &radic;(2π))
 </code></pre>
-<p><strong>Why do C and D have weight ≈ 0?</strong></p>
+<p><strong>Why do C and D have weight &asymp; 0?</strong></p>
 <p>The Gaussian kernel drops off <strong>very quickly</strong> as distance increases:</p>
 <table>
 <thead>
@@ -8241,7 +8241,7 @@ Step 4: Compute weighted average:
 </tr>
 <tr>
 <td>10</td>
-<td>≈ 0.000</td>
+<td>&asymp; 0.000</td>
 <td>0.0001%</td>
 </tr>
 </tbody>
@@ -8249,8 +8249,8 @@ Step 4: Compute weighted average:
 <p>Points C (distance=10) and D (distance=11) are so far that their weights are essentially <strong>zero</strong>. This is exactly what we want - the algorithm only cares about <strong>nearby</strong> points!</p>
 <p><strong>The Bandwidth Parameter:</strong></p>
 <ul>
-<li><strong>Small bandwidth (bw=1)</strong>: Only very close points matter → Many small clusters</li>
-<li><strong>Large bandwidth (bw=5)</strong>: Distant points also matter → Fewer large clusters</li>
+<li><strong>Small bandwidth (bw=1)</strong>: Only very close points matter &rarr; Many small clusters</li>
+<li><strong>Large bandwidth (bw=5)</strong>: Distant points also matter &rarr; Fewer large clusters</li>
 <li><strong>bw=2</strong> (our example): A good balance</li>
 </ul>
 <p><strong>Visual Representation:</strong></p>
@@ -8263,7 +8263,7 @@ Step 4: Compute weighted average:
   │██████████
   └─────────────────────────── Distance
      0  1  2  3  4  5 ... 10  11
-     A  B              C   D (weights ≈ 0)
+     A  B              C   D (weights &asymp; 0)
 </code></pre>
 </div>
 </div>
@@ -8324,7 +8324,7 @@ Step 4: Compute weighted average:
 <span class="n">denominator</span> <span class="o">=</span> <span class="n">weights</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
 <span class="n">new_A</span> <span class="o">=</span> <span class="n">numerator</span> <span class="o">/</span> <span class="n">denominator</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Step 4 - Weighted average calculation:"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Numerator (sum of weight × point): </span><span class="si">{</span><span class="n">numerator</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Numerator (sum of weight &times; point): </span><span class="si">{</span><span class="n">numerator</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Denominator (sum of weights): </span><span class="si">{</span><span class="n">denominator</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  New position for A: </span><span class="si">{</span><span class="n">new_A</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Point A moved from (0, 0) to (</span><span class="si">{</span><span class="n">new_A</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">new_A</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)!"</span><span class="p">)</span>
@@ -8346,9 +8346,9 @@ Step 4: Compute weighted average:
 <ol>
 <li><strong>Distances to C and D are large</strong> (10 and 11 respectively), so the Gaussian kernel at <code>bw=2</code> gives them essentially zero weight. They effectively don't exist as far as point A is concerned.</li>
 <li><strong>Distance to B is small</strong> (1.0), so it dominates the weighted average.</li>
-<li><strong>The new position for A</strong> is around (0.47, 0) — pulled toward B but not all the way to it (the contribution of A itself, distance 0, still has some pull).</li>
+<li><strong>The new position for A</strong> is around (0.47, 0) &mdash; pulled toward B but not all the way to it (the contribution of A itself, distance 0, still has some pull).</li>
 </ol>
-<p>After one update step, A has moved 47% of the way toward B. After several iterations, A and B will converge to the same point — the midpoint of the {A, B} subcluster. C and D will similarly converge with each other. The algorithm has <em>automatically discovered two clusters</em> without being told how many to look for. That's the punchline of mean shift.</p>
+<p>After one update step, A has moved 47% of the way toward B. After several iterations, A and B will converge to the same point &mdash; the midpoint of the {A, B} subcluster. C and D will similarly converge with each other. The algorithm has <em>automatically discovered two clusters</em> without being told how many to look for. That's the punchline of mean shift.</p>
 </div>
 </div>
 </div>
@@ -8368,8 +8368,8 @@ Step 4: Compute weighted average:
 </ol>
 <p>The <strong>bandwidth</strong> parameter controls how far we look for neighbors:</p>
 <ul>
-<li>Small bandwidth → Only very close points matter → Many small clusters</li>
-<li>Large bandwidth → Distant points also matter → Fewer large clusters</li>
+<li>Small bandwidth &rarr; Only very close points matter &rarr; Many small clusters</li>
+<li>Large bandwidth &rarr; Distant points also matter &rarr; Fewer large clusters</li>
 </ul>
 </div>
 </div>
@@ -8409,8 +8409,8 @@ Step 4: Compute weighted average:
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="The-Gaussian-Kernel---Heart-of-Mean-Shift">The Gaussian Kernel - Heart of Mean Shift<a class="anchor-link" href="#The-Gaussian-Kernel---Heart-of-Mean-Shift">¶</a></h3><p>The <strong>Gaussian kernel</strong> (also called RBF kernel) is a function that converts distances into weights:</p>
 <ul>
-<li><strong>Close points</strong> (small distance) → <strong>High weight</strong> (contribute more)</li>
-<li><strong>Far points</strong> (large distance) → <strong>Low weight</strong> (contribute less)</li>
+<li><strong>Close points</strong> (small distance) &rarr; <strong>High weight</strong> (contribute more)</li>
+<li><strong>Far points</strong> (large distance) &rarr; <strong>Low weight</strong> (contribute less)</li>
 </ul>
 <h3 id="Intuition:-The-%22Voting%22-Analogy">Intuition: The "Voting" Analogy<a class="anchor-link" href="#Intuition:-The-%22Voting%22-Analogy">¶</a></h3><p>Imagine you're at a party and want to find the "center" of where people are standing:</p>
 <ol>
@@ -8442,26 +8442,26 @@ Step 4: Compute weighted average:
 <tr>
 <td>$(d/\sigma)^2$</td>
 <td>Normalized squared distance - scales by bandwidth</td>
-<td>(3.5/2.5)² = 1.96</td>
+<td>(3.5/2.5)<sup>2</sup> = 1.96</td>
 </tr>
 <tr>
 <td>$-\frac{1}{2}(...)$</td>
 <td>Negative half - makes the curve peak at d=0</td>
-<td>-0.5 × 1.96 = -0.98</td>
+<td>-0.5 &times; 1.96 = -0.98</td>
 </tr>
 <tr>
 <td>$\exp(...)$</td>
 <td>Exponential function (e^x) - creates the bell curve shape</td>
-<td>e^(-0.98) ≈ 0.375</td>
+<td>e^(-0.98) &asymp; 0.375</td>
 </tr>
 <tr>
 <td>$\frac{1}{\sigma\sqrt{2\pi}}$</td>
 <td>Normalization - makes the total area equal to 1</td>
-<td>1/(2.5 × 2.507) ≈ 0.16</td>
+<td>1/(2.5 &times; 2.507) &asymp; 0.16</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Final result</strong>: 0.16 × 0.375 ≈ 0.06 (the weight for distance 3.5 with bandwidth 2.5)</p>
+<p><strong>Final result</strong>: 0.16 &times; 0.375 &asymp; 0.06 (the weight for distance 3.5 with bandwidth 2.5)</p>
 <h3 id="Why-is-this-important-for-diffusion-models?">Why is this important for diffusion models?<a class="anchor-link" href="#Why-is-this-important-for-diffusion-models?">¶</a></h3><p>The Gaussian kernel appears everywhere in machine learning:</p>
 <ul>
 <li><strong>Attention mechanisms</strong> in transformers use similar weighting</li>
@@ -8533,10 +8533,10 @@ Step 4: Compute weighted average:
 <p>Implements the Gaussian kernel as a vectorized function over distance tensors:</p>
 $$K(d) = \frac{1}{\sigma\sqrt{2\pi}}\,\exp\!\left(-\frac{1}{2}\left(\frac{d}{\sigma}\right)^2\right)$$<p>Two things to notice:</p>
 <ul>
-<li><strong>Single point or whole tensor — same code.</strong> Because <code>torch.exp</code> and the arithmetic operators are elementwise, calling <code>gaussian(distances, bw)</code> where <code>distances</code> is a shape-(1500,) tensor gives back a shape-(1500,) tensor of weights, with no loop needed. This is the broadcasting pattern from notebook 01 in action: the scalar bandwidth <code>bw</code> broadcasts against every element.</li>
-<li><strong>The normalization factor <code>1/(σ·√(2π))</code> is what makes this a proper density.</strong> It ensures the kernel integrates to 1 over all real distances. For mean shift specifically we don't actually need normalization — we'd divide by the sum of weights anyway — but it's there because the same formula is the textbook 1-D Gaussian PDF, and it's nice to keep that connection.</li>
+<li><strong>Single point or whole tensor &mdash; same code.</strong> Because <code>torch.exp</code> and the arithmetic operators are elementwise, calling <code>gaussian(distances, bw)</code> where <code>distances</code> is a shape-(1500,) tensor gives back a shape-(1500,) tensor of weights, with no loop needed. This is the broadcasting pattern from notebook 01 in action: the scalar bandwidth <code>bw</code> broadcasts against every element.</li>
+<li><strong>The normalization factor <code>1/(σ·&radic;(2π))</code> is what makes this a proper density.</strong> It ensures the kernel integrates to 1 over all real distances. For mean shift specifically we don't actually need normalization &mdash; we'd divide by the sum of weights anyway &mdash; but it's there because the same formula is the textbook 1-D Gaussian PDF, and it's nice to keep that connection.</li>
 </ul>
-<p>The test loop at the bottom shows the classic Gaussian decay shape: weight drops from ~0.4 at distance 0 to ~0.004 at distance 3 (with bw=1). Past distance ~3σ, weights are vanishingly small — the kernel has <em>effective</em> finite support even though it's technically defined on all of ℝ.</p>
+<p>The test loop at the bottom shows the classic Gaussian decay shape: weight drops from ~0.4 at distance 0 to ~0.004 at distance 3 (with bw=1). Past distance ~3σ, weights are vanishingly small &mdash; the kernel has <em>effective</em> finite support even though it's technically defined on all of ℝ.</p>
 </div>
 </div>
 </div>
@@ -8611,7 +8611,7 @@ $$K(d) = \frac{1}{\sigma\sqrt{2\pi}}\,\exp\!\left(-\frac{1}{2}\left(\frac{d}{\si
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
 <p>Plots the Gaussian kernel function over the distance range [0, 10] with bandwidth 2.5. <code>partial(gaussian, bw=2.5)</code> produces a function of one argument (just the distance) by freezing <code>bw=2.5</code>, which <code>plot_func</code> then evaluates and plots.</p>
-<p><strong>What you should see:</strong> a smooth bell-shaped curve that peaks at distance 0 (height ~0.16) and decays toward 0 as distance grows. By distance ~7 the curve is visually indistinguishable from the x-axis — that's about 3 bandwidths (3σ), which is where the Gaussian effectively dies out.</p>
+<p><strong>What you should see:</strong> a smooth bell-shaped curve that peaks at distance 0 (height ~0.16) and decays toward 0 as distance grows. By distance ~7 the curve is visually indistinguishable from the x-axis &mdash; that's about 3 bandwidths (3σ), which is where the Gaussian effectively dies out.</p>
 </div>
 </div>
 </div>
@@ -8669,7 +8669,7 @@ $$K(d) = \frac{1}{\sigma\sqrt{2\pi}}\,\exp\!\left(-\frac{1}{2}\left(\frac{d}{\si
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Same kernel plot as above, but using a <code>lambda</code> instead of <code>partial</code>. Worth seeing both because they show up in different codebases — <code>partial</code> is the functional style (named function, pre-filled argument); <code>lambda</code> is the inline anonymous-function style.</p>
+<p>Same kernel plot as above, but using a <code>lambda</code> instead of <code>partial</code>. Worth seeing both because they show up in different codebases &mdash; <code>partial</code> is the functional style (named function, pre-filled argument); <code>lambda</code> is the inline anonymous-function style.</p>
 <p>Both produce identical output. Choose whichever reads better in context.</p>
 </div>
 </div>
@@ -8787,12 +8787,12 @@ $$K(d) = \frac{1}{\sigma\sqrt{2\pi}}\,\exp\!\left(-\frac{1}{2}\left(\frac{d}{\si
 <ul>
 <li>Weight = 1 at distance 0</li>
 <li>Weight decreases linearly with distance</li>
-<li>Weight = 0 at distance ≥ <code>i</code> (the "reach")</li>
+<li>Weight = 0 at distance &ge; <code>i</code> (the "reach")</li>
 </ul>
 <p>The implementation <code>(-d + i).clamp_min(0) / i</code> does the math in three steps:</p>
 <ol>
 <li><code>-d + i</code> is positive when d &lt; i (we're inside the kernel's support) and negative when d &gt; i (outside).</li>
-<li><code>.clamp_min(0)</code> replaces negatives with 0 — the hard cutoff.</li>
+<li><code>.clamp_min(0)</code> replaces negatives with 0 &mdash; the hard cutoff.</li>
 <li><code>/ i</code> scales to a max of 1 at d=0.</li>
 </ol>
 <p>The point of having both kernels available is pedagogical: it shows that mean shift doesn't care <em>which</em> kernel you use, only that it returns "small for far points, large for close points." The triangular kernel is faster to compute (no exponential), but the Gaussian's smoothness gives slightly better convergence in practice.</p>
@@ -8945,7 +8945,7 @@ $$K(d) = \frac{1}{\sigma\sqrt{2\pi}}\,\exp\!\left(-\frac{1}{2}\left(\frac{d}{\si
 </tr>
 </tbody>
 </table>
-<p>The triangular kernel's hard cutoff means points beyond reach <code>i</code> are <em>exactly</em> ignored — no floating-point fuzz, no influence at all. The Gaussian's soft cutoff means even very distant points have tiny non-zero weight, which is more "honest" probabilistically but slightly slower to converge.</p>
+<p>The triangular kernel's hard cutoff means points beyond reach <code>i</code> are <em>exactly</em> ignored &mdash; no floating-point fuzz, no influence at all. The Gaussian's soft cutoff means even very distant points have tiny non-zero weight, which is more "honest" probabilistically but slightly slower to converge.</p>
 <p>The choice between them is largely aesthetic / pedagogical for mean shift. Both work.</p>
 </div>
 </div>
@@ -8958,7 +8958,25 @@ $$K(d) = \frac{1}{\sigma\sqrt{2\pi}}\,\exp\!\left(-\frac{1}{2}\left(\frac{d}{\si
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Deep-Dive:-Kernels-and-Bandwidth">Deep Dive: Kernels and Bandwidth<a class="anchor-link" href="#Deep-Dive:-Kernels-and-Bandwidth">¶</a></h1><p>We've used both the Gaussian and triangular kernels above without saying <em>why</em> this whole "convert distance to weight" idea is the right thing to do for clustering. This section answers that — and explains what the bandwidth parameter actually controls geometrically.</p>
+<p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>Connection to Part 2 of the notebook:</strong> in the formula <code>K(d) = exp(-d<sup>2</sup> / 2&sigma;<sup>2</sup>) / (&sigma;&radic;(2&pi;))</code>, the bandwidth <code>&sigma;</code> is the only parameter. Doubling <code>&sigma;</code> doubles the effective neighborhood radius and halves the peak height (the area under the curve stays at 1 &mdash; it's a proper density).
+  </p>
+</div>
+<div class="ce-interactive">
+  <h3>Interactive: The Gaussian kernel &mdash; how bandwidth shapes influence</h3>
+  <p class="ce-interactive-hint">The kernel converts distance into weight: nearby points get a loud vote, far points are barely heard. Bandwidth controls the <em>geometric scale</em> of "nearby." The dashed orange line marks the 3&sigma; point &mdash; beyond it, weights are essentially zero.</p>
+  <svg id="kernel-svg" viewBox="0 0 600 300"
+       style="width:100%; max-width:600px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></svg>
+  <div class="ms-controls">
+    <label>Bandwidth: <span id="k-bw-val" class="ms-val">2.5</span></label>
+    <input id="k-bw" type="range" min="0.5" max="8" step="0.1" value="2.5">
+    <span id="k-info" class="ms-val">3&sigma; reach: 7.5</span>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>Connection to Part 2 of the notebook:</strong> in the formula <code>K(d) = exp(-d<sup>2</sup> / 2&sigma;<sup>2</sup>) / (&sigma;&radic;(2&pi;))</code>, the bandwidth <code>&sigma;</code> is the only parameter. Doubling <code>&sigma;</code> doubles the effective neighborhood radius and halves the peak height (the area under the curve stays at 1 &mdash; it's a proper density).
+  </p>
+</div>
+<h1 id="Deep-Dive:-Kernels-and-Bandwidth">Deep Dive: Kernels and Bandwidth<a class="anchor-link" href="#Deep-Dive:-Kernels-and-Bandwidth">¶</a></h1><p>We've used both the Gaussian and triangular kernels above without saying <em>why</em> this whole "convert distance to weight" idea is the right thing to do for clustering. This section answers that &mdash; and explains what the bandwidth parameter actually controls geometrically.</p>
 <hr/>
 <h2 id="What-is-a-Kernel?">What is a Kernel?<a class="anchor-link" href="#What-is-a-Kernel?">¶</a></h2><p>In the kernel-methods literature, a <strong>kernel</strong> is a function $K(x, y)$ that measures similarity between two points. The "kernel" we're using here is technically the <strong>radial basis kernel</strong> (depends only on distance, not the points themselves):</p>
 $$K(x, y) = K_\sigma(\|x - y\|)$$<p>where $K_\sigma$ is a univariate function parameterized by a bandwidth $\sigma$. Common choices:</p>
@@ -8995,18 +9013,18 @@ $$K(x, y) = K_\sigma(\|x - y\|)$$<p>where $K_\sigma$ is a univariate function pa
 </table>
 <p>Any of these would work for mean shift. The Gaussian is just the most common default because:</p>
 <ol>
-<li><strong>It's smooth everywhere</strong> — the resulting density estimate is differentiable, which makes gradient-based arguments (like the convergence proof in the next deep dive) clean.</li>
-<li><strong>It has unbounded support</strong> — every point has nonzero influence on every other point. In practice the influence dies off so fast that this doesn't matter (3σ rule), but theoretically it removes some edge effects you'd see with hard-cutoff kernels.</li>
-<li><strong>It's the maximum-entropy kernel</strong> with given variance — the "least committal" choice.</li>
+<li><strong>It's smooth everywhere</strong> &mdash; the resulting density estimate is differentiable, which makes gradient-based arguments (like the convergence proof in the next deep dive) clean.</li>
+<li><strong>It has unbounded support</strong> &mdash; every point has nonzero influence on every other point. In practice the influence dies off so fast that this doesn't matter (3σ rule), but theoretically it removes some edge effects you'd see with hard-cutoff kernels.</li>
+<li><strong>It's the maximum-entropy kernel</strong> with given variance &mdash; the "least committal" choice.</li>
 </ol>
-<p>The triangular and Epanechnikov kernels are slightly faster (no exponential) and often used in production. The uniform kernel is rarely a good choice — it makes the density estimate discontinuous.</p>
+<p>The triangular and Epanechnikov kernels are slightly faster (no exponential) and often used in production. The uniform kernel is rarely a good choice &mdash; it makes the density estimate discontinuous.</p>
 <hr/>
-<h2 id="Why-Squared-Distance?">Why Squared Distance?<a class="anchor-link" href="#Why-Squared-Distance?">¶</a></h2><p>You might wonder: why is the input to the kernel $d^2$ (in the Gaussian's exponent) rather than $|d|$ or $d^4$ or something else? The mathematical reason is <strong>isotropy</strong>: in $d$ dimensions, the only smooth radially-symmetric Gaussian function is $\exp(-\|x\|^2 / 2\sigma^2)$. Linear or higher-order exponents wouldn't have this property — they'd produce weights that distinguish between "two units northeast" and "two units east" in subtle ways.</p>
-<p>For the triangular kernel, we use $|d|$ (not $d^2$) precisely because the Gaussian-isotropy argument doesn't apply — the triangular kernel is <em>not</em> smooth at the origin anyway, so we can keep the math simple.</p>
-<p>In every case, <strong>the kernel depends only on distance</strong> — direction is irrelevant. That's the "radial" in "radial basis function."</p>
+<h2 id="Why-Squared-Distance?">Why Squared Distance?<a class="anchor-link" href="#Why-Squared-Distance?">¶</a></h2><p>You might wonder: why is the input to the kernel $d^2$ (in the Gaussian's exponent) rather than $|d|$ or $d^4$ or something else? The mathematical reason is <strong>isotropy</strong>: in $d$ dimensions, the only smooth radially-symmetric Gaussian function is $\exp(-\|x\|^2 / 2\sigma^2)$. Linear or higher-order exponents wouldn't have this property &mdash; they'd produce weights that distinguish between "two units northeast" and "two units east" in subtle ways.</p>
+<p>For the triangular kernel, we use $|d|$ (not $d^2$) precisely because the Gaussian-isotropy argument doesn't apply &mdash; the triangular kernel is <em>not</em> smooth at the origin anyway, so we can keep the math simple.</p>
+<p>In every case, <strong>the kernel depends only on distance</strong> &mdash; direction is irrelevant. That's the "radial" in "radial basis function."</p>
 <hr/>
-<h2 id="What-the-Bandwidth-Actually-Controls">What the Bandwidth Actually Controls<a class="anchor-link" href="#What-the-Bandwidth-Actually-Controls">¶</a></h2><p>The bandwidth $\sigma$ controls the kernel's <em>scale</em> — roughly, "how big is the neighborhood that each point cares about?"</p>
-<p>For the Gaussian kernel specifically, by the time you're $3\sigma$ away from the center, the weight has dropped to about $\exp(-4.5) \approx 0.011$ of its peak — essentially zero. So $\sigma$ acts as a <em>soft</em> neighborhood radius:</p>
+<h2 id="What-the-Bandwidth-Actually-Controls">What the Bandwidth Actually Controls<a class="anchor-link" href="#What-the-Bandwidth-Actually-Controls">¶</a></h2><p>The bandwidth $\sigma$ controls the kernel's <em>scale</em> &mdash; roughly, "how big is the neighborhood that each point cares about?"</p>
+<p>For the Gaussian kernel specifically, by the time you're $3\sigma$ away from the center, the weight has dropped to about $\exp(-4.5) \approx 0.011$ of its peak &mdash; essentially zero. So $\sigma$ acts as a <em>soft</em> neighborhood radius:</p>
 <ul>
 <li>$\sigma = 1$: a point's "neighborhood" extends about 3 units.</li>
 <li>$\sigma = 2.5$ (our default): neighborhood extends about 7.5 units.</li>
@@ -9030,12 +9048,12 @@ $$K(x, y) = K_\sigma(\|x - y\|)$$<p>where $K_\sigma$ is a univariate function pa
 <td>Every point sees every other point with roughly equal weight. All points converge to the global centroid. One giant cluster.</td>
 </tr>
 <tr>
-<td>Goldilocks (σ ≈ within-cluster spread, much less than between-cluster distance)</td>
+<td>Goldilocks (σ &asymp; within-cluster spread, much less than between-cluster distance)</td>
 <td>Each point converges to its true cluster's mode. The algorithm "discovers" the right number of clusters automatically.</td>
 </tr>
 </tbody>
 </table>
-<p>The rule of thumb: pick $\sigma$ so that the kernel covers about 1/3 of the data points around a typical point. For our 1500-point dataset with 6 clusters of spread ~2.2, that puts $\sigma$ somewhere in the 2–3 range. Bandwidth selection is a real subfield of statistics; for serious work, "Silverman's rule" or cross-validation are standard data-driven choices.</p>
+<p>The rule of thumb: pick $\sigma$ so that the kernel covers about 1/3 of the data points around a typical point. For our 1500-point dataset with 6 clusters of spread ~2.2, that puts $\sigma$ somewhere in the 2&ndash;3 range. Bandwidth selection is a real subfield of statistics; for serious work, "Silverman's rule" or cross-validation are standard data-driven choices.</p>
 <hr/>
 <h2 id="Connection-to-Kernel-Density-Estimation-(KDE)">Connection to Kernel Density Estimation (KDE)<a class="anchor-link" href="#Connection-to-Kernel-Density-Estimation-(KDE)">¶</a></h2><p>What we're really doing with these kernel weights is implicitly building a <strong>kernel density estimate</strong> of the data:</p>
 $$\hat{p}(x) = \frac{1}{n}\sum_{i=1}^{n} K_\sigma(x - x_i)$$<p>That's it. Place a tiny Gaussian (or triangle) bump on each data point, then add them up to get a smooth density. The result $\hat{p}(x)$ is high in regions where data points cluster and low in empty regions.</p>
@@ -9066,11 +9084,11 @@ $$\hat{p}(x) = \frac{1}{n}\sum_{i=1}^{n} K_\sigma(x - x_i)$$<p>That's it. Place 
 
 All points X:                 x - X (how it works):
 ┌─────┬─────┐                 x is "broadcast" to every row
-│ 2.0 │ 1.0 │  →  [5,3] - [2,1] = [3, 2]
+│ 2.0 │ 1.0 │  &rarr;  [5,3] - [2,1] = [3, 2]
 ├─────┼─────┤
-│ 4.0 │ 2.0 │  →  [5,3] - [4,2] = [1, 1]
+│ 4.0 │ 2.0 │  &rarr;  [5,3] - [4,2] = [1, 1]
 ├─────┼─────┤
-│ 6.0 │ 4.0 │  →  [5,3] - [6,4] = [-1, -1]
+│ 6.0 │ 4.0 │  &rarr;  [5,3] - [6,4] = [-1, -1]
 └─────┴─────┘
 </code></pre>
 <p><strong>The Rule</strong>: Dimensions are compatible when:</p>
@@ -9078,9 +9096,9 @@ All points X:                 x - X (how it works):
 <li>They are equal, OR</li>
 <li>One of them is 1 (it gets stretched)</li>
 </ol>
-<pre><code>(2,)    and (3, 2)  → Compatible! (2,) becomes (3, 2)
-(5, 1)  and (1, 3)  → Compatible! Result is (5, 3)
-(5, 2)  and (3, 2)  → NOT compatible (5 ≠ 3)
+<pre><code>(2,)    and (3, 2)  &rarr; Compatible! (2,) becomes (3, 2)
+(5, 1)  and (1, 3)  &rarr; Compatible! Result is (5, 3)
+(5, 2)  and (3, 2)  &rarr; NOT compatible (5 ≠ 3)
 </code></pre>
 </div>
 </div>
@@ -9222,9 +9240,9 @@ All points X:                 x - X (how it works):
 <p><strong>What does the code above do?</strong></p>
 <p>Computes Euclidean distance from <code>x</code> to every point in <code>X</code> in a single line, using exactly the broadcasting pattern we deep-dove on in <code>01_matmul_explained</code>:</p>
 <ol>
-<li><code>x - X</code>: shape <code>(2,)</code> minus shape <code>(1500, 2)</code>. Broadcasting aligns from the right, treats <code>x</code> as shape <code>(1, 2)</code>, and produces a <code>(1500, 2)</code> tensor of difference vectors — one per data point.</li>
+<li><code>x - X</code>: shape <code>(2,)</code> minus shape <code>(1500, 2)</code>. Broadcasting aligns from the right, treats <code>x</code> as shape <code>(1, 2)</code>, and produces a <code>(1500, 2)</code> tensor of difference vectors &mdash; one per data point.</li>
 <li><code>**2</code>: elementwise square. Still shape <code>(1500, 2)</code>.</li>
-<li><code>.sum(1)</code>: sum along axis 1 (the coordinate axis), reducing to shape <code>(1500,)</code> — one squared distance per point.</li>
+<li><code>.sum(1)</code>: sum along axis 1 (the coordinate axis), reducing to shape <code>(1500,)</code> &mdash; one squared distance per point.</li>
 <li><code>.sqrt()</code>: elementwise square root, giving Euclidean distance.</li>
 </ol>
 <p>Compare to the explicit loop version that would do the same job:</p>
@@ -9232,7 +9250,7 @@ All points X:                 x - X (how it works):
 <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1500</span><span class="p">):</span>
     <span class="n">dist</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="p">((</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">X</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
 </pre></div>
-<p>The vectorized version computes the same 1500 distances ~1000× faster — same idea as the matmul evolution in notebook 01.</p>
+<p>The vectorized version computes the same 1500 distances ~1000&times; faster &mdash; same idea as the matmul evolution in notebook 01.</p>
 </div>
 </div>
 </div>
@@ -9338,15 +9356,15 @@ All points X:                 x - X (how it works):
 <p><strong>What does the code above do?</strong></p>
 <p>Recomputes the same distance vector two different ways and verifies they match:</p>
 <ol>
-<li><strong>Original method:</strong> <code>((x - X)**2).sum(1).sqrt()</code> — broadcasting + reduction.</li>
-<li><strong><code>einsum</code> method:</strong> <code>torch.einsum('ij,ij-&gt;i', diff, diff).sqrt()</code> — both inputs are the same <code>diff</code> tensor.</li>
+<li><strong>Original method:</strong> <code>((x - X)**2).sum(1).sqrt()</code> &mdash; broadcasting + reduction.</li>
+<li><strong><code>einsum</code> method:</strong> <code>torch.einsum('ij,ij-&gt;i', diff, diff).sqrt()</code> &mdash; both inputs are the same <code>diff</code> tensor.</li>
 </ol>
 <p>Decoding <code>'ij,ij-&gt;i'</code> using the rules from the einsum deep dive in notebook 01:</p>
 <ul>
-<li><code>i</code> (axis 0) appears in both inputs and the output → kept as a free axis (one element per data point)</li>
-<li><code>j</code> (axis 1) appears in both inputs but NOT in the output → summed over</li>
+<li><code>i</code> (axis 0) appears in both inputs and the output &rarr; kept as a free axis (one element per data point)</li>
+<li><code>j</code> (axis 1) appears in both inputs but NOT in the output &rarr; summed over</li>
 </ul>
-<p>So this einsum says: "multiply diff[i, j] by itself, then sum over j" — exactly $\sum_j d_{ij}^2$, the squared distance. After <code>.sqrt()</code>, it's the Euclidean distance.</p>
+<p>So this einsum says: "multiply diff[i, j] by itself, then sum over j" &mdash; exactly $\sum_j d_{ij}^2$, the squared distance. After <code>.sqrt()</code>, it's the Euclidean distance.</p>
 <p>The takeaway: any operation of the form "elementwise multiply two tensors then sum some axes" can be written as a single einsum call. For inner products and norms specifically, einsum is often the most readable option.</p>
 </div>
 </div>
@@ -9448,7 +9466,7 @@ for i, x in enumerate(X):
     # ------------------------------------------------------------------
     # STEP 3: Compute weighted average of all points
     # ------------------------------------------------------------------
-    # Numerator: Sum of (weight × point) for each point
+    # Numerator: Sum of (weight &times; point) for each point
     #   weight[:, None] reshapes (n,) to (n, 1) for broadcasting
     #   (n, 1) * (n, 2) = (n, 2) - each point multiplied by its weight
     #   .sum(0) sums across all points, giving (2,) - the weighted sum
@@ -9506,9 +9524,9 @@ for i, x in enumerate(X):
 <li><code>weight</code> has shape <code>(1500,)</code></li>
 <li><code>weight[:, None]</code> has shape <code>(1500, 1)</code></li>
 <li><code>X</code> has shape <code>(1500, 2)</code></li>
-<li><code>(1500, 1) * (1500, 2)</code> → broadcasting stretches the <code>1</code> to <code>2</code> → shape <code>(1500, 2)</code></li>
+<li><code>(1500, 1) * (1500, 2)</code> &rarr; broadcasting stretches the <code>1</code> to <code>2</code> &rarr; shape <code>(1500, 2)</code></li>
 </ul>
-<p>After this multiplication, points with high weight contribute their full coordinates; points with weight ≈ 0 contribute ≈ 0. Summing this along the point axis would give the <em>unnormalized</em> weighted center of mass — exactly the numerator of the mean-shift update.</p>
+<p>After this multiplication, points with high weight contribute their full coordinates; points with weight &asymp; 0 contribute &asymp; 0. Summing this along the point axis would give the <em>unnormalized</em> weighted center of mass &mdash; exactly the numerator of the mean-shift update.</p>
 </div>
 </div>
 </div>
@@ -9562,7 +9580,7 @@ for i, x in enumerate(X):
 <span class="sd">    - Python 'for' loops are interpreted (not compiled) - slow!</span>
 <span class="sd">    - We process points one at a time instead of in parallel</span>
 <span class="sd">    - We can't effectively use GPU acceleration</span>
-<span class="sd">    - For 1500 points: 1500 loop iterations × complex calculations = slow</span>
+<span class="sd">    - For 1500 points: 1500 loop iterations &times; complex calculations = slow</span>
 <span class="sd">    """</span>
     <span class="c1"># ══════════════════════════════════════════════════════════════════════</span>
     <span class="c1"># MAIN LOOP: Process each point one at a time</span>
@@ -9576,15 +9594,15 @@ for i, x in enumerate(X):
         <span class="c1"># STEP 1: Compute distances from point x to ALL points in X</span>
         <span class="c1"># ══════════════════════════════════════════════════════════════════</span>
         <span class="c1"># </span>
-        <span class="c1"># Mathematical formula: distance = sqrt((x1-x2)² + (y1-y2)²)</span>
+        <span class="c1"># Mathematical formula: distance = sqrt((x1-x2)<sup>2</sup> + (y1-y2)<sup>2</sup>)</span>
         <span class="c1">#</span>
         <span class="c1"># In code:</span>
-        <span class="c1">#   (x - X)     → Difference vectors: [[x-X0_x, y-X0_y], [x-X1_x, y-X1_y], ...]</span>
+        <span class="c1">#   (x - X)     &rarr; Difference vectors: [[x-X0_x, y-X0_y], [x-X1_x, y-X1_y], ...]</span>
         <span class="c1">#                 Shape: (n, 2) where n = number of points</span>
-        <span class="c1">#   **2         → Square each element: [[diff_x², diff_y²], ...]</span>
-        <span class="c1">#   .sum(1)     → Sum across axis 1 (the x,y dimension): [diff_x² + diff_y², ...]</span>
+        <span class="c1">#   **2         &rarr; Square each element: [[diff_x<sup>2</sup>, diff_y<sup>2</sup>], ...]</span>
+        <span class="c1">#   .sum(1)     &rarr; Sum across axis 1 (the x,y dimension): [diff_x<sup>2</sup> + diff_y<sup>2</sup>, ...]</span>
         <span class="c1">#                 Shape: (n,) - one squared distance per point</span>
-        <span class="c1">#   .sqrt()     → Square root to get actual distances</span>
+        <span class="c1">#   .sqrt()     &rarr; Square root to get actual distances</span>
         <span class="c1">#                 Shape: (n,) - one distance per point</span>
         <span class="c1">#</span>
         <span class="n">dist</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(((</span><span class="n">x</span> <span class="o">-</span> <span class="n">X</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
@@ -9602,9 +9620,9 @@ for i, x in enumerate(X):
         <span class="c1"># The kernel function answers: "How much should each point influence</span>
         <span class="c1"># where x moves to?"</span>
         <span class="c1">#</span>
-        <span class="c1"># - Nearby points (small distance) → HIGH weight → strong pull</span>
-        <span class="c1"># - Far points (large distance) → LOW weight → weak pull</span>
-        <span class="c1"># - Very far points → weight ≈ 0 → essentially no influence</span>
+        <span class="c1"># - Nearby points (small distance) &rarr; HIGH weight &rarr; strong pull</span>
+        <span class="c1"># - Far points (large distance) &rarr; LOW weight &rarr; weak pull</span>
+        <span class="c1"># - Very far points &rarr; weight &asymp; 0 &rarr; essentially no influence</span>
         <span class="c1">#</span>
         <span class="c1"># Using triangular kernel with reach=8:</span>
         <span class="c1"># - At distance 0: weight = 1.0 (maximum influence)</span>
@@ -9621,17 +9639,17 @@ for i, x in enumerate(X):
         <span class="c1"># STEP 3: Compute weighted average of all points</span>
         <span class="c1"># ══════════════════════════════════════════════════════════════════</span>
         <span class="c1">#</span>
-        <span class="c1"># Formula: new_position = Σ(weight_i × point_i) / Σ(weight_i)</span>
+        <span class="c1"># Formula: new_position = Σ(weight_i &times; point_i) / Σ(weight_i)</span>
         <span class="c1">#</span>
         <span class="c1"># This is like asking: "If each point pulls on x with strength</span>
         <span class="c1"># proportional to its weight, where does x end up?"</span>
         <span class="c1">#</span>
         <span class="c1"># Breaking down the numerator calculation:</span>
-        <span class="c1">#   weight          → Shape: (n,) - one weight per point</span>
-        <span class="c1">#   weight[:, None] → Shape: (n, 1) - add dimension for broadcasting</span>
-        <span class="c1">#   X               → Shape: (n, 2) - all points</span>
-        <span class="c1">#   weight[:, None] * X → Shape: (n, 2) - each point scaled by its weight</span>
-        <span class="c1">#   .sum(0)         → Shape: (2,) - sum all weighted points</span>
+        <span class="c1">#   weight          &rarr; Shape: (n,) - one weight per point</span>
+        <span class="c1">#   weight[:, None] &rarr; Shape: (n, 1) - add dimension for broadcasting</span>
+        <span class="c1">#   X               &rarr; Shape: (n, 2) - all points</span>
+        <span class="c1">#   weight[:, None] * X &rarr; Shape: (n, 2) - each point scaled by its weight</span>
+        <span class="c1">#   .sum(0)         &rarr; Shape: (2,) - sum all weighted points</span>
         <span class="c1">#</span>
         <span class="n">numerator</span> <span class="o">=</span> <span class="p">(</span><span class="n">weight</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
         
@@ -9665,15 +9683,15 @@ for i, x in enumerate(X):
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Defines <code>one_update</code> — the function that performs one iteration of mean shift on <em>every</em> point in <code>X</code>. For each point, it:</p>
+<p>Defines <code>one_update</code> &mdash; the function that performs one iteration of mean shift on <em>every</em> point in <code>X</code>. For each point, it:</p>
 <ol>
 <li>Computes distances to all 1500 points.</li>
 <li>Converts distances to triangular-kernel weights (reach 8).</li>
 <li>Computes the weighted average position.</li>
 <li>Updates the point in place.</li>
 </ol>
-<p><strong>This is the slow version on purpose.</strong> It loops in Python over every point, which is exactly what we'll vectorize away in §7. Understanding the slow version first is essential because it makes the speedup story concrete — when we replace the Python loop with batched tensor operations, you'll know exactly what the loop was doing.</p>
-<p><strong>Subtle gotcha — in-place vs out-of-place updates.</strong> The line <code>X[i] = numerator / denominator</code> modifies <code>X</code> <em>while still iterating over it</em>. This means when point <code>i+1</code> computes its distances, it uses the <em>updated</em> position of point <code>i</code>, not the original. This is a deliberate choice — it makes the algorithm converge slightly faster than the "simultaneous update" version where you'd compute all new positions before assigning. The difference is small in practice and either version converges to roughly the same clusters.</p>
+<p><strong>This is the slow version on purpose.</strong> It loops in Python over every point, which is exactly what we'll vectorize away in &sect;7. Understanding the slow version first is essential because it makes the speedup story concrete &mdash; when we replace the Python loop with batched tensor operations, you'll know exactly what the loop was doing.</p>
+<p><strong>Subtle gotcha &mdash; in-place vs out-of-place updates.</strong> The line <code>X[i] = numerator / denominator</code> modifies <code>X</code> <em>while still iterating over it</em>. This means when point <code>i+1</code> computes its distances, it uses the <em>updated</em> position of point <code>i</code>, not the original. This is a deliberate choice &mdash; it makes the algorithm converge slightly faster than the "simultaneous update" version where you'd compute all new positions before assigning. The difference is small in practice and either version converges to roughly the same clusters.</p>
 </div>
 </div>
 </div>
@@ -9723,9 +9741,9 @@ for i, x in enumerate(X):
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Wraps <code>one_update</code> in a loop that runs five iterations. Five is usually enough to see clear cluster convergence on synthetic data like ours — points in dense regions barely move after iteration 2 or 3, but the boundary points need a few more passes to converge.</p>
+<p>Wraps <code>one_update</code> in a loop that runs five iterations. Five is usually enough to see clear cluster convergence on synthetic data like ours &mdash; points in dense regions barely move after iteration 2 or 3, but the boundary points need a few more passes to converge.</p>
 <p><code>.clone()</code> at the top is important: without it, we'd mutate the original <code>data</code> tensor. With it, the function is pure from the caller's perspective.</p>
-<p>There's no convergence check — we just hardcode 5 iterations. In production you'd typically iterate until point movements drop below a tolerance, but for teaching purposes the fixed loop is clearer.</p>
+<p>There's no convergence check &mdash; we just hardcode 5 iterations. In production you'd typically iterate until point movements drop below a tolerance, but for teaching purposes the fixed loop is clearer.</p>
 </div>
 </div>
 </div>
@@ -9761,8 +9779,8 @@ for i, x in enumerate(X):
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
 <p>Runs the sequential mean shift on all 1500 points and times it.</p>
-<p>Expect this to be slow — somewhere between 500 ms and several seconds depending on your CPU. That's 1500 points × 5 iterations × (one Python loop iteration per point) = 7,500 Python-loop iterations, each doing some tensor work. The tensor work itself is fast, but the Python loop overhead dominates.</p>
-<p>This timing is the baseline that §7's batched version will improve by ~100–200× on a GPU.</p>
+<p>Expect this to be slow &mdash; somewhere between 500 ms and several seconds depending on your CPU. That's 1500 points &times; 5 iterations &times; (one Python loop iteration per point) = 7,500 Python-loop iterations, each doing some tensor work. The tensor work itself is fast, but the Python loop overhead dominates.</p>
+<p>This timing is the baseline that &sect;7's batched version will improve by ~100&ndash;200&times; on a GPU.</p>
 </div>
 </div>
 </div>
@@ -9800,11 +9818,31 @@ for i, x in enumerate(X):
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
+<p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>Try this:</strong> set bandwidth to <code>0.5</code> and run &mdash; you get many tiny clusters (over-segmentation). Set it to <code>10</code> and run &mdash; everything merges into one global mean (under-segmentation). Around <code>2&ndash;3.5</code> is the sweet spot for this data. The convergence deep-dive below explains <em>why</em> this works mathematically.
+  </p>
+</div>
+<div class="ce-interactive">
+  <h3>Interactive: Watch mean shift discover clusters</h3>
+  <p class="ce-interactive-hint">Drag the bandwidth slider, then click <strong>Run</strong>. Points start scattered around hidden centers; mean shift pulls them toward density modes. Lower bandwidth &rarr; many small clusters; higher &rarr; fewer (eventually one global cluster). This is the algorithm you just saw implemented, running live.</p>
+  <canvas id="ms-canvas" width="600" height="380"
+          style="width:100%; max-width:600px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action:manipulation;"></canvas>
+  <div class="ms-controls">
+    <label>Bandwidth: <span id="ms-bw-val" class="ms-val">2.5</span></label>
+    <input id="ms-bw" type="range" min="0.5" max="10" step="0.1" value="2.5">
+    <button id="ms-run" class="ms-btn">Run</button>
+    <button id="ms-newdata" class="ms-btn ms-secondary">New data</button>
+    <span id="ms-iter" class="ms-val">Iter: 0</span>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>Try this:</strong> set bandwidth to <code>0.5</code> and run &mdash; you get many tiny clusters (over-segmentation). Set it to <code>10</code> and run &mdash; everything merges into one global mean (under-segmentation). Around <code>2&ndash;3.5</code> is the sweet spot for this data. The convergence deep-dive below explains <em>why</em> this works mathematically.
+  </p>
+</div>
 <h1 id="Deep-Dive:-Why-Mean-Shift-Converges">Deep Dive: Why Mean Shift Converges<a class="anchor-link" href="#Deep-Dive:-Why-Mean-Shift-Converges">¶</a></h1><p>We've watched mean shift converge in the plot. But <em>why</em> does it converge? What's the math that guarantees points move toward density peaks rather than drifting randomly or oscillating?</p>
-<p>The answer is one of the most elegant results in unsupervised learning: <strong>mean shift is gradient ascent on a kernel density estimate.</strong> Once you see this, the entire algorithm — including the choice of Gaussian kernel, the weighted-average update, and the fact that it converges to local maxima — falls out of one short derivation.</p>
+<p>The answer is one of the most elegant results in unsupervised learning: <strong>mean shift is gradient ascent on a kernel density estimate.</strong> Once you see this, the entire algorithm &mdash; including the choice of Gaussian kernel, the weighted-average update, and the fact that it converges to local maxima &mdash; falls out of one short derivation.</p>
 <hr/>
 <h2 id="The-Setup">The Setup<a class="anchor-link" href="#The-Setup">¶</a></h2><p>We have $n$ data points $x_1, \ldots, x_n$ in $\mathbb{R}^d$. The kernel density estimate of the underlying distribution, with Gaussian kernel and bandwidth $\sigma$, is:</p>
-$$\hat{p}(y) = \frac{1}{n (2\pi \sigma^2)^{d/2}} \sum_{i=1}^{n} \exp\!\left(-\frac{\|y - x_i\|^2}{2\sigma^2}\right).$$<p>This $\hat{p}$ is a smooth function on $\mathbb{R}^d$ — peaked wherever data is dense, low wherever data is sparse. We want to find its <em>local maxima</em> (the "modes"), because those are the natural cluster centers.</p>
+$$\hat{p}(y) = \frac{1}{n (2\pi \sigma^2)^{d/2}} \sum_{i=1}^{n} \exp\!\left(-\frac{\|y - x_i\|^2}{2\sigma^2}\right).$$<p>This $\hat{p}$ is a smooth function on $\mathbb{R}^d$ &mdash; peaked wherever data is dense, low wherever data is sparse. We want to find its <em>local maxima</em> (the "modes"), because those are the natural cluster centers.</p>
 <p>The natural way to climb a smooth function is <strong>gradient ascent</strong>: from the current position $y$, take a small step in the direction $\nabla \hat{p}(y)$.</p>
 <hr/>
 <h2 id="Computing-the-Gradient">Computing the Gradient<a class="anchor-link" href="#Computing-the-Gradient">¶</a></h2><p>Take the gradient of $\hat{p}$ with respect to $y$. The leading constant comes out front; the chain rule on each exponential gives:</p>
@@ -9813,14 +9851,14 @@ $$\nabla \hat{p}(y) = \frac{1}{n \sigma^2 (2\pi\sigma^2)^{d/2}} \sum_{i=1}^{n} \
 $$w_i(y) \;=\; \exp\!\left(-\frac{\|y - x_i\|^2}{2\sigma^2}\right).$$<p>Then:</p>
 $$\nabla \hat{p}(y) \;=\; \frac{1}{n \sigma^2 (2\pi\sigma^2)^{d/2}} \sum_{i=1}^{n} w_i(y) \,(x_i - y).$$<hr/>
 <h2 id="The-Mean-Shift-Vector">The Mean-Shift Vector<a class="anchor-link" href="#The-Mean-Shift-Vector">¶</a></h2><p>Split the sum: $\sum_i w_i (x_i - y) = \sum_i w_i x_i - y \sum_i w_i$. So:</p>
-$$\sum_i w_i (x_i - y) \;=\; \left(\sum_i w_i\right)\!\left[\frac{\sum_i w_i x_i}{\sum_i w_i} - y\right].$$<p>Look at the bracket. The first term is the <strong>weighted mean</strong> of the data points with kernel weights $w_i$ — exactly what one iteration of mean shift computes! Call it $m(y)$:</p>
+$$\sum_i w_i (x_i - y) \;=\; \left(\sum_i w_i\right)\!\left[\frac{\sum_i w_i x_i}{\sum_i w_i} - y\right].$$<p>Look at the bracket. The first term is the <strong>weighted mean</strong> of the data points with kernel weights $w_i$ &mdash; exactly what one iteration of mean shift computes! Call it $m(y)$:</p>
 $$m(y) \;=\; \frac{\sum_i w_i(y)\, x_i}{\sum_i w_i(y)}.$$<p>Substituting back:</p>
-$$\nabla \hat{p}(y) \;=\; \frac{\sum_i w_i(y)}{n \sigma^2 (2\pi\sigma^2)^{d/2}} \cdot \left[\,m(y) - y\,\right].$$<p>The gradient of $\hat{p}$ at $y$ is <strong>proportional to the vector $m(y) - y$</strong> — the direction from the current point to the weighted mean of nearby points.</p>
+$$\nabla \hat{p}(y) \;=\; \frac{\sum_i w_i(y)}{n \sigma^2 (2\pi\sigma^2)^{d/2}} \cdot \left[\,m(y) - y\,\right].$$<p>The gradient of $\hat{p}$ at $y$ is <strong>proportional to the vector $m(y) - y$</strong> &mdash; the direction from the current point to the weighted mean of nearby points.</p>
 <p>The leading coefficient $\frac{\sum_i w_i(y)}{n \sigma^2 (2\pi\sigma^2)^{d/2}}$ is always positive (it's a sum of positive Gaussian weights times positive constants), so:</p>
 $$\text{direction of }\nabla \hat{p}(y) \;=\; \text{direction of }[m(y) - y].$$<hr/>
 <h2 id="What-Mean-Shift-Actually-Does">What Mean Shift Actually Does<a class="anchor-link" href="#What-Mean-Shift-Actually-Does">¶</a></h2><p>The mean-shift update is:</p>
 $$y_{\text{new}} \;=\; m(y) \;=\; y + [m(y) - y].$$<p>That is: <strong>step from $y$ in the direction $m(y) - y$ by exactly that vector's length.</strong> We just showed $m(y) - y$ is in the direction of $\nabla \hat{p}(y)$. So mean shift is taking a step in the direction of the gradient of the kernel density estimate.</p>
-<p>This is gradient ascent with a particular, automatically-chosen step size — proportional to $1 / \sum_i w_i$. The step size is <em>adaptive</em>: in dense regions (lots of nearby points → large $\sum_i w_i$), the step is <em>small</em>; in sparse regions, the step is large. This is desirable — fine-grained updates near peaks, big jumps when far from any structure.</p>
+<p>This is gradient ascent with a particular, automatically-chosen step size &mdash; proportional to $1 / \sum_i w_i$. The step size is <em>adaptive</em>: in dense regions (lots of nearby points &rarr; large $\sum_i w_i$), the step is <em>small</em>; in sparse regions, the step is large. This is desirable &mdash; fine-grained updates near peaks, big jumps when far from any structure.</p>
 <hr/>
 <h2 id="Why-It-Converges">Why It Converges<a class="anchor-link" href="#Why-It-Converges">¶</a></h2><p>Two facts together give convergence:</p>
 <ol>
@@ -9829,10 +9867,10 @@ $$y_{\text{new}} \;=\; m(y) \;=\; y + [m(y) - y].$$<p>That is: <strong>step from
 <li><p><strong>The density estimate $\hat{p}$ is bounded above.</strong> A finite sum of bounded Gaussians can't exceed some finite ceiling. A monotone sequence (the values $\hat{p}(y_t)$) bounded above must converge.</p>
 </li>
 </ol>
-<p>So the value $\hat{p}(y_t)$ converges. With some standard arguments about smooth functions, the position $y_t$ also converges, and it converges to a <strong>stationary point of $\hat{p}$</strong> — that is, a point where $\nabla \hat{p} = 0$. For density estimates these are local maxima, saddle points, or local minima; in practice, the only stable attractors are local maxima. So <strong>mean shift converges to a local maximum of the kernel density estimate.</strong></p>
+<p>So the value $\hat{p}(y_t)$ converges. With some standard arguments about smooth functions, the position $y_t$ also converges, and it converges to a <strong>stationary point of $\hat{p}$</strong> &mdash; that is, a point where $\nabla \hat{p} = 0$. For density estimates these are local maxima, saddle points, or local minima; in practice, the only stable attractors are local maxima. So <strong>mean shift converges to a local maximum of the kernel density estimate.</strong></p>
 <p>That's the entire theory. The algorithm finds modes of the density, and the modes are the cluster centers.</p>
 <hr/>
-<h2 id="The-Big-Picture">The Big Picture<a class="anchor-link" href="#The-Big-Picture">¶</a></h2><p>What looked like a heuristic — "compute the weighted mean of nearby points and move there" — is actually a principled optimization algorithm:</p>
+<h2 id="The-Big-Picture">The Big Picture<a class="anchor-link" href="#The-Big-Picture">¶</a></h2><p>What looked like a heuristic &mdash; "compute the weighted mean of nearby points and move there" &mdash; is actually a principled optimization algorithm:</p>
 <table>
 <thead>
 <tr>
@@ -9859,8 +9897,8 @@ $$y_{\text{new}} \;=\; m(y) \;=\; y + [m(y) - y].$$<p>That is: <strong>step from
 </tr>
 </tbody>
 </table>
-<p>And the algorithm needs <em>no</em> hyperparameter for the number of clusters because the modes of $\hat{p}$ are intrinsic features of the data and the bandwidth choice — once those are fixed, the modes are determined.</p>
-<p>The deep dive on attention in notebook 27 will reveal one more layer: the weighted-average operation <code>(weights @ X) / weights.sum(1, keepdim=True)</code> from the batched mean shift in §7 is <em>structurally identical</em> to the value-aggregation step of softmax attention. Same shapes, same operations, different interpretation. The next deep dive walks through that connection.</p>
+<p>And the algorithm needs <em>no</em> hyperparameter for the number of clusters because the modes of $\hat{p}$ are intrinsic features of the data and the bandwidth choice &mdash; once those are fixed, the modes are determined.</p>
+<p>The deep dive on attention in notebook 27 will reveal one more layer: the weighted-average operation <code>(weights @ X) / weights.sum(1, keepdim=True)</code> from the batched mean shift in &sect;7 is <em>structurally identical</em> to the value-aggregation step of softmax attention. Same shapes, same operations, different interpretation. The next deep dive walks through that connection.</p>
 </div>
 </div>
 </div>
@@ -9880,26 +9918,26 @@ $$y_{\text{new}} \;=\; m(y) \;=\; y + [m(y) - y].$$<p>That is: <strong>step from
 <h3 id="The-solution:-Batching">The solution: Batching<a class="anchor-link" href="#The-solution:-Batching">¶</a></h3><p>Instead of updating one point at a time, we update <strong>batches of points simultaneously</strong>. This is perfect for GPUs, which excel at parallel computation.</p>
 <h3 id="Visual-Explanation:-Sequential-vs-Batched-Processing">Visual Explanation: Sequential vs Batched Processing<a class="anchor-link" href="#Visual-Explanation:-Sequential-vs-Batched-Processing">¶</a></h3><pre><code>SEQUENTIAL (Slow - what we did before):
 ┌──────────────────────────────────────────────────┐
-│ Time →                                           │
+│ Time &rarr;                                           │
 │                                                  │
 │ Point 1: [compute]                               │
 │ Point 2:          [compute]                      │
 │ Point 3:                   [compute]             │
 │ Point 4:                            [compute]    │
 │                                                  │
-│ Total time = 4 × (time for one point)           │
+│ Total time = 4 &times; (time for one point)           │
 └──────────────────────────────────────────────────┘
 
 BATCHED (Fast - GPU can do all at once):
 ┌──────────────────────────────────────────────────┐
-│ Time →                                           │
+│ Time &rarr;                                           │
 │                                                  │
 │ Point 1: ┐                                       │
 │ Point 2: ├─[compute all together]                │
 │ Point 3: │                                       │
 │ Point 4: ┘                                       │
 │                                                  │
-│ Total time ≈ (time for one point) ← HUGE WIN!   │
+│ Total time &asymp; (time for one point) ← HUGE WIN!   │
 └──────────────────────────────────────────────────┘
 </code></pre>
 <h3 id="Connection-to-Deep-Learning">Connection to Deep Learning<a class="anchor-link" href="#Connection-to-Deep-Learning">¶</a></h3><p><strong>Batching</strong> is fundamental to deep learning:</p>
@@ -9971,11 +10009,11 @@ BATCHED (Fast - GPU can do all at once):
 <span class="n">The</span> <span class="n">trick</span><span class="p">:</span> <span class="n">Add</span> <span class="n">dimensions</span> <span class="n">to</span> <span class="n">create</span> <span class="n">a</span> <span class="mi">3</span><span class="n">D</span> <span class="s2">"grid"</span> <span class="n">of</span> <span class="n">differences</span><span class="err">!</span>
 
 <span class="n">Step</span> <span class="mi">1</span><span class="p">:</span> <span class="n">Reshape</span> <span class="k">for</span> <span class="n">broadcasting</span>
-  <span class="n">X</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span>    <span class="err">→</span> <span class="n">shape</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>      <span class="err">←</span> <span class="n">Add</span> <span class="n">batch</span> <span class="n">dimension</span>
-  <span class="n">x</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="err">→</span> <span class="n">shape</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>         <span class="err">←</span> <span class="n">Add</span> <span class="n">points</span> <span class="n">dimension</span>
+  <span class="n">X</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span>    <span class="err">&rarr;</span> <span class="n">shape</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>      <span class="err">←</span> <span class="n">Add</span> <span class="n">batch</span> <span class="n">dimension</span>
+  <span class="n">x</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="err">&rarr;</span> <span class="n">shape</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>         <span class="err">←</span> <span class="n">Add</span> <span class="n">points</span> <span class="n">dimension</span>
 
 <span class="n">Step</span> <span class="mi">2</span><span class="p">:</span> <span class="n">Broadcasting</span> <span class="n">creates</span> <span class="nb">all</span> <span class="n">pairwise</span> <span class="n">differences</span>
-  <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="err">→</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+  <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="err">&rarr;</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
   
   <span class="n">This</span> <span class="mi">3</span><span class="n">D</span> <span class="n">tensor</span> <span class="n">contains</span><span class="p">:</span>
   <span class="err">┌─────────────────────────────────────┐</span>
@@ -9991,9 +10029,9 @@ BATCHED (Fast - GPU can do all at once):
   <span class="err">└─────────────────────────────────────┘</span>
 
 <span class="n">Step</span> <span class="mi">3</span><span class="p">:</span> <span class="n">Square</span><span class="p">,</span> <span class="nb">sum</span> <span class="n">over</span> <span class="n">coordinates</span><span class="p">,</span> <span class="n">sqrt</span>
-  <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="err">→</span> <span class="n">square</span> <span class="err">→</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-              <span class="err">→</span> <span class="nb">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="err">→</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1500</span><span class="p">)</span>
-              <span class="err">→</span> <span class="n">sqrt</span> <span class="err">→</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1500</span><span class="p">)</span> <span class="err">✓</span>
+  <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="err">&rarr;</span> <span class="n">square</span> <span class="err">&rarr;</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1500</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+              <span class="err">&rarr;</span> <span class="nb">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="err">&rarr;</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1500</span><span class="p">)</span>
+              <span class="err">&rarr;</span> <span class="n">sqrt</span> <span class="err">&rarr;</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1500</span><span class="p">)</span> <span class="err">✓</span>
 <span class="err">```</span>
 </pre></div>
 </div>
@@ -10122,7 +10160,7 @@ BATCHED (Fast - GPU can do all at once):
     <span class="c1"># ══════════════════════════════════════════════════════════════════════</span>
     <span class="c1">#</span>
     <span class="c1"># We want to compute (b[i] - a[j]) for ALL combinations of i and j</span>
-    <span class="c1"># That's bs × n = 5 × 1500 = 7,500 difference vectors!</span>
+    <span class="c1"># That's bs &times; n = 5 &times; 1500 = 7,500 difference vectors!</span>
     <span class="c1">#</span>
     <span class="c1"># Step 1: Reshape tensors for broadcasting</span>
     <span class="c1">#   a has shape (n, 2) = (1500, 2)</span>
@@ -10136,8 +10174,8 @@ BATCHED (Fast - GPU can do all at once):
     <span class="c1">#   </span>
     <span class="c1">#   PyTorch aligns dimensions from the right:</span>
     <span class="c1">#   - Dimension 2: Both are 2 ✓ (coordinates)</span>
-    <span class="c1">#   - Dimension 1: 1500 vs 1 → broadcast to 1500</span>
-    <span class="c1">#   - Dimension 0: 1 vs 5 → broadcast to 5</span>
+    <span class="c1">#   - Dimension 1: 1500 vs 1 &rarr; broadcast to 1500</span>
+    <span class="c1">#   - Dimension 0: 1 vs 5 &rarr; broadcast to 5</span>
     <span class="c1">#   </span>
     <span class="c1">#   Result shape: (5, 1500, 2) - ALL pairwise differences!</span>
     <span class="c1">#</span>
@@ -10153,7 +10191,7 @@ BATCHED (Fast - GPU can do all at once):
     <span class="c1"># diff[i, j, 1] = y-coordinate difference</span>
 
     <span class="c1"># ══════════════════════════════════════════════════════════════════════</span>
-    <span class="c1"># COMPUTE EUCLIDEAN DISTANCE: sqrt(dx² + dy²)</span>
+    <span class="c1"># COMPUTE EUCLIDEAN DISTANCE: sqrt(dx<sup>2</sup> + dy<sup>2</sup>)</span>
     <span class="c1"># ══════════════════════════════════════════════════════════════════════</span>
     
     <span class="n">squared</span> <span class="o">=</span> <span class="n">diff</span> <span class="o">**</span> <span class="mi">2</span>          <span class="c1"># Square each component</span>
@@ -10176,11 +10214,11 @@ BATCHED (Fast - GPU can do all at once):
 <span class="c1">#   for i in range(5):</span>
 <span class="c1">#       for j in range(1500):</span>
 <span class="c1">#           distances[i,j] = compute_distance(b[i], a[j])</span>
-<span class="c1">#   → 7,500 Python loop iterations!</span>
+<span class="c1">#   &rarr; 7,500 Python loop iterations!</span>
 <span class="c1">#</span>
 <span class="c1"># Batched version (fast):</span>
 <span class="c1">#   distances = dist_b(a, b)</span>
-<span class="c1">#   → ONE operation that PyTorch optimizes and can run on GPU!</span>
+<span class="c1">#   &rarr; ONE operation that PyTorch optimizes and can run on GPU!</span>
 <span class="c1">#</span>
 <span class="c1"># On GPU, all 7,500 distance calculations happen IN PARALLEL!</span>
 </pre></div>
@@ -10196,10 +10234,10 @@ BATCHED (Fast - GPU can do all at once):
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Defines <code>dist_b(a, b)</code> — the <strong>batched pairwise distance function</strong> that lets us update many points at once. This is the structural heart of the GPU-accelerated mean shift, so let me walk through the broadcasting carefully:</p>
+<p>Defines <code>dist_b(a, b)</code> &mdash; the <strong>batched pairwise distance function</strong> that lets us update many points at once. This is the structural heart of the GPU-accelerated mean shift, so let me walk through the broadcasting carefully:</p>
 <ul>
-<li><code>a</code> has shape <code>(n, 2)</code> — all data points (n = 1500 in our case).</li>
-<li><code>b</code> has shape <code>(bs, 2)</code> — the batch of query points we want distances for (bs = e.g. 500).</li>
+<li><code>a</code> has shape <code>(n, 2)</code> &mdash; all data points (n = 1500 in our case).</li>
+<li><code>b</code> has shape <code>(bs, 2)</code> &mdash; the batch of query points we want distances for (bs = e.g. 500).</li>
 </ul>
 <p>We want a tensor of shape <code>(bs, n)</code> where entry <code>[i, j]</code> is the distance from <code>b[i]</code> to <code>a[j]</code>. The broadcasting trick:</p>
 <table>
@@ -10224,12 +10262,12 @@ BATCHED (Fast - GPU can do all at once):
 <tr>
 <td><code>a[None] - b[:, None]</code></td>
 <td><code>(bs, n, 2)</code></td>
-<td>All <code>bs × n</code> pairwise difference vectors.</td>
+<td>All <code>bs &times; n</code> pairwise difference vectors.</td>
 </tr>
 <tr>
 <td><code>.sum(2)</code> after <code>**2</code></td>
 <td><code>(bs, n)</code></td>
-<td>Sum over the coordinate axis → squared distances.</td>
+<td>Sum over the coordinate axis &rarr; squared distances.</td>
 </tr>
 <tr>
 <td><code>.sqrt()</code></td>
@@ -10238,7 +10276,7 @@ BATCHED (Fast - GPU can do all at once):
 </tr>
 </tbody>
 </table>
-<p>This is <strong>exactly</strong> the pattern that scaled dot-product attention uses to compute query–key similarities (transformers compute <code>Q @ K.T</code> to get a <code>(batch, q_len, k_len)</code> similarity tensor). Mean shift and attention are doing the same shape gymnastics, with different intent.</p>
+<p>This is <strong>exactly</strong> the pattern that scaled dot-product attention uses to compute query&ndash;key similarities (transformers compute <code>Q @ K.T</code> to get a <code>(batch, q_len, k_len)</code> similarity tensor). Mean shift and attention are doing the same shape gymnastics, with different intent.</p>
 </div>
 </div>
 </div>
@@ -10263,7 +10301,7 @@ BATCHED (Fast - GPU can do all at once):
 <span class="nb">print</span><span class="p">(</span><span class="n">distances</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">5</span><span class="p">])</span>
 <span class="nb">print</span><span class="p">()</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"Notice the diagonal is 0 (distance to self)"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"This computed 5 × 1500 = 7,500 distances in one operation!"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"This computed 5 &times; 1500 = 7,500 distances in one operation!"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -10328,10 +10366,10 @@ BATCHED (Fast - GPU can do all at once):
 <p>Computes the batched weighted average using <code>einsum</code>, as an alternative formulation of the matmul we'll see two cells later. The einsum string <code>'ij,jk-&gt;ik'</code>:</p>
 <ul>
 <li><code>i</code> = batch index (5 query points)</li>
-<li><code>j</code> = data point index (1500 — summed over)</li>
-<li><code>k</code> = coordinate index (2 — preserved)</li>
+<li><code>j</code> = data point index (1500 &mdash; summed over)</li>
+<li><code>k</code> = coordinate index (2 &mdash; preserved)</li>
 </ul>
-<p><code>weight[i, j] * X[j, k]</code> is multiplied for every triple, then summed over <code>j</code>. Result: <code>(5, 2)</code> — one weighted-average position per query.</p>
+<p><code>weight[i, j] * X[j, k]</code> is multiplied for every triple, then summed over <code>j</code>. Result: <code>(5, 2)</code> &mdash; one weighted-average position per query.</p>
 <p>This is identical to matrix multiplication <code>weight @ X</code>. The next cell does it that way. Both produce the same numbers; einsum's advantage is when you want to express more elaborate contractions (batched attention, bilinear forms, etc.).</p>
 </div>
 </div>
@@ -10419,10 +10457,10 @@ BATCHED (Fast - GPU can do all at once):
 <p><strong>What does the code above do?</strong></p>
 <p>The "manual broadcasting" version of the same weighted average:</p>
 <ul>
-<li><code>weight[..., None]</code> has shape <code>(5, 1500, 1)</code> — adds a trailing dim for the coordinate axis to broadcast over.</li>
-<li><code>X[None]</code> has shape <code>(1, 1500, 2)</code> — adds a leading dim for the batch axis to broadcast over.</li>
-<li>Multiplying gives shape <code>(5, 1500, 2)</code> — every weighted point.</li>
-<li><code>.sum(1)</code> reduces the 1500-axis, leaving <code>(5, 2)</code> — one weighted-sum per batch query.</li>
+<li><code>weight[..., None]</code> has shape <code>(5, 1500, 1)</code> &mdash; adds a trailing dim for the coordinate axis to broadcast over.</li>
+<li><code>X[None]</code> has shape <code>(1, 1500, 2)</code> &mdash; adds a leading dim for the batch axis to broadcast over.</li>
+<li>Multiplying gives shape <code>(5, 1500, 2)</code> &mdash; every weighted point.</li>
+<li><code>.sum(1)</code> reduces the 1500-axis, leaving <code>(5, 2)</code> &mdash; one weighted-sum per batch query.</li>
 </ul>
 <p>This is the most explicit form of what's happening. The next cells will show that <code>einsum('ij,jk-&gt;ik', weight, X)</code> and <code>weight @ X</code> produce the exact same result, but this manual broadcasting makes the shape mechanics visible.</p>
 </div>
@@ -10464,8 +10502,8 @@ BATCHED (Fast - GPU can do all at once):
 
 <span class="sd">    Memory consideration:</span>
 <span class="sd">        The intermediate distance matrix has shape (bs, n)</span>
-<span class="sd">        For n=1500 and bs=500: 750,000 floats ≈ 3 MB</span>
-<span class="sd">        For n=100,000 and bs=500: 50,000,000 floats ≈ 200 MB</span>
+<span class="sd">        For n=1500 and bs=500: 750,000 floats &asymp; 3 MB</span>
+<span class="sd">        For n=100,000 and bs=500: 50,000,000 floats &asymp; 200 MB</span>
 <span class="sd">    """</span>
     <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
     
@@ -10540,11 +10578,11 @@ BATCHED (Fast - GPU can do all at once):
 <p><strong>What does the code above do?</strong></p>
 <p>The batched mean shift, end to end. For each iteration (5 of them) and each batch (n / bs of them):</p>
 <ol>
-<li><strong>Compute distances</strong> — <code>dist_b(X, X[s])</code> produces a <code>(bs, n)</code> distance matrix.</li>
-<li><strong>Apply the kernel</strong> — <code>gaussian(distances, 2.5)</code> gives a <code>(bs, n)</code> weight matrix.</li>
-<li><strong>Compute new positions</strong> — <code>weight @ X</code> does the entire weighted-sum-over-points operation as a single matmul. Divide by row sums to normalize. Assign back to <code>X[s]</code>.</li>
+<li><strong>Compute distances</strong> &mdash; <code>dist_b(X, X[s])</code> produces a <code>(bs, n)</code> distance matrix.</li>
+<li><strong>Apply the kernel</strong> &mdash; <code>gaussian(distances, 2.5)</code> gives a <code>(bs, n)</code> weight matrix.</li>
+<li><strong>Compute new positions</strong> &mdash; <code>weight @ X</code> does the entire weighted-sum-over-points operation as a single matmul. Divide by row sums to normalize. Assign back to <code>X[s]</code>.</li>
 </ol>
-<p>The key move is replacing the Python loop over points with a Python loop over <em>batches</em>. With <code>bs=500</code> and <code>n=1500</code>, we have 3 batches per iteration × 5 iterations = 15 Python loop iterations — versus the slow version's 1500 × 5 = 7,500. And each batch operation does dramatically more work in vectorized C/CUDA per loop iteration.</p>
+<p>The key move is replacing the Python loop over points with a Python loop over <em>batches</em>. With <code>bs=500</code> and <code>n=1500</code>, we have 3 batches per iteration &times; 5 iterations = 15 Python loop iterations &mdash; versus the slow version's 1500 &times; 5 = 7,500. And each batch operation does dramatically more work in vectorized C/CUDA per loop iteration.</p>
 </div>
 </div>
 </div>
@@ -10589,7 +10627,7 @@ BATCHED (Fast - GPU can do all at once):
 <li><code>X</code> is <code>(1500, 2)</code>.</li>
 <li><code>weight @ X</code> contracts on the shared 1500 axis, giving <code>(5, 2)</code>.</li>
 </ul>
-<p><code>(weight @ X)[i, k] = sum_j weight[i, j] * X[j, k]</code> — exactly the weighted sum. This is the most idiomatic PyTorch form and the one to use in production.</p>
+<p><code>(weight @ X)[i, k] = sum_j weight[i, j] * X[j, k]</code> &mdash; exactly the weighted sum. This is the most idiomatic PyTorch form and the one to use in production.</p>
 </div>
 </div>
 </div>
@@ -10634,10 +10672,10 @@ BATCHED (Fast - GPU can do all at once):
 <p><strong>What does the code above do?</strong></p>
 <p>Completes the batched mean-shift update by dividing by the sum of weights per query:</p>
 <ul>
-<li><code>weight.sum(1, keepdim=True)</code> has shape <code>(5, 1)</code> — the <code>keepdim</code> preserves the trailing axis so the division broadcasts cleanly over coordinates.</li>
-<li><code>num_matmul / div</code> is <code>(5, 2) / (5, 1)</code> → broadcasts to <code>(5, 2)</code> — the new positions.</li>
+<li><code>weight.sum(1, keepdim=True)</code> has shape <code>(5, 1)</code> &mdash; the <code>keepdim</code> preserves the trailing axis so the division broadcasts cleanly over coordinates.</li>
+<li><code>num_matmul / div</code> is <code>(5, 2) / (5, 1)</code> &rarr; broadcasts to <code>(5, 2)</code> &mdash; the new positions.</li>
 </ul>
-<p>Five points have just been updated in a single tensor expression. The same expression would update 5,000 or 50,000 points just by changing the slice — no loop changes needed.</p>
+<p>Five points have just been updated in a single tensor expression. The same expression would update 5,000 or 50,000 points just by changing the slice &mdash; no loop changes needed.</p>
 </div>
 </div>
 </div>
@@ -10717,7 +10755,7 @@ BATCHED (Fast - GPU can do all at once):
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>This is the production-grade mean shift — same logic as <code>one_update</code>, but batched, vectorized, and GPU-ready. The structure is:</p>
+<p>This is the production-grade mean shift &mdash; same logic as <code>one_update</code>, but batched, vectorized, and GPU-ready. The structure is:</p>
 <pre><code>for each iteration (5 total):
     for each batch slice s (n / bs total):
         distances = dist_b(X, X[s])          # (bs, n)
@@ -10727,9 +10765,9 @@ BATCHED (Fast - GPU can do all at once):
 <p>What was a Python loop over 1500 individual points in the slow version is now a Python loop over a small number of batches (e.g. 3, with bs=500). Each batch update does the equivalent of 500 individual point updates in one tensor expression that runs entirely on the GPU's parallel cores.</p>
 <p>The <code>bs</code> parameter is a memory/speed tradeoff:</p>
 <ul>
-<li>Smaller <code>bs</code> → smaller intermediate <code>(bs, n)</code> tensor → fits in less GPU memory but fewer points updated per kernel launch.</li>
-<li>Larger <code>bs</code> → more GPU parallelism but bigger intermediate tensors.</li>
-<li>On consumer GPUs, <code>bs</code> around 500–2000 is usually a good default for n in the low thousands.</li>
+<li>Smaller <code>bs</code> &rarr; smaller intermediate <code>(bs, n)</code> tensor &rarr; fits in less GPU memory but fewer points updated per kernel launch.</li>
+<li>Larger <code>bs</code> &rarr; more GPU parallelism but bigger intermediate tensors.</li>
+<li>On consumer GPUs, <code>bs</code> around 500&ndash;2000 is usually a good default for n in the low thousands.</li>
 </ul>
 </div>
 </div>
@@ -10742,17 +10780,17 @@ BATCHED (Fast - GPU can do all at once):
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Deep-Dive:-From-Sequential-to-Batched-%E2%80%94-and-the-Connection-to-Attention">Deep Dive: From Sequential to Batched — and the Connection to Attention<a class="anchor-link" href="#Deep-Dive:-From-Sequential-to-Batched-%E2%80%94-and-the-Connection-to-Attention">¶</a></h1><p>The previous deep dive showed that mean shift is gradient ascent on a kernel density estimate. This deep dive is about the <em>computational</em> story — how we go from a Python <code>for</code> loop over individual points to a single <code>(weights @ X)</code> matmul that updates thousands of points in parallel on the GPU. Along the way we'll see that the structure of batched mean shift is <em>exactly</em> the structure of an attention mechanism.</p>
+<h1 id="Deep-Dive:-From-Sequential-to-Batched-%E2%80%94-and-the-Connection-to-Attention">Deep Dive: From Sequential to Batched &mdash; and the Connection to Attention<a class="anchor-link" href="#Deep-Dive:-From-Sequential-to-Batched-%E2%80%94-and-the-Connection-to-Attention">¶</a></h1><p>The previous deep dive showed that mean shift is gradient ascent on a kernel density estimate. This deep dive is about the <em>computational</em> story &mdash; how we go from a Python <code>for</code> loop over individual points to a single <code>(weights @ X)</code> matmul that updates thousands of points in parallel on the GPU. Along the way we'll see that the structure of batched mean shift is <em>exactly</em> the structure of an attention mechanism.</p>
 <hr/>
 <h2 id="The-Three-Stages-of-Vectorization">The Three Stages of Vectorization<a class="anchor-link" href="#The-Three-Stages-of-Vectorization">¶</a></h2><p>Look at how <code>one_update</code> evolves:</p>
-<h3 id="Stage-1-%E2%80%94-Pure-Python-loop-(slow)">Stage 1 — Pure Python loop (slow)<a class="anchor-link" href="#Stage-1-%E2%80%94-Pure-Python-loop-(slow)">¶</a></h3><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">one_update</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
+<h3 id="Stage-1-%E2%80%94-Pure-Python-loop-(slow)">Stage 1 &mdash; Pure Python loop (slow)<a class="anchor-link" href="#Stage-1-%E2%80%94-Pure-Python-loop-(slow)">¶</a></h3><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">one_update</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
     <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
         <span class="n">dist</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(((</span><span class="n">x</span> <span class="o">-</span> <span class="n">X</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>   <span class="c1"># (n,)</span>
         <span class="n">weight</span> <span class="o">=</span> <span class="n">tri</span><span class="p">(</span><span class="n">dist</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>                     <span class="c1"># (n,)</span>
         <span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">weight</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">X</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">weight</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
 </pre></div>
-<p>Each iteration of the outer Python loop does $O(n)$ work; we go around $n$ times, so total work is $O(n^2)$. For $n = 1500$ that's 2.25 million elementary ops — manageable, but each Python-loop iteration carries 50× interpreter overhead.</p>
-<h3 id="Stage-2-%E2%80%94-Batched-(the-matmul-form)">Stage 2 — Batched (the matmul form)<a class="anchor-link" href="#Stage-2-%E2%80%94-Batched-(the-matmul-form)">¶</a></h3><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">meanshift</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">bs</span><span class="o">=</span><span class="mi">500</span><span class="p">):</span>
+<p>Each iteration of the outer Python loop does $O(n)$ work; we go around $n$ times, so total work is $O(n^2)$. For $n = 1500$ that's 2.25 million elementary ops &mdash; manageable, but each Python-loop iteration carries 50&times; interpreter overhead.</p>
+<h3 id="Stage-2-%E2%80%94-Batched-(the-matmul-form)">Stage 2 &mdash; Batched (the matmul form)<a class="anchor-link" href="#Stage-2-%E2%80%94-Batched-(the-matmul-form)">¶</a></h3><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">meanshift</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">bs</span><span class="o">=</span><span class="mi">500</span><span class="p">):</span>
     <span class="n">X</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
     <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">bs</span><span class="p">):</span>
@@ -10761,18 +10799,18 @@ BATCHED (Fast - GPU can do all at once):
             <span class="n">weight</span> <span class="o">=</span> <span class="n">gaussian</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>        <span class="c1"># (bs, n)</span>
             <span class="n">X</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">weight</span> <span class="o">@</span> <span class="n">X</span><span class="p">)</span> <span class="o">/</span> <span class="n">weight</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
-<p>The outer "for i in range(0, n, bs)" loops $n / bs$ times instead of $n$ times. For $n = 1500$, $bs = 500$, that's 3 iterations — a 500× reduction in Python overhead.</p>
-<p>The work <em>inside</em> the batched loop is $O(bs \cdot n)$ — same total $O(n^2)$ work overall, but now done in vectorized C/CUDA code instead of Python. Two big wins:</p>
+<p>The outer "for i in range(0, n, bs)" loops $n / bs$ times instead of $n$ times. For $n = 1500$, $bs = 500$, that's 3 iterations &mdash; a 500&times; reduction in Python overhead.</p>
+<p>The work <em>inside</em> the batched loop is $O(bs \cdot n)$ &mdash; same total $O(n^2)$ work overall, but now done in vectorized C/CUDA code instead of Python. Two big wins:</p>
 <ul>
 <li><strong>No Python overhead per point.</strong> The matmul kernel knows about all $bs \cdot n$ work items at once and processes them with optimized SIMD and cache blocking.</li>
 <li><strong>GPU parallelism.</strong> On a CUDA tensor, the matmul executes on thousands of GPU cores simultaneously. Each thread computes one output element. The same work that would take 7,500 Python-loop iterations on CPU finishes in essentially constant wall-clock time on GPU.</li>
 </ul>
-<h3 id="Stage-3-%E2%80%94-The-full-memory/speed-tradeoff">Stage 3 — The full memory/speed tradeoff<a class="anchor-link" href="#Stage-3-%E2%80%94-The-full-memory/speed-tradeoff">¶</a></h3><p>The <code>bs</code> parameter is the knob. Smaller batches use less memory but launch more kernels; larger batches use more memory but get more throughput per kernel launch. Tuning <code>bs</code> is the same kind of tuning you do for neural network batch sizes — and for the same reasons.</p>
+<h3 id="Stage-3-%E2%80%94-The-full-memory/speed-tradeoff">Stage 3 &mdash; The full memory/speed tradeoff<a class="anchor-link" href="#Stage-3-%E2%80%94-The-full-memory/speed-tradeoff">¶</a></h3><p>The <code>bs</code> parameter is the knob. Smaller batches use less memory but launch more kernels; larger batches use more memory but get more throughput per kernel launch. Tuning <code>bs</code> is the same kind of tuning you do for neural network batch sizes &mdash; and for the same reasons.</p>
 <hr/>
-<h2 id="The-Shape-Trick-%E2%80%94-Pairwise-Distances">The Shape Trick — Pairwise Distances<a class="anchor-link" href="#The-Shape-Trick-%E2%80%94-Pairwise-Distances">¶</a></h2><p>The single most consequential line is <code>dist_b</code>:</p>
+<h2 id="The-Shape-Trick-%E2%80%94-Pairwise-Distances">The Shape Trick &mdash; Pairwise Distances<a class="anchor-link" href="#The-Shape-Trick-%E2%80%94-Pairwise-Distances">¶</a></h2><p>The single most consequential line is <code>dist_b</code>:</p>
 <div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">dist_b</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
-    <span class="n">diff</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">-</span> <span class="n">b</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>          <span class="c1"># (1, n, d) - (bs, 1, d) → (bs, n, d)</span>
-    <span class="k">return</span> <span class="p">(</span><span class="n">diff</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>     <span class="c1"># → (bs, n)</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">-</span> <span class="n">b</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>          <span class="c1"># (1, n, d) - (bs, 1, d) &rarr; (bs, n, d)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">diff</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>     <span class="c1"># &rarr; (bs, n)</span>
 </pre></div>
 <p>The broadcasting <code>a[None] - b[:, None]</code> is the trick that lets us compute all $bs \cdot n$ pairwise differences in <em>one</em> tensor expression. It works because:</p>
 <table>
@@ -10789,24 +10827,24 @@ BATCHED (Fast - GPU can do all at once):
 <td><code>a</code></td>
 <td><code>(n, d)</code></td>
 <td><code>a[None]: (1, n, d)</code></td>
-<td>stride along axis 0 is 0 — same memory re-read for every batch</td>
+<td>stride along axis 0 is 0 &mdash; same memory re-read for every batch</td>
 </tr>
 <tr>
 <td><code>b</code></td>
 <td><code>(bs, d)</code></td>
 <td><code>b[:, None]: (bs, 1, d)</code></td>
-<td>stride along axis 1 is 0 — same memory re-read for every point</td>
+<td>stride along axis 1 is 0 &mdash; same memory re-read for every point</td>
 </tr>
 </tbody>
 </table>
-<p>The subtraction kernel walks the output's <code>(bs, n, d)</code> shape, reading <code>a</code> and <code>b</code> with these zero-stride axes to broadcast. <strong>No memory is allocated for the implicit copies</strong> — broadcasting is just clever stride manipulation on top of a real elementwise kernel.</p>
-<p>The same pattern appears everywhere in deep learning: pairwise distances in clustering, query-key similarities in attention, pairwise interactions in graph neural networks. Once you've seen <code>a[None] - b[:, None]</code>, you'll recognize it in attention papers, in distance metric learning, in point cloud processing — anywhere two sets of vectors need to be compared element-by-element.</p>
+<p>The subtraction kernel walks the output's <code>(bs, n, d)</code> shape, reading <code>a</code> and <code>b</code> with these zero-stride axes to broadcast. <strong>No memory is allocated for the implicit copies</strong> &mdash; broadcasting is just clever stride manipulation on top of a real elementwise kernel.</p>
+<p>The same pattern appears everywhere in deep learning: pairwise distances in clustering, query-key similarities in attention, pairwise interactions in graph neural networks. Once you've seen <code>a[None] - b[:, None]</code>, you'll recognize it in attention papers, in distance metric learning, in point cloud processing &mdash; anywhere two sets of vectors need to be compared element-by-element.</p>
 <hr/>
-<h2 id="The-Weighted-Average-%E2%80%94-As-a-Matmul">The Weighted Average — As a Matmul<a class="anchor-link" href="#The-Weighted-Average-%E2%80%94-As-a-Matmul">¶</a></h2><p>Now look at the second half of the batched update:</p>
+<h2 id="The-Weighted-Average-%E2%80%94-As-a-Matmul">The Weighted Average &mdash; As a Matmul<a class="anchor-link" href="#The-Weighted-Average-%E2%80%94-As-a-Matmul">¶</a></h2><p>Now look at the second half of the batched update:</p>
 <div class="highlight"><pre><span></span><span class="n">weighted_avg</span> <span class="o">=</span> <span class="p">(</span><span class="n">weight</span> <span class="o">@</span> <span class="n">X</span><span class="p">)</span> <span class="o">/</span> <span class="n">weight</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 <p><code>weight</code> has shape <code>(bs, n)</code> and <code>X</code> has shape <code>(n, d)</code>. The matmul <code>weight @ X</code> contracts on the shared <code>n</code> axis:</p>
-$$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, k]$$<p>That's the weighted sum we want — for every batch query $i$ and every coordinate $k$, sum over all $n$ data points weighted by <code>weight[i, j]</code>. Then divide by the row sums to normalize.</p>
+$$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, k]$$<p>That's the weighted sum we want &mdash; for every batch query $i$ and every coordinate $k$, sum over all $n$ data points weighted by <code>weight[i, j]</code>. Then divide by the row sums to normalize.</p>
 <p>Two equivalent ways to write the same thing:</p>
 <div class="highlight"><pre><span></span><span class="c1"># Form 1: matmul (idiomatic)</span>
 <span class="n">weight</span> <span class="o">@</span> <span class="n">X</span> <span class="o">/</span> <span class="n">weight</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -10818,12 +10856,12 @@ $$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, 
 <hr/>
 <h2 id="The-Attention-Connection">The Attention Connection<a class="anchor-link" href="#The-Attention-Connection">¶</a></h2><p>Here's the punchline. The full batched mean-shift update is:</p>
 <div class="highlight"><pre><span></span><span class="n">distances</span> <span class="o">=</span> <span class="n">dist_b</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">X</span><span class="p">[</span><span class="n">s</span><span class="p">])</span>              <span class="c1"># (bs, n)</span>
-<span class="n">weight</span> <span class="o">=</span> <span class="n">gaussian</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>       <span class="c1"># (bs, n) — kernel of distances</span>
+<span class="n">weight</span> <span class="o">=</span> <span class="n">gaussian</span><span class="p">(</span><span class="n">distances</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>       <span class="c1"># (bs, n) &mdash; kernel of distances</span>
 <span class="n">X</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">weight</span> <span class="o">@</span> <span class="n">X</span><span class="p">)</span> <span class="o">/</span> <span class="n">weight</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </pre></div>
 <p>Now look at scaled dot-product attention:</p>
 <div class="highlight"><pre><span></span><span class="n">scores</span>  <span class="o">=</span> <span class="p">(</span><span class="n">Q</span> <span class="o">@</span> <span class="n">K</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>    <span class="c1"># (bs, t_q, t_k)</span>
-<span class="n">weight</span>  <span class="o">=</span> <span class="n">scores</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>                  <span class="c1"># (bs, t_q, t_k) — softmax of similarities</span>
+<span class="n">weight</span>  <span class="o">=</span> <span class="n">scores</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>                  <span class="c1"># (bs, t_q, t_k) &mdash; softmax of similarities</span>
 <span class="n">output</span>  <span class="o">=</span> <span class="n">weight</span> <span class="o">@</span> <span class="n">V</span>                              <span class="c1"># (bs, t_q, d)</span>
 </pre></div>
 <p>The structural parallel:</p>
@@ -10841,7 +10879,7 @@ $$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, 
 </tr>
 <tr>
 <td><code>X</code> (all data points)</td>
-<td><code>K</code>, <code>V</code> (keys, values — typically <code>K = V</code> for simple attention)</td>
+<td><code>K</code>, <code>V</code> (keys, values &mdash; typically <code>K = V</code> for simple attention)</td>
 </tr>
 <tr>
 <td><code>dist_b(X, X[s])</code> (negative similarity via distance)</td>
@@ -10862,11 +10900,11 @@ $$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, 
 </tbody>
 </table>
 <p><strong>Mean shift is attention where the "values" equal the "keys" and the similarity function is a Gaussian RBF instead of a normalized dot product.</strong></p>
-<p>This isn't a metaphor or a vague analogy — it's a literal structural equivalence. The same broadcasting tricks, the same matmul, the same shape <code>(bs, n)</code> weight tensor, the same final <code>(bs, d)</code> output. The mathematical <em>meaning</em> differs (one is a clustering algorithm; the other is a neural-network primitive), but the <em>computation</em> is the same.</p>
-<p>This is why the techniques in this notebook scale up directly. Once you know how to vectorize mean shift on the GPU, you know how to vectorize attention on the GPU. The implementations of <code>MultiHeadAttention</code> in <code>torch.nn</code> use exactly these patterns — with the addition of multiple heads (extra batch axis), learned linear projections for Q/K/V, and softmax instead of Gaussian. The plumbing is identical to what we've already built.</p>
+<p>This isn't a metaphor or a vague analogy &mdash; it's a literal structural equivalence. The same broadcasting tricks, the same matmul, the same shape <code>(bs, n)</code> weight tensor, the same final <code>(bs, d)</code> output. The mathematical <em>meaning</em> differs (one is a clustering algorithm; the other is a neural-network primitive), but the <em>computation</em> is the same.</p>
+<p>This is why the techniques in this notebook scale up directly. Once you know how to vectorize mean shift on the GPU, you know how to vectorize attention on the GPU. The implementations of <code>MultiHeadAttention</code> in <code>torch.nn</code> use exactly these patterns &mdash; with the addition of multiple heads (extra batch axis), learned linear projections for Q/K/V, and softmax instead of Gaussian. The plumbing is identical to what we've already built.</p>
 <hr/>
-<h2 id="Looking-Ahead">Looking Ahead<a class="anchor-link" href="#Looking-Ahead">¶</a></h2><p>When notebook 27 introduces attention, you can stop being surprised by it. The shape gymnastics, the broadcasting, the matmul-as-weighted-average — all of that is already familiar. Attention isn't a new computational primitive; it's mean shift with learnable projections and softmax normalization.</p>
-<p>The hard parts of transformers are <em>what</em> gets fed in (positional encodings, layer norms, residual connections, feedforward layers) and <em>what</em> the projections are trained to do — not the attention computation itself.</p>
+<h2 id="Looking-Ahead">Looking Ahead<a class="anchor-link" href="#Looking-Ahead">¶</a></h2><p>When notebook 27 introduces attention, you can stop being surprised by it. The shape gymnastics, the broadcasting, the matmul-as-weighted-average &mdash; all of that is already familiar. Attention isn't a new computational primitive; it's mean shift with learnable projections and softmax normalization.</p>
+<p>The hard parts of transformers are <em>what</em> gets fed in (positional encodings, layer norms, residual connections, feedforward layers) and <em>what</em> the projections are trained to do &mdash; not the attention computation itself.</p>
 </div>
 </div>
 </div>
@@ -10908,10 +10946,10 @@ $$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, 
 <span class="s2">Bandwidth controls how far each point "looks" for neighbors.</span>
 
 <span class="s2">- Small bandwidth (e.g., 1.0): Only very close points matter</span>
-<span class="s2">  → Creates MANY small clusters (over-segmentation)</span>
+<span class="s2">  &rarr; Creates MANY small clusters (over-segmentation)</span>
 <span class="s2">  </span>
 <span class="s2">- Large bandwidth (e.g., 10.0): Even distant points have influence</span>
-<span class="s2">  → Creates FEW large clusters (under-segmentation)</span>
+<span class="s2">  &rarr; Creates FEW large clusters (under-segmentation)</span>
 <span class="s2">  </span>
 <span class="s2">- Just right (e.g., 2.5): Natural cluster structure emerges</span>
 
@@ -11016,10 +11054,10 @@ $$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, 
 <h2 id="Common-Pitfalls-and-Debugging-Tips">Common Pitfalls and Debugging Tips<a class="anchor-link" href="#Common-Pitfalls-and-Debugging-Tips">¶</a></h2><p>When implementing algorithms like Mean Shift (or any tensor-based code), you'll encounter common issues. Here's how to identify and fix them:</p>
 <h3 id="1.-Shape-Mismatch-Errors">1. Shape Mismatch Errors<a class="anchor-link" href="#1.-Shape-Mismatch-Errors">¶</a></h3><p><strong>The Problem</strong>: PyTorch operations require compatible shapes for broadcasting.</p>
 <div class="highlight"><pre><span></span><span class="c1"># ❌ WRONG: Forgetting to add dimensions for broadcasting</span>
-<span class="n">weight</span> <span class="o">*</span> <span class="n">X</span>  <span class="c1"># (1500,) * (1500, 2) → RuntimeError!</span>
+<span class="n">weight</span> <span class="o">*</span> <span class="n">X</span>  <span class="c1"># (1500,) * (1500, 2) &rarr; RuntimeError!</span>
 
 <span class="c1"># ✅ RIGHT: Add dimension with [:, None] or [None, :]</span>
-<span class="n">weight</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">X</span>  <span class="c1"># (1500, 1) * (1500, 2) → (1500, 2) ✓</span>
+<span class="n">weight</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">X</span>  <span class="c1"># (1500, 1) * (1500, 2) &rarr; (1500, 2) ✓</span>
 </pre></div>
 <p><strong>How to debug</strong>: Print shapes at each step!</p>
 <div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"weight shape: </span><span class="si">{</span><span class="n">weight</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>  <span class="c1"># Check before operation</span>
@@ -11097,7 +11135,7 @@ $$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, 
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Runs the batched mean shift once on the (possibly GPU-resident) data and moves the result back to CPU for plotting. The first call typically includes some one-time CUDA kernel compilation overhead, so it's slightly slower than steady-state — that's why we time a <em>second</em> call in the next cell.</p>
+<p>Runs the batched mean shift once on the (possibly GPU-resident) data and moves the result back to CPU for plotting. The first call typically includes some one-time CUDA kernel compilation overhead, so it's slightly slower than steady-state &mdash; that's why we time a <em>second</em> call in the next cell.</p>
 </div>
 </div>
 </div>
@@ -11134,12 +11172,12 @@ $$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, 
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Times the batched version. On a modern GPU expect ~2–10 ms per full mean-shift run. Compared to the sequential ~450 ms baseline, that's a 50–200× speedup.</p>
+<p>Times the batched version. On a modern GPU expect ~2&ndash;10 ms per full mean-shift run. Compared to the sequential ~450 ms baseline, that's a 50&ndash;200&times; speedup.</p>
 <p>The speedup comes from three sources combined:</p>
 <ol>
-<li><strong>Eliminating the Python point-loop</strong> — 1500 iterations of Python overhead replaced by 3 iterations.</li>
-<li><strong>Vectorized tensor ops</strong> — <code>weight @ X</code> runs in optimized BLAS/cuBLAS C/CUDA code instead of Python.</li>
-<li><strong>GPU parallelism</strong> — when running on <code>.cuda()</code> tensors, the matmul and elementwise ops execute on thousands of GPU cores at once.</li>
+<li><strong>Eliminating the Python point-loop</strong> &mdash; 1500 iterations of Python overhead replaced by 3 iterations.</li>
+<li><strong>Vectorized tensor ops</strong> &mdash; <code>weight @ X</code> runs in optimized BLAS/cuBLAS C/CUDA code instead of Python.</li>
+<li><strong>GPU parallelism</strong> &mdash; when running on <code>.cuda()</code> tensors, the matmul and elementwise ops execute on thousands of GPU cores at once.</li>
 </ol>
 <p>Same algorithm, same results, three orders of magnitude faster wall time. This is the entire performance story of modern deep learning compressed into one notebook.</p>
 </div>
@@ -11230,54 +11268,54 @@ $$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, 
 </thead>
 <tbody>
 <tr>
-<td>§2 Data</td>
+<td>&sect;2 Data</td>
 <td>Multivariate-normal sampling builds clustered ground truth. Covariance matrices control cluster shape.</td>
 </tr>
 <tr>
-<td>§3 Algorithm</td>
+<td>&sect;3 Algorithm</td>
 <td>Mean shift = "move each point toward the weighted mean of its neighbors." Iterate to convergence.</td>
 </tr>
 <tr>
-<td>§4 Kernels</td>
+<td>&sect;4 Kernels</td>
 <td>Gaussian and triangular kernels both work; bandwidth is the single hyperparameter that matters.</td>
 </tr>
 <tr>
-<td>§5 Sequential</td>
-<td>A Python loop implementation that is correct but slow — $O(n^2)$ work compounded by Python overhead.</td>
+<td>&sect;5 Sequential</td>
+<td>A Python loop implementation that is correct but slow &mdash; $O(n^2)$ work compounded by Python overhead.</td>
 </tr>
 <tr>
-<td>§6 Convergence</td>
+<td>&sect;6 Convergence</td>
 <td>Mean shift is gradient ascent on a kernel density estimate; that's why it converges to density modes.</td>
 </tr>
 <tr>
-<td>§7 Batched</td>
-<td>Replacing the point-loop with a <code>(weight @ X)</code> matmul gives ~100× speedup before we even reach the GPU.</td>
+<td>&sect;7 Batched</td>
+<td>Replacing the point-loop with a <code>(weight @ X)</code> matmul gives ~100&times; speedup before we even reach the GPU.</td>
 </tr>
 <tr>
-<td>§8 Attention</td>
-<td>The batched update is structurally identical to softmax attention — preview of notebook 27.</td>
+<td>&sect;8 Attention</td>
+<td>The batched update is structurally identical to softmax attention &mdash; preview of notebook 27.</td>
 </tr>
 <tr>
-<td>§9 GPU</td>
-<td>One <code>.cuda()</code> call buys another ~10–100× via parallel hardware.</td>
+<td>&sect;9 GPU</td>
+<td>One <code>.cuda()</code> call buys another ~10&ndash;100&times; via parallel hardware.</td>
 </tr>
 </tbody>
 </table>
 <h2 id="The-big-takeaways">The big takeaways<a class="anchor-link" href="#The-big-takeaways">¶</a></h2><ol>
-<li><p><strong>Mean shift is gradient ascent in disguise.</strong> Once you see the math (§6 deep dive), you understand <em>why</em> it finds density peaks. No magic, no heuristics — just calculus on the kernel density estimate.</p>
+<li><p><strong>Mean shift is gradient ascent in disguise.</strong> Once you see the math (&sect;6 deep dive), you understand <em>why</em> it finds density peaks. No magic, no heuristics &mdash; just calculus on the kernel density estimate.</p>
 </li>
 <li><p><strong>Pairwise operations are broadcasting + matmul.</strong> Whether you're computing distances (mean shift), similarities (attention), or interactions (graph nets), the shape pattern <code>a[None] - b[:, None]</code> followed by some reduction is the workhorse. Internalize it once and you'll see it everywhere.</p>
 </li>
 <li><p><strong>Batching is the entry ticket to the GPU.</strong> A Python-loop algorithm and a batched-tensor algorithm do the same arithmetic but pay vastly different wall-clock costs. The gap only grows on bigger problems. Vectorize before you optimize anything else.</p>
 </li>
-<li><p><strong>The line between "clustering" and "attention" is thinner than it looks.</strong> §8's deep dive showed that the batched mean-shift update is the same operation as softmax attention with the values equal to the keys and the similarity being a Gaussian RBF. When notebook 27 introduces attention, it will look familiar.</p>
+<li><p><strong>The line between "clustering" and "attention" is thinner than it looks.</strong> &sect;8's deep dive showed that the batched mean-shift update is the same operation as softmax attention with the values equal to the keys and the similarity being a Gaussian RBF. When notebook 27 introduces attention, it will look familiar.</p>
 </li>
 </ol>
 <h2 id="Suggested-next-steps">Suggested next steps<a class="anchor-link" href="#Suggested-next-steps">¶</a></h2><ol>
 <li><strong>Read through the three deep dives</strong> (kernels &amp; bandwidth, convergence, batched + attention). They're the conceptual content that pays off for the rest of the course.</li>
-<li><strong>Try the experiments in the source notebook</strong> — different bandwidths, different cluster shapes, history-recording mean shift to visualize convergence step by step.</li>
+<li><strong>Try the experiments in the source notebook</strong> &mdash; different bandwidths, different cluster shapes, history-recording mean shift to visualize convergence step by step.</li>
 <li><strong>Run <code>concept-extraction</code> on this notebook</strong> to produce cards: "what is a kernel," "why is mean shift gradient ascent," "what is the pairwise distance broadcasting pattern," "what is the attention connection."</li>
-<li><strong>Notebook 03</strong> (backprop) is next — it uses the same matmul vectorization machinery on a different problem (computing gradients through a small neural network).</li>
+<li><strong>Notebook 03</strong> (backprop) is next &mdash; it uses the same matmul vectorization machinery on a different problem (computing gradients through a small neural network).</li>
 </ol>
 </div>
 </div>
@@ -11285,73 +11323,33 @@ $$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, 
 </div>
 <!--
   Interactive visualizations for 02_meanshift_explained.html
-  Injected by notebook-to-html step 5g, between </main> and </div>.
-  Vanilla JS + canvas/SVG only — no external dependencies.
+  Injected by notebook-to-html step 5g, between places block before that literal tag
+
+  All non-ASCII characters must use HTML entities (&sect;, &mdash;,
+  &sigma;, &sup2;, &rarr;, &radic;, etc.) so rendering is encoding-safe.
 -->
-<section class="ce-interactives-block" id="ce-interactives">
-<h2 style="margin-top: 64px; padding-top: 36px; border-top: 2px dashed var(--ce-border, #e6e8ee);">Interactive Visualizations</h2>
-<p class="ce-interactive-hint" style="margin-bottom: 28px;">These run live in your browser — they're not part of the source notebook. Play with them to build intuition for the algorithm.</p>
-
-<!-- ===================================================================
-     Interactive 1: Live mean-shift convergence
-     =================================================================== -->
-<div class="ce-interactive">
-  <h3>1. Watch mean shift discover clusters</h3>
-  <p class="ce-interactive-hint">Drag the bandwidth slider, then click <strong>Run</strong>. Points start scattered around hidden centers; mean shift pulls them toward density modes. Lower bandwidth → many small clusters; higher → fewer (eventually one global cluster). This is the algorithm from §5 of the notebook, running in your browser.</p>
-  <canvas id="ms-canvas" width="600" height="380"
-          style="width:100%; max-width:600px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action:manipulation;"></canvas>
-  <div class="ms-controls">
-    <label>Bandwidth: <span id="ms-bw-val" class="ms-val">2.5</span></label>
-    <input id="ms-bw" type="range" min="0.5" max="10" step="0.1" value="2.5">
-    <button id="ms-run" class="ms-btn">Run</button>
-    <button id="ms-newdata" class="ms-btn ms-secondary">New data</button>
-    <span id="ms-iter" class="ms-val">Iter: 0</span>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Try this:</strong> Set bandwidth to <code>0.5</code> and run — you'll get many tiny clusters (over-segmentation). Set it to <code>10</code> and run — everything merges into one global mean (under-segmentation). Around <code>2&ndash;3.5</code> is the sweet spot for this data.
-  </p>
-</div>
-
-<!-- ===================================================================
-     Interactive 2: Gaussian kernel curve
-     =================================================================== -->
-<div class="ce-interactive">
-  <h3>2. The Gaussian kernel — how bandwidth shapes influence</h3>
-  <p class="ce-interactive-hint">The kernel converts distance into weight: nearby points get a loud vote, far points are barely heard. Bandwidth controls the <em>geometric scale</em> of "nearby." The dashed orange line marks the 3σ point — beyond it, weights are essentially zero.</p>
-  <svg id="kernel-svg" viewBox="0 0 600 300"
-       style="width:100%; max-width:600px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></svg>
-  <div class="ms-controls">
-    <label>Bandwidth: <span id="k-bw-val" class="ms-val">2.5</span></label>
-    <input id="k-bw" type="range" min="0.5" max="8" step="0.1" value="2.5">
-    <span id="k-info" class="ms-val">3σ reach: 7.5</span>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Connection to §4 of the notebook:</strong> in the formula <code>K(d) = exp(-d² / 2σ²) / (σ&radic;(2π))</code>, the bandwidth <code>σ</code> is the only parameter. Doubling <code>σ</code> doubles the effective neighborhood radius and halves the peak height (the area under the curve stays at 1 — it's a proper density).
-  </p>
-</div>
-
 <style>
-.ce-interactives-block .ms-controls {
+.ce-interactive .ms-controls {
   display: flex; gap: 14px; align-items: center;
   margin-top: 14px; flex-wrap: wrap;
 }
-.ce-interactives-block label {
+.ce-interactive label {
   font-family: var(--ce-font-mono, "JetBrains Mono", monospace);
   font-size: 0.9em;
   color: var(--ce-text-soft, #3c4257);
 }
-.ce-interactives-block input[type="range"] {
+.ce-interactive input[type="range"] {
   flex: 1; min-width: 160px;
   accent-color: var(--ce-purple, #6c5ce7);
   height: 6px; touch-action: manipulation;
 }
-.ce-interactives-block .ms-val {
+.ce-interactive .ms-val {
   font-family: var(--ce-font-mono, "JetBrains Mono", monospace);
   font-size: 0.9em;
   color: var(--ce-purple-dark, #4f3dd0);
   min-width: 56px; text-align: right;
 }
-.ce-interactives-block .ms-btn {
+.ce-interactive .ms-btn {
   background: var(--ce-purple, #6c5ce7); color: white;
   border: none; padding: 8px 18px; border-radius: 8px;
   font-family: var(--ce-font-body, "Inter", sans-serif);
@@ -11361,15 +11359,15 @@ $$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, 
   transition: background 0.15s, transform 0.08s;
   touch-action: manipulation;
 }
-.ce-interactives-block .ms-btn:hover  { background: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactives-block .ms-btn:active { transform: translateY(1px); }
-.ce-interactives-block .ms-btn.ms-secondary {
+.ce-interactive .ms-btn:hover  { background: var(--ce-purple-dark, #4f3dd0); }
+.ce-interactive .ms-btn:active { transform: translateY(1px); }
+.ce-interactive .ms-btn.ms-secondary {
   background: transparent;
   color: var(--ce-purple, #6c5ce7);
   border: 1px solid var(--ce-purple, #6c5ce7);
   box-shadow: none;
 }
-.ce-interactives-block .ms-btn.ms-secondary:hover {
+.ce-interactive .ms-btn.ms-secondary:hover {
   background: rgba(108, 92, 231, 0.08);
 }
 </style>
@@ -11378,9 +11376,8 @@ $$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, 
 (function() {
 'use strict';
 
-// Box-Muller standard-normal sample.
 function gauss() {
-  const u1 = Math.random(), u2 = Math.random();
+  var u1 = Math.random(), u2 = Math.random();
   return Math.sqrt(-2 * Math.log(u1 || 1e-9)) * Math.cos(2 * Math.PI * u2);
 }
 
@@ -11388,33 +11385,33 @@ function gauss() {
 // Interactive 1: Live mean shift on synthetic 2D clusters
 // ============================================================================
 (function liveMeanShift() {
-  const canvas = document.getElementById('ms-canvas');
+  var canvas = document.getElementById('ms-canvas');
   if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
 
-  let points = [];      // current positions
-  let initial = [];     // for reset
-  let bandwidth = 2.5;  // user units (multiplied by 18 px for display)
-  let running = false;
-  let iter = 0;
-  let timer = null;
-  const MAX_ITER = 40;
+  var points = [];
+  var initial = [];
+  var bandwidth = 2.5;
+  var running = false;
+  var iter = 0;
+  var timer = null;
+  var MAX_ITER = 40;
 
   function generateClusters() {
-    const nClusters = 4 + Math.floor(Math.random() * 3);
-    const centers = [];
-    for (let i = 0; i < nClusters; i++) {
+    var nClusters = 4 + Math.floor(Math.random() * 3);
+    var centers = [];
+    for (var i = 0; i < nClusters; i++) {
       centers.push([
         90 + Math.random() * (W - 180),
         70 + Math.random() * (H - 140)
       ]);
     }
-    const pts = [];
-    centers.forEach(([cx, cy]) => {
-      const nPerCluster = 25 + Math.floor(Math.random() * 15);
-      for (let i = 0; i < nPerCluster; i++) {
-        pts.push([cx + gauss() * 16, cy + gauss() * 16]);
+    var pts = [];
+    centers.forEach(function(c) {
+      var nPerCluster = 25 + Math.floor(Math.random() * 15);
+      for (var i = 0; i < nPerCluster; i++) {
+        pts.push([c[0] + gauss() * 16, c[1] + gauss() * 16]);
       }
     });
     return pts;
@@ -11422,36 +11419,34 @@ function gauss() {
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
-    // soft grid
     ctx.strokeStyle = 'rgba(229, 231, 235, 0.6)';
     ctx.lineWidth = 1;
-    for (let x = 60; x < W; x += 60) {
+    for (var x = 60; x < W; x += 60) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
     }
-    for (let y = 60; y < H; y += 60) {
+    for (var y = 60; y < H; y += 60) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     }
-    // points
-    const alpha = Math.max(0.35, 0.85 - iter * 0.012);
+    var alpha = Math.max(0.35, 0.85 - iter * 0.012);
     ctx.fillStyle = 'rgba(79, 70, 229, ' + alpha + ')';
-    points.forEach(([x, y]) => {
+    points.forEach(function(p) {
       ctx.beginPath();
-      ctx.arc(x, y, 3.6, 0, Math.PI * 2);
+      ctx.arc(p[0], p[1], 3.6, 0, Math.PI * 2);
       ctx.fill();
     });
   }
 
   function step() {
-    const sigma = bandwidth * 14; // user→pixel scaling
-    const twoS2 = 2 * sigma * sigma;
-    const newPts = new Array(points.length);
-    for (let i = 0; i < points.length; i++) {
-      const [px, py] = points[i];
-      let sx = 0, sy = 0, sw = 0;
-      for (let j = 0; j < points.length; j++) {
-        const [qx, qy] = points[j];
-        const dx = px - qx, dy = py - qy;
-        const w = Math.exp(-(dx * dx + dy * dy) / twoS2);
+    var sigma = bandwidth * 14;
+    var twoS2 = 2 * sigma * sigma;
+    var newPts = new Array(points.length);
+    for (var i = 0; i < points.length; i++) {
+      var px = points[i][0], py = points[i][1];
+      var sx = 0, sy = 0, sw = 0;
+      for (var j = 0; j < points.length; j++) {
+        var qx = points[j][0], qy = points[j][1];
+        var dx = px - qx, dy = py - qy;
+        var w = Math.exp(-(dx * dx + dy * dy) / twoS2);
         sx += w * qx; sy += w * qy; sw += w;
       }
       newPts[i] = [sx / sw, sy / sw];
@@ -11477,19 +11472,19 @@ function gauss() {
     clearTimeout(timer);
     running = false;
     if (newData) initial = generateClusters();
-    points = initial.map(p => p.slice());
+    points = initial.map(function(p) { return p.slice(); });
     iter = 0;
     document.getElementById('ms-iter').textContent = 'Iter: 0';
     document.getElementById('ms-run').textContent = 'Run';
     draw();
   }
 
-  document.getElementById('ms-bw').addEventListener('input', e => {
+  document.getElementById('ms-bw').addEventListener('input', function(e) {
     bandwidth = parseFloat(e.target.value);
     document.getElementById('ms-bw-val').textContent = bandwidth.toFixed(1);
   });
 
-  document.getElementById('ms-run').addEventListener('click', () => {
+  document.getElementById('ms-run').addEventListener('click', function() {
     if (running) {
       running = false;
       clearTimeout(timer);
@@ -11503,7 +11498,7 @@ function gauss() {
     }
   });
 
-  document.getElementById('ms-newdata').addEventListener('click', () => reset(true));
+  document.getElementById('ms-newdata').addEventListener('click', function() { reset(true); });
 
   reset(true);
 })();
@@ -11512,61 +11507,55 @@ function gauss() {
 // Interactive 2: Gaussian kernel curve with bandwidth slider
 // ============================================================================
 (function kernelCurve() {
-  const svg = document.getElementById('kernel-svg');
+  var svg = document.getElementById('kernel-svg');
   if (!svg) return;
-  const NS = 'http://www.w3.org/2000/svg';
-  const W = 600, H = 300;
-  const m = { top: 24, right: 32, bottom: 44, left: 56 };
-  const iW = W - m.left - m.right;
-  const iH = H - m.top - m.bottom;
-  const D_MAX = 20;
+  var NS = 'http://www.w3.org/2000/svg';
+  var W = 600, H = 300;
+  var m = { top: 24, right: 32, bottom: 44, left: 56 };
+  var iW = W - m.left - m.right;
+  var iH = H - m.top - m.bottom;
+  var D_MAX = 20;
 
   function gaussPdf(d, bw) {
     return Math.exp(-d * d / (2 * bw * bw)) / (bw * Math.sqrt(2 * Math.PI));
   }
 
   function el(name, attrs, text) {
-    const e = document.createElementNS(NS, name);
-    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
     if (text != null) e.textContent = text;
     return e;
   }
 
   function draw(bw) {
     while (svg.firstChild) svg.removeChild(svg.firstChild);
-    const g = el('g', { transform: 'translate(' + m.left + ',' + m.top + ')' });
+    var g = el('g', { transform: 'translate(' + m.left + ',' + m.top + ')' });
     svg.appendChild(g);
 
-    // axes
     g.appendChild(el('line', { x1: 0, y1: iH, x2: iW, y2: iH, stroke: '#9ca3af', 'stroke-width': 1 }));
     g.appendChild(el('line', { x1: 0, y1: 0,  x2: 0,  y2: iH, stroke: '#9ca3af', 'stroke-width': 1 }));
 
-    // x ticks
-    [0, 5, 10, 15, 20].forEach(x => {
-      const px = (x / D_MAX) * iW;
+    [0, 5, 10, 15, 20].forEach(function(x) {
+      var px = (x / D_MAX) * iW;
       g.appendChild(el('line', { x1: px, y1: iH, x2: px, y2: iH + 4, stroke: '#9ca3af' }));
       g.appendChild(el('text', {
         x: px, y: iH + 18, 'text-anchor': 'middle',
-        fill: '#6b7280', 'font-size': 11,
-        'font-family': 'var(--ce-font-mono, monospace)'
+        fill: '#6b7280', 'font-size': 11
       }, x));
     });
     g.appendChild(el('text', {
       x: iW / 2, y: iH + 38, 'text-anchor': 'middle',
-      fill: '#374151', 'font-size': 13,
-      'font-family': 'var(--ce-font-body, sans-serif)'
+      fill: '#374151', 'font-size': 13
     }, 'distance d'));
     g.appendChild(el('text', {
       x: -38, y: iH / 2, 'text-anchor': 'middle',
       fill: '#374151', 'font-size': 13,
-      'font-family': 'var(--ce-font-body, sans-serif)',
       transform: 'rotate(-90, -38, ' + (iH / 2) + ')'
     }, 'kernel weight K(d)'));
 
-    // y ticks at peak fraction
-    const yMaxPlot = 1 / (0.5 * Math.sqrt(2 * Math.PI)); // fixed reference for stable scale
-    [0, 0.2, 0.4, 0.6, 0.8].forEach(frac => {
-      const py = iH - frac * iH * 0.95;
+    var yMaxPlot = 1 / (0.5 * Math.sqrt(2 * Math.PI));
+    [0, 0.2, 0.4, 0.6, 0.8].forEach(function(frac) {
+      var py = iH - frac * iH * 0.95;
       g.appendChild(el('line', { x1: -4, y1: py, x2: 0, y2: py, stroke: '#9ca3af' }));
       g.appendChild(el('text', {
         x: -10, y: py + 3.5, 'text-anchor': 'end',
@@ -11574,50 +11563,44 @@ function gauss() {
       }, (frac * yMaxPlot).toFixed(2)));
     });
 
-    // curve
-    const N = 240;
-    let pathD = '';
-    for (let i = 0; i <= N; i++) {
-      const d = (i / N) * D_MAX;
-      const y = gaussPdf(d, bw);
-      const px = (d / D_MAX) * iW;
-      const py = iH - (y / yMaxPlot) * iH * 0.95;
+    var N = 240;
+    var pathD = '';
+    for (var i = 0; i <= N; i++) {
+      var d = (i / N) * D_MAX;
+      var y = gaussPdf(d, bw);
+      var px = (d / D_MAX) * iW;
+      var py = iH - (y / yMaxPlot) * iH * 0.95;
       pathD += (i === 0 ? 'M ' : ' L ') + px.toFixed(2) + ' ' + py.toFixed(2);
     }
     g.appendChild(el('path', {
       d: pathD, stroke: '#4f46e5', 'stroke-width': 2.6, fill: 'none'
     }));
 
-    // shaded area under curve
-    const areaD = pathD + ' L ' + iW + ' ' + iH + ' L 0 ' + iH + ' Z';
+    var areaD = pathD + ' L ' + iW + ' ' + iH + ' L 0 ' + iH + ' Z';
     g.appendChild(el('path', { d: areaD, fill: 'rgba(79, 70, 229, 0.08)' }));
 
-    // 3σ reach marker
-    const reach = bw * 3;
+    var reach = bw * 3;
     if (reach <= D_MAX) {
-      const rx = (reach / D_MAX) * iW;
+      var rx = (reach / D_MAX) * iW;
       g.appendChild(el('line', {
         x1: rx, y1: 0, x2: rx, y2: iH,
         stroke: '#f59e0b', 'stroke-width': 1.6, 'stroke-dasharray': '5 4'
       }));
       g.appendChild(el('text', {
-        x: rx + 6, y: 16, fill: '#b45309', 'font-size': 11,
-        'font-family': 'var(--ce-font-body, sans-serif)'
-      }, '3σ (effective reach)'));
+        x: rx + 6, y: 16, fill: '#b45309', 'font-size': 11
+      }, '3sigma (effective reach)'));
     }
 
-    // bandwidth annotation
     g.appendChild(el('text', {
       x: iW - 8, y: 18, 'text-anchor': 'end',
-      fill: '#4f46e5', 'font-size': 14, 'font-weight': 600,
-      'font-family': 'var(--ce-font-mono, monospace)'
-    }, 'σ = ' + bw.toFixed(1)));
+      fill: '#4f46e5', 'font-size': 14, 'font-weight': 600
+    }, 'sigma = ' + bw.toFixed(1)));
 
-    document.getElementById('k-info').textContent = '3σ reach: ' + (bw * 3).toFixed(1);
+    document.getElementById('k-info').textContent = '3sigma reach: ' + (bw * 3).toFixed(1);
   }
 
-  document.getElementById('k-bw').addEventListener('input', e => {
-    const bw = parseFloat(e.target.value);
+  document.getElementById('k-bw').addEventListener('input', function(e) {
+    var bw = parseFloat(e.target.value);
     document.getElementById('k-bw-val').textContent = bw.toFixed(1);
     draw(bw);
   });
@@ -11626,8 +11609,10 @@ function gauss() {
 
 })();
 </script>
+</main> and </div>.
+  Vanilla JS + canvas/SVG only &mdash; no external dependencies.
+-->
 
-</section>
 
 </main>
 </div>
