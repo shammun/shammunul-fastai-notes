@@ -11283,6 +11283,352 @@ $$(\text{weight @ X})[i, k] \;=\; \sum_{j=1}^{n} \text{weight}[i, j] \cdot X[j, 
 </div>
 </div>
 </div>
+<!--
+  Interactive visualizations for 02_meanshift_explained.html
+  Injected by notebook-to-html step 5g, between </main> and </div>.
+  Vanilla JS + canvas/SVG only — no external dependencies.
+-->
+<section class="ce-interactives-block" id="ce-interactives">
+<h2 style="margin-top: 64px; padding-top: 36px; border-top: 2px dashed var(--ce-border, #e6e8ee);">Interactive Visualizations</h2>
+<p class="ce-interactive-hint" style="margin-bottom: 28px;">These run live in your browser — they're not part of the source notebook. Play with them to build intuition for the algorithm.</p>
+
+<!-- ===================================================================
+     Interactive 1: Live mean-shift convergence
+     =================================================================== -->
+<div class="ce-interactive">
+  <h3>1. Watch mean shift discover clusters</h3>
+  <p class="ce-interactive-hint">Drag the bandwidth slider, then click <strong>Run</strong>. Points start scattered around hidden centers; mean shift pulls them toward density modes. Lower bandwidth → many small clusters; higher → fewer (eventually one global cluster). This is the algorithm from §5 of the notebook, running in your browser.</p>
+  <canvas id="ms-canvas" width="600" height="380"
+          style="width:100%; max-width:600px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action:manipulation;"></canvas>
+  <div class="ms-controls">
+    <label>Bandwidth: <span id="ms-bw-val" class="ms-val">2.5</span></label>
+    <input id="ms-bw" type="range" min="0.5" max="10" step="0.1" value="2.5">
+    <button id="ms-run" class="ms-btn">Run</button>
+    <button id="ms-newdata" class="ms-btn ms-secondary">New data</button>
+    <span id="ms-iter" class="ms-val">Iter: 0</span>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>Try this:</strong> Set bandwidth to <code>0.5</code> and run — you'll get many tiny clusters (over-segmentation). Set it to <code>10</code> and run — everything merges into one global mean (under-segmentation). Around <code>2&ndash;3.5</code> is the sweet spot for this data.
+  </p>
+</div>
+
+<!-- ===================================================================
+     Interactive 2: Gaussian kernel curve
+     =================================================================== -->
+<div class="ce-interactive">
+  <h3>2. The Gaussian kernel — how bandwidth shapes influence</h3>
+  <p class="ce-interactive-hint">The kernel converts distance into weight: nearby points get a loud vote, far points are barely heard. Bandwidth controls the <em>geometric scale</em> of "nearby." The dashed orange line marks the 3σ point — beyond it, weights are essentially zero.</p>
+  <svg id="kernel-svg" viewBox="0 0 600 300"
+       style="width:100%; max-width:600px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></svg>
+  <div class="ms-controls">
+    <label>Bandwidth: <span id="k-bw-val" class="ms-val">2.5</span></label>
+    <input id="k-bw" type="range" min="0.5" max="8" step="0.1" value="2.5">
+    <span id="k-info" class="ms-val">3σ reach: 7.5</span>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>Connection to §4 of the notebook:</strong> in the formula <code>K(d) = exp(-d² / 2σ²) / (σ&radic;(2π))</code>, the bandwidth <code>σ</code> is the only parameter. Doubling <code>σ</code> doubles the effective neighborhood radius and halves the peak height (the area under the curve stays at 1 — it's a proper density).
+  </p>
+</div>
+
+<style>
+.ce-interactives-block .ms-controls {
+  display: flex; gap: 14px; align-items: center;
+  margin-top: 14px; flex-wrap: wrap;
+}
+.ce-interactives-block label {
+  font-family: var(--ce-font-mono, "JetBrains Mono", monospace);
+  font-size: 0.9em;
+  color: var(--ce-text-soft, #3c4257);
+}
+.ce-interactives-block input[type="range"] {
+  flex: 1; min-width: 160px;
+  accent-color: var(--ce-purple, #6c5ce7);
+  height: 6px; touch-action: manipulation;
+}
+.ce-interactives-block .ms-val {
+  font-family: var(--ce-font-mono, "JetBrains Mono", monospace);
+  font-size: 0.9em;
+  color: var(--ce-purple-dark, #4f3dd0);
+  min-width: 56px; text-align: right;
+}
+.ce-interactives-block .ms-btn {
+  background: var(--ce-purple, #6c5ce7); color: white;
+  border: none; padding: 8px 18px; border-radius: 8px;
+  font-family: var(--ce-font-body, "Inter", sans-serif);
+  font-weight: 500; font-size: 0.92em;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(108, 92, 231, 0.28);
+  transition: background 0.15s, transform 0.08s;
+  touch-action: manipulation;
+}
+.ce-interactives-block .ms-btn:hover  { background: var(--ce-purple-dark, #4f3dd0); }
+.ce-interactives-block .ms-btn:active { transform: translateY(1px); }
+.ce-interactives-block .ms-btn.ms-secondary {
+  background: transparent;
+  color: var(--ce-purple, #6c5ce7);
+  border: 1px solid var(--ce-purple, #6c5ce7);
+  box-shadow: none;
+}
+.ce-interactives-block .ms-btn.ms-secondary:hover {
+  background: rgba(108, 92, 231, 0.08);
+}
+</style>
+
+<script>
+(function() {
+'use strict';
+
+// Box-Muller standard-normal sample.
+function gauss() {
+  const u1 = Math.random(), u2 = Math.random();
+  return Math.sqrt(-2 * Math.log(u1 || 1e-9)) * Math.cos(2 * Math.PI * u2);
+}
+
+// ============================================================================
+// Interactive 1: Live mean shift on synthetic 2D clusters
+// ============================================================================
+(function liveMeanShift() {
+  const canvas = document.getElementById('ms-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  let points = [];      // current positions
+  let initial = [];     // for reset
+  let bandwidth = 2.5;  // user units (multiplied by 18 px for display)
+  let running = false;
+  let iter = 0;
+  let timer = null;
+  const MAX_ITER = 40;
+
+  function generateClusters() {
+    const nClusters = 4 + Math.floor(Math.random() * 3);
+    const centers = [];
+    for (let i = 0; i < nClusters; i++) {
+      centers.push([
+        90 + Math.random() * (W - 180),
+        70 + Math.random() * (H - 140)
+      ]);
+    }
+    const pts = [];
+    centers.forEach(([cx, cy]) => {
+      const nPerCluster = 25 + Math.floor(Math.random() * 15);
+      for (let i = 0; i < nPerCluster; i++) {
+        pts.push([cx + gauss() * 16, cy + gauss() * 16]);
+      }
+    });
+    return pts;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // soft grid
+    ctx.strokeStyle = 'rgba(229, 231, 235, 0.6)';
+    ctx.lineWidth = 1;
+    for (let x = 60; x < W; x += 60) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 60; y < H; y += 60) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    // points
+    const alpha = Math.max(0.35, 0.85 - iter * 0.012);
+    ctx.fillStyle = 'rgba(79, 70, 229, ' + alpha + ')';
+    points.forEach(([x, y]) => {
+      ctx.beginPath();
+      ctx.arc(x, y, 3.6, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  function step() {
+    const sigma = bandwidth * 14; // user→pixel scaling
+    const twoS2 = 2 * sigma * sigma;
+    const newPts = new Array(points.length);
+    for (let i = 0; i < points.length; i++) {
+      const [px, py] = points[i];
+      let sx = 0, sy = 0, sw = 0;
+      for (let j = 0; j < points.length; j++) {
+        const [qx, qy] = points[j];
+        const dx = px - qx, dy = py - qy;
+        const w = Math.exp(-(dx * dx + dy * dy) / twoS2);
+        sx += w * qx; sy += w * qy; sw += w;
+      }
+      newPts[i] = [sx / sw, sy / sw];
+    }
+    points = newPts;
+    iter++;
+  }
+
+  function tick() {
+    if (!running) return;
+    step();
+    document.getElementById('ms-iter').textContent = 'Iter: ' + iter;
+    draw();
+    if (iter >= MAX_ITER) {
+      running = false;
+      document.getElementById('ms-run').textContent = 'Reset';
+    } else {
+      timer = setTimeout(tick, 90);
+    }
+  }
+
+  function reset(newData) {
+    clearTimeout(timer);
+    running = false;
+    if (newData) initial = generateClusters();
+    points = initial.map(p => p.slice());
+    iter = 0;
+    document.getElementById('ms-iter').textContent = 'Iter: 0';
+    document.getElementById('ms-run').textContent = 'Run';
+    draw();
+  }
+
+  document.getElementById('ms-bw').addEventListener('input', e => {
+    bandwidth = parseFloat(e.target.value);
+    document.getElementById('ms-bw-val').textContent = bandwidth.toFixed(1);
+  });
+
+  document.getElementById('ms-run').addEventListener('click', () => {
+    if (running) {
+      running = false;
+      clearTimeout(timer);
+      document.getElementById('ms-run').textContent = 'Resume';
+    } else if (iter >= MAX_ITER) {
+      reset(false);
+    } else {
+      running = true;
+      document.getElementById('ms-run').textContent = 'Pause';
+      tick();
+    }
+  });
+
+  document.getElementById('ms-newdata').addEventListener('click', () => reset(true));
+
+  reset(true);
+})();
+
+// ============================================================================
+// Interactive 2: Gaussian kernel curve with bandwidth slider
+// ============================================================================
+(function kernelCurve() {
+  const svg = document.getElementById('kernel-svg');
+  if (!svg) return;
+  const NS = 'http://www.w3.org/2000/svg';
+  const W = 600, H = 300;
+  const m = { top: 24, right: 32, bottom: 44, left: 56 };
+  const iW = W - m.left - m.right;
+  const iH = H - m.top - m.bottom;
+  const D_MAX = 20;
+
+  function gaussPdf(d, bw) {
+    return Math.exp(-d * d / (2 * bw * bw)) / (bw * Math.sqrt(2 * Math.PI));
+  }
+
+  function el(name, attrs, text) {
+    const e = document.createElementNS(NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function draw(bw) {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    const g = el('g', { transform: 'translate(' + m.left + ',' + m.top + ')' });
+    svg.appendChild(g);
+
+    // axes
+    g.appendChild(el('line', { x1: 0, y1: iH, x2: iW, y2: iH, stroke: '#9ca3af', 'stroke-width': 1 }));
+    g.appendChild(el('line', { x1: 0, y1: 0,  x2: 0,  y2: iH, stroke: '#9ca3af', 'stroke-width': 1 }));
+
+    // x ticks
+    [0, 5, 10, 15, 20].forEach(x => {
+      const px = (x / D_MAX) * iW;
+      g.appendChild(el('line', { x1: px, y1: iH, x2: px, y2: iH + 4, stroke: '#9ca3af' }));
+      g.appendChild(el('text', {
+        x: px, y: iH + 18, 'text-anchor': 'middle',
+        fill: '#6b7280', 'font-size': 11,
+        'font-family': 'var(--ce-font-mono, monospace)'
+      }, x));
+    });
+    g.appendChild(el('text', {
+      x: iW / 2, y: iH + 38, 'text-anchor': 'middle',
+      fill: '#374151', 'font-size': 13,
+      'font-family': 'var(--ce-font-body, sans-serif)'
+    }, 'distance d'));
+    g.appendChild(el('text', {
+      x: -38, y: iH / 2, 'text-anchor': 'middle',
+      fill: '#374151', 'font-size': 13,
+      'font-family': 'var(--ce-font-body, sans-serif)',
+      transform: 'rotate(-90, -38, ' + (iH / 2) + ')'
+    }, 'kernel weight K(d)'));
+
+    // y ticks at peak fraction
+    const yMaxPlot = 1 / (0.5 * Math.sqrt(2 * Math.PI)); // fixed reference for stable scale
+    [0, 0.2, 0.4, 0.6, 0.8].forEach(frac => {
+      const py = iH - frac * iH * 0.95;
+      g.appendChild(el('line', { x1: -4, y1: py, x2: 0, y2: py, stroke: '#9ca3af' }));
+      g.appendChild(el('text', {
+        x: -10, y: py + 3.5, 'text-anchor': 'end',
+        fill: '#6b7280', 'font-size': 10
+      }, (frac * yMaxPlot).toFixed(2)));
+    });
+
+    // curve
+    const N = 240;
+    let pathD = '';
+    for (let i = 0; i <= N; i++) {
+      const d = (i / N) * D_MAX;
+      const y = gaussPdf(d, bw);
+      const px = (d / D_MAX) * iW;
+      const py = iH - (y / yMaxPlot) * iH * 0.95;
+      pathD += (i === 0 ? 'M ' : ' L ') + px.toFixed(2) + ' ' + py.toFixed(2);
+    }
+    g.appendChild(el('path', {
+      d: pathD, stroke: '#4f46e5', 'stroke-width': 2.6, fill: 'none'
+    }));
+
+    // shaded area under curve
+    const areaD = pathD + ' L ' + iW + ' ' + iH + ' L 0 ' + iH + ' Z';
+    g.appendChild(el('path', { d: areaD, fill: 'rgba(79, 70, 229, 0.08)' }));
+
+    // 3σ reach marker
+    const reach = bw * 3;
+    if (reach <= D_MAX) {
+      const rx = (reach / D_MAX) * iW;
+      g.appendChild(el('line', {
+        x1: rx, y1: 0, x2: rx, y2: iH,
+        stroke: '#f59e0b', 'stroke-width': 1.6, 'stroke-dasharray': '5 4'
+      }));
+      g.appendChild(el('text', {
+        x: rx + 6, y: 16, fill: '#b45309', 'font-size': 11,
+        'font-family': 'var(--ce-font-body, sans-serif)'
+      }, '3σ (effective reach)'));
+    }
+
+    // bandwidth annotation
+    g.appendChild(el('text', {
+      x: iW - 8, y: 18, 'text-anchor': 'end',
+      fill: '#4f46e5', 'font-size': 14, 'font-weight': 600,
+      'font-family': 'var(--ce-font-mono, monospace)'
+    }, 'σ = ' + bw.toFixed(1)));
+
+    document.getElementById('k-info').textContent = '3σ reach: ' + (bw * 3).toFixed(1);
+  }
+
+  document.getElementById('k-bw').addEventListener('input', e => {
+    const bw = parseFloat(e.target.value);
+    document.getElementById('k-bw-val').textContent = bw.toFixed(1);
+    draw(bw);
+  });
+  draw(2.5);
+})();
+
+})();
+</script>
+
+</section>
+
 </main>
 </div>
 </body>
