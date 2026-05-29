@@ -430,6 +430,34 @@ hr {
   color: var(--ce-text-muted);
 }
 
+/* Per-interactive hint line above a widget */
+.ce-interactive-hint {
+  font-size: 0.92em;
+  color: var(--ce-text-muted);
+  margin-top: -4px;
+  margin-bottom: 14px;
+}
+
+/* Source-notebooks footer block on blog posts */
+.ce-source-notebooks {
+  margin-top: 56px;
+  padding: 24px 28px;
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.04) 0%, rgba(15, 185, 177, 0.03) 100%);
+  border: 1px solid var(--ce-border-soft);
+  border-radius: var(--ce-radius);
+}
+.ce-source-notebooks h3 {
+  margin-top: 0;
+  font-size: 1.05em;
+  color: var(--ce-text-soft);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: var(--ce-font-body);
+  font-weight: 600;
+}
+.ce-source-notebooks ul { margin: 8px 0 0; padding-left: 1.2em; }
+.ce-source-notebooks li { margin-bottom: 6px; }
+
 /* ---------- Jupyter cell remnants ---------- */
 .jp-Cell, .jp-Notebook { background: transparent !important; }
 .jp-Cell { margin: 1.4em 0 !important; }
