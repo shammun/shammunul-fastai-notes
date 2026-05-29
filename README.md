@@ -5,9 +5,9 @@ A growing collection of detailed notebooks, mathematical derivations, and educat
 ## Index
 
 <!-- INDEX_TABLE_START -->
-| Title | Type | Topic | Published | Link |
-|---|---|---|---|---|
-| Notebook 10: Activation Statistics — Monitoring Your Neural Network | Notebook | Activations | 2026-05-28 | [View](https://shammun.github.io/shammunul-fastai-notes/notebooks/10_activations_explained.html) |
+| Title | Type | Topic | Published | HTML | Notebook | Colab |
+|---|---|---|---|---|---|---|
+| Notebook 10: Activation Statistics — Monitoring Your Neural Network | Notebook | Activations | 2026-05-28 | [View](https://shammun.github.io/shammunul-fastai-notes/notebooks/10_activations_explained.html) | [.ipynb](notebooks/10_activations_explained.ipynb) | [Open](https://colab.research.google.com/github/shammun/shammunul-fastai-notes/blob/main/notebooks/10_activations_explained_colab.ipynb) |
 <!-- INDEX_TABLE_END -->
 
 ## What's here

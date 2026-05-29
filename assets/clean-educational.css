@@ -281,6 +281,63 @@ hr {
   margin: 2.8em 0;
 }
 
+/* ---------- Action bar (Download .ipynb / Open in Colab) ---------- */
+.ce-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 28px 0;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.05) 0%, rgba(15, 185, 177, 0.04) 100%);
+  border: 1px solid var(--ce-border-soft);
+  border-radius: var(--ce-radius);
+  align-items: center;
+}
+.ce-actions-label {
+  font-size: 0.82em;
+  color: var(--ce-text-muted);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+.ce-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--ce-card);
+  color: var(--ce-text);
+  border: 1px solid var(--ce-border);
+  border-radius: 8px;
+  font-size: 0.88em;
+  font-weight: 500;
+  font-family: var(--ce-font-body);
+  text-decoration: none;
+  background-image: none !important;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.08s, color 0.15s;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.ce-action-btn:hover {
+  border-color: var(--ce-purple);
+  color: var(--ce-purple-dark);
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.12);
+  background-size: auto;
+}
+.ce-action-btn:active { transform: translateY(1px); }
+.ce-action-btn.ce-action-colab {
+  background: linear-gradient(135deg, #ff9d2e 0%, #ff8a3c 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 2px 6px rgba(255, 138, 60, 0.28);
+}
+.ce-action-btn.ce-action-colab:hover {
+  color: white;
+  box-shadow: 0 4px 14px rgba(255, 138, 60, 0.4);
+  border-color: transparent;
+}
+.ce-action-btn .ce-action-icon { font-size: 1.05em; line-height: 1; }
+
 /* ---------- Breadcrumb header ---------- */
 .ce-breadcrumb {
   display: flex;
