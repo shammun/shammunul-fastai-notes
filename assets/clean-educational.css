@@ -72,12 +72,13 @@ code {
   border-radius: 4px;
 }
 
-/* Code blocks */
+/* Code blocks — light theme that reads cleanly with Jupyter Light Pygments */
 pre {
-  background: #1f2433;
-  color: #e8eaf2;
+  background: #f6f8fa;
+  color: #24292f;
   padding: 16px 20px;
   border-radius: var(--ce-radius);
+  border: 1px solid var(--ce-border);
   overflow-x: auto;
   font-family: var(--ce-font-mono);
   font-size: 14px;
@@ -88,6 +89,27 @@ pre code {
   color: inherit;
   padding: 0;
 }
+
+/* Pygments syntax highlighting (overrides nbconvert's --jp-mirror-editor-* vars
+   so tokens read clearly on the light background above). Palette is
+   GitHub-light-inspired, tinted toward the Clean Educational accents. */
+.highlight, .highlight pre { background: #f6f8fa; color: #24292f; }
+.highlight .c, .highlight .c1, .highlight .cm, .highlight .cp,
+.highlight .cpf, .highlight .ch, .highlight .cs { color: #6e7781; font-style: italic; }   /* comments */
+.highlight .k, .highlight .kc, .highlight .kd, .highlight .kn,
+.highlight .kp, .highlight .kr, .highlight .kt { color: #cf222e; font-weight: 600; }      /* keywords */
+.highlight .s, .highlight .s1, .highlight .s2, .highlight .sa, .highlight .sb,
+.highlight .sc, .highlight .sd, .highlight .se, .highlight .sh, .highlight .si,
+.highlight .sx, .highlight .sr, .highlight .ss, .highlight .dl { color: #0a3069; }        /* strings */
+.highlight .m, .highlight .mi, .highlight .mf, .highlight .mh, .highlight .mo,
+.highlight .il { color: #0550ae; }                                                         /* numbers */
+.highlight .nf, .highlight .nc { color: #8250df; font-weight: 600; }                       /* function / class names */
+.highlight .nb, .highlight .bp { color: #6c5ce7; }                                         /* builtins */
+.highlight .nn { color: #24292f; }                                                         /* namespaces */
+.highlight .nd { color: #8250df; }                                                         /* decorators */
+.highlight .o, .highlight .ow { color: #cf222e; }                                          /* operators */
+.highlight .p { color: #24292f; }                                                          /* punctuation */
+.highlight .err { color: #cf222e; background: transparent; }                               /* errors — no red box */
 
 /* Links */
 a {
@@ -223,7 +245,9 @@ li { margin-bottom: 0.4em; }
 .jp-Cell, .jp-Notebook { background: transparent !important; }
 .jp-InputArea-editor, .jp-OutputArea-output { font-family: var(--ce-font-mono); }
 .jp-RenderedHTMLCommon { font-family: var(--ce-font-body); }
-.jp-CodeMirrorEditor { background: #1f2433 !important; }
+.jp-CodeMirrorEditor { background: #f6f8fa !important; border-radius: var(--ce-radius); }
+.jp-InputArea-editor { border: none !important; box-shadow: none !important; }
+.jp-InputPrompt, .jp-OutputPrompt { color: var(--ce-text-muted); font-family: var(--ce-font-mono); font-size: 0.85em; }
 
 /* Responsive */
 @media (max-width: 640px) {
