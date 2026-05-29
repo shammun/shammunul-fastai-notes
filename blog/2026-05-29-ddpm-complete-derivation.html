@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDPM, Step by Step: A Complete Mathematical Derivation</title>
+<meta name="description" content="A beginner-friendly, complete mathematical derivation of Denoising Diffusion Probabilistic Models (DDPM), built from first principles with interactive visualizations and working PyTorch code.">
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$','$$'], ['\\[','\\]']], processEscapes: true },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js" defer></script>
+<style>
+/* ===== Per-post aesthetic accent (scoped under data-post) ===== */
+.ce-post[data-post="2026-05-29-ddpm-complete-derivation"] {
+  --ce-purple: #4f46e5;
+  --ce-purple-dark: #3730a3;
+  --ce-purple-soft: #eef2ff;
+  --ce-accent-a: #4f46e5;
+  --ce-accent-b: #06b6d4;
+  --post-counter: 0;
+}
+
+/* Subtle dot-grid background inside the post card */
+.ce-post[data-post="2026-05-29-ddpm-complete-derivation"] {
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(79, 70, 229, 0.08) 1px, transparent 0);
+  background-size: 22px 22px;
+  background-position: 0 0;
+}
+
+/* Hero block above the title */
+.ddpm-hero {
+  margin: -8px 0 28px;
+  padding: 18px 20px;
+  border-radius: var(--ce-radius);
+  background: linear-gradient(135deg, #eef2ff 0%, #ecfeff 100%);
+  border: 1px solid #e0e7ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.ddpm-hero svg { max-width: 100%; height: 96px; }
+
+/* Drop cap on the lede paragraph */
+.ce-post[data-post="2026-05-29-ddpm-complete-derivation"] .lede::first-letter {
+  float: left;
+  font-family: var(--ce-font-heading);
+  font-weight: 700;
+  font-size: 4.1em;
+  line-height: 0.88;
+  padding: 6px 12px 0 0;
+  color: var(--ce-purple);
+  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Oversized section numerals next to every H2 */
+.ce-post[data-post="2026-05-29-ddpm-complete-derivation"] {
+  counter-reset: ddpm-section;
+}
+.ce-post[data-post="2026-05-29-ddpm-complete-derivation"] h2 {
+  position: relative;
+  padding-left: 84px;
+  min-height: 1.4em;
+  counter-increment: ddpm-section;
+}
+.ce-post[data-post="2026-05-29-ddpm-complete-derivation"] h2::before {
+  content: counter(ddpm-section, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 0.05em;
+  font-family: var(--ce-font-heading);
+  font-weight: 700;
+  font-size: 1.6em;
+  letter-spacing: -0.02em;
+  color: var(--ce-purple);
+  opacity: 0.32;
+  background: none;
+  width: auto;
+  border-radius: 0;
+}
+
+/* Equation/derivation block — soft indent + lighter shade */
+.ddpm-derivation {
+  margin: 18px 0;
+  padding: 14px 20px;
+  background: rgba(79, 70, 229, 0.03);
+  border-left: 3px solid var(--ce-purple);
+  border-radius: 0 var(--ce-radius) var(--ce-radius) 0;
+  font-size: 0.97em;
+}
+.ddpm-derivation p:last-child { margin-bottom: 0; }
+
+/* Boxed final-result equations */
+.ddpm-boxed-eq {
+  margin: 22px 0;
+  padding: 18px 24px;
+  background: linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%);
+  border: 1px solid #c7d2fe;
+  border-radius: var(--ce-radius);
+  text-align: center;
+}
+
+/* Callout boxes */
+.ddpm-callout {
+  margin: 22px 0;
+  padding: 16px 22px;
+  border-radius: var(--ce-radius);
+  font-size: 0.97em;
+}
+.ddpm-callout.note     { background: #f0fdfa; border-left: 3px solid #14b8a6; }
+.ddpm-callout.warning  { background: #fffbeb; border-left: 3px solid #f59e0b; }
+.ddpm-callout.insight  { background: #eef2ff; border-left: 3px solid #4f46e5; }
+.ddpm-callout strong { color: var(--ce-text); }
+
+/* Interactive widget container — slight tighten */
+.ce-interactive {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.04) 0%, rgba(6, 182, 212, 0.04) 100%);
+  border: 1px solid rgba(79, 70, 229, 0.18);
+}
+
+/* Slider styling */
+.slider-row { display: flex; align-items: center; gap: 14px; margin: 14px 0; flex-wrap: wrap; }
+.slider-row label { font-size: 0.92em; color: var(--ce-text-soft); min-width: 60px; font-family: var(--ce-font-mono); }
+.slider-row input[type="range"] { flex: 1; min-width: 180px; accent-color: var(--ce-purple); height: 6px; touch-action: manipulation; }
+.slider-row .val { font-family: var(--ce-font-mono); font-size: 0.92em; color: var(--ce-purple-dark); min-width: 60px; text-align: right; }
+
+button.ddpm-btn {
+  background: var(--ce-purple);
+  color: white;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-family: var(--ce-font-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.08s;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.28);
+  touch-action: manipulation;
+}
+button.ddpm-btn:hover  { background: var(--ce-purple-dark); }
+button.ddpm-btn:active { transform: translateY(1px); }
+button.ddpm-btn.secondary { background: transparent; color: var(--ce-purple); box-shadow: none; border: 1px solid var(--ce-purple); }
+button.ddpm-btn.secondary:hover { background: var(--ce-purple-soft); }
+
+/* Bayes-rule SVG — terms turn indigo on hover */
+.bayes-term {
+  cursor: help;
+  transition: fill 0.18s;
+}
+.bayes-term:hover, .bayes-term:focus {
+  fill: var(--ce-purple);
+}
+.bayes-explanation {
+  min-height: 56px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: white;
+  border: 1px solid var(--ce-border);
+  border-radius: var(--ce-radius);
+  font-size: 0.95em;
+  color: var(--ce-text-soft);
+  font-style: italic;
+}
+
+/* Copy-to-clipboard button on code blocks */
+.code-block-wrap { position: relative; }
+.copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--ce-purple-dark);
+  border: 1px solid rgba(79, 70, 229, 0.2);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-family: var(--ce-font-mono);
+  font-size: 0.78em;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.15s;
+}
+.code-block-wrap:hover .copy-btn,
+.copy-btn:focus { opacity: 1; }
+.copy-btn:hover { background: rgba(79, 70, 229, 0.18); }
+.copy-btn.copied { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+
+/* Notation chip for symbols */
+.sym {
+  display: inline-block;
+  background: var(--ce-purple-soft);
+  color: var(--ce-purple-dark);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: var(--ce-font-mono);
+  font-size: 0.92em;
+  border: 1px solid #ddd6fe;
+}
+
+@media (max-width: 700px) {
+  .ce-post[data-post="2026-05-29-ddpm-complete-derivation"] h2 { padding-left: 56px; }
+  .ce-post[data-post="2026-05-29-ddpm-complete-derivation"] h2::before { font-size: 1.3em; }
+  .ddpm-hero svg { height: 72px; }
+}
+</style>
+</head>
+<body>
+<header class="ce-breadcrumb">
+  <a href="../index.html">← All notes</a>
+  <span class="ce-source">Blog · DDPM derivation</span>
+</header>
+
+<article class="ce-post" data-post="2026-05-29-ddpm-complete-derivation">
+
+<header class="ce-post-header">
+  <p class="ce-post-meta">Published 2026-05-29 · ~20 min read</p>
+  <div class="ddpm-hero" aria-hidden="true">
+    <svg id="hero-svg" viewBox="0 0 720 96" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+  <h1>DDPM, Step by Step: A Complete Mathematical Derivation</h1>
+  <p class="ce-post-subtitle">Every equation from the original Denoising Diffusion Probabilistic Models paper, built up from first principles — no math swept under the rug.</p>
+</header>
+
+<section class="ce-section">
+<h2>Why diffusion?</h2>
+<p class="lede">Diffusion models took over image generation almost overnight. They power Stable Diffusion, DALL·E 2, Midjourney, Imagen — anything that hands you a photorealistic picture of an astronaut riding a horse. But the original paper, Ho et al. (2020), is a wall of probability theory. Most explanations skip the hard equations. This post does the opposite: we derive <em>every</em> equation from scratch, define every symbol the first time it appears, and check our work with PyTorch code at the end.</p>
+
+<p>The basic idea is silly enough to fit on a napkin. <strong>Take a clean image. Add a little Gaussian noise. Add a little more. Keep going for 1,000 steps until the image is pure television static. Then train a neural network to undo one step of that process.</strong> If the network learns to denoise one step at a time, you can chain 1,000 of its predictions to generate a brand-new image starting from pure noise.</p>
+
+<p>Everything below is the math that makes "add noise, learn to remove it" actually work — the loss function, the closed-form formulas that skip the 1,000-step chain during training, and the sampling algorithm.</p>
+
+<div class="ddpm-callout note">
+<strong>Audience floor.</strong> You know what a function and a probability are. You don't need to know what a Gaussian is, what conditional probability is, what Bayes' rule says, or what PyTorch does. I'll define each on first use.
+</div>
+</section>
+
+<section class="ce-section">
+<h2>The forward process — adding noise step by step</h2>
+
+<p>We start with a real image. Call it <span class="sym">x₀</span> — the subscript 0 means "step zero, no noise added yet." We're going to corrupt it by adding a little Gaussian noise at each of $T$ time steps, producing a sequence:</p>
+
+<p style="text-align: center; font-family: var(--ce-font-mono); color: var(--ce-text-muted);">x₀  →  x₁  →  x₂  →  …  →  x_T</p>
+
+<p>"Gaussian noise" just means a random number drawn from a bell curve centered at 0. Writing <span class="sym">ε ~ 𝒩(0, I)</span> means "<span class="sym">ε</span> is a noise vector where every coordinate is independently drawn from a standard bell curve." The symbol <span class="sym">𝒩</span> is the Gaussian (or "normal") distribution, the <span class="sym">0</span> is its mean, and <span class="sym">I</span> is the identity matrix — fancy way of saying "every pixel gets its own independent noise."</p>
+
+<p>The one-step forward process is defined as:</p>
+
+<div class="ddpm-boxed-eq">
+$$q(\mathbf{x}_t \mid \mathbf{x}_{t-1}) = \mathcal{N}\!\big(\mathbf{x}_t;\; \sqrt{1-\beta_t}\,\mathbf{x}_{t-1},\; \beta_t \mathbf{I}\big)$$
+</div>
+
+<p>Reading this: given the previous image $\mathbf{x}_{t-1}$, the next image $\mathbf{x}_t$ is drawn from a Gaussian whose mean is the previous image shrunk slightly toward zero (multiplied by $\sqrt{1-\beta_t}$), and whose variance is $\beta_t$. The schedule $\beta_t$ is tiny at the start (around 0.0001) and grows slowly toward 0.02 at the end, so each individual step adds only a whisper of noise.</p>
+
+<p>Equivalently — and this is how we'll usually write it — we sample $\mathbf{x}_t$ as:</p>
+
+<div class="ddpm-boxed-eq">
+$$\mathbf{x}_t = \sqrt{1-\beta_t}\,\mathbf{x}_{t-1} + \sqrt{\beta_t}\,\boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$$
+</div>
+
+<div class="ddpm-callout insight">
+<strong>Why the square roots?</strong> Because variances add. The forward step is engineered so that if $\mathbf{x}_{t-1}$ has unit variance, then $\mathbf{x}_t$ also has unit variance: $(1-\beta_t) + \beta_t = 1$. Without the $\sqrt{1-\beta_t}$ shrinkage, the variance would blow up over 1,000 steps. With it, after $T$ steps we land cleanly at $\mathbf{x}_T \approx \mathcal{N}(0, \mathbf{I})$ — pure static.
+</div>
+
+<h3>Skipping ahead — the closed-form jump</h3>
+
+<p>If we want $\mathbf{x}_5$ from $\mathbf{x}_0$, do we really have to run the chain five times? No — because of a beautiful property of Gaussians. Define:</p>
+
+<div class="ddpm-boxed-eq">
+$$\alpha_t = 1 - \beta_t, \qquad \bar{\alpha}_t = \prod_{s=1}^{t} \alpha_s$$
+</div>
+
+<p>$\alpha_t$ is "how much of the signal we keep in one step" (close to 1). $\bar{\alpha}_t$ is "how much of the original image survives after $t$ steps" — starting at 1 and dropping toward 0 as $t \to T$. The bar over $\alpha$ just signals it's a <em>cumulative</em> quantity.</p>
+
+<p>The remarkable fact is that we can jump straight from $\mathbf{x}_0$ to any $\mathbf{x}_t$ in one shot:</p>
+
+<div class="ddpm-boxed-eq">
+$$\mathbf{x}_t = \sqrt{\bar{\alpha}_t}\,\mathbf{x}_0 + \sqrt{1 - \bar{\alpha}_t}\,\boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$$
+</div>
+
+<div class="ddpm-derivation">
+<p><strong>Why this works.</strong> Expand two steps:</p>
+$$\mathbf{x}_2 = \sqrt{\alpha_2}\,\mathbf{x}_1 + \sqrt{1-\alpha_2}\,\boldsymbol{\epsilon}_2 = \sqrt{\alpha_2}\,(\sqrt{\alpha_1}\mathbf{x}_0 + \sqrt{1-\alpha_1}\,\boldsymbol{\epsilon}_1) + \sqrt{1-\alpha_2}\,\boldsymbol{\epsilon}_2$$
+<p>The two noise terms $\boldsymbol{\epsilon}_1$ and $\boldsymbol{\epsilon}_2$ are independent Gaussians. When you add independent Gaussians, variances add. So $\sqrt{\alpha_2(1-\alpha_1)}\,\boldsymbol{\epsilon}_1 + \sqrt{1-\alpha_2}\,\boldsymbol{\epsilon}_2$ is just another Gaussian with variance $\alpha_2(1-\alpha_1) + (1-\alpha_2) = 1 - \alpha_1\alpha_2 = 1 - \bar{\alpha}_2$. Replace the sum with a single scaled $\boldsymbol{\epsilon}$ and you get $\mathbf{x}_2 = \sqrt{\bar{\alpha}_2}\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_2}\boldsymbol{\epsilon}$. Induction on $t$ gives the boxed formula.</p>
+</div>
+
+<p>This single fact is what makes DDPM training fast. We never simulate the 1,000-step chain — we just pick a random $t$, jump straight from $\mathbf{x}_0$ to $\mathbf{x}_t$, and ask the network to remove the noise.</p>
+
+<div class="ce-interactive">
+<h3>The forward process, visualized</h3>
+<p class="ce-interactive-hint">Drag the slider to advance through time. At $t=0$ you see the original 2D distribution (a spiral). As $t$ grows, $\bar{\alpha}_t$ shrinks and the points scatter into a Gaussian cloud. By $t=T$ you have pure noise.</p>
+<canvas id="fwd-canvas" width="640" height="280" style="width:100%; max-width:640px; height:auto; background:white; border-radius:8px; touch-action:manipulation;"></canvas>
+<div class="slider-row">
+  <label for="fwd-t">t</label>
+  <input id="fwd-t" type="range" min="0" max="1000" value="0">
+  <span class="val" id="fwd-t-val">0</span>
+</div>
+<div class="slider-row" style="font-size:0.88em; color:var(--ce-text-muted);">
+  <span id="fwd-alphabar">ᾱ_t = 1.000</span>
+  <span id="fwd-sigma">√(1-ᾱ_t) = 0.000</span>
+</div>
+</div>
+</section>
+
+<section class="ce-section">
+<h2>The reverse process — where the neural network enters</h2>
+
+<p>If we can corrupt an image with $q(\mathbf{x}_t \mid \mathbf{x}_{t-1})$, can we run that backward? Given a noisy $\mathbf{x}_t$, can we recover $\mathbf{x}_{t-1}$? In principle yes — Bayes' rule gives us the exact reverse distribution. But that exact reverse depends on the full data distribution of all possible images, which we don't have a formula for.</p>
+
+<p>The trick: <strong>approximate the true reverse distribution with a neural network</strong>. We model the reverse step as another Gaussian and let a network predict its mean. Call the network's parameters $\theta$:</p>
+
+<div class="ddpm-boxed-eq">
+$$p_\theta(\mathbf{x}_{t-1} \mid \mathbf{x}_t) = \mathcal{N}\!\big(\mathbf{x}_{t-1};\; \boldsymbol{\mu}_\theta(\mathbf{x}_t, t),\; \Sigma_\theta(\mathbf{x}_t, t)\big)$$
+</div>
+
+<p>The network sees the noisy image $\mathbf{x}_t$ and the current timestep $t$, and outputs the mean $\boldsymbol{\mu}_\theta$ of where the slightly-less-noisy $\mathbf{x}_{t-1}$ should live. The variance $\Sigma_\theta$ is usually fixed to a constant in the simple version.</p>
+
+<p>Now we have two problems. <em>What should the network actually predict?</em> And <em>what loss function trains it?</em></p>
+</section>
+
+<section class="ce-section">
+<h2>The ELBO — a loss function we can compute</h2>
+
+<p>We'd love to maximize $\log p_\theta(\mathbf{x}_0)$ — the log-probability our model assigns to a real image. But computing that requires integrating over every possible noise trajectory $\mathbf{x}_{1:T}$ that could have produced $\mathbf{x}_0$. That's an integral over a million-dimensional space. Impossible.</p>
+
+<p>Variational inference gives us a workaround: a <strong>lower bound</strong> on $\log p_\theta(\mathbf{x}_0)$ that <em>is</em> computable, called the Evidence Lower BOund (ELBO). After algebra you can find in any VAE textbook, the negative ELBO for diffusion decomposes into three friendly pieces:</p>
+
+<div class="ddpm-boxed-eq">
+$$L = \underbrace{D_\mathrm{KL}\!\big(q(\mathbf{x}_T \mid \mathbf{x}_0) \,\Vert\, p(\mathbf{x}_T)\big)}_{L_T} \;+\; \sum_{t=2}^{T}\underbrace{\mathbb{E}_q\!\big[D_\mathrm{KL}(q(\mathbf{x}_{t-1}\mid\mathbf{x}_t,\mathbf{x}_0) \,\Vert\, p_\theta(\mathbf{x}_{t-1}\mid\mathbf{x}_t))\big]}_{L_{t-1}} \;-\; \underbrace{\mathbb{E}_q[\log p_\theta(\mathbf{x}_0 \mid \mathbf{x}_1)]}_{L_0}$$
+</div>
+
+<p>Three pieces. Each one tells you something concrete:</p>
+
+<ul>
+  <li><strong>$L_T$</strong> measures how close $\mathbf{x}_T$ (the noisiest image) is to a standard Gaussian. We <em>designed</em> the forward schedule so this is already true; $L_T$ has no learnable parameters and is essentially a constant.</li>
+  <li><strong>$L_{t-1}$</strong> (the meat of the loss) measures, at every timestep $t$, how close our network's reverse distribution $p_\theta(\mathbf{x}_{t-1} \mid \mathbf{x}_t)$ is to the "true" reverse $q(\mathbf{x}_{t-1} \mid \mathbf{x}_t, \mathbf{x}_0)$ that <em>knows the answer</em> $\mathbf{x}_0$. Match these and we win.</li>
+  <li><strong>$L_0$</strong> is a tiny boundary term — the network's likelihood of reconstructing the clean image from $\mathbf{x}_1$. In practice it gets folded into the same $L_{t-1}$ formula.</li>
+</ul>
+
+<div class="ddpm-callout note">
+<strong>What is KL divergence?</strong> $D_\mathrm{KL}(P \,\Vert\, Q)$ is the average "surprise" you'd feel if you expected $Q$ but the world was actually $P$. It's zero when $P=Q$ and positive otherwise. For two Gaussians it has a closed form — see below.
+</div>
+
+<p>Plain English version: <strong>at every timestep, the network's guess for the reverse step must match the true reverse step.</strong> Train it on that and you have a denoising diffusion model.</p>
+</section>
+
+<section class="ce-section">
+<h2>The true posterior $q(\mathbf{x}_{t-1} \mid \mathbf{x}_t, \mathbf{x}_0)$</h2>
+
+<p>What's that "true reverse" $q(\mathbf{x}_{t-1} \mid \mathbf{x}_t, \mathbf{x}_0)$ that the network is chasing? It's the distribution of $\mathbf{x}_{t-1}$ <em>given that we already saw $\mathbf{x}_t$ and we know the clean image $\mathbf{x}_0$</em>. Apply Bayes' rule:</p>
+
+<div class="ddpm-boxed-eq">
+$$q(\mathbf{x}_{t-1} \mid \mathbf{x}_t, \mathbf{x}_0) \;=\; \frac{q(\mathbf{x}_t \mid \mathbf{x}_{t-1}, \mathbf{x}_0)\,q(\mathbf{x}_{t-1} \mid \mathbf{x}_0)}{q(\mathbf{x}_t \mid \mathbf{x}_0)}$$
+</div>
+
+<div class="ce-interactive">
+<h3>The Bayes-rule derivation, term by term</h3>
+<p class="ce-interactive-hint">Hover (or tap) each highlighted piece to see what it represents and why we already know it.</p>
+<svg id="bayes-svg" viewBox="0 0 720 100" style="width:100%; max-width:720px; height:auto; font-family: var(--ce-font-mono); font-size: 18px;">
+  <text x="20" y="58" fill="#1a1f36">q(x_{t-1} | x_t, x_0) =</text>
+  <g class="bayes-term" data-explanation="A: One forward step. We know exactly what this is — it's the formula we wrote in §2.">
+    <rect x="290" y="22" width="160" height="36" rx="5" fill="#eef2ff" stroke="#c7d2fe"/>
+    <text x="370" y="46" text-anchor="middle" fill="#3730a3">q(x_t | x_{t-1}, x_0)</text>
+  </g>
+  <text x="455" y="46" fill="#1a1f36">·</text>
+  <g class="bayes-term" data-explanation="B: The closed-form jump from §2 — we know x_{t-1} given x_0 in one shot.">
+    <rect x="470" y="22" width="140" height="36" rx="5" fill="#eef2ff" stroke="#c7d2fe"/>
+    <text x="540" y="46" text-anchor="middle" fill="#3730a3">q(x_{t-1} | x_0)</text>
+  </g>
+  <line x1="290" y1="68" x2="610" y2="68" stroke="#1a1f36" stroke-width="1.5"/>
+  <g class="bayes-term" data-explanation="C: Same closed-form jump, one step further. Just a normalizing constant w.r.t. x_{t-1}.">
+    <rect x="370" y="74" width="160" height="22" rx="4" fill="#eef2ff" stroke="#c7d2fe"/>
+    <text x="450" y="90" text-anchor="middle" fill="#3730a3">q(x_t | x_0)</text>
+  </g>
+</svg>
+<div class="bayes-explanation" id="bayes-explanation">Hover any boxed term above to see what it means.</div>
+</div>
+
+<p>All three pieces on the right are Gaussians whose formulas we already wrote down. So the left side is a product/quotient of Gaussians — which is itself a Gaussian. After collecting exponents and completing the square (it's tedious algebra, but no new ideas), you land at:</p>
+
+<div class="ddpm-boxed-eq">
+$$q(\mathbf{x}_{t-1} \mid \mathbf{x}_t, \mathbf{x}_0) = \mathcal{N}\!\big(\mathbf{x}_{t-1};\; \tilde{\boldsymbol{\mu}}_t(\mathbf{x}_t, \mathbf{x}_0),\; \tilde{\beta}_t \mathbf{I}\big)$$
+$$\tilde{\boldsymbol{\mu}}_t(\mathbf{x}_t, \mathbf{x}_0) = \frac{\sqrt{\bar{\alpha}_{t-1}}\,\beta_t}{1 - \bar{\alpha}_t}\,\mathbf{x}_0 \;+\; \frac{\sqrt{\alpha_t}\,(1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t}\,\mathbf{x}_t$$
+$$\tilde{\beta}_t = \frac{1 - \bar{\alpha}_{t-1}}{1 - \bar{\alpha}_t}\,\beta_t$$
+</div>
+
+<p>This is the target our network is trying to match. The mean is a weighted blend of the clean image $\mathbf{x}_0$ and the current noisy $\mathbf{x}_t$. The weights are deterministic functions of the noise schedule. The variance $\tilde{\beta}_t$ is also fully determined by the schedule — no neural network needed.</p>
+</section>
+
+<section class="ce-section">
+<h2>KL between two Gaussians — a closed-form per-step loss</h2>
+
+<p>The middle term $L_{t-1}$ is a KL divergence between two Gaussians. For two Gaussians with the same variance $\Sigma$ but different means $\boldsymbol{\mu}_1, \boldsymbol{\mu}_2$:</p>
+
+<div class="ddpm-boxed-eq">
+$$D_\mathrm{KL}\!\big(\mathcal{N}(\boldsymbol{\mu}_1, \Sigma) \,\Vert\, \mathcal{N}(\boldsymbol{\mu}_2, \Sigma)\big) = \frac{1}{2\sigma^2}\,\Vert \boldsymbol{\mu}_1 - \boldsymbol{\mu}_2 \Vert^2$$
+</div>
+
+<p>(For isotropic $\Sigma = \sigma^2 \mathbf{I}$.) So the loss at timestep $t$ is just the squared distance between the network's predicted mean $\boldsymbol{\mu}_\theta$ and the true posterior mean $\tilde{\boldsymbol{\mu}}_t$, divided by some constant:</p>
+
+<div class="ddpm-boxed-eq">
+$$L_{t-1} \;\propto\; \mathbb{E}_q\!\left[\Vert \tilde{\boldsymbol{\mu}}_t(\mathbf{x}_t, \mathbf{x}_0) - \boldsymbol{\mu}_\theta(\mathbf{x}_t, t)\Vert^2\right]$$
+</div>
+
+<p>Mean squared error between two means. Almost simple enough to be disappointing.</p>
+</section>
+
+<section class="ce-section">
+<h2>The big simplification — predict the noise, not the mean</h2>
+
+<p>One last trick. Remember the closed-form forward jump:</p>
+
+<p style="text-align: center;">$\mathbf{x}_t = \sqrt{\bar{\alpha}_t}\,\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t}\,\boldsymbol{\epsilon}$</p>
+
+<p>Solving for $\mathbf{x}_0$:</p>
+
+<p style="text-align: center;">$\mathbf{x}_0 = \dfrac{1}{\sqrt{\bar{\alpha}_t}}\!\left(\mathbf{x}_t - \sqrt{1-\bar{\alpha}_t}\,\boldsymbol{\epsilon}\right)$</p>
+
+<p>If we substitute this expression for $\mathbf{x}_0$ into the formula for $\tilde{\boldsymbol{\mu}}_t$ and simplify, the cancellations are heroic. After dust settles:</p>
+
+<div class="ddpm-boxed-eq">
+$$\tilde{\boldsymbol{\mu}}_t(\mathbf{x}_t, \mathbf{x}_0) = \frac{1}{\sqrt{\alpha_t}}\!\left(\mathbf{x}_t - \frac{\beta_t}{\sqrt{1-\bar{\alpha}_t}}\,\boldsymbol{\epsilon}\right)$$
+</div>
+
+<p>The true posterior mean depends only on $\mathbf{x}_t$ and the <em>noise</em> $\boldsymbol{\epsilon}$ that was used to create $\mathbf{x}_t$. So instead of asking the network to predict the mean directly, we ask it to <strong>predict the noise</strong>. Define the noise-prediction network $\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t)$ and parameterize:</p>
+
+<div class="ddpm-boxed-eq">
+$$\boldsymbol{\mu}_\theta(\mathbf{x}_t, t) = \frac{1}{\sqrt{\alpha_t}}\!\left(\mathbf{x}_t - \frac{\beta_t}{\sqrt{1-\bar{\alpha}_t}}\,\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t)\right)$$
+</div>
+
+<p>Now the MSE loss simplifies further. The network predicts $\boldsymbol{\epsilon}$; the target is the actual $\boldsymbol{\epsilon}$ we used in the forward step. The training objective collapses to:</p>
+
+<div class="ddpm-boxed-eq">
+$$L_\text{simple}(\theta) = \mathbb{E}_{t, \mathbf{x}_0, \boldsymbol{\epsilon}}\!\left[\Vert \boldsymbol{\epsilon} - \boldsymbol{\epsilon}_\theta(\sqrt{\bar{\alpha}_t}\,\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t}\,\boldsymbol{\epsilon},\; t) \Vert^2\right]$$
+</div>
+
+<p>This is the actual loss used in the DDPM paper. Pick a real image, pick a random timestep $t$, pick random noise $\boldsymbol{\epsilon}$, noise the image, ask the network to predict the noise back. Mean squared error. That's the whole training objective.</p>
+
+<div class="ddpm-callout insight">
+<strong>This is the punchline.</strong> A thousand pages of variational inference collapse to <em>"add noise, predict the noise, use MSE."</em> The math wasn't decorative — every step we did was necessary to confirm that this absurdly simple loss is a valid lower bound on the actual likelihood.
+</div>
+</section>
+
+<section class="ce-section">
+<h2>The noise schedule — what $\beta_t$ should look like</h2>
+
+<p>We've been writing $\beta_t$ symbolically. What numbers do we actually plug in? The original DDPM paper uses a <strong>linear schedule</strong>: $\beta_t$ rises linearly from $\beta_1 = 10^{-4}$ to $\beta_T = 0.02$ over $T = 1000$ steps. Later work (Nichol & Dhariwal 2021) found a <strong>cosine schedule</strong> destroys signal more gradually and trains better, especially at lower resolutions.</p>
+
+<div class="ce-interactive">
+<h3>Linear vs cosine schedule</h3>
+<p class="ce-interactive-hint">Two views: $\beta_t$ (the per-step noise variance) and $\bar{\alpha}_t$ (the fraction of original signal surviving after $t$ steps). The cosine schedule keeps more signal in the middle of the chain — useful for training stability.</p>
+<div id="schedule-d3" style="width:100%; min-height:280px;"></div>
+<div class="slider-row">
+  <button class="ddpm-btn" id="sched-toggle">Switch to ᾱ_t view</button>
+</div>
+</div>
+</section>
+
+<section class="ce-section">
+<h2>Sampling — from pure noise back to an image</h2>
+
+<p>Training is half the game. At inference time, we want to <em>generate</em> a new image. Start from $\mathbf{x}_T \sim \mathcal{N}(0, \mathbf{I})$ — actual TV static. Then for $t = T, T-1, \ldots, 1$, sample:</p>
+
+<div class="ddpm-boxed-eq">
+$$\mathbf{x}_{t-1} = \frac{1}{\sqrt{\alpha_t}}\!\left(\mathbf{x}_t - \frac{\beta_t}{\sqrt{1-\bar{\alpha}_t}}\,\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t)\right) + \sigma_t \mathbf{z}, \quad \mathbf{z} \sim \mathcal{N}(0, \mathbf{I})$$
+</div>
+
+<p>The first term is the predicted mean — exactly the $\boldsymbol{\mu}_\theta$ we parameterized in §7. The added $\sigma_t \mathbf{z}$ is a small kick of fresh noise, so we're not collapsing the distribution. Typical choice is $\sigma_t = \sqrt{\beta_t}$ (the original paper) or $\sigma_t = \sqrt{\tilde{\beta}_t}$ (the posterior variance, slightly different).</p>
+
+<div class="ce-interactive">
+<h3>One denoising step at a time</h3>
+<p class="ce-interactive-hint">Start: pure Gaussian noise. Click "Next step" to apply one reverse step. Watch the points contract back toward a structured distribution — exactly what the trained network does to actual images.</p>
+<canvas id="sample-canvas" width="640" height="280" style="width:100%; max-width:640px; height:auto; background:white; border-radius:8px; touch-action:manipulation;"></canvas>
+<div class="slider-row">
+  <button class="ddpm-btn" id="sample-step">Next step ▶</button>
+  <button class="ddpm-btn secondary" id="sample-reset">Reset</button>
+  <span class="val" id="sample-t-display">t = 1000</span>
+</div>
+</div>
+</section>
+
+<section class="ce-section">
+<h2>The code, distilled</h2>
+
+<p>Here's the entire DDPM training and sampling loop in ~30 lines of PyTorch. This is pulled from <code>15_DDPM_explained.ipynb</code> in the fast.ai notes — the same noise schedule, the same noisify, the same sampling step we derived above.</p>
+
+<div class="code-block-wrap">
+<button class="copy-btn" data-target="ddpm-code">Copy</button>
+<pre id="ddpm-code"><code class="lang-python">import torch
+import torch.nn.functional as F
+
+# ----- Noise schedule (§8) -----
+def linear_schedule(n_steps, beta_min=1e-4, beta_max=0.02):
+    beta      = torch.linspace(beta_min, beta_max, n_steps)
+    alpha     = 1. - beta
+    alphabar  = alpha.cumprod(dim=0)
+    sigma     = beta.sqrt()
+    return beta, alpha, alphabar, sigma
+
+# ----- Forward: closed-form jump x_0 -> x_t (§2) -----
+def noisify(x0, alphabar):
+    t       = torch.randint(0, len(alphabar), (x0.shape[0],), device=x0.device)
+    eps     = torch.randn_like(x0)
+    ab_t    = alphabar[t].reshape(-1, 1, 1, 1)   # broadcast over CHW
+    xt      = ab_t.sqrt() * x0 + (1 - ab_t).sqrt() * eps
+    return (xt, t), eps                          # network input, target
+
+# ----- Training loss: predict the noise (§7) -----
+def ddpm_loss(model, x0, alphabar):
+    (xt, t), eps = noisify(x0, alphabar)
+    eps_pred     = model(xt, t)                  # epsilon_theta(x_t, t)
+    return F.mse_loss(eps_pred, eps)             # L_simple
+
+# ----- Sampling: reverse the chain (§9) -----
+@torch.no_grad()
+def sample(model, shape, beta, alpha, alphabar, sigma):
+    x = torch.randn(shape, device=alpha.device)  # start from pure noise
+    for t in reversed(range(len(beta))):
+        z       = torch.randn_like(x) if t > 0 else 0
+        eps_hat = model(x, torch.full((shape[0],), t, device=x.device))
+        x       = (x - beta[t]/(1-alphabar[t]).sqrt() * eps_hat) / alpha[t].sqrt()
+        x       = x + sigma[t] * z
+    return x</code></pre>
+</div>
+
+<p>The <code>model</code> is typically a U-Net that takes a noisy image and a timestep, and outputs a noise tensor of the same shape. That's the only learnable component. Everything else is the math we just derived.</p>
+</section>
+
+<section class="ce-section ce-summary">
+<h2>What we covered</h2>
+<ul>
+  <li><strong>Forward process:</strong> noise the image one tiny Gaussian step at a time. A clever choice of coefficients keeps variance at 1 throughout the chain.</li>
+  <li><strong>Closed-form jump:</strong> independent Gaussians add nicely. We can skip from $\mathbf{x}_0$ to any $\mathbf{x}_t$ in one shot: $\mathbf{x}_t = \sqrt{\bar{\alpha}_t}\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon}$.</li>
+  <li><strong>Reverse process:</strong> a neural network parameterizes $p_\theta(\mathbf{x}_{t-1}\mid\mathbf{x}_t)$ as a Gaussian.</li>
+  <li><strong>ELBO:</strong> a tractable lower bound on $\log p_\theta(\mathbf{x}_0)$ that decomposes into KL terms — one per timestep — each comparing the network's reverse step to the true posterior.</li>
+  <li><strong>True posterior:</strong> Bayes' rule + completing the square gives $q(\mathbf{x}_{t-1}\mid\mathbf{x}_t,\mathbf{x}_0) = \mathcal{N}(\tilde{\boldsymbol{\mu}}_t, \tilde{\beta}_t \mathbf{I})$ — a closed-form target.</li>
+  <li><strong>Loss:</strong> KL between two Gaussians of equal variance is just MSE between means.</li>
+  <li><strong>Simplification:</strong> reparameterize so the network predicts the noise instead of the mean. The loss collapses to $\Vert\boldsymbol{\epsilon} - \boldsymbol{\epsilon}_\theta\Vert^2$.</li>
+  <li><strong>Sampling:</strong> start from Gaussian noise, run the reverse step 1,000 times, get an image.</li>
+</ul>
+
+<p style="margin-top:1.4em;">DDPM is one of those rare papers where the math, once derived, feels inevitable. Every step justifies the next, and the final training objective is almost laughably simple. Subsequent work (DDIM, classifier-free guidance, latent diffusion, score-based generative models) builds directly on this foundation.</p>
+</section>
+
+<section class="ce-source-notebooks">
+<h3>Source notebooks</h3>
+<p>This post distills material from notebooks in the fast.ai Part 2 study workspace:</p>
+<ul>
+  <li><strong>Complete math derivations</strong> — full step-by-step proofs of every equation, including the ELBO, KL between Gaussians, the posterior, and the $\epsilon$-prediction reparameterization. Source: <code>DDPM_Complete_Derivations_9.ipynb</code> (will be published as a derivation page later).</li>
+  <li><strong>Posterior derivation</strong> — focused walk-through of the Bayes-rule + complete-the-square argument for $q(\mathbf{x}_{t-1}\mid\mathbf{x}_t,\mathbf{x}_0)$. Source: <code>DDPM_Posterior_Full_Derivation.ipynb</code>.</li>
+  <li><a href="../notebooks/15_DDPM_explained.html">Notebook 15 — DDPM with miniai</a> — canonical PyTorch implementation grounding the math (<a href="../notebooks/15_DDPM_explained.ipynb">.ipynb when published</a>, Colab variant available in the fast.ai notes once published).</li>
+</ul>
+<p style="font-size:0.92em; color: var(--ce-text-muted); margin-top:14px;">If a link 404s, that source hasn't been published as a standalone page yet — the .ipynb still lives in the <a href="https://github.com/shammun/shammunul-fastai-notes">main repo</a>.</p>
+</section>
+
+<footer class="ce-post-footer">
+<p>Part of <a href="../index.html">Shammunul's fast.ai notes</a>. Questions or corrections? Open an issue on <a href="https://github.com/shammun/shammunul-fastai-notes/issues">GitHub</a>.</p>
+</footer>
+
+</article>
+
+<!-- ============================================================
+     JavaScript: hero animation + 4 interactives + copy buttons
+     ============================================================ -->
+<script>
+(function() {
+'use strict';
+
+// ===== Hero SVG: a small forward+reverse animation =====
+(function heroAnim() {
+  const svg = document.getElementById('hero-svg');
+  if (!svg) return;
+  const W = 720, H = 96;
+  const N = 36;
+  const NS = 'http://www.w3.org/2000/svg';
+  // initial spiral coordinates
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const u = i / (N - 1);
+    const theta = u * 5.0;
+    const r = 4 + u * 18;
+    pts.push({ x0: Math.cos(theta) * r, y0: Math.sin(theta) * r,
+               nx: (Math.random() * 2 - 1), ny: (Math.random() * 2 - 1) });
+  }
+  const dots = pts.map((_, i) => {
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('r', '2.4');
+    c.setAttribute('fill', '#4f46e5');
+    c.setAttribute('opacity', '0.8');
+    svg.appendChild(c);
+    return c;
+  });
+  function frame(now) {
+    // animate t in [0, 1] back and forth; mapped to alpha_bar
+    const phase = (now / 5000) % 2;
+    const tNorm = phase < 1 ? phase : 2 - phase; // forward then reverse
+    const ab = Math.pow(1 - tNorm, 3) * 0.95 + 0.05; // smoother decay
+    const sig = Math.sqrt(1 - ab);
+    // distribute 3 clusters across the SVG width: clean, mid, noisy
+    for (let cluster = 0; cluster < 3; cluster++) {
+      const cx = 90 + cluster * 270;
+      const cy = H / 2;
+      const localAb = cluster === 0 ? 0.95 : (cluster === 1 ? ab : 0.05);
+      const localSig = Math.sqrt(1 - localAb);
+      for (let i = 0; i < N; i++) {
+        const p = pts[i];
+        const x = cx + Math.sqrt(localAb) * p.x0 * 1.4 + localSig * p.nx * 22;
+        const y = cy + Math.sqrt(localAb) * p.y0 * 1.4 + localSig * p.ny * 18;
+        const d = dots[cluster * N + i] || (() => {
+          const c = document.createElementNS(NS, 'circle');
+          c.setAttribute('r', '2.4');
+          c.setAttribute('fill', cluster === 2 ? '#06b6d4' : '#4f46e5');
+          c.setAttribute('opacity', '0.8');
+          svg.appendChild(c);
+          dots[cluster * N + i] = c;
+          return c;
+        })();
+        d.setAttribute('cx', x);
+        d.setAttribute('cy', y);
+      }
+    }
+    // small connecting arrows
+    if (!svg._arrows) {
+      const a1 = document.createElementNS(NS, 'text');
+      a1.setAttribute('x', 220); a1.setAttribute('y', 56);
+      a1.setAttribute('font-size', '20'); a1.setAttribute('fill', '#6b7280');
+      a1.textContent = '→ noise →';
+      svg.appendChild(a1);
+      const a2 = document.createElementNS(NS, 'text');
+      a2.setAttribute('x', 480); a2.setAttribute('y', 56);
+      a2.setAttribute('font-size', '20'); a2.setAttribute('fill', '#6b7280');
+      a2.textContent = '← denoise ←';
+      svg.appendChild(a2);
+      svg._arrows = true;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+// ===== Schedule helpers (linear + cosine) =====
+const T_MAX = 1000;
+const linearBeta = (t) => 1e-4 + (0.02 - 1e-4) * (t / T_MAX);
+function buildSchedules() {
+  const linBeta = new Float32Array(T_MAX + 1);
+  const linAlphaBar = new Float32Array(T_MAX + 1);
+  let ab = 1;
+  for (let t = 0; t <= T_MAX; t++) {
+    const b = linearBeta(t);
+    linBeta[t] = b;
+    if (t === 0) { linAlphaBar[0] = 1; }
+    else { ab *= (1 - b); linAlphaBar[t] = ab; }
+  }
+  // cosine schedule (Nichol & Dhariwal): alphabar_t = cos^2((t/T + s)/(1+s) * pi/2)
+  const s = 0.008;
+  const cosAlphaBar = new Float32Array(T_MAX + 1);
+  const cosBeta = new Float32Array(T_MAX + 1);
+  function fCos(t) { return Math.pow(Math.cos(((t / T_MAX + s) / (1 + s)) * Math.PI / 2), 2); }
+  const f0 = fCos(0);
+  for (let t = 0; t <= T_MAX; t++) {
+    cosAlphaBar[t] = fCos(t) / f0;
+    if (t === 0) cosBeta[0] = 0;
+    else cosBeta[t] = Math.min(1 - cosAlphaBar[t] / cosAlphaBar[t - 1], 0.999);
+  }
+  return { linBeta, linAlphaBar, cosBeta, cosAlphaBar };
+}
+const SCHED = buildSchedules();
+
+// ===== Interactive 1: Forward process slider =====
+(function forward() {
+  const c = document.getElementById('fwd-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const slider = document.getElementById('fwd-t');
+  const tVal = document.getElementById('fwd-t-val');
+  const abEl = document.getElementById('fwd-alphabar');
+  const sigEl = document.getElementById('fwd-sigma');
+
+  // Generate a spiral of points as our "clean image" x_0
+  const N = 200;
+  const pts0 = [];
+  for (let i = 0; i < N; i++) {
+    const u = i / (N - 1);
+    const theta = u * 6.5;
+    const r = 8 + u * 70;
+    pts0.push({ x: Math.cos(theta) * r, y: Math.sin(theta) * r });
+  }
+  // Generate noise (fixed seed-ish per point so it's consistent)
+  const noise = [];
+  for (let i = 0; i < N; i++) {
+    // Box-Muller
+    const u1 = Math.random(), u2 = Math.random();
+    const z1 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    const z2 = Math.sqrt(-2 * Math.log(u1)) * Math.sin(2 * Math.PI * u2);
+    noise.push({ x: z1 * 80, y: z2 * 70 });
+  }
+
+  function draw() {
+    const t = parseInt(slider.value);
+    const ab = SCHED.linAlphaBar[t];
+    const sqAb = Math.sqrt(ab);
+    const sqOmAb = Math.sqrt(1 - ab);
+    tVal.textContent = t;
+    abEl.textContent = 'ᾱ_t = ' + ab.toFixed(3);
+    sigEl.textContent = '√(1-ᾱ_t) = ' + sqOmAb.toFixed(3);
+
+    ctx.clearRect(0, 0, c.width, c.height);
+    // axes guide
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(c.width/2, 0); ctx.lineTo(c.width/2, c.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, c.height/2); ctx.lineTo(c.width, c.height/2); ctx.stroke();
+
+    const cx = c.width / 2, cy = c.height / 2;
+    for (let i = 0; i < N; i++) {
+      const x = cx + sqAb * pts0[i].x + sqOmAb * noise[i].x;
+      const y = cy + sqAb * pts0[i].y + sqOmAb * noise[i].y;
+      // color blend purple -> cyan as noise grows
+      const r = Math.round(79 + (6 - 79) * (1 - ab));
+      const g = Math.round(70 + (182 - 70) * (1 - ab));
+      const b = Math.round(229 + (212 - 229) * (1 - ab));
+      ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.75)';
+      ctx.beginPath();
+      ctx.arc(x, y, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  slider.addEventListener('input', draw);
+  draw();
+})();
+
+// ===== Interactive 2: Bayes-rule hover-to-reveal =====
+(function bayes() {
+  const exp = document.getElementById('bayes-explanation');
+  if (!exp) return;
+  document.querySelectorAll('.bayes-term').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      exp.textContent = el.dataset.explanation;
+      exp.style.color = '#3730a3';
+      exp.style.fontStyle = 'normal';
+    });
+    el.addEventListener('mouseleave', () => {
+      exp.textContent = 'Hover any boxed term above to see what it means.';
+      exp.style.color = '';
+      exp.style.fontStyle = 'italic';
+    });
+    el.addEventListener('click', () => {
+      exp.textContent = el.dataset.explanation;
+      exp.style.color = '#3730a3';
+      exp.style.fontStyle = 'normal';
+    });
+  });
+})();
+
+// ===== Interactive 3: D3 noise-schedule comparison =====
+(function schedule() {
+  const host = document.getElementById('schedule-d3');
+  if (!host) return;
+  const btn = document.getElementById('sched-toggle');
+  let mode = 'beta'; // 'beta' or 'alphabar'
+
+  function render() {
+    if (typeof d3 === 'undefined') {
+      // d3 not yet loaded — retry
+      setTimeout(render, 100);
+      return;
+    }
+    host.innerHTML = '';
+    const W = Math.min(host.clientWidth || 600, 720);
+    const H = 280;
+    const margin = { top: 24, right: 24, bottom: 44, left: 56 };
+    const innerW = W - margin.left - margin.right;
+    const innerH = H - margin.top - margin.bottom;
+    const svg = d3.select(host).append('svg')
+      .attr('viewBox', `0 0 ${W} ${H}`)
+      .attr('width', '100%').attr('height', H);
+    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const ts = d3.range(0, T_MAX + 1, 4);
+    const lin = ts.map(t => mode === 'beta' ? SCHED.linBeta[t] : SCHED.linAlphaBar[t]);
+    const cos = ts.map(t => mode === 'beta' ? SCHED.cosBeta[t]  : SCHED.cosAlphaBar[t]);
+
+    const x = d3.scaleLinear().domain([0, T_MAX]).range([0, innerW]);
+    const yMax = mode === 'beta' ? Math.max(d3.max(lin), d3.max(cos)) * 1.05 : 1;
+    const y = d3.scaleLinear().domain([0, yMax]).range([innerH, 0]);
+
+    // axes
+    g.append('g').attr('transform', `translate(0,${innerH})`).call(d3.axisBottom(x).ticks(5));
+    g.append('g').call(d3.axisLeft(y).ticks(5));
+    g.append('text').attr('x', innerW / 2).attr('y', innerH + 36)
+      .attr('text-anchor', 'middle').style('font-size', '12px').style('fill', '#697386')
+      .text('timestep t');
+    g.append('text').attr('transform', 'rotate(-90)').attr('x', -innerH / 2).attr('y', -42)
+      .attr('text-anchor', 'middle').style('font-size', '12px').style('fill', '#697386')
+      .text(mode === 'beta' ? 'β_t (per-step variance)' : 'ᾱ_t (signal remaining)');
+
+    const lineGen = (vals) => d3.line()
+      .x((_, i) => x(ts[i]))
+      .y(v => y(v))
+      .curve(d3.curveMonotoneX)(vals);
+
+    g.append('path').attr('d', lineGen(lin)).attr('fill', 'none')
+      .attr('stroke', '#4f46e5').attr('stroke-width', 2.4);
+    g.append('path').attr('d', lineGen(cos)).attr('fill', 'none')
+      .attr('stroke', '#06b6d4').attr('stroke-width', 2.4).attr('stroke-dasharray', '5,4');
+
+    // legend
+    const legend = g.append('g').attr('transform', `translate(${innerW - 130}, 8)`);
+    legend.append('line').attr('x1', 0).attr('x2', 18).attr('y1', 6).attr('y2', 6)
+      .attr('stroke', '#4f46e5').attr('stroke-width', 2.4);
+    legend.append('text').attr('x', 24).attr('y', 10).style('font-size', '12px').style('fill', '#1a1f36').text('linear');
+    legend.append('line').attr('x1', 0).attr('x2', 18).attr('y1', 26).attr('y2', 26)
+      .attr('stroke', '#06b6d4').attr('stroke-width', 2.4).attr('stroke-dasharray', '5,4');
+    legend.append('text').attr('x', 24).attr('y', 30).style('font-size', '12px').style('fill', '#1a1f36').text('cosine');
+  }
+
+  btn.addEventListener('click', () => {
+    mode = (mode === 'beta') ? 'alphabar' : 'beta';
+    btn.textContent = mode === 'beta' ? 'Switch to ᾱ_t view' : 'Switch to β_t view';
+    render();
+  });
+
+  // initial render (wait briefly for D3 to load)
+  setTimeout(render, 300);
+  window.addEventListener('resize', () => render());
+})();
+
+// ===== Interactive 4: Sampling step-through =====
+(function sampling() {
+  const c = document.getElementById('sample-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const stepBtn = document.getElementById('sample-step');
+  const resetBtn = document.getElementById('sample-reset');
+  const tDisp = document.getElementById('sample-t-display');
+
+  const N = 200;
+  // target: same spiral as forward viz
+  const target = [];
+  for (let i = 0; i < N; i++) {
+    const u = i / (N - 1);
+    const theta = u * 6.5;
+    const r = 8 + u * 70;
+    target.push({ x: Math.cos(theta) * r, y: Math.sin(theta) * r });
+  }
+  // noise (for reproducibility within session)
+  const noise0 = [];
+  for (let i = 0; i < N; i++) {
+    const u1 = Math.random(), u2 = Math.random();
+    const z1 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    const z2 = Math.sqrt(-2 * Math.log(u1)) * Math.sin(2 * Math.PI * u2);
+    noise0.push({ x: z1, y: z2 });
+  }
+
+  let t = T_MAX;
+  let pts = noise0.map(n => ({ x: n.x * 80, y: n.y * 70 }));
+  // "trained network" surrogate: predicts noise as the offset from sqrt(ab)*x0
+  // We cheat for the demo since we don't have a real model — but the *form*
+  // of the update matches the real sampling step.
+
+  function predNoise(currentXt, t) {
+    const ab = SCHED.linAlphaBar[t];
+    const sqAb = Math.sqrt(ab);
+    const sqOmAb = Math.sqrt(1 - ab) || 1e-6;
+    return currentXt.map((p, i) => ({
+      x: (p.x - sqAb * target[i].x) / sqOmAb,
+      y: (p.y - sqAb * target[i].y) / sqOmAb
+    }));
+  }
+
+  function draw() {
+    const cx = c.width / 2, cy = c.height / 2;
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, c.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(c.width, cy); ctx.stroke();
+    const ab = SCHED.linAlphaBar[t];
+    for (let i = 0; i < N; i++) {
+      const r = Math.round(6 + (79 - 6) * ab);
+      const g = Math.round(182 + (70 - 182) * ab);
+      const b = Math.round(212 + (229 - 212) * ab);
+      ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.78)';
+      ctx.beginPath();
+      ctx.arc(cx + pts[i].x, cy + pts[i].y, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    tDisp.textContent = 't = ' + t;
+  }
+
+  function step() {
+    if (t === 0) return;
+    const beta_t = SCHED.linBeta[t];
+    const alpha_t = 1 - beta_t;
+    const alphabar_t = SCHED.linAlphaBar[t];
+    const sigma_t = Math.sqrt(beta_t);
+    const eps = predNoise(pts, t);
+    pts = pts.map((p, i) => {
+      let x = (p.x - beta_t / Math.sqrt(1 - alphabar_t) * eps[i].x) / Math.sqrt(alpha_t);
+      let y = (p.y - beta_t / Math.sqrt(1 - alphabar_t) * eps[i].y) / Math.sqrt(alpha_t);
+      if (t > 1) {
+        const u1 = Math.random(), u2 = Math.random();
+        const z1 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+        const z2 = Math.sqrt(-2 * Math.log(u1)) * Math.sin(2 * Math.PI * u2);
+        x += sigma_t * z1 * 25;
+        y += sigma_t * z2 * 25;
+      }
+      return { x, y };
+    });
+    // jump in larger strides so the user doesn't have to click 1000 times
+    t = Math.max(0, t - 25);
+    draw();
+  }
+  function reset() {
+    t = T_MAX;
+    pts = noise0.map(n => ({ x: n.x * 80, y: n.y * 70 }));
+    draw();
+  }
+  stepBtn.addEventListener('click', step);
+  resetBtn.addEventListener('click', reset);
+  draw();
+})();
+
+// ===== Tier 1: copy-to-clipboard on code blocks =====
+document.querySelectorAll('.copy-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const target = document.getElementById(btn.dataset.target);
+    if (!target) return;
+    const text = target.innerText;
+    try {
+      await navigator.clipboard.writeText(text);
+      const orig = btn.textContent;
+      btn.textContent = 'Copied ✓';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = orig;
+        btn.classList.remove('copied');
+      }, 1600);
+    } catch (e) {
+      btn.textContent = 'Press Ctrl+C';
+    }
+  });
+});
+
+// ===== Tier 1: anchor link on headings =====
+document.querySelectorAll('article h2, article h3').forEach(h => {
+  if (!h.id) {
+    h.id = (h.textContent || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+});
+
+})();
+</script>
+
+</body>
+</html>
