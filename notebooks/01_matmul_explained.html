@@ -7531,21 +7531,21 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="Notebook-01:-Matrix-Multiplication-%E2%80%94-From-Python-Loops-to-the-GPU">Notebook 01: Matrix Multiplication — From Python Loops to the GPU<a class="anchor-link" href="#Notebook-01:-Matrix-Multiplication-%E2%80%94-From-Python-Loops-to-the-GPU">¶</a></h1><hr/>
-<h2 id="What-This-Notebook-Covers">What This Notebook Covers<a class="anchor-link" href="#What-This-Notebook-Covers">¶</a></h2><p>This notebook teaches <strong>matrix multiplication</strong> from the ground up — first as a triple-nested Python loop, then progressively replaced with faster and faster machinery until we hit the bare metal of a CUDA kernel running on the GPU. Matrix multiplication is the operation that <em>every</em> neural network is built on, so we earn intuition for the whole rest of the course right here. We will learn:</p>
+<h1 id="Notebook-01:-Matrix-Multiplication-%E2%80%94-From-Python-Loops-to-the-GPU">Notebook 01: Matrix Multiplication &mdash; From Python Loops to the GPU<a class="anchor-link" href="#Notebook-01:-Matrix-Multiplication-%E2%80%94-From-Python-Loops-to-the-GPU">¶</a></h1><hr/>
+<h2 id="What-This-Notebook-Covers">What This Notebook Covers<a class="anchor-link" href="#What-This-Notebook-Covers">¶</a></h2><p>This notebook teaches <strong>matrix multiplication</strong> from the ground up &mdash; first as a triple-nested Python loop, then progressively replaced with faster and faster machinery until we hit the bare metal of a CUDA kernel running on the GPU. Matrix multiplication is the operation that <em>every</em> neural network is built on, so we earn intuition for the whole rest of the course right here. We will learn:</p>
 <ol>
-<li><strong>MNIST data loading and tensor basics</strong> — pickle, gzip, NumPy/PyTorch tensors, indexing, reshaping</li>
-<li><strong>A toy <code>Matrix</code> class and the pivot to PyTorch tensors</strong> — why we don't stay in pure Python</li>
-<li><strong>Pseudo-random number generators</strong> — what <code>torch.randn</code> is actually doing under the hood</li>
-<li><strong>Matmul from scratch with three nested loops</strong> — the slow ground truth</li>
-<li><strong>Numba-accelerated dot product</strong> — replacing the innermost loop with compiled C</li>
-<li><strong>Broadcasting</strong> — eliminating an entire Python loop with a shape-based vectorization rule</li>
-<li><strong>Einstein summation (<code>einsum</code>)</strong> — a compact notation for a whole family of tensor operations</li>
-<li><strong>PyTorch's <code>@</code> operator</strong> — production-grade matmul via BLAS</li>
-<li><strong>CUDA kernels</strong> — what it means to run code on a GPU</li>
-<li><strong>PyTorch on the GPU</strong> — the one-line trick that buys you a ~100,000,000× speedup over a naive Python loop</li>
+<li><strong>MNIST data loading and tensor basics</strong> &mdash; pickle, gzip, NumPy/PyTorch tensors, indexing, reshaping</li>
+<li><strong>A toy <code>Matrix</code> class and the pivot to PyTorch tensors</strong> &mdash; why we don't stay in pure Python</li>
+<li><strong>Pseudo-random number generators</strong> &mdash; what <code>torch.randn</code> is actually doing under the hood</li>
+<li><strong>Matmul from scratch with three nested loops</strong> &mdash; the slow ground truth</li>
+<li><strong>Numba-accelerated dot product</strong> &mdash; replacing the innermost loop with compiled C</li>
+<li><strong>Broadcasting</strong> &mdash; eliminating an entire Python loop with a shape-based vectorization rule</li>
+<li><strong>Einstein summation (<code>einsum</code>)</strong> &mdash; a compact notation for a whole family of tensor operations</li>
+<li><strong>PyTorch's <code>@</code> operator</strong> &mdash; production-grade matmul via BLAS</li>
+<li><strong>CUDA kernels</strong> &mdash; what it means to run code on a GPU</li>
+<li><strong>PyTorch on the GPU</strong> &mdash; the one-line trick that buys you a ~100,000,000&times; speedup over a naive Python loop</li>
 </ol>
-<p>The same physical operation (a 5 × 784 by 784 × 10 multiply) reappears in eight different costumes — each costume is one lesson about how performance is bought in numerical computing.</p>
+<p>The same physical operation (a 5 &times; 784 by 784 &times; 10 multiply) reappears in eight different costumes &mdash; each costume is one lesson about how performance is bought in numerical computing.</p>
 <hr/>
 <h2 id="Why-Matrix-Multiplication?">Why Matrix Multiplication?<a class="anchor-link" href="#Why-Matrix-Multiplication?">¶</a></h2><p>Every layer of every neural network is, fundamentally, a matrix multiplication followed by a nonlinearity. The forward pass of a transformer is mostly matmuls. The attention computation in Stable Diffusion's U-Net is matmuls. Convolution itself can be unrolled into a matmul. When the field says "GPUs are essential for deep learning," what it means is that GPUs are specifically engineered to do many matmuls in parallel.</p>
 <p>So:</p>
@@ -7556,18 +7556,18 @@ a.anchor-link {
 </ul>
 <p>There's a second reason to dwell here: this notebook also doubles as an <strong>introduction to tensors and PyTorch</strong>, which we'll use for the rest of the course. The matmul story is just the spine.</p>
 <hr/>
-<h2 id="Prerequisites">Prerequisites<a class="anchor-link" href="#Prerequisites">¶</a></h2><p>You only need basic Python — comprehensions, functions, classes, <code>import</code>. We'll define everything else (tensors, broadcasting, decorators, CUDA, einsum) from first principles as it comes up.</p>
+<h2 id="Prerequisites">Prerequisites<a class="anchor-link" href="#Prerequisites">¶</a></h2><p>You only need basic Python &mdash; comprehensions, functions, classes, <code>import</code>. We'll define everything else (tensors, broadcasting, decorators, CUDA, einsum) from first principles as it comes up.</p>
 <p>Helpful but not required:</p>
 <ul>
 <li>Comfort with the idea of a 2-D NumPy array (we'll re-introduce it as a PyTorch tensor).</li>
 <li>Vague memory of what a dot product is from linear algebra (we'll re-derive it).</li>
-<li>A GPU on this machine if you want to actually run §11–§12 — but you can read them and understand them without one.</li>
+<li>A GPU on this machine if you want to actually run &sect;11&ndash;&sect;12 &mdash; but you can read them and understand them without one.</li>
 </ul>
 <hr/>
 <h2 id="Relationship-to-01_matmul_with_comments.ipynb">Relationship to <code>01_matmul_with_comments.ipynb</code><a class="anchor-link" href="#Relationship-to-01_matmul_with_comments.ipynb">¶</a></h2><p>This notebook expands on the <code>_with_comments</code> version with three additions:</p>
 <ol>
 <li><strong><code>What does the code above do?</code> cells</strong> after every meaningful code block, with prose explanations and tables.</li>
-<li><strong>Three deep-dive sections</strong> on broadcasting, einsum, and the CUDA execution model — the conceptual pieces that the inline comments can only sketch.</li>
+<li><strong>Three deep-dive sections</strong> on broadcasting, einsum, and the CUDA execution model &mdash; the conceptual pieces that the inline comments can only sketch.</li>
 <li><strong>A summary table</strong> comparing all six matmul implementations.</li>
 </ol>
 <p>The code itself is preserved unchanged from <code>_with_comments</code> so the two files give consistent results when run.</p>
@@ -7582,7 +7582,7 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="Part-0:-Setup-and-Imports">Part 0: Setup and Imports<a class="anchor-link" href="#Part-0:-Setup-and-Imports">¶</a></h1><p>The "foundations" of this course are intentionally tiny — Python itself, matplotlib for plotting, the Python standard library, and Jupyter. Everything else (PyTorch, neural network primitives, training utilities) gets built up from these. The imports below pull in <em>only</em> the standard-library tools we need to load and display MNIST.</p>
+<h1 id="Part-0:-Setup-and-Imports">Part 0: Setup and Imports<a class="anchor-link" href="#Part-0:-Setup-and-Imports">¶</a></h1><p>The "foundations" of this course are intentionally tiny &mdash; Python itself, matplotlib for plotting, the Python standard library, and Jupyter. Everything else (PyTorch, neural network primitives, training utilities) gets built up from these. The imports below pull in <em>only</em> the standard-library tools we need to load and display MNIST.</p>
 </div>
 </div>
 </div>
@@ -7632,7 +7632,7 @@ a.anchor-link {
 <tbody>
 <tr>
 <td><code>pathlib.Path</code></td>
-<td>Cross-platform file paths — replaces messy string concatenation like <code>"data/" + filename</code></td>
+<td>Cross-platform file paths &mdash; replaces messy string concatenation like <code>"data/" + filename</code></td>
 </tr>
 <tr>
 <td><code>pickle</code></td>
@@ -7644,7 +7644,7 @@ a.anchor-link {
 </tr>
 <tr>
 <td><code>math</code></td>
-<td><code>sqrt</code>, <code>ceil</code> — we'll use <code>ceil</code> later when computing CUDA grid dimensions</td>
+<td><code>sqrt</code>, <code>ceil</code> &mdash; we'll use <code>ceil</code> later when computing CUDA grid dimensions</td>
 </tr>
 <tr>
 <td><code>os</code></td>
@@ -7676,9 +7676,9 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Part-1:-Loading-and-Understanding-MNIST">Part 1: Loading and Understanding MNIST<a class="anchor-link" href="#Part-1:-Loading-and-Understanding-MNIST">¶</a></h1><h2 id="What-is-MNIST?">What is MNIST?<a class="anchor-link" href="#What-is-MNIST?">¶</a></h2><p><strong>MNIST</strong> (Modified National Institute of Standards and Technology) is the canonical "Hello World" dataset of machine learning: 70,000 grayscale images of handwritten digits 0–9, each 28 × 28 pixels. It was created by Yann LeCun and collaborators in the 1990s for training postal-code recognizers, and it remains the standard sanity-check for any new model. Tiny, fast to download, easy to visualize, and just hard enough to be interesting.</p>
-<p>Each image arrives as a <em>flat</em> vector of 784 = 28 × 28 floats in <code>[0, 1]</code> — 0 is black, 1 is white. Each label is an integer in <code>{0, 1, …, 9}</code> giving the correct digit.</p>
-<h2 id="Why-does-this-notebook-bother-loading-MNIST?">Why does this notebook bother loading MNIST?<a class="anchor-link" href="#Why-does-this-notebook-bother-loading-MNIST?">¶</a></h2><p>We need <em>something</em> to multiply matrices with. A 50,000 × 784 tensor of pixel values × a 784 × 10 weight matrix is a textbook one-layer classifier and gives the matmuls in §4–§9 something concrete to chew on. The point isn't to train a model — it's to give the matmuls realistic shapes so the timings mean something.</p>
+<h1 id="Part-1:-Loading-and-Understanding-MNIST">Part 1: Loading and Understanding MNIST<a class="anchor-link" href="#Part-1:-Loading-and-Understanding-MNIST">¶</a></h1><h2 id="What-is-MNIST?">What is MNIST?<a class="anchor-link" href="#What-is-MNIST?">¶</a></h2><p><strong>MNIST</strong> (Modified National Institute of Standards and Technology) is the canonical "Hello World" dataset of machine learning: 70,000 grayscale images of handwritten digits 0&ndash;9, each 28 &times; 28 pixels. It was created by Yann LeCun and collaborators in the 1990s for training postal-code recognizers, and it remains the standard sanity-check for any new model. Tiny, fast to download, easy to visualize, and just hard enough to be interesting.</p>
+<p>Each image arrives as a <em>flat</em> vector of 784 = 28 &times; 28 floats in <code>[0, 1]</code> &mdash; 0 is black, 1 is white. Each label is an integer in <code>{0, 1, &hellip;, 9}</code> giving the correct digit.</p>
+<h2 id="Why-does-this-notebook-bother-loading-MNIST?">Why does this notebook bother loading MNIST?<a class="anchor-link" href="#Why-does-this-notebook-bother-loading-MNIST?">¶</a></h2><p>We need <em>something</em> to multiply matrices with. A 50,000 &times; 784 tensor of pixel values &times; a 784 &times; 10 weight matrix is a textbook one-layer classifier and gives the matmuls in &sect;4&ndash;&sect;9 something concrete to chew on. The point isn't to train a model &mdash; it's to give the matmuls realistic shapes so the timings mean something.</p>
 <hr/>
 <h2 id="1.1-Setting-up-the-download">1.1 Setting up the download<a class="anchor-link" href="#1.1-Setting-up-the-download">¶</a></h2>
 </div>
@@ -7728,10 +7728,10 @@ a.anchor-link {
 <p><strong>What does the code above do?</strong></p>
 <p>Prepares the destination for the download but doesn't fetch anything yet:</p>
 <ul>
-<li><code>MNIST_URL</code> is the public mirror of the LeCun pickle, hosted on Michael Nielsen's "Neural Networks and Deep Learning" GitHub. The <code>?raw=true</code> query string is GitHub-specific — it tells the server to send the file bytes, not the styled HTML "view file" page.</li>
+<li><code>MNIST_URL</code> is the public mirror of the LeCun pickle, hosted on Michael Nielsen's "Neural Networks and Deep Learning" GitHub. The <code>?raw=true</code> query string is GitHub-specific &mdash; it tells the server to send the file bytes, not the styled HTML "view file" page.</li>
 <li><code>Path('data')</code> creates a path object pointing at a <code>data/</code> folder relative to the notebook's working directory.</li>
 <li><code>path_data.mkdir(exist_ok=True)</code> ensures that folder exists. <code>exist_ok=True</code> makes it a no-op if it's already there (without that flag, you'd get a <code>FileExistsError</code>).</li>
-<li><code>path_data / 'mnist.pkl.gz'</code> uses <code>Path</code>'s overloaded <code>/</code> operator — much cleaner than <code>os.path.join</code>.</li>
+<li><code>path_data / 'mnist.pkl.gz'</code> uses <code>Path</code>'s overloaded <code>/</code> operator &mdash; much cleaner than <code>os.path.join</code>.</li>
 </ul>
 </div>
 </div>
@@ -7782,7 +7782,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Downloads the dataset <em>only</em> if it isn't already on disk. The <code>if not path_gz.exists()</code> guard is a small thing but it's what makes the notebook safe to re-run — no waiting on a re-download every time you restart the kernel.</p>
+<p>Downloads the dataset <em>only</em> if it isn't already on disk. The <code>if not path_gz.exists()</code> guard is a small thing but it's what makes the notebook safe to re-run &mdash; no waiting on a re-download every time you restart the kernel.</p>
 <p><code>urlretrieve(url, target)</code> is the simplest one-line download in the Python standard library. There's no progress bar; it just blocks until done. For real production code you'd use <code>requests</code> with streaming, but for a one-off 16-MB pickle this is fine.</p>
 </div>
 </div>
@@ -7828,7 +7828,7 @@ a.anchor-link {
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
 <p>The leading <code>!</code> is Jupyter syntax for "run this as a shell command, not as Python." <code>ls -l data</code> lists the contents of the <code>data/</code> folder with file sizes and timestamps. We're checking that the <code>mnist.pkl.gz</code> is there and has roughly the expected size (~16 MB).</p>
-<p>The <code>!</code>-prefixed line is a Jupyter convenience — under the hood it spawns a subshell. It won't work in a plain <code>.py</code> script.</p>
+<p>The <code>!</code>-prefixed line is a Jupyter convenience &mdash; under the hood it spawns a subshell. It won't work in a plain <code>.py</code> script.</p>
 </div>
 </div>
 </div>
@@ -7894,7 +7894,7 @@ a.anchor-link {
 <p><strong>What does the code above do?</strong></p>
 <p>Reads the gzipped pickle in one shot:</p>
 <ol>
-<li><code>gzip.open(path_gz, 'rb')</code> opens the file in <strong>read-binary</strong> mode, decompressing on the fly — we never touch the uncompressed bytes ourselves.</li>
+<li><code>gzip.open(path_gz, 'rb')</code> opens the file in <strong>read-binary</strong> mode, decompressing on the fly &mdash; we never touch the uncompressed bytes ourselves.</li>
 <li><code>pickle.load(f, encoding='latin-1')</code> deserializes the file. The <code>latin-1</code> encoding is needed because the pickle was originally created on Python 2, which stored strings as raw bytes. Without this we'd see a <code>UnicodeDecodeError</code>.</li>
 <li>The pickle contains a tuple <code>((x_train, y_train), (x_valid, y_valid), (x_test, y_test))</code>. We <strong>destructure</strong> all three at once and assign the test split to <code>_</code> to indicate "we don't use this."</li>
 </ol>
@@ -7911,7 +7911,7 @@ a.anchor-link {
 <tbody>
 <tr>
 <td><code>x_train</code></td>
-<td>50,000 × 784 (as a NumPy ndarray)</td>
+<td>50,000 &times; 784 (as a NumPy ndarray)</td>
 <td>float32</td>
 <td>Flattened pixel values in <code>[0, 1]</code></td>
 </tr>
@@ -7919,11 +7919,11 @@ a.anchor-link {
 <td><code>y_train</code></td>
 <td>50,000</td>
 <td>int64</td>
-<td>The correct digit 0–9 for each training image</td>
+<td>The correct digit 0&ndash;9 for each training image</td>
 </tr>
 <tr>
 <td><code>x_valid</code></td>
-<td>10,000 × 784</td>
+<td>10,000 &times; 784</td>
 <td>float32</td>
 <td>Validation pixels</td>
 </tr>
@@ -7935,7 +7935,7 @@ a.anchor-link {
 </tr>
 </tbody>
 </table>
-<p>These are still NumPy arrays at this point — we'll convert them to PyTorch tensors in §1.10.</p>
+<p>These are still NumPy arrays at this point &mdash; we'll convert them to PyTorch tensors in &sect;1.10.</p>
 </div>
 </div>
 </div>
@@ -8002,7 +8002,7 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="1.6-Helper:-chunks()-%E2%80%94-turn-a-flat-list-into-a-2-D-grid">1.6 Helper: <code>chunks()</code> — turn a flat list into a 2-D grid<a class="anchor-link" href="#1.6-Helper:-chunks()-%E2%80%94-turn-a-flat-list-into-a-2-D-grid">¶</a></h2><p>We have 784 numbers and we want a 28 × 28 grid. The cleanest way to do that with only standard Python is a generator that yields successive 28-long slices.</p>
+<h2 id="1.6-Helper:-chunks()-%E2%80%94-turn-a-flat-list-into-a-2-D-grid">1.6 Helper: <code>chunks()</code> &mdash; turn a flat list into a 2-D grid<a class="anchor-link" href="#1.6-Helper:-chunks()-%E2%80%94-turn-a-flat-list-into-a-2-D-grid">¶</a></h2><p>We have 784 numbers and we want a 28 &times; 28 grid. The cleanest way to do that with only standard Python is a generator that yields successive 28-long slices.</p>
 </div>
 </div>
 </div>
@@ -8055,7 +8055,7 @@ a.anchor-link {
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
 <p>Defines a tiny <strong>generator function</strong> that walks the input list in strides of size <code>sz</code> and yields each slice in turn.</p>
-<p><code>yield</code> instead of <code>return</code> is what makes this a generator — instead of building the whole list of chunks in memory, the function emits each chunk lazily as the caller iterates over it. For 784 floats this doesn't matter at all, but the pattern is good to know: generators let you process arbitrarily long streams without ever holding the whole thing in memory.</p>
+<p><code>yield</code> instead of <code>return</code> is what makes this a generator &mdash; instead of building the whole list of chunks in memory, the function emits each chunk lazily as the caller iterates over it. For 784 floats this doesn't matter at all, but the pattern is good to know: generators let you process arbitrarily long streams without ever holding the whole thing in memory.</p>
 <p>Calling <code>list(chunks(vals, 5))</code> materializes the generator into a regular list, which is what the test print shows.</p>
 </div>
 </div>
@@ -8108,7 +8108,7 @@ a.anchor-link {
 <p>Three things in three lines:</p>
 <ol>
 <li><code>mpl.rcParams['image.cmap'] = 'gray'</code> switches matplotlib's default colormap to grayscale. Without this, <code>imshow</code> would render the pixel values through the default <code>viridis</code> colormap (green-to-yellow), which is meaningless for MNIST.</li>
-<li><code>list(chunks(lst1, 28))</code> reshapes the 784-vector into a 28 × 28 nested list.</li>
+<li><code>list(chunks(lst1, 28))</code> reshapes the 784-vector into a 28 &times; 28 nested list.</li>
 <li><code>plt.imshow(...)</code> renders that 2-D array as an image, automatically scaling the displayed brightness to the data range.</li>
 </ol>
 <p><strong>What you should see:</strong> a hand-drawn "5" in white on a black background, slightly off-center as MNIST digits often are.</p>
@@ -8122,7 +8122,7 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="1.8-Alternative:-itertools.islice-%E2%80%94-a-different-way-to-chunk">1.8 Alternative: <code>itertools.islice</code> — a different way to chunk<a class="anchor-link" href="#1.8-Alternative:-itertools.islice-%E2%80%94-a-different-way-to-chunk">¶</a></h2><p>The standard library's <code>itertools.islice</code> does roughly the same job as our <code>chunks</code> function but at the iterator level — useful when you don't want to commit a list to memory. Worth knowing because Jeremy uses this idiom in later notebooks.</p>
+<h2 id="1.8-Alternative:-itertools.islice-%E2%80%94-a-different-way-to-chunk">1.8 Alternative: <code>itertools.islice</code> &mdash; a different way to chunk<a class="anchor-link" href="#1.8-Alternative:-itertools.islice-%E2%80%94-a-different-way-to-chunk">¶</a></h2><p>The standard library's <code>itertools.islice</code> does roughly the same job as our <code>chunks</code> function but at the iterator level &mdash; useful when you don't want to commit a list to memory. Worth knowing because Jeremy uses this idiom in later notebooks.</p>
 </div>
 </div>
 </div>
@@ -8170,9 +8170,9 @@ a.anchor-link {
 <ul>
 <li><code>iter(vals)</code> wraps the list in an iterator object.</li>
 <li><code>islice(it, 5)</code> returns the <em>next</em> 5 items from the iterator's current position.</li>
-<li>After three calls of <code>list(islice(it, 5))</code>, the iterator is exhausted — there are only 10 values in <code>vals</code> and we've pulled them all. The third call returns <code>[]</code>.</li>
+<li>After three calls of <code>list(islice(it, 5))</code>, the iterator is exhausted &mdash; there are only 10 values in <code>vals</code> and we've pulled them all. The third call returns <code>[]</code>.</li>
 </ul>
-<p>This is the difference between iterating a <em>list</em> (you can iterate it as many times as you want — each pass starts at the beginning) and iterating an <em>iterator</em> (one shot only; once consumed, it's done).</p>
+<p>This is the difference between iterating a <em>list</em> (you can iterate it as many times as you want &mdash; each pass starts at the beginning) and iterating an <em>iterator</em> (one shot only; once consumed, it's done).</p>
 </div>
 </div>
 </div>
@@ -8215,15 +8215,15 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Reshapes the 784-element flat image into a 28 × 28 grid using a slightly mind-bending two-argument form of <code>iter</code>:</p>
+<p>Reshapes the 784-element flat image into a 28 &times; 28 grid using a slightly mind-bending two-argument form of <code>iter</code>:</p>
 <p><code>iter(callable, sentinel)</code> builds an iterator that <strong>repeatedly calls <code>callable()</code></strong> and <strong>yields each result</strong> until <code>callable()</code> returns <code>sentinel</code>, at which point iteration stops.</p>
 <p>Here:</p>
 <ul>
-<li><code>callable</code> is the lambda <code>lambda: list(islice(it, 28))</code> — pull the next 28 items from <code>it</code> and return them as a list.</li>
-<li><code>sentinel</code> is <code>[]</code> — when the lambda returns an empty list (because <code>it</code> is exhausted), stop.</li>
+<li><code>callable</code> is the lambda <code>lambda: list(islice(it, 28))</code> &mdash; pull the next 28 items from <code>it</code> and return them as a list.</li>
+<li><code>sentinel</code> is <code>[]</code> &mdash; when the lambda returns an empty list (because <code>it</code> is exhausted), stop.</li>
 </ul>
-<p>Wrapping that whole thing in <code>list(...)</code> materializes a list of 28-element lists — exactly a 28 × 28 image grid. It does the same job as our <code>chunks()</code> helper, just with more standard-library machinery.</p>
-<p>The point is purely educational — <code>chunks()</code> is friendlier — but this idiom is idiomatic in some older Python code and worth being able to read.</p>
+<p>Wrapping that whole thing in <code>list(...)</code> materializes a list of 28-element lists &mdash; exactly a 28 &times; 28 image grid. It does the same job as our <code>chunks()</code> helper, just with more standard-library machinery.</p>
+<p>The point is purely educational &mdash; <code>chunks()</code> is friendlier &mdash; but this idiom is idiomatic in some older Python code and worth being able to read.</p>
 </div>
 </div>
 </div>
@@ -8235,9 +8235,9 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Part-2:-From-Lists-of-Lists-to-PyTorch-Tensors">Part 2: From Lists of Lists to PyTorch Tensors<a class="anchor-link" href="#Part-2:-From-Lists-of-Lists-to-PyTorch-Tensors">¶</a></h1><h2 id="Why-does-this-transition-matter?">Why does this transition matter?<a class="anchor-link" href="#Why-does-this-transition-matter?">¶</a></h2><p>So far our "image" has been a list of lists — pure Python. That's enough to display one digit, but it's catastrophically slow once we want to do real numerical work on thousands of images. Every Python attribute lookup, every <code>[]</code> index, every <code>+</code> operator carries dynamic-typing overhead.</p>
-<p>PyTorch tensors are stored as <strong>contiguous blocks of typed memory</strong> with vectorized C/CUDA kernels operating on them. The same operation that takes ~50 ms in pure Python takes ~50 µs as a tensor op — <em>thousand-fold</em> speedups before you've even left the CPU.</p>
-<p>This part introduces tensors gently — first as a cleaner indexing experience, then as the data primitive that the rest of the course is built on.</p>
+<h1 id="Part-2:-From-Lists-of-Lists-to-PyTorch-Tensors">Part 2: From Lists of Lists to PyTorch Tensors<a class="anchor-link" href="#Part-2:-From-Lists-of-Lists-to-PyTorch-Tensors">¶</a></h1><h2 id="Why-does-this-transition-matter?">Why does this transition matter?<a class="anchor-link" href="#Why-does-this-transition-matter?">¶</a></h2><p>So far our "image" has been a list of lists &mdash; pure Python. That's enough to display one digit, but it's catastrophically slow once we want to do real numerical work on thousands of images. Every Python attribute lookup, every <code>[]</code> index, every <code>+</code> operator carries dynamic-typing overhead.</p>
+<p>PyTorch tensors are stored as <strong>contiguous blocks of typed memory</strong> with vectorized C/CUDA kernels operating on them. The same operation that takes ~50 ms in pure Python takes ~50 µs as a tensor op &mdash; <em>thousand-fold</em> speedups before you've even left the CPU.</p>
+<p>This part introduces tensors gently &mdash; first as a cleaner indexing experience, then as the data primitive that the rest of the course is built on.</p>
 <hr/>
 <h2 id="2.1-Accessing-elements-in-a-list-of-lists">2.1 Accessing elements in a list of lists<a class="anchor-link" href="#2.1-Accessing-elements-in-a-list-of-lists">¶</a></h2>
 </div>
@@ -8274,7 +8274,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Pulls the pixel value at row 20, column 15 of the 28 × 28 nested list. Notice the awkward double-bracket syntax: <code>img[20][15]</code>. That's two separate operations — <code>img[20]</code> first returns the row (a 28-element list), then <code>[15]</code> indexes into that.</p>
+<p>Pulls the pixel value at row 20, column 15 of the 28 &times; 28 nested list. Notice the awkward double-bracket syntax: <code>img[20][15]</code>. That's two separate operations &mdash; <code>img[20]</code> first returns the row (a 28-element list), then <code>[15]</code> indexes into that.</p>
 <p>It works, but it forces you to think of a matrix as "a list of rows," which is one valid mental model but not the cleanest one. The next subsection builds a tiny Matrix class so we can write <code>m[20, 15]</code> instead.</p>
 </div>
 </div>
@@ -8351,8 +8351,8 @@ a.anchor-link {
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
 <p>Defines a class with a single piece of magic: a custom <code>__getitem__</code> method.</p>
-<p>When Python sees <code>m[20, 15]</code>, it interprets the <strong>comma inside the brackets</strong> as a tuple — so the call is really <code>m.__getitem__((20, 15))</code>. Our class catches that tuple, splits it into <code>row, col</code>, and does the usual <code>self.xs[row][col]</code>.</p>
-<p>It's three lines of plumbing that buys us math-textbook indexing notation. PyTorch tensors give us the same thing for free, but the pattern of using <code>__getitem__</code> to repurpose <code>[]</code> shows up constantly in the course — <code>DataLoader[i]</code>, <code>Learner[name]</code>, callback registries, etc. Worth seeing in isolation.</p>
+<p>When Python sees <code>m[20, 15]</code>, it interprets the <strong>comma inside the brackets</strong> as a tuple &mdash; so the call is really <code>m.__getitem__((20, 15))</code>. Our class catches that tuple, splits it into <code>row, col</code>, and does the usual <code>self.xs[row][col]</code>.</p>
+<p>It's three lines of plumbing that buys us math-textbook indexing notation. PyTorch tensors give us the same thing for free, but the pattern of using <code>__getitem__</code> to repurpose <code>[]</code> shows up constantly in the course &mdash; <code>DataLoader[i]</code>, <code>Learner[name]</code>, callback registries, etc. Worth seeing in isolation.</p>
 </div>
 </div>
 </div>
@@ -8363,7 +8363,7 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="2.3-PyTorch-tensors-%E2%80%94-the-real-workhorse">2.3 PyTorch tensors — the real workhorse<a class="anchor-link" href="#2.3-PyTorch-tensors-%E2%80%94-the-real-workhorse">¶</a></h2><p>PyTorch tensors are the data primitive for the rest of the course. They are:</p>
+<h2 id="2.3-PyTorch-tensors-%E2%80%94-the-real-workhorse">2.3 PyTorch tensors &mdash; the real workhorse<a class="anchor-link" href="#2.3-PyTorch-tensors-%E2%80%94-the-real-workhorse">¶</a></h2><p>PyTorch tensors are the data primitive for the rest of the course. They are:</p>
 <ul>
 <li><strong>Typed contiguous memory</strong> (no Python object overhead per element).</li>
 <li><strong>Operated on by vectorized C++/CUDA kernels</strong> (no Python loop per element).</li>
@@ -8412,7 +8412,7 @@ a.anchor-link {
 <li><code>from torch import tensor</code> gives us the factory function <code>tensor(...)</code> directly. The same as calling <code>torch.tensor([1, 2, 3])</code> but shorter.</li>
 <li><code>tensor([1, 2, 3])</code> infers the dtype as <code>int64</code> (because the inputs are Python ints) and allocates a small chunk of CPU memory holding the three values back-to-back.</li>
 </ul>
-<p><code>type(simple_tensor)</code> confirms it's a <code>torch.Tensor</code> instance — not a list, not a NumPy array.</p>
+<p><code>type(simple_tensor)</code> confirms it's a <code>torch.Tensor</code> instance &mdash; not a list, not a NumPy array.</p>
 </div>
 </div>
 </div>
@@ -8451,8 +8451,8 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Converts all four NumPy arrays into PyTorch tensors in one line using <code>map</code>. After this cell, every <code>x_train</code>, <code>y_train</code>, etc. is a <code>torch.Tensor</code> — the original NumPy arrays are gone (<code>map</code> returns new objects; the names are rebound).</p>
-<p><code>x_train.shape</code> reports <code>(50000, 784)</code> — a 2-D tensor with 50,000 rows and 784 columns. The shape attribute returns a <code>torch.Size</code>, which behaves like a tuple but with a few extras.</p>
+<p>Converts all four NumPy arrays into PyTorch tensors in one line using <code>map</code>. After this cell, every <code>x_train</code>, <code>y_train</code>, etc. is a <code>torch.Tensor</code> &mdash; the original NumPy arrays are gone (<code>map</code> returns new objects; the names are rebound).</p>
+<p><code>x_train.shape</code> reports <code>(50000, 784)</code> &mdash; a 2-D tensor with 50,000 rows and 784 columns. The shape attribute returns a <code>torch.Size</code>, which behaves like a tuple but with a few extras.</p>
 </div>
 </div>
 </div>
@@ -8495,7 +8495,7 @@ a.anchor-link {
 <tbody>
 <tr>
 <td><code>torch.float32</code> (a.k.a. <code>FloatTensor</code>)</td>
-<td>Default for everything — features, weights, activations</td>
+<td>Default for everything &mdash; features, weights, activations</td>
 </tr>
 <tr>
 <td><code>torch.float16</code> / <code>torch.bfloat16</code></td>
@@ -8525,7 +8525,7 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="2.4-Reshaping-tensors">2.4 Reshaping tensors<a class="anchor-link" href="#2.4-Reshaping-tensors">¶</a></h2><p><code>reshape</code> lets us re-interpret a contiguous block of memory as a different shape <em>without copying the underlying data</em>. A 50,000 × 784 tensor and a 50,000 × 28 × 28 tensor pointing at the same memory are different "views" of the same 39,200,000 floats.</p>
+<h2 id="2.4-Reshaping-tensors">2.4 Reshaping tensors<a class="anchor-link" href="#2.4-Reshaping-tensors">¶</a></h2><p><code>reshape</code> lets us re-interpret a contiguous block of memory as a different shape <em>without copying the underlying data</em>. A 50,000 &times; 784 tensor and a 50,000 &times; 28 &times; 28 tensor pointing at the same memory are different "views" of the same 39,200,000 floats.</p>
 </div>
 </div>
 </div>
@@ -8565,8 +8565,8 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Re-interprets the (50000, 784) flat tensor as a (50000, 28, 28) image tensor. The <code>-1</code> in <code>reshape((-1, 28, 28))</code> is a "figure-it-out-for-me" placeholder: PyTorch sees that two of the three dimensions are 28, and the total element count is 50000 × 784 = 39200000, so the unknown dimension must be 39200000 / (28 × 28) = 50000.</p>
-<p>No data is moved — <code>imgs</code> and <code>x_train</code> point at the same memory; only the stride information differs. That's why reshape is essentially free (microseconds, not milliseconds).</p>
+<p>Re-interprets the (50000, 784) flat tensor as a (50000, 28, 28) image tensor. The <code>-1</code> in <code>reshape((-1, 28, 28))</code> is a "figure-it-out-for-me" placeholder: PyTorch sees that two of the three dimensions are 28, and the total element count is 50000 &times; 784 = 39200000, so the unknown dimension must be 39200000 / (28 &times; 28) = 50000.</p>
+<p>No data is moved &mdash; <code>imgs</code> and <code>x_train</code> point at the same memory; only the stride information differs. That's why reshape is essentially free (microseconds, not milliseconds).</p>
 </div>
 </div>
 </div>
@@ -8599,8 +8599,8 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Displays the first reshaped image. Notice we can pass <code>imgs[0]</code> directly to <code>plt.imshow</code> now — no more <code>list(chunks(...))</code> ceremony. Tensors talk to matplotlib natively.</p>
-<p><strong>What you should see:</strong> the same "5" from §1.7, but the title also reports the ground-truth label from <code>y_train[0]</code>. <code>.item()</code> extracts the Python int from a zero-dimensional tensor.</p>
+<p>Displays the first reshaped image. Notice we can pass <code>imgs[0]</code> directly to <code>plt.imshow</code> now &mdash; no more <code>list(chunks(...))</code> ceremony. Tensors talk to matplotlib natively.</p>
+<p><strong>What you should see:</strong> the same "5" from &sect;1.7, but the title also reports the ground-truth label from <code>y_train[0]</code>. <code>.item()</code> extracts the Python int from a zero-dimensional tensor.</p>
 </div>
 </div>
 </div>
@@ -8634,8 +8634,8 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Demonstrates multi-axis tensor indexing: <code>imgs[0, 20, 15]</code> — read as "image 0, row 20, column 15." All three indices go inside <em>one</em> set of brackets. Compare with the lists-of-lists version <code>img[0][20][15]</code>, which requires three separate <code>__getitem__</code> calls.</p>
-<p>This isn't just cleaner syntax — under the hood, the tensor index is computed in a single C call instead of bouncing through three Python object lookups.</p>
+<p>Demonstrates multi-axis tensor indexing: <code>imgs[0, 20, 15]</code> &mdash; read as "image 0, row 20, column 15." All three indices go inside <em>one</em> set of brackets. Compare with the lists-of-lists version <code>img[0][20][15]</code>, which requires three separate <code>__getitem__</code> calls.</p>
+<p>This isn't just cleaner syntax &mdash; under the hood, the tensor index is computed in a single C call instead of bouncing through three Python object lookups.</p>
 </div>
 </div>
 </div>
@@ -8674,10 +8674,10 @@ a.anchor-link {
 <p><strong>What does the code above do?</strong></p>
 <p>Destructures the 2-D shape <code>(50000, 784)</code> into two named variables, <code>n</code> and <code>c</code>:</p>
 <ul>
-<li><code>n</code> = 50,000 — the number of training samples.</li>
-<li><code>c</code> = 784 — the number of features (pixels) per sample.</li>
+<li><code>n</code> = 50,000 &mdash; the number of training samples.</li>
+<li><code>c</code> = 784 &mdash; the number of features (pixels) per sample.</li>
 </ul>
-<p>Then prints the labels and their shape. <code>y_train.shape</code> is just <code>(50000,)</code> — a 1-D tensor of length 50,000 — because each image has exactly one label.</p>
+<p>Then prints the labels and their shape. <code>y_train.shape</code> is just <code>(50000,)</code> &mdash; a 1-D tensor of length 50,000 &mdash; because each image has exactly one label.</p>
 <p>The variable names <code>n</code> and <code>c</code> are conventional: <strong>n</strong> for "number of examples," <strong>c</strong> for "channels/features." We'll see them again.</p>
 </div>
 </div>
@@ -8720,8 +8720,8 @@ a.anchor-link {
 <p><strong>What does the code above do?</strong></p>
 <p>Compares two ways to compute min/max:</p>
 <ul>
-<li><code>min(y_train)</code> / <code>max(y_train)</code> — Python's built-in functions, which iterate over the tensor element-by-element in Python. Slow for large tensors.</li>
-<li><code>y_train.min()</code> / <code>y_train.max()</code> — tensor methods that call into a vectorized C kernel. Fast.</li>
+<li><code>min(y_train)</code> / <code>max(y_train)</code> &mdash; Python's built-in functions, which iterate over the tensor element-by-element in Python. Slow for large tensors.</li>
+<li><code>y_train.min()</code> / <code>y_train.max()</code> &mdash; tensor methods that call into a vectorized C kernel. Fast.</li>
 </ul>
 <p>Both return the same answer (0 and 9), but the tensor methods are dramatically faster on big tensors. Get in the habit of using <code>.min()</code> / <code>.max()</code> / <code>.sum()</code> / <code>.mean()</code> on tensors; reach for the Python built-ins only when you really need Python-list semantics.</p>
 </div>
@@ -8735,16 +8735,16 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Part-3:-Random-Numbers-%E2%80%94-How-torch.randn-Actually-Works">Part 3: Random Numbers — How <code>torch.randn</code> Actually Works<a class="anchor-link" href="#Part-3:-Random-Numbers-%E2%80%94-How-torch.randn-Actually-Works">¶</a></h1><h2 id="Why-a-digression-on-RNGs?">Why a digression on RNGs?<a class="anchor-link" href="#Why-a-digression-on-RNGs?">¶</a></h2><p>Diffusion models, neural network initialization, dropout, data augmentation — they all depend on a steady supply of random numbers. But computers are deterministic; they can't produce <em>true</em> randomness without specialized hardware. They use <strong>pseudo-random number generators (PRNGs)</strong>: deterministic functions of an internal state that produce sequences indistinguishable from random for practical purposes.</p>
+<h1 id="Part-3:-Random-Numbers-%E2%80%94-How-torch.randn-Actually-Works">Part 3: Random Numbers &mdash; How <code>torch.randn</code> Actually Works<a class="anchor-link" href="#Part-3:-Random-Numbers-%E2%80%94-How-torch.randn-Actually-Works">¶</a></h1><h2 id="Why-a-digression-on-RNGs?">Why a digression on RNGs?<a class="anchor-link" href="#Why-a-digression-on-RNGs?">¶</a></h2><p>Diffusion models, neural network initialization, dropout, data augmentation &mdash; they all depend on a steady supply of random numbers. But computers are deterministic; they can't produce <em>true</em> randomness without specialized hardware. They use <strong>pseudo-random number generators (PRNGs)</strong>: deterministic functions of an internal state that produce sequences indistinguishable from random for practical purposes.</p>
 <p>Understanding the PRNG you depend on matters because:</p>
 <ol>
 <li><strong>Reproducibility.</strong> A seed lets you replay the exact same "random" sequence. Critical for debugging and for papers that should be reproducible.</li>
-<li><strong>Quality.</strong> Bad PRNGs have patterns — repeating cycles, correlations between successive draws — that can poison your experiment.</li>
+<li><strong>Quality.</strong> Bad PRNGs have patterns &mdash; repeating cycles, correlations between successive draws &mdash; that can poison your experiment.</li>
 <li><strong>Speed.</strong> Producing the random numbers themselves can become a bottleneck if you're not careful.</li>
 </ol>
-<p>We'll build a toy PRNG from scratch (Wichmann–Hill, an algorithm from the 1980s) so you see one all the way through. Then we'll benchmark it against PyTorch's built-in generator and see why "writing your own" is a learning exercise, not a production move.</p>
+<p>We'll build a toy PRNG from scratch (Wichmann&ndash;Hill, an algorithm from the 1980s) so you see one all the way through. Then we'll benchmark it against PyTorch's built-in generator and see why "writing your own" is a learning exercise, not a production move.</p>
 <hr/>
-<h2 id="3.1-The-Wichmann%E2%80%93Hill-algorithm">3.1 The Wichmann–Hill algorithm<a class="anchor-link" href="#3.1-The-Wichmann%E2%80%93Hill-algorithm">¶</a></h2>
+<h2 id="3.1-The-Wichmann%E2%80%93Hill-algorithm">3.1 The Wichmann&ndash;Hill algorithm<a class="anchor-link" href="#3.1-The-Wichmann%E2%80%93Hill-algorithm">¶</a></h2>
 </div>
 </div>
 </div>
@@ -8801,8 +8801,8 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Initializes a three-part state from a single user-supplied seed. The Wichmann–Hill algorithm combines three independent linear congruential generators (LCGs); the seed needs to be split into three starting states.</p>
-<p><code>divmod(a, b)</code> returns the quotient and the remainder as a tuple. We use it three times to peel off three pieces of the seed, modulo three different primes (well, three coprime numbers). The <code>+1</code> is a fix to ensure none of the states is zero — an LCG seeded with zero gets stuck producing zero forever.</p>
+<p>Initializes a three-part state from a single user-supplied seed. The Wichmann&ndash;Hill algorithm combines three independent linear congruential generators (LCGs); the seed needs to be split into three starting states.</p>
+<p><code>divmod(a, b)</code> returns the quotient and the remainder as a tuple. We use it three times to peel off three pieces of the seed, modulo three different primes (well, three coprime numbers). The <code>+1</code> is a fix to ensure none of the states is zero &mdash; an LCG seeded with zero gets stuck producing zero forever.</p>
 <p>After this cell, <code>rnd_state</code> is a tuple <code>(x, y, z)</code> of three positive integers ready to be evolved.</p>
 </div>
 </div>
@@ -8906,7 +8906,7 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Plots 50 successive draws against their index. If the generator is doing its job, the line should look like noise — no obvious trend, no repeating pattern.</p>
+<p>Plots 50 successive draws against their index. If the generator is doing its job, the line should look like noise &mdash; no obvious trend, no repeating pattern.</p>
 <p><strong>What you should see:</strong> a jagged line bouncing around the middle of the <code>[0, 1]</code> range with no visible structure.</p>
 </div>
 </div>
@@ -8947,8 +8947,8 @@ a.anchor-link {
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
 <p>Drops 10,000 draws into a 20-bin histogram. If the generator's marginal distribution is uniform on <code>[0, 1]</code>, every bin should be roughly equally tall (500 ± noise per bin).</p>
-<p><strong>What you should see:</strong> twenty bars of roughly the same height. Wichmann–Hill is good enough that the variation is just statistical noise.</p>
-<p>A <em>bad</em> generator would show systematic gaps or peaks — values clustered in some part of the range. This was actually a common bug in older RNGs; one famous example, RANDU, had outputs that all fell on 15 hyperplanes in 3-D space.</p>
+<p><strong>What you should see:</strong> twenty bars of roughly the same height. Wichmann&ndash;Hill is good enough that the variation is just statistical noise.</p>
+<p>A <em>bad</em> generator would show systematic gaps or peaks &mdash; values clustered in some part of the range. This was actually a common bug in older RNGs; one famous example, RANDU, had outputs that all fell on 15 hyperplanes in 3-D space.</p>
 </div>
 </div>
 </div>
@@ -8989,10 +8989,10 @@ a.anchor-link {
 <p><strong>What does the code above do?</strong></p>
 <p>Times two ways to generate 7840 random numbers (the right amount for one mini-batch of 10 MNIST images):</p>
 <ol>
-<li>Our Python <code>rand()</code> called 7840 times in a list comprehension, then passed to <code>chunks</code> to reshape — pure interpreted Python from top to bottom.</li>
-<li><code>torch.randn(784, 10)</code> — one call into a compiled C kernel that fills 7840 normally distributed floats.</li>
+<li>Our Python <code>rand()</code> called 7840 times in a list comprehension, then passed to <code>chunks</code> to reshape &mdash; pure interpreted Python from top to bottom.</li>
+<li><code>torch.randn(784, 10)</code> &mdash; one call into a compiled C kernel that fills 7840 normally distributed floats.</li>
 </ol>
-<p>The PyTorch call is ~1000× faster, and it doesn't even share the same distribution (PyTorch gives you a <em>normal</em> <code>N(0, 1)</code> while our <code>rand()</code> gives uniform <code>U(0, 1)</code>). The lesson: in production, <strong>never roll your own RNG.</strong> You'll lose speed and statistical quality both. The Wichmann–Hill exercise was for understanding — <code>torch.randn</code> is for actual use.</p>
+<p>The PyTorch call is ~1000&times; faster, and it doesn't even share the same distribution (PyTorch gives you a <em>normal</em> <code>N(0, 1)</code> while our <code>rand()</code> gives uniform <code>U(0, 1)</code>). The lesson: in production, <strong>never roll your own RNG.</strong> You'll lose speed and statistical quality both. The Wichmann&ndash;Hill exercise was for understanding &mdash; <code>torch.randn</code> is for actual use.</p>
 </div>
 </div>
 </div>
@@ -9004,13 +9004,13 @@ a.anchor-link {
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Part-4:-Matrix-Multiplication-%E2%80%94-The-Naive-Triple-Loop">Part 4: Matrix Multiplication — The Naive Triple Loop<a class="anchor-link" href="#Part-4:-Matrix-Multiplication-%E2%80%94-The-Naive-Triple-Loop">¶</a></h1><h2 id="Setting-the-stage">Setting the stage<a class="anchor-link" href="#Setting-the-stage">¶</a></h2><p>This is the canonical operation. Given a matrix $A$ of shape $(M, K)$ and a matrix $B$ of shape $(K, N)$, the product $C = AB$ has shape $(M, N)$ and is defined elementwise by</p>
-$$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>The formula is the universe in a teaspoon — every fast implementation in this notebook computes exactly this, just with different ways of organizing the work.</p>
+<h1 id="Part-4:-Matrix-Multiplication-%E2%80%94-The-Naive-Triple-Loop">Part 4: Matrix Multiplication &mdash; The Naive Triple Loop<a class="anchor-link" href="#Part-4:-Matrix-Multiplication-%E2%80%94-The-Naive-Triple-Loop">¶</a></h1><h2 id="Setting-the-stage">Setting the stage<a class="anchor-link" href="#Setting-the-stage">¶</a></h2><p>This is the canonical operation. Given a matrix $A$ of shape $(M, K)$ and a matrix $B$ of shape $(K, N)$, the product $C = AB$ has shape $(M, N)$ and is defined elementwise by</p>
+$$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>The formula is the universe in a teaspoon &mdash; every fast implementation in this notebook computes exactly this, just with different ways of organizing the work.</p>
 <p>For our running example:</p>
 <ul>
 <li>$A$ = the first 5 validation images, shape (5, 784). Think of each row as an image.</li>
 <li>$B$ = a randomly initialized weight matrix, shape (784, 10). Think of each column as a "class detector" for one of the 10 digits.</li>
-<li>$C = AB$ has shape (5, 10) — five rows of ten "scores," one score per (image, class) pair.</li>
+<li>$C = AB$ has shape (5, 10) &mdash; five rows of ten "scores," one score per (image, class) pair.</li>
 </ul>
 <p>This is exactly the linear layer of a one-layer digit classifier. We're not training it (the weights are random), but the <em>shapes</em> and <em>operations</em> are identical to what a neural network does. Get matmul right and you have the spine of the entire course.</p>
 <hr/>
@@ -9060,8 +9060,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>The formula is the universe in 
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
 <p><code>torch.manual_seed(1)</code> pegs PyTorch's global RNG so the next <code>torch.randn</code> call returns the same values every time you run the cell. This is the standard reproducibility incantation.</p>
-<p><code>torch.randn(784, 10)</code> draws 7840 numbers from <code>N(0, 1)</code> and reshapes them into a 784 × 10 matrix. This is one of the standard initialization tricks for neural network weights — start small and Gaussian. We'll dig much deeper into initialization in notebook 11.</p>
-<p><code>torch.zeros(10)</code> is the bias term for our (untrained) classifier — a 10-vector of zeros. We won't actually use the bias in the matmul, but it's natural to introduce it alongside the weights.</p>
+<p><code>torch.randn(784, 10)</code> draws 7840 numbers from <code>N(0, 1)</code> and reshapes them into a 784 &times; 10 matrix. This is one of the standard initialization tricks for neural network weights &mdash; start small and Gaussian. We'll dig much deeper into initialization in notebook 11.</p>
+<p><code>torch.zeros(10)</code> is the bias term for our (untrained) classifier &mdash; a 10-vector of zeros. We won't actually use the bias in the matmul, but it's natural to introduce it alongside the weights.</p>
 </div>
 </div>
 </div>
@@ -9102,7 +9102,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>The formula is the universe in 
 <p><strong>What does the code above do?</strong></p>
 <p>Picks out the first five validation images as our running input matrix <code>m1</code>. Five is small enough that the naive triple loop will finish in under a second, but large enough that broadcasting will visibly help later.</p>
 <p><code>x_valid[:5]</code> is standard NumPy-style slicing: rows 0 through 4 inclusive, all columns. Shape: (5, 784).</p>
-<p>The print statement is doing the matmul-compatibility check by hand: $A$'s number of <em>columns</em> (784) must equal $B$'s number of <em>rows</em> (784). Output shape is $A$'s rows × $B$'s columns = (5, 10).</p>
+<p>The print statement is doing the matmul-compatibility check by hand: $A$'s number of <em>columns</em> (784) must equal $B$'s number of <em>rows</em> (784). Output shape is $A$'s rows &times; $B$'s columns = (5, 10).</p>
 </div>
 </div>
 </div>
@@ -9154,6 +9154,23 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>The formula is the universe in 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<div class="ce-interactive">
+  <h3>Interactive: Matmul, step by step</h3>
+  <p class="ce-interactive-hint">Click <strong>Next step</strong> to compute one multiply-add of <code>C = A &times; B</code>. Watch the highlighted row of A and column of B come together to fill in one cell of C, one product at a time. <strong>Auto-play</strong> runs the whole 24-step computation.</p>
+  <div id="mm-widget" class="mm-widget">
+    <div class="mm-grids" id="mm-grids"></div>
+    <div class="mm-formula" id="mm-formula"></div>
+  </div>
+  <div class="ms-controls">
+    <button id="mm-step" class="ms-btn">Next step</button>
+    <button id="mm-auto" class="ms-btn">Auto-play</button>
+    <button id="mm-reset" class="ms-btn ms-secondary">Reset</button>
+    <span class="ms-val" id="mm-progress">0 / 24</span>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>What you're seeing:</strong> the textbook definition <code>C[i,j] = &sum;<sub>k</sub> A[i,k] &times; B[k,j]</code>. The triple loop in the code below does exactly this &mdash; 24 multiply-adds for a 3&times;4 by 4&times;2 matmul. For real-world MNIST (5&times;784 by 784&times;10) it's 39,200 multiply-adds for just 5 images, all in Python's slow interpreter.
+  </p>
+</div>
 <h2 id="4.2-Matmul-as-three-nested-loops">4.2 Matmul as three nested loops<a class="anchor-link" href="#4.2-Matmul-as-three-nested-loops">¶</a></h2>
 </div>
 </div>
@@ -9202,8 +9219,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
         for each k:            # inner loop:  K iterations
             C[i,j] += A[i,k] * B[k,j]
 </code></pre>
-<p>For our 5 × 784 by 784 × 10 example, that's 5 × 10 × 784 = <strong>39,200</strong> iterations of the innermost line. Each iteration is a Python multiplication and an in-place tensor add — both expensive in the interpreter.</p>
-<p>This implementation is correct. It's also catastrophically slow. The rest of Parts 5–9 are six progressively cleverer ways to do the exact same calculation.</p>
+<p>For our 5 &times; 784 by 784 &times; 10 example, that's 5 &times; 10 &times; 784 = <strong>39,200</strong> iterations of the innermost line. Each iteration is a Python multiplication and an in-place tensor add &mdash; both expensive in the interpreter.</p>
+<p>This implementation is correct. It's also catastrophically slow. The rest of Parts 5&ndash;9 are six progressively cleverer ways to do the exact same calculation.</p>
 </div>
 </div>
 </div>
@@ -9242,8 +9259,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Lowers the float display precision (2 decimal places, 140-char line width, no scientific notation) so the output matrix is readable, then prints it. Each row of the 5 × 10 output is one image's "class scores" — a vector of 10 numbers, one per digit class.</p>
-<p>The values look meaningless because the weights are random — we haven't trained anything. But the <em>shape</em> (5, 10) and the <em>operation</em> (one matmul per layer) are exactly what a one-layer neural network classifier does in the wild.</p>
+<p>Lowers the float display precision (2 decimal places, 140-char line width, no scientific notation) so the output matrix is readable, then prints it. Each row of the 5 &times; 10 output is one image's "class scores" &mdash; a vector of 10 numbers, one per digit class.</p>
+<p>The values look meaningless because the weights are random &mdash; we haven't trained anything. But the <em>shape</em> (5, 10) and the <em>operation</em> (one matmul per layer) are exactly what a one-layer neural network classifier does in the wild.</p>
 </div>
 </div>
 </div>
@@ -9315,8 +9332,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Wraps the triple loop in a function with a docstring. Identical logic to §4.2; nothing new computationally. The reason to bother: we'll re-define <code>matmul</code> six more times in this notebook with different implementations and a common signature, so user code can swap implementations without changing.</p>
-<p>The <code>torch.allclose(t1, result)</code> check verifies the function's output matches what we computed step-by-step in §4.2 — a sanity check that the refactor didn't introduce bugs.</p>
+<p>Wraps the triple loop in a function with a docstring. Identical logic to &sect;4.2; nothing new computationally. The reason to bother: we'll re-define <code>matmul</code> six more times in this notebook with different implementations and a common signature, so user code can swap implementations without changing.</p>
+<p>The <code>torch.allclose(t1, result)</code> check verifies the function's output matches what we computed step-by-step in &sect;4.2 &mdash; a sanity check that the refactor didn't introduce bugs.</p>
 </div>
 </div>
 </div>
@@ -9353,8 +9370,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p><code>%time</code> is a Jupyter line magic that reports how long the line takes to execute. For the naive triple loop on 5 images, expect somewhere around 500 ms — half a second of Python interpreter overhead grinding through 39,200 multiplications.</p>
-<p>The print statement does the projection: if 39,200 multiplications take 500 ms, then 50,000 × 10 × 784 = 392,000,000 multiplications would take ~5,000 seconds. <strong>More than an hour.</strong> That's the disaster we're about to solve.</p>
+<p><code>%time</code> is a Jupyter line magic that reports how long the line takes to execute. For the naive triple loop on 5 images, expect somewhere around 500 ms &mdash; half a second of Python interpreter overhead grinding through 39,200 multiplications.</p>
+<p>The print statement does the projection: if 39,200 multiplications take 500 ms, then 50,000 &times; 10 &times; 784 = 392,000,000 multiplications would take ~5,000 seconds. <strong>More than an hour.</strong> That's the disaster we're about to solve.</p>
 </div>
 </div>
 </div>
@@ -9366,10 +9383,10 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Part-5:-First-Speedup-%E2%80%94-Numba-Compiled-Dot-Product">Part 5: First Speedup — Numba-Compiled Dot Product<a class="anchor-link" href="#Part-5:-First-Speedup-%E2%80%94-Numba-Compiled-Dot-Product">¶</a></h1><h2 id="Where-the-time-is-going">Where the time is going<a class="anchor-link" href="#Where-the-time-is-going">¶</a></h2><p>The triple loop in §4 is slow for one specific reason: <strong>the Python interpreter pays a constant per-operation tax</strong> (type checking, attribute lookups, object boxing/unboxing). For a simple operation like <code>c[i,j] += a[i,k] * b[k,j]</code>, that tax can be 50× the cost of the actual arithmetic.</p>
-<p>The interpreter tax is paid most often by the <strong>innermost</strong> loop, because that's the one that runs the most times. If we can compile that loop to machine code — skipping Python entirely for those 784 iterations — we get most of the win without rewriting the whole function.</p>
-<h2 id="Numba-in-one-paragraph">Numba in one paragraph<a class="anchor-link" href="#Numba-in-one-paragraph">¶</a></h2><p><strong>Numba</strong> is a just-in-time (JIT) compiler for Python. You decorate a function with <code>@njit</code> and on its first call Numba inspects the types, generates LLVM IR, and compiles to native machine code. Subsequent calls run the compiled version, which is typically 10–100× faster than interpreted Python.</p>
-<p>The catch: Numba only supports a subset of Python and NumPy. Anything fancy (custom classes, Python data structures other than tuples/lists/arrays) won't compile. For numerical inner loops this is fine — that's exactly the kind of code Numba is good at.</p>
+<h1 id="Part-5:-First-Speedup-%E2%80%94-Numba-Compiled-Dot-Product">Part 5: First Speedup &mdash; Numba-Compiled Dot Product<a class="anchor-link" href="#Part-5:-First-Speedup-%E2%80%94-Numba-Compiled-Dot-Product">¶</a></h1><h2 id="Where-the-time-is-going">Where the time is going<a class="anchor-link" href="#Where-the-time-is-going">¶</a></h2><p>The triple loop in &sect;4 is slow for one specific reason: <strong>the Python interpreter pays a constant per-operation tax</strong> (type checking, attribute lookups, object boxing/unboxing). For a simple operation like <code>c[i,j] += a[i,k] * b[k,j]</code>, that tax can be 50&times; the cost of the actual arithmetic.</p>
+<p>The interpreter tax is paid most often by the <strong>innermost</strong> loop, because that's the one that runs the most times. If we can compile that loop to machine code &mdash; skipping Python entirely for those 784 iterations &mdash; we get most of the win without rewriting the whole function.</p>
+<h2 id="Numba-in-one-paragraph">Numba in one paragraph<a class="anchor-link" href="#Numba-in-one-paragraph">¶</a></h2><p><strong>Numba</strong> is a just-in-time (JIT) compiler for Python. You decorate a function with <code>@njit</code> and on its first call Numba inspects the types, generates LLVM IR, and compiles to native machine code. Subsequent calls run the compiled version, which is typically 10&ndash;100&times; faster than interpreted Python.</p>
+<p>The catch: Numba only supports a subset of Python and NumPy. Anything fancy (custom classes, Python data structures other than tuples/lists/arrays) won't compile. For numerical inner loops this is fine &mdash; that's exactly the kind of code Numba is good at.</p>
 <hr/>
 <h2 id="5.1-A-Numba-compiled-dot-product">5.1 A Numba-compiled dot product<a class="anchor-link" href="#5.1-A-Numba-compiled-dot-product">¶</a></h2>
 </div>
@@ -9421,9 +9438,9 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Defines a textbook dot product — multiply corresponding elements, sum them up — and decorates it with <code>@njit</code>. The decorator tells Numba: "compile this to native code on first call; don't fall back to interpreted Python."</p>
-<p>The function itself is pure: it takes two 1-D arrays and returns a scalar. No PyTorch tensors here — Numba speaks NumPy, not PyTorch. We'll pay the (cheap) cost of converting tensors to NumPy arrays at the call site in §5.3.</p>
-<p><code>njit</code> is shorthand for "no Python" JIT — meaning Numba will refuse to fall back to interpreted Python if it can't compile a line. This catches bugs early; a permissive fallback would silently nerf your speedup.</p>
+<p>Defines a textbook dot product &mdash; multiply corresponding elements, sum them up &mdash; and decorates it with <code>@njit</code>. The decorator tells Numba: "compile this to native code on first call; don't fall back to interpreted Python."</p>
+<p>The function itself is pure: it takes two 1-D arrays and returns a scalar. No PyTorch tensors here &mdash; Numba speaks NumPy, not PyTorch. We'll pay the (cheap) cost of converting tensors to NumPy arrays at the call site in &sect;5.3.</p>
+<p><code>njit</code> is shorthand for "no Python" JIT &mdash; meaning Numba will refuse to fall back to interpreted Python if it can't compile a line. This catches bugs early; a permissive fallback would silently nerf your speedup.</p>
 </div>
 </div>
 </div>
@@ -9463,7 +9480,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Demonstrates the JIT compilation pattern. The <strong>first</strong> call to <code>dot(...)</code> is slow — possibly 1+ second — because Numba is compiling the function. The <strong>second</strong> call uses the cached compiled artifact and runs in microseconds.</p>
+<p>Demonstrates the JIT compilation pattern. The <strong>first</strong> call to <code>dot(...)</code> is slow &mdash; possibly 1+ second &mdash; because Numba is compiling the function. The <strong>second</strong> call uses the cached compiled artifact and runs in microseconds.</p>
 <p>This compile-on-first-call behavior matters in practice: don't benchmark a Numba function on its first call (or you'll measure compilation, not execution). Always do a warmup call before timing.</p>
 </div>
 </div>
@@ -9521,7 +9538,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>The same matmul as before, but the inner loop is now replaced by <code>dot(a[i,:], b[:,j])</code>. Two Python loops remain (i and j), but the K-loop — the one that ran 784 times per output element — is now a single function call into compiled code.</p>
+<p>The same matmul as before, but the inner loop is now replaced by <code>dot(a[i,:], b[:,j])</code>. Two Python loops remain (i and j), but the K-loop &mdash; the one that ran 784 times per output element &mdash; is now a single function call into compiled code.</p>
 <p>This is what "vectorization" looks like at its simplest: push the loops inward so the inner ones run in compiled code while only the outer ones pay the interpreter tax.</p>
 </div>
 </div>
@@ -9565,9 +9582,9 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p><code>m1.numpy()</code> and <code>m2.numpy()</code> convert the PyTorch tensors to NumPy arrays — Numba's expected input type. This conversion is a zero-copy view on the same underlying memory, so it's effectively free.</p>
-<p><code>from fastcore.test import *</code> brings in <code>test_close</code>, which asserts that two tensors are equal within a tolerance. We use it to verify that the Numba matmul produces the same answer as the naive one — important sanity check, because nothing else catches "you accidentally swapped indices."</p>
-<p><code>%timeit -n 50</code> runs the call 50 times and reports the average. Expect ~5 ms — about 100× faster than the naive ~500 ms.</p>
+<p><code>m1.numpy()</code> and <code>m2.numpy()</code> convert the PyTorch tensors to NumPy arrays &mdash; Numba's expected input type. This conversion is a zero-copy view on the same underlying memory, so it's effectively free.</p>
+<p><code>from fastcore.test import *</code> brings in <code>test_close</code>, which asserts that two tensors are equal within a tolerance. We use it to verify that the Numba matmul produces the same answer as the naive one &mdash; important sanity check, because nothing else catches "you accidentally swapped indices."</p>
+<p><code>%timeit -n 50</code> runs the call 50 times and reports the average. Expect ~5 ms &mdash; about 100&times; faster than the naive ~500 ms.</p>
 </div>
 </div>
 </div>
@@ -9579,9 +9596,9 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Part-6:-Broadcasting-%E2%80%94-Eliminating-Loops-by-Shape">Part 6: Broadcasting — Eliminating Loops by Shape<a class="anchor-link" href="#Part-6:-Broadcasting-%E2%80%94-Eliminating-Loops-by-Shape">¶</a></h1><p>We just shrank the inner loop. Can we kill the middle loop too? Yes, and the tool for the job is <strong>broadcasting</strong>.</p>
+<h1 id="Part-6:-Broadcasting-%E2%80%94-Eliminating-Loops-by-Shape">Part 6: Broadcasting &mdash; Eliminating Loops by Shape<a class="anchor-link" href="#Part-6:-Broadcasting-%E2%80%94-Eliminating-Loops-by-Shape">¶</a></h1><p>We just shrank the inner loop. Can we kill the middle loop too? Yes, and the tool for the job is <strong>broadcasting</strong>.</p>
 <p>This is the most important concept in tensor programming. Half of all PyTorch shape errors are broadcasting misunderstandings. The other half are forgetting that broadcasting <em>just happened</em>. We're going to dwell on it.</p>
-<h2 id="6.1-Elementwise-operations-%E2%80%94-the-warm-up">6.1 Elementwise operations — the warm-up<a class="anchor-link" href="#6.1-Elementwise-operations-%E2%80%94-the-warm-up">¶</a></h2>
+<h2 id="6.1-Elementwise-operations-%E2%80%94-the-warm-up">6.1 Elementwise operations &mdash; the warm-up<a class="anchor-link" href="#6.1-Elementwise-operations-%E2%80%94-the-warm-up">¶</a></h2>
 </div>
 </div>
 </div>
@@ -9625,7 +9642,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
 <p>Demonstrates that tensor <code>+</code> is <strong>elementwise</strong>: position 0 of <code>a</code> adds to position 0 of <code>b</code>, position 1 adds to position 1, etc. Same shape in, same shape out.</p>
-<p>The comparison <code>a &lt; b</code> is also elementwise, returning a boolean tensor. <code>(a &lt; b).float().mean()</code> then converts the booleans to floats (True → 1.0, False → 0.0) and averages — giving you the <em>fraction</em> of positions where <code>a &lt; b</code>. This idiom of "convert mask to float, take mean" is a common way to express "what percent of these are true?".</p>
+<p>The comparison <code>a &lt; b</code> is also elementwise, returning a boolean tensor. <code>(a &lt; b).float().mean()</code> then converts the booleans to floats (True &rarr; 1.0, False &rarr; 0.0) and averages &mdash; giving you the <em>fraction</em> of positions where <code>a &lt; b</code>. This idiom of "convert mask to float, take mean" is a common way to express "what percent of these are true?".</p>
 </div>
 </div>
 </div>
@@ -9668,9 +9685,9 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Computes the <strong>Frobenius norm</strong> of a matrix — the square root of the sum of all element-squares. It's the natural matrix generalization of vector length: $\|M\|_F = \sqrt{\sum_{i,j} M_{ij}^2}$.</p>
+<p>Computes the <strong>Frobenius norm</strong> of a matrix &mdash; the square root of the sum of all element-squares. It's the natural matrix generalization of vector length: $\|M\|_F = \sqrt{\sum_{i,j} M_{ij}^2}$.</p>
 <p><code>m * m</code> is elementwise (each element squared); <code>.sum()</code> reduces to a scalar; <code>.sqrt()</code> takes the square root. Three tensor calls, one math identity.</p>
-<p>This is also the natural loss function for the "L2 distance between two matrices" — we'll see exactly this in the DDPM loss (notebook 15).</p>
+<p>This is also the natural loss function for the "L2 distance between two matrices" &mdash; we'll see exactly this in the DDPM loss (notebook 15).</p>
 </div>
 </div>
 </div>
@@ -9736,20 +9753,20 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 </tr>
 <tr>
 <td><code>m[2, :]</code></td>
-<td>Row 2 explicitly — same as above.</td>
+<td>Row 2 explicitly &mdash; same as above.</td>
 </tr>
 <tr>
 <td><code>m[:, 2]</code></td>
-<td>Column 2 — <code>:</code> means "all rows," <code>2</code> picks the column.</td>
+<td>Column 2 &mdash; <code>:</code> means "all rows," <code>2</code> picks the column.</td>
 </tr>
 <tr>
 <td><code>m[1:3, 0:2]</code></td>
-<td>A submatrix: rows 1–2, columns 0–1 (the upper-left 2×2 block, shifted down one row).</td>
+<td>A submatrix: rows 1&ndash;2, columns 0&ndash;1 (the upper-left 2&times;2 block, shifted down one row).</td>
 </tr>
 </tbody>
 </table>
-<p><code>torch.equal(m[2], m[2,:])</code> returns <code>True</code> — confirming that the two notations refer to the same row.</p>
-<p>Slicing returns a <strong>view</strong> (not a copy) on the original tensor's memory. Modifying a slice modifies the original — a common foot-gun for newcomers.</p>
+<p><code>torch.equal(m[2], m[2,:])</code> returns <code>True</code> &mdash; confirming that the two notations refer to the same row.</p>
+<p>Slicing returns a <strong>view</strong> (not a copy) on the original tensor's memory. Modifying a slice modifies the original &mdash; a common foot-gun for newcomers.</p>
 </div>
 </div>
 </div>
@@ -9760,7 +9777,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="6.3-Broadcasting-%E2%80%94-a-first-example">6.3 Broadcasting — a first example<a class="anchor-link" href="#6.3-Broadcasting-%E2%80%94-a-first-example">¶</a></h2>
+<h2 id="6.3-Broadcasting-%E2%80%94-a-first-example">6.3 Broadcasting &mdash; a first example<a class="anchor-link" href="#6.3-Broadcasting-%E2%80%94-a-first-example">¶</a></h2>
 </div>
 </div>
 </div>
@@ -9805,13 +9822,13 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Adds a 1-D vector <code>c</code> (shape <code>(3,)</code>) to a 2-D matrix <code>m</code> (shape <code>(3, 3)</code>). The shapes don't match, but PyTorch <strong>broadcasts</strong> — automatically replicating <code>c</code> along the missing dimension so that the addition makes sense.</p>
+<p>Adds a 1-D vector <code>c</code> (shape <code>(3,)</code>) to a 2-D matrix <code>m</code> (shape <code>(3, 3)</code>). The shapes don't match, but PyTorch <strong>broadcasts</strong> &mdash; automatically replicating <code>c</code> along the missing dimension so that the addition makes sense.</p>
 <p>The result is the matrix you'd get by adding <code>c</code> to <em>every row</em> of <code>m</code>:</p>
 <pre><code>   row 0:    [1, 2, 3] + [10, 20, 30] = [11, 22, 33]
    row 1:    [4, 5, 6] + [10, 20, 30] = [14, 25, 36]
    row 2:    [7, 8, 9] + [10, 20, 30] = [17, 28, 39]
 </code></pre>
-<p>Crucially, PyTorch does <strong>not</strong> actually copy <code>c</code> three times in memory. It just adjusts the strides so that the broadcast happens implicitly — the kernel reads <code>c</code> once per column regardless of how many rows are involved. Broadcasting is a <em>zero-copy</em> trick on top of well-designed kernels.</p>
+<p>Crucially, PyTorch does <strong>not</strong> actually copy <code>c</code> three times in memory. It just adjusts the strides so that the broadcast happens implicitly &mdash; the kernel reads <code>c</code> once per column regardless of how many rows are involved. Broadcasting is a <em>zero-copy</em> trick on top of well-designed kernels.</p>
 </div>
 </div>
 </div>
@@ -9823,7 +9840,25 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Deep-Dive:-Broadcasting">Deep Dive: Broadcasting<a class="anchor-link" href="#Deep-Dive:-Broadcasting">¶</a></h1><p>Broadcasting is the single most important shape-manipulation technique in tensor programming. It's worth a long, slow look — because once you have it in your bones, you'll find yourself writing matmuls, attention mechanisms, and loss functions without a single explicit loop.</p>
+<div class="ce-interactive">
+  <h3>Interactive: Broadcasting shape-matcher</h3>
+  <p class="ce-interactive-hint">Pick two tensor shapes and see how (or whether) they broadcast. The widget aligns them from the right, marks each axis as matching, stretching (=1), or incompatible, and shows the output shape.</p>
+  <div class="bc-widget">
+    <div class="bc-pair-row">
+      <label>Shape A:</label>
+      <select id="bc-a"></select>
+    </div>
+    <div class="bc-pair-row">
+      <label>Shape B:</label>
+      <select id="bc-b"></select>
+    </div>
+    <div class="bc-result" id="bc-result"></div>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>The three rules</strong> (covered in the deep dive below): (1) align shapes from the right, (2) each axis must match exactly or one of them must be 1 (which then stretches), (3) the output shape is the elementwise max. Stretching is a stride-trick &mdash; no memory is actually copied.
+  </p>
+</div>
+<h1 id="Deep-Dive:-Broadcasting">Deep Dive: Broadcasting<a class="anchor-link" href="#Deep-Dive:-Broadcasting">¶</a></h1><p>Broadcasting is the single most important shape-manipulation technique in tensor programming. It's worth a long, slow look &mdash; because once you have it in your bones, you'll find yourself writing matmuls, attention mechanisms, and loss functions without a single explicit loop.</p>
 <hr/>
 <h2 id="The-Problem-Broadcasting-Solves">The Problem Broadcasting Solves<a class="anchor-link" href="#The-Problem-Broadcasting-Solves">¶</a></h2><p>You want to add a per-feature bias to every row of a batch of activations. Or scale every column of a matrix by its corresponding standard deviation. Or compute pairwise distances between two sets of points. The naive way:</p>
 <div class="highlight"><pre><span></span><span class="c1"># Add bias to every row of activations</span>
@@ -9832,102 +9867,102 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
         <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">activations</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">+</span> <span class="n">bias</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
 </pre></div>
 <p>You'd need an explicit loop because the shapes don't match: activations is <code>(B, F)</code>, bias is <code>(F,)</code>. Broadcasting eliminates the loop:</p>
-<div class="highlight"><pre><span></span><span class="n">out</span> <span class="o">=</span> <span class="n">activations</span> <span class="o">+</span> <span class="n">bias</span>   <span class="c1"># shapes (B, F) + (F,) → (B, F)</span>
+<div class="highlight"><pre><span></span><span class="n">out</span> <span class="o">=</span> <span class="n">activations</span> <span class="o">+</span> <span class="n">bias</span>   <span class="c1"># shapes (B, F) + (F,) &rarr; (B, F)</span>
 </pre></div>
-<p>That's it. The single <code>+</code> runs a vectorized kernel that visits every (i, j) once — the way the loop would have, but in compiled C with SIMD, and with no Python overhead. Broadcasting is the <em>grammar</em> that lets you write Python like math and have it execute like Fortran.</p>
+<p>That's it. The single <code>+</code> runs a vectorized kernel that visits every (i, j) once &mdash; the way the loop would have, but in compiled C with SIMD, and with no Python overhead. Broadcasting is the <em>grammar</em> that lets you write Python like math and have it execute like Fortran.</p>
 <hr/>
 <h2 id="The-Three-Rules">The Three Rules<a class="anchor-link" href="#The-Three-Rules">¶</a></h2><p>PyTorch (and NumPy, and JAX, and TensorFlow) all follow the same three broadcasting rules. Memorize these:</p>
-<p><strong>Rule 1 — Align shapes from the right.</strong> Pad the shorter shape with implicit 1s on the <em>left</em> until both shapes have the same number of dimensions. Examples:</p>
-<pre><code>  (5, 3)   matches against   (3,)   →   left-pad to   (1, 3)
-  (4, 1, 6)  matches against (5, 6) →   left-pad to   (1, 5, 6)
-  (1000, 28, 28)  matches against (28, 28) →   left-pad to   (1, 28, 28)
+<p><strong>Rule 1 &mdash; Align shapes from the right.</strong> Pad the shorter shape with implicit 1s on the <em>left</em> until both shapes have the same number of dimensions. Examples:</p>
+<pre><code>  (5, 3)   matches against   (3,)   &rarr;   left-pad to   (1, 3)
+  (4, 1, 6)  matches against (5, 6) &rarr;   left-pad to   (1, 5, 6)
+  (1000, 28, 28)  matches against (28, 28) &rarr;   left-pad to   (1, 28, 28)
 </code></pre>
-<p><strong>Rule 2 — Each dimension must be equal or one of them must be 1.</strong> Going axis by axis, the two shapes are compatible if they match exactly <em>or</em> one of them is 1 (in which case it gets "stretched" to match the other). If neither matches and neither is 1, you get a <code>RuntimeError: The size of tensor a (X) must match the size of tensor b (Y)</code>.</p>
-<p><strong>Rule 3 — The output shape is the elementwise max.</strong> Once you've verified rule 2, the result's shape is the maximum of the two shapes along each axis.</p>
+<p><strong>Rule 2 &mdash; Each dimension must be equal or one of them must be 1.</strong> Going axis by axis, the two shapes are compatible if they match exactly <em>or</em> one of them is 1 (in which case it gets "stretched" to match the other). If neither matches and neither is 1, you get a <code>RuntimeError: The size of tensor a (X) must match the size of tensor b (Y)</code>.</p>
+<p><strong>Rule 3 &mdash; The output shape is the elementwise max.</strong> Once you've verified rule 2, the result's shape is the maximum of the two shapes along each axis.</p>
 <p>Let me show all three in action on a single example:</p>
 <pre><code>  A: shape (5, 1, 3)
   B: shape    (4, 3)
 
   Step 1 (align right): pad B to (1, 4, 3).
   Step 2 (check each axis):
-     axis 0:  A=5,  B=1  → compatible (B stretches)
-     axis 1:  A=1,  B=4  → compatible (A stretches)
-     axis 2:  A=3,  B=3  → compatible (exact match)
+     axis 0:  A=5,  B=1  &rarr; compatible (B stretches)
+     axis 1:  A=1,  B=4  &rarr; compatible (A stretches)
+     axis 2:  A=3,  B=3  &rarr; compatible (exact match)
   Step 3 (output shape): (max(5,1), max(1,4), max(3,3)) = (5, 4, 3).
 </code></pre>
 <p>So <code>A + B</code> produces a <code>(5, 4, 3)</code> tensor. Five copies of <code>B</code>-stretched, four copies of <code>A</code>-stretched, added together pointwise.</p>
 <hr/>
-<h2 id="What-%22Stretching%22-Means-%E2%80%94-There's-No-Copy">What "Stretching" Means — There's No Copy<a class="anchor-link" href="#What-%22Stretching%22-Means-%E2%80%94-There's-No-Copy">¶</a></h2><p>The mental model of "broadcasting stretches the smaller tensor by copying it" is helpful but slightly wrong. What actually happens is that PyTorch sets the <em>stride</em> of the broadcast axis to <strong>zero</strong>.</p>
-<p>A stride tells the kernel "to move one position along this axis in memory, advance this many bytes." A stride of 0 means "don't move — just re-read the same memory." So when the elementwise add kernel walks the result, it advances the larger tensor's memory pointer normally but keeps the smaller tensor's pointer parked.</p>
+<h2 id="What-%22Stretching%22-Means-%E2%80%94-There's-No-Copy">What "Stretching" Means &mdash; There's No Copy<a class="anchor-link" href="#What-%22Stretching%22-Means-%E2%80%94-There's-No-Copy">¶</a></h2><p>The mental model of "broadcasting stretches the smaller tensor by copying it" is helpful but slightly wrong. What actually happens is that PyTorch sets the <em>stride</em> of the broadcast axis to <strong>zero</strong>.</p>
+<p>A stride tells the kernel "to move one position along this axis in memory, advance this many bytes." A stride of 0 means "don't move &mdash; just re-read the same memory." So when the elementwise add kernel walks the result, it advances the larger tensor's memory pointer normally but keeps the smaller tensor's pointer parked.</p>
 <p>This means:</p>
 <ul>
 <li><strong>Broadcasting is free.</strong> No memory allocation, no copy.</li>
-<li><strong>You can broadcast a (1,)-tensor against a (1_000_000,)-tensor</strong> — the small one is just re-read a million times.</li>
-<li><strong>The kernel does the same number of elementwise operations either way</strong> — the work is in the output, not the inputs.</li>
+<li><strong>You can broadcast a (1,)-tensor against a (1_000_000,)-tensor</strong> &mdash; the small one is just re-read a million times.</li>
+<li><strong>The kernel does the same number of elementwise operations either way</strong> &mdash; the work is in the output, not the inputs.</li>
 </ul>
 <hr/>
-<h2 id="Worked-Examples">Worked Examples<a class="anchor-link" href="#Worked-Examples">¶</a></h2><h3 id="Example-1-%E2%80%94-Adding-a-row-vector-to-a-matrix">Example 1 — Adding a row-vector to a matrix<a class="anchor-link" href="#Example-1-%E2%80%94-Adding-a-row-vector-to-a-matrix">¶</a></h3><pre><code>  m has shape (3, 3)
+<h2 id="Worked-Examples">Worked Examples<a class="anchor-link" href="#Worked-Examples">¶</a></h2><h3 id="Example-1-%E2%80%94-Adding-a-row-vector-to-a-matrix">Example 1 &mdash; Adding a row-vector to a matrix<a class="anchor-link" href="#Example-1-%E2%80%94-Adding-a-row-vector-to-a-matrix">¶</a></h3><pre><code>  m has shape (3, 3)
   c has shape (3,)
 
   Step 1: pad c to (1, 3).
-  Step 2: axis 0 → m=3, c=1, OK (c stretches).
-          axis 1 → m=3, c=3, OK.
+  Step 2: axis 0 &rarr; m=3, c=1, OK (c stretches).
+          axis 1 &rarr; m=3, c=3, OK.
   Step 3: output shape (3, 3).
 
   Result[i, j] = m[i, j] + c[j]   (c is re-read for every row)
 </code></pre>
-<p>This is what we did in §6.3 with <code>m + c</code>.</p>
-<h3 id="Example-2-%E2%80%94-Adding-a-column-vector-to-a-matrix">Example 2 — Adding a column-vector to a matrix<a class="anchor-link" href="#Example-2-%E2%80%94-Adding-a-column-vector-to-a-matrix">¶</a></h3><pre><code>  m has shape (3, 3)
-  c has shape (3,)   — same as above
+<p>This is what we did in &sect;6.3 with <code>m + c</code>.</p>
+<h3 id="Example-2-%E2%80%94-Adding-a-column-vector-to-a-matrix">Example 2 &mdash; Adding a column-vector to a matrix<a class="anchor-link" href="#Example-2-%E2%80%94-Adding-a-column-vector-to-a-matrix">¶</a></h3><pre><code>  m has shape (3, 3)
+  c has shape (3,)   &mdash; same as above
 
   But what if we want c to broadcast as a column? We need c with shape (3, 1).
 
   m + c[:, None]:
-  Step 1: shapes are (3, 3) and (3, 1) — already same length.
-  Step 2: axis 0 → m=3, c=3, OK.
-          axis 1 → m=3, c=1, OK (c stretches).
+  Step 1: shapes are (3, 3) and (3, 1) &mdash; already same length.
+  Step 2: axis 0 &rarr; m=3, c=3, OK.
+          axis 1 &rarr; m=3, c=1, OK (c stretches).
   Step 3: output (3, 3).
 
   Result[i, j] = m[i, j] + c[i]   (c is re-read for every column of each row)
 </code></pre>
 <p>The trick: <code>c[:, None]</code> (equivalent to <code>c.unsqueeze(1)</code> or <code>c.reshape(3, 1)</code>) adds an explicit singleton dimension on the right. This is how you control whether a vector broadcasts along rows or columns.</p>
-<h3 id="Example-3-%E2%80%94-Outer-product-via-broadcasting">Example 3 — Outer product via broadcasting<a class="anchor-link" href="#Example-3-%E2%80%94-Outer-product-via-broadcasting">¶</a></h3><pre><code>  a has shape (5,)
+<h3 id="Example-3-%E2%80%94-Outer-product-via-broadcasting">Example 3 &mdash; Outer product via broadcasting<a class="anchor-link" href="#Example-3-%E2%80%94-Outer-product-via-broadcasting">¶</a></h3><pre><code>  a has shape (5,)
   b has shape (3,)
 
   a[:, None] has shape (5, 1)
   b[None, :] has shape (1, 3)
 
   Step 1: both already 2-D.
-  Step 2: axis 0 → 5 vs 1, OK.
-          axis 1 → 1 vs 3, OK.
+  Step 2: axis 0 &rarr; 5 vs 1, OK.
+          axis 1 &rarr; 1 vs 3, OK.
   Step 3: output (5, 3).
 
   Result[i, j] = a[i] * b[j]   ← the outer product.
 </code></pre>
 <p>We just computed the outer product <code>a ⊗ b</code> without a <code>torch.outer</code> call. Two singleton insertions and a <code>*</code> did it.</p>
-<h3 id="Example-4-%E2%80%94-Pairwise-distances">Example 4 — Pairwise distances<a class="anchor-link" href="#Example-4-%E2%80%94-Pairwise-distances">¶</a></h3><p>Say you have <code>P</code> points in 2D as <code>points</code> (shape <code>(P, 2)</code>) and you want a <code>(P, P)</code> matrix of pairwise distances.</p>
+<h3 id="Example-4-%E2%80%94-Pairwise-distances">Example 4 &mdash; Pairwise distances<a class="anchor-link" href="#Example-4-%E2%80%94-Pairwise-distances">¶</a></h3><p>Say you have <code>P</code> points in 2D as <code>points</code> (shape <code>(P, 2)</code>) and you want a <code>(P, P)</code> matrix of pairwise distances.</p>
 <div class="highlight"><pre><span></span><span class="n">diffs</span> <span class="o">=</span> <span class="n">points</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">-</span> <span class="n">points</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
             <span class="c1"># (P, 1, 2)         # (1, P, 2)</span>
             <span class="c1"># broadcasts to (P, P, 2)</span>
 <span class="n">dists</span> <span class="o">=</span> <span class="p">(</span><span class="n">diffs</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
-            <span class="c1"># (P, P, 2) → (P, P) → (P, P)</span>
+            <span class="c1"># (P, P, 2) &rarr; (P, P) &rarr; (P, P)</span>
 </pre></div>
-<p>No loops. One broadcast (the subtraction) and one reduction. This is exactly the pattern attention mechanisms use to compute query–key similarities.</p>
+<p>No loops. One broadcast (the subtraction) and one reduction. This is exactly the pattern attention mechanisms use to compute query&ndash;key similarities.</p>
 <hr/>
-<h2 id="Back-to-Matmul">Back to Matmul<a class="anchor-link" href="#Back-to-Matmul">¶</a></h2><p>Here's the §6.4 trick spelled out. We want $C[i] = \sum_k A[i, k] \cdot B[k, :]$, where $A[i, :]$ is shape <code>(K,)</code> and $B$ is shape <code>(K, N)</code>.</p>
-<pre><code>  A[i, :]            shape (K,)        → reinterpret as A[i, :, None] shape (K, 1)
+<h2 id="Back-to-Matmul">Back to Matmul<a class="anchor-link" href="#Back-to-Matmul">¶</a></h2><p>Here's the &sect;6.4 trick spelled out. We want $C[i] = \sum_k A[i, k] \cdot B[k, :]$, where $A[i, :]$ is shape <code>(K,)</code> and $B$ is shape <code>(K, N)</code>.</p>
+<pre><code>  A[i, :]            shape (K,)        &rarr; reinterpret as A[i, :, None] shape (K, 1)
   B                  shape (K, N)
-  A[i, :, None] * B  shape (K, N)      — broadcast: A stretches across N
-  .sum(dim=0)        shape (N,)         — sum over K
+  A[i, :, None] * B  shape (K, N)      &mdash; broadcast: A stretches across N
+  .sum(dim=0)        shape (N,)         &mdash; sum over K
 </code></pre>
-<p>That gives us all <code>N</code> output entries of row <code>i</code> in <strong>one tensor expression</strong>. We've eliminated the inner-most <em>and</em> middle Python loops in a single move — only the outer "for each row" loop remains.</p>
+<p>That gives us all <code>N</code> output entries of row <code>i</code> in <strong>one tensor expression</strong>. We've eliminated the inner-most <em>and</em> middle Python loops in a single move &mdash; only the outer "for each row" loop remains.</p>
 <hr/>
 <h2 id="Common-Pitfalls">Common Pitfalls<a class="anchor-link" href="#Common-Pitfalls">¶</a></h2><ol>
-<li><p><strong>Forgetting that <code>(N,)</code> and <code>(N, 1)</code> are different.</strong> They both look like "a vector of length N," but they broadcast differently. <code>(N,)</code> aligns to the right as <code>(1, N)</code> — broadcasts across rows. <code>(N, 1)</code> is already 2-D and broadcasts across columns.</p>
+<li><p><strong>Forgetting that <code>(N,)</code> and <code>(N, 1)</code> are different.</strong> They both look like "a vector of length N," but they broadcast differently. <code>(N,)</code> aligns to the right as <code>(1, N)</code> &mdash; broadcasts across rows. <code>(N, 1)</code> is already 2-D and broadcasts across columns.</p>
 </li>
 <li><p><strong><code>x.shape = (1, 5)</code> vs <code>x.shape = (5,)</code>.</strong> These are <em>not</em> the same tensor. The first is a 2-D matrix with one row; the second is a 1-D vector. Most ops accept both but downstream code may expect one or the other.</p>
 </li>
-<li><p><strong>Silent broadcasts you didn't intend.</strong> If you accidentally add a <code>(B, 1, H, W)</code> to a <code>(B, C, H, W)</code>, the result is <code>(B, C, H, W)</code> and looks fine — you've silently broadcast across the channels axis. The fix: print shapes liberally during development and use <code>einops.rearrange</code> or named tensors when shapes get complicated.</p>
+<li><p><strong>Silent broadcasts you didn't intend.</strong> If you accidentally add a <code>(B, 1, H, W)</code> to a <code>(B, C, H, W)</code>, the result is <code>(B, C, H, W)</code> and looks fine &mdash; you've silently broadcast across the channels axis. The fix: print shapes liberally during development and use <code>einops.rearrange</code> or named tensors when shapes get complicated.</p>
 </li>
 <li><p><strong>Broadcasting consumes a lot of memory in the output.</strong> Even though <em>broadcasting itself</em> is free, the result tensor is still materialized in full. A <code>(1_000_000,) * (1_000_000,)</code> broadcast outer product would be 1 TB of memory.</p>
 </li>
@@ -9977,7 +10012,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <td><code>(5, 1)</code></td>
 <td><code>(1, 3)</code></td>
 <td><code>(5, 3)</code></td>
-<td>both stretch — outer product structure</td>
+<td>both stretch &mdash; outer product structure</td>
 </tr>
 <tr>
 <td><code>(B, C, H, W)</code></td>
@@ -9987,7 +10022,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 </tr>
 </tbody>
 </table>
-<p>OK — back to building matmul.</p>
+<p>OK &mdash; back to building matmul.</p>
 </div>
 </div>
 </div>
@@ -9998,7 +10033,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="6.4-Matmul-using-broadcasting-%E2%80%94-one-image-at-a-time">6.4 Matmul using broadcasting — one image at a time<a class="anchor-link" href="#6.4-Matmul-using-broadcasting-%E2%80%94-one-image-at-a-time">¶</a></h2>
+<h2 id="6.4-Matmul-using-broadcasting-%E2%80%94-one-image-at-a-time">6.4 Matmul using broadcasting &mdash; one image at a time<a class="anchor-link" href="#6.4-Matmul-using-broadcasting-%E2%80%94-one-image-at-a-time">¶</a></h2>
 </div>
 </div>
 </div>
@@ -10048,12 +10083,12 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <p><strong>What does the code above do?</strong></p>
 <p>Walks the broadcasting matmul construction through, one shape at a time:</p>
 <ol>
-<li><code>digit = m1[0]</code> — a single image, shape <code>(784,)</code>.</li>
-<li><code>digit[:, None]</code> — same data, shape <code>(784, 1)</code>. The <code>None</code> is shorthand for <code>np.newaxis</code> — it inserts a singleton dimension.</li>
-<li><code>digit[:, None] * m2</code> — elementwise multiply <code>(784, 1)</code> against <code>(784, 10)</code>. By rule 2 of broadcasting, the 1 stretches to 10. Result shape: <code>(784, 10)</code>.</li>
-<li><code>.sum(dim=0)</code> — sum along the 784 axis. Result shape: <code>(10,)</code>.</li>
+<li><code>digit = m1[0]</code> &mdash; a single image, shape <code>(784,)</code>.</li>
+<li><code>digit[:, None]</code> &mdash; same data, shape <code>(784, 1)</code>. The <code>None</code> is shorthand for <code>np.newaxis</code> &mdash; it inserts a singleton dimension.</li>
+<li><code>digit[:, None] * m2</code> &mdash; elementwise multiply <code>(784, 1)</code> against <code>(784, 10)</code>. By rule 2 of broadcasting, the 1 stretches to 10. Result shape: <code>(784, 10)</code>.</li>
+<li><code>.sum(dim=0)</code> &mdash; sum along the 784 axis. Result shape: <code>(10,)</code>.</li>
 </ol>
-<p>That <code>(10,)</code> result is the entire first row of the matmul output. We computed all 10 column results in <strong>one tensor expression</strong> — no inner loop, no middle loop.</p>
+<p>That <code>(10,)</code> result is the entire first row of the matmul output. We computed all 10 column results in <strong>one tensor expression</strong> &mdash; no inner loop, no middle loop.</p>
 </div>
 </div>
 </div>
@@ -10120,8 +10155,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Wraps the §6.4 pattern in a function. The outer <code>for i in range(ar)</code> loop walks one image at a time and uses broadcasting to compute that image's 10 outputs in one go. Two of the three loops are gone.</p>
-<p><code>%timeit -n 50</code> should report something like 50–200 µs for the 5-image case — <em>another</em> ~50× faster than the Numba version. We're now within striking distance of a real PyTorch matmul.</p>
+<p>Wraps the &sect;6.4 pattern in a function. The outer <code>for i in range(ar)</code> loop walks one image at a time and uses broadcasting to compute that image's 10 outputs in one go. Two of the three loops are gone.</p>
+<p><code>%timeit -n 50</code> should report something like 50&ndash;200 µs for the 5-image case &mdash; <em>another</em> ~50&times; faster than the Numba version. We're now within striking distance of a real PyTorch matmul.</p>
 </div>
 </div>
 </div>
@@ -10157,7 +10192,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Runs the broadcasting matmul on the full 50,000-image training set against the (784, 10) weights. Result is <code>(50000, 10)</code> — every training image's class scores in one call.</p>
+<p>Runs the broadcasting matmul on the full 50,000-image training set against the (784, 10) weights. Result is <code>(50000, 10)</code> &mdash; every training image's class scores in one call.</p>
 <p>The Python loop now only iterates 50,000 times (once per image), and <em>each iteration</em> does broadcasted GPU/CPU-vectorized work. That's the entire reason the broadcasting version handles 50,000 images in roughly the time the naive triple loop took for 5.</p>
 </div>
 </div>
@@ -10205,19 +10240,19 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <td>Naive triple loop</td>
 <td>~500 ms</td>
 <td>~5,000,000 ms (projected)</td>
-<td>1×</td>
+<td>1&times;</td>
 </tr>
 <tr>
 <td>Numba dot product</td>
 <td>~5 ms</td>
 <td>~50,000 ms (projected)</td>
-<td>~100×</td>
+<td>~100&times;</td>
 </tr>
 <tr>
 <td>Broadcasting</td>
 <td>~0.1 ms</td>
 <td>~600 ms</td>
-<td>~10,000×</td>
+<td>~10,000&times;</td>
 </tr>
 </tbody>
 </table>
@@ -10233,12 +10268,12 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Part-7:-Einstein-Summation-%E2%80%94-einsum">Part 7: Einstein Summation — <code>einsum</code><a class="anchor-link" href="#Part-7:-Einstein-Summation-%E2%80%94-einsum">¶</a></h1><p>Broadcasting lets us write matmul without an inner loop. <strong>Einstein summation</strong> lets us write it without <em>any</em> loop at all — and lets us express dozens of other tensor operations (transposes, traces, batch matmul, bilinear forms) with the same notation.</p>
-<h2 id="What-is-einsum?">What is einsum?<a class="anchor-link" href="#What-is-einsum?">¶</a></h2><p>Einstein notation comes from physics. The convention says: <strong>when an index appears twice in a product, sum over it implicitly</strong>. So instead of writing $\sum_k A_{ik} B_{kj}$, you just write $A_{ik} B_{kj}$ — the repeated $k$ is understood as a sum.</p>
+<h1 id="Part-7:-Einstein-Summation-%E2%80%94-einsum">Part 7: Einstein Summation &mdash; <code>einsum</code><a class="anchor-link" href="#Part-7:-Einstein-Summation-%E2%80%94-einsum">¶</a></h1><p>Broadcasting lets us write matmul without an inner loop. <strong>Einstein summation</strong> lets us write it without <em>any</em> loop at all &mdash; and lets us express dozens of other tensor operations (transposes, traces, batch matmul, bilinear forms) with the same notation.</p>
+<h2 id="What-is-einsum?">What is einsum?<a class="anchor-link" href="#What-is-einsum?">¶</a></h2><p>Einstein notation comes from physics. The convention says: <strong>when an index appears twice in a product, sum over it implicitly</strong>. So instead of writing $\sum_k A_{ik} B_{kj}$, you just write $A_{ik} B_{kj}$ &mdash; the repeated $k$ is understood as a sum.</p>
 <p>PyTorch's <code>torch.einsum</code> brings this convention into code:</p>
 <div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">'ik,kj-&gt;ij'</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span>
 </pre></div>
-<p>Read it as: "take a tensor indexed by <code>ik</code> and one indexed by <code>kj</code>, produce one indexed by <code>ij</code> — anything in the inputs but not in the output gets summed over."</p>
+<p>Read it as: "take a tensor indexed by <code>ik</code> and one indexed by <code>kj</code>, produce one indexed by <code>ij</code> &mdash; anything in the inputs but not in the output gets summed over."</p>
 <p>That single line is matrix multiplication. The <code>k</code> index appears in both inputs but not the output, so einsum sums over it. The <code>i</code> and <code>j</code> survive as the output's two axes.</p>
 <hr/>
 <h2 id="7.1-einsum-step-by-step">7.1 einsum step by step<a class="anchor-link" href="#7.1-einsum-step-by-step">¶</a></h2>
@@ -10290,8 +10325,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <p><strong>What does the code above do?</strong></p>
 <p>Shows the einsum decomposition in two stages:</p>
 <ol>
-<li><code>torch.einsum('ik,kj-&gt;ikj', m1, m2)</code> — keep <em>all three</em> axes in the output. The result has shape <code>(5, 784, 10)</code>: for each output position <code>(i, j)</code>, we've stored the 784 products <code>A[i, k] * B[k, j]</code> along the k-axis. No summing yet — just the raw elementwise products.</li>
-<li><code>mr.sum(1)</code> — sum along axis 1 (the k axis). Result shape <code>(5, 10)</code> — exactly matmul.</li>
+<li><code>torch.einsum('ik,kj-&gt;ikj', m1, m2)</code> &mdash; keep <em>all three</em> axes in the output. The result has shape <code>(5, 784, 10)</code>: for each output position <code>(i, j)</code>, we've stored the 784 products <code>A[i, k] * B[k, j]</code> along the k-axis. No summing yet &mdash; just the raw elementwise products.</li>
+<li><code>mr.sum(1)</code> &mdash; sum along axis 1 (the k axis). Result shape <code>(5, 10)</code> &mdash; exactly matmul.</li>
 </ol>
 <p>The point of this two-stage decomposition is to show what's happening <em>under</em> the einsum. The expression <code>'ik,kj-&gt;ikj'</code> is the bilinear outer-product part; the <code>.sum(1)</code> is the reduction. Einsum bundles both into one shorter form.</p>
 </div>
@@ -10328,8 +10363,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>The bundled form. <code>'ik,kj-&gt;ij'</code> says: "k is in the inputs but not the output → sum over it." This is the canonical matmul einsum and it's the one you'll see in a thousand PyTorch codebases.</p>
-<p><code>torch.allclose(result, t1)</code> confirms it gives the same answer as our naive triple loop — as it should, because einsum just compiles down to the same arithmetic, faster.</p>
+<p>The bundled form. <code>'ik,kj-&gt;ij'</code> says: "k is in the inputs but not the output &rarr; sum over it." This is the canonical matmul einsum and it's the one you'll see in a thousand PyTorch codebases.</p>
+<p><code>torch.allclose(result, t1)</code> confirms it gives the same answer as our naive triple loop &mdash; as it should, because einsum just compiles down to the same arithmetic, faster.</p>
 </div>
 </div>
 </div>
@@ -10380,14 +10415,14 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Deep-Dive:-Einstein-Summation,-Fully-Decoded">Deep Dive: Einstein Summation, Fully Decoded<a class="anchor-link" href="#Deep-Dive:-Einstein-Summation,-Fully-Decoded">¶</a></h1><p>You can use <code>torch.einsum</code> mechanically — copy the right string and move on. But the notation is a <em>grammar</em> for tensor manipulation that becomes a superpower once internalized: attention, batch matmul, traces, transposes, and a dozen other ops all collapse to one-line einsum expressions.</p>
+<h1 id="Deep-Dive:-Einstein-Summation,-Fully-Decoded">Deep Dive: Einstein Summation, Fully Decoded<a class="anchor-link" href="#Deep-Dive:-Einstein-Summation,-Fully-Decoded">¶</a></h1><p>You can use <code>torch.einsum</code> mechanically &mdash; copy the right string and move on. But the notation is a <em>grammar</em> for tensor manipulation that becomes a superpower once internalized: attention, batch matmul, traces, transposes, and a dozen other ops all collapse to one-line einsum expressions.</p>
 <hr/>
 <h2 id="The-Three-Rules">The Three Rules<a class="anchor-link" href="#The-Three-Rules">¶</a></h2><p>An einsum expression is a string of the form</p>
 <pre><code>   input_specs -&gt; output_spec
 </code></pre>
 <p>where each spec is a sequence of axis labels (single lowercase letters, typically). Three rules tell you the result:</p>
 <ol>
-<li><p><strong>Each label corresponds to one axis</strong> of the tensor it appears on. Two tensors can share labels — that's how you express "multiply these together along this axis."</p>
+<li><p><strong>Each label corresponds to one axis</strong> of the tensor it appears on. Two tensors can share labels &mdash; that's how you express "multiply these together along this axis."</p>
 </li>
 <li><p><strong>A label that appears in both inputs and the output is <em>kept</em> as a free axis.</strong> Its size in the output equals its size in the inputs.</p>
 </li>
@@ -10494,21 +10529,21 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <li><strong>Multiplies</strong> the input tensors along the shared axes (using broadcasting if needed).</li>
 <li><strong>Reduces</strong> over the axes that appear only in inputs.</li>
 </ol>
-<p>For simple cases like <code>'ik,kj-&gt;ij'</code>, the planner detects that this is just matrix multiplication and dispatches to BLAS — same performance as <code>@</code>. For more exotic patterns (<code>'bnd,bmd-&gt;bnm'</code> etc.), it may execute the products and sums itself.</p>
+<p>For simple cases like <code>'ik,kj-&gt;ij'</code>, the planner detects that this is just matrix multiplication and dispatches to BLAS &mdash; same performance as <code>@</code>. For more exotic patterns (<code>'bnd,bmd-&gt;bnm'</code> etc.), it may execute the products and sums itself.</p>
 <p>The execution path doesn't matter for correctness. What matters is that you can <em>write</em> the operation in the way that makes the math clearest, and let the planner figure out the fastest way.</p>
 <hr/>
-<h2 id="The-big-payoff:-scaled-dot-product-attention">The big payoff: scaled dot-product attention<a class="anchor-link" href="#The-big-payoff:-scaled-dot-product-attention">¶</a></h2><p>The attention mechanism in transformers — the one that powers ChatGPT, BERT, Stable Diffusion — boils down to two einsums.</p>
+<h2 id="The-big-payoff:-scaled-dot-product-attention">The big payoff: scaled dot-product attention<a class="anchor-link" href="#The-big-payoff:-scaled-dot-product-attention">¶</a></h2><p>The attention mechanism in transformers &mdash; the one that powers ChatGPT, BERT, Stable Diffusion &mdash; boils down to two einsums.</p>
 <p>Let <code>Q</code> (queries) and <code>K</code> (keys) be tensors of shape <code>(B, T, D)</code> (batch, sequence length, dimension), and <code>V</code> (values) be <code>(B, T, D)</code> too. Attention is:</p>
 <div class="highlight"><pre><span></span><span class="n">scores</span>  <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">'btd,bsd-&gt;bts'</span><span class="p">,</span> <span class="n">Q</span><span class="p">,</span> <span class="n">K</span><span class="p">)</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">D</span><span class="p">)</span>
 <span class="n">weights</span> <span class="o">=</span> <span class="n">scores</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
 <span class="n">output</span>  <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">'bts,bsd-&gt;btd'</span><span class="p">,</span> <span class="n">weights</span><span class="p">,</span> <span class="n">V</span><span class="p">)</span>
 </pre></div>
-<p>Three lines. The first computes pairwise scores between every query and every key. The second normalizes. The third aggregates the values weighted by the attention scores. <em>No explicit loops over batch, query position, or key position</em> — einsum handles all the contractions in one optimized call.</p>
+<p>Three lines. The first computes pairwise scores between every query and every key. The second normalizes. The third aggregates the values weighted by the attention scores. <em>No explicit loops over batch, query position, or key position</em> &mdash; einsum handles all the contractions in one optimized call.</p>
 <p>You don't see this in this notebook because attention shows up in notebook 27. But this is what einsum buys you: an unbroken language for going from "$C_{ij} = \sum_k A_{ik} B_{kj}$" up through "the entire attention computation" without changing notation.</p>
 <hr/>
 <h2 id="When-NOT-to-use-einsum">When NOT to use einsum<a class="anchor-link" href="#When-NOT-to-use-einsum">¶</a></h2><ul>
 <li>For plain matmul, <code>A @ B</code> is shorter and more familiar to readers.</li>
-<li>For batched matmul where shapes are already standardized to (B, M, K) × (B, K, N), <code>torch.bmm</code> or <code>@</code> is fine.</li>
+<li>For batched matmul where shapes are already standardized to (B, M, K) &times; (B, K, N), <code>torch.bmm</code> or <code>@</code> is fine.</li>
 <li>For attention and other custom contractions, einsum wins on readability.</li>
 </ul>
 <p>The criterion is: does the einsum string make the math <em>more</em> obvious than the alternative? If yes, use it. If no, prefer the named operator.</p>
@@ -10516,7 +10551,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <h2 id="Common-pitfalls">Common pitfalls<a class="anchor-link" href="#Common-pitfalls">¶</a></h2><ol>
 <li><strong>A label can only appear at most twice on the input side.</strong> <code>einsum('iij,jk-&gt;ik', ...)</code> would be a malformed expression because <code>i</code> appears three times.</li>
 <li><strong>The same label means the same axis size.</strong> If you write <code>'ij,jk-&gt;ik'</code> and your tensors are <code>(5, 3)</code> and <code>(4, 7)</code>, you'll get an error because the shared <code>j</code> is 3 in one and 4 in the other.</li>
-<li><strong>Forgetting to specify <code>-&gt;</code>.</strong> Some implementations default to summing every repeated label — fine for matmul, surprising for other operations. Always spell out the output to be explicit.</li>
+<li><strong>Forgetting to specify <code>-&gt;</code>.</strong> Some implementations default to summing every repeated label &mdash; fine for matmul, surprising for other operations. Always spell out the output to be explicit.</li>
 </ol>
 <hr/>
 <p>OK, back to building matmul.</p>
@@ -10577,8 +10612,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Just <code>A @ B</code>. Same shape rules as everywhere else — <code>A</code>'s last axis must match <code>B</code>'s second-to-last. Output is the contracted matrix.</p>
-<p>The <code>%timeit</code> should report a few milliseconds on the full dataset. Roughly the same as einsum on CPU — which makes sense, since <code>'ik,kj-&gt;ij'</code> is recognized by einsum's planner and dispatched to the same BLAS path.</p>
+<p>Just <code>A @ B</code>. Same shape rules as everywhere else &mdash; <code>A</code>'s last axis must match <code>B</code>'s second-to-last. Output is the contracted matrix.</p>
+<p>The <code>%timeit</code> should report a few milliseconds on the full dataset. Roughly the same as einsum on CPU &mdash; which makes sense, since <code>'ik,kj-&gt;ij'</code> is recognized by einsum's planner and dispatched to the same BLAS path.</p>
 </div>
 </div>
 </div>
@@ -10590,16 +10625,16 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Part-9:-GPU-Acceleration-with-CUDA">Part 9: GPU Acceleration with CUDA<a class="anchor-link" href="#Part-9:-GPU-Acceleration-with-CUDA">¶</a></h1><p>So far every speedup has come from "do less Python." Now we're going to switch hardware entirely. The CPU runs a handful of threads in series. A modern GPU runs <strong>thousands of threads in parallel</strong>, each doing a tiny piece of work. For embarrassingly parallel problems like matrix multiplication — where every output element can be computed independently — the GPU wins by orders of magnitude.</p>
+<h1 id="Part-9:-GPU-Acceleration-with-CUDA">Part 9: GPU Acceleration with CUDA<a class="anchor-link" href="#Part-9:-GPU-Acceleration-with-CUDA">¶</a></h1><p>So far every speedup has come from "do less Python." Now we're going to switch hardware entirely. The CPU runs a handful of threads in series. A modern GPU runs <strong>thousands of threads in parallel</strong>, each doing a tiny piece of work. For embarrassingly parallel problems like matrix multiplication &mdash; where every output element can be computed independently &mdash; the GPU wins by orders of magnitude.</p>
 <p>This part is in two halves:</p>
 <ol>
-<li>A <strong>CPU simulation</strong> of the CUDA execution model — kernels, grids, blocks, threads — so you can see the structure without needing a GPU.</li>
+<li>A <strong>CPU simulation</strong> of the CUDA execution model &mdash; kernels, grids, blocks, threads &mdash; so you can see the structure without needing a GPU.</li>
 <li>The <strong>real CUDA</strong> via Numba's <code>@cuda.jit</code>, which compiles your Python function to a GPU kernel.</li>
 </ol>
 <p>Then we'll compare to PyTorch's GPU matmul, which uses NVIDIA's hand-tuned cuBLAS library.</p>
 <hr/>
 <h2 id="9.1-What-is-a-CUDA-kernel?">9.1 What is a CUDA kernel?<a class="anchor-link" href="#9.1-What-is-a-CUDA-kernel?">¶</a></h2><p>A kernel is a function that <em>one</em> GPU thread runs. The GPU launches <strong>many</strong> of these threads in parallel, each working on a different piece of the problem. For matrix multiplication, the natural decomposition is: <strong>one thread per output element</strong>.</p>
-<p>For our 5,000 × 10 result, that's 50,000 threads, each computing one of the 50,000 output entries. If the GPU has enough resources to run them all simultaneously — which on modern hardware it absolutely does — the whole matmul takes the same wall-clock time as computing one element.</p>
+<p>For our 5,000 &times; 10 result, that's 50,000 threads, each computing one of the 50,000 output entries. If the GPU has enough resources to run them all simultaneously &mdash; which on modern hardware it absolutely does &mdash; the whole matmul takes the same wall-clock time as computing one element.</p>
 <hr/>
 <h2 id="9.2-CPU-simulation-of-a-kernel">9.2 CPU simulation of a kernel<a class="anchor-link" href="#9.2-CPU-simulation-of-a-kernel">¶</a></h2>
 </div>
@@ -10656,8 +10691,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
 <p>Defines a function that computes <strong>a single element of the output matrix</strong>. The <code>grid</code> argument tells this "thread" which <code>(i, j)</code> it's responsible for. The bounds check <code>if i &lt; c.shape[0] and j &lt; c.shape[1]</code> matters once we launch slightly more threads than there are output elements (which happens because thread counts are usually rounded up to a power of 2).</p>
-<p>The body is a textbook dot product over the shared dimension — same arithmetic as every other matmul in this notebook.</p>
-<p>The test call <code>matmul_kernel((0, 0), m1, m2, res)</code> simulates <em>one</em> thread computing the (0, 0) entry. The rest of <code>res</code> is still zero — the other 49,999 entries haven't been touched.</p>
+<p>The body is a textbook dot product over the shared dimension &mdash; same arithmetic as every other matmul in this notebook.</p>
+<p>The test call <code>matmul_kernel((0, 0), m1, m2, res)</code> simulates <em>one</em> thread computing the (0, 0) entry. The rest of <code>res</code> is still zero &mdash; the other 49,999 entries haven't been touched.</p>
 </div>
 </div>
 </div>
@@ -10728,8 +10763,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Simulates a kernel launch on the CPU by walking the entire 2-D grid sequentially and calling the kernel at each <code>(i, j)</code>. On a real GPU, the for-loops are <em>replaced by parallel hardware</em> — all <code>ar × bc</code> "thread positions" are dispatched simultaneously.</p>
-<p>The verification step <code>torch.allclose(res, t1)</code> confirms the simulated kernel produces the same answer as the naive triple loop. The CPU simulation is, in fact, slower than the triple loop (extra function-call overhead), but it's not for speed — it's for <em>teaching the shape</em> of GPU code so the real CUDA version makes sense.</p>
+<p>Simulates a kernel launch on the CPU by walking the entire 2-D grid sequentially and calling the kernel at each <code>(i, j)</code>. On a real GPU, the for-loops are <em>replaced by parallel hardware</em> &mdash; all <code>ar &times; bc</code> "thread positions" are dispatched simultaneously.</p>
+<p>The verification step <code>torch.allclose(res, t1)</code> confirms the simulated kernel produces the same answer as the naive triple loop. The CPU simulation is, in fact, slower than the triple loop (extra function-call overhead), but it's not for speed &mdash; it's for <em>teaching the shape</em> of GPU code so the real CUDA version makes sense.</p>
 </div>
 </div>
 </div>
@@ -10821,10 +10856,10 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p>Defines the <em>same</em> per-element kernel as before — dot product over the shared axis — but with two CUDA-specific additions:</p>
+<p>Defines the <em>same</em> per-element kernel as before &mdash; dot product over the shared axis &mdash; but with two CUDA-specific additions:</p>
 <ol>
 <li><code>@cuda.jit</code> decorator: compile this for the GPU.</li>
-<li><code>i, j = cuda.grid(2)</code>: the CUDA equivalent of "which (i, j) am I?" Each launched thread gets a unique <code>(i, j)</code> from <code>cuda.grid(2)</code> — no need to pass it as an argument like in the CPU simulation.</li>
+<li><code>i, j = cuda.grid(2)</code>: the CUDA equivalent of "which (i, j) am I?" Each launched thread gets a unique <code>(i, j)</code> from <code>cuda.grid(2)</code> &mdash; no need to pass it as an argument like in the CPU simulation.</li>
 </ol>
 <p>The bounds check is the same idea as before: thread counts are rounded up to fit the block structure, so some threads will have <code>(i, j)</code> outside the actual output matrix and must do nothing.</p>
 </div>
@@ -10897,13 +10932,13 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
 <p>Two-stage setup for the GPU launch:</p>
-<p><strong>Stage 1 — Move data to GPU memory.</strong> GPU and CPU have <em>separate</em> memory. Before the kernel can read <code>m1</code> and <code>m2</code>, those tensors must be physically copied to GPU memory (called <em>device memory</em>). <code>cuda.to_device(arr)</code> does this, returning a "device array" handle. The actual numbers live on the GPU now; the handle lets us refer to them from CPU-side Python.</p>
-<p><strong>Stage 2 — Pick the grid configuration.</strong> CUDA organizes parallel work in a hierarchy:</p>
+<p><strong>Stage 1 &mdash; Move data to GPU memory.</strong> GPU and CPU have <em>separate</em> memory. Before the kernel can read <code>m1</code> and <code>m2</code>, those tensors must be physically copied to GPU memory (called <em>device memory</em>). <code>cuda.to_device(arr)</code> does this, returning a "device array" handle. The actual numbers live on the GPU now; the handle lets us refer to them from CPU-side Python.</p>
+<p><strong>Stage 2 &mdash; Pick the grid configuration.</strong> CUDA organizes parallel work in a hierarchy:</p>
 <pre><code>   Grid
    ├── Block (0, 0)
    │   ├── Thread (0, 0)
    │   ├── Thread (0, 1)
-   │   ├── ... (TPB × TPB threads per block)
+   │   ├── ... (TPB &times; TPB threads per block)
    │
    ├── Block (0, 1)
    │   └── ...
@@ -10913,10 +10948,10 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 </code></pre>
 <ul>
 <li><strong>Thread</strong>: one execution of the kernel function.</li>
-<li><strong>Block</strong>: a group of threads that can share fast on-chip memory and synchronize with each other. We pick 16 × 16 = 256 threads per block.</li>
+<li><strong>Block</strong>: a group of threads that can share fast on-chip memory and synchronize with each other. We pick 16 &times; 16 = 256 threads per block.</li>
 <li><strong>Grid</strong>: the rectangle of blocks needed to cover the entire output matrix. We pick <em>just enough</em> blocks to cover, using <code>math.ceil</code> to round up.</li>
 </ul>
-<p>Why 16 × 16? Several reasons: it's a multiple of 32 (NVIDIA hardware bundles threads into "warps" of 32 that execute in lock-step, and 16 × 16 = 256 = 8 warps), it fits comfortably in the per-block register budget, and the 256-thread count is high enough to hide memory latency. It's not the only reasonable choice but it's a strong default.</p>
+<p>Why 16 &times; 16? Several reasons: it's a multiple of 32 (NVIDIA hardware bundles threads into "warps" of 32 that execute in lock-step, and 16 &times; 16 = 256 = 8 warps), it fits comfortably in the per-block register budget, and the 256-thread count is high enough to hide memory latency. It's not the only reasonable choice but it's a strong default.</p>
 </div>
 </div>
 </div>
@@ -10978,7 +11013,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <p>Launches the kernel. The syntax <code>matmul_cuda[blockspergrid, (TPB, TPB)](m1g, m2g, rg)</code> is Numba's CUDA-launch idiom:</p>
 <ul>
 <li>The brackets <code>[blockspergrid, (TPB, TPB)]</code> are the <strong>launch configuration</strong>: how to lay out the grid of threads.</li>
-<li>The parens <code>(m1g, m2g, rg)</code> are the kernel arguments — already on the GPU.</li>
+<li>The parens <code>(m1g, m2g, rg)</code> are the kernel arguments &mdash; already on the GPU.</li>
 </ul>
 <p>After the launch the GPU starts running thousands of threads in parallel. Control returns to Python almost immediately (the launch is asynchronous), but <code>.copy_to_host()</code> blocks until the kernel finishes and then copies the result back to CPU memory.</p>
 <p><code>test_close(tr, r, eps=1e-3)</code> checks that the GPU's answer matches the CPU's, allowing for tiny floating-point drift (GPUs sometimes use a fused multiply-add that rounds differently than two separate operations).</p>
@@ -11013,7 +11048,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What does the code above do?</strong></p>
-<p><code>%%timeit -n 10</code> (note the <strong>double</strong> <code>%</code>, making it a cell magic that times the whole cell, not just one line) runs the launch+copy 10 times and reports the average. Expected on a modern NVIDIA GPU: a few milliseconds — competitive with PyTorch's GPU matmul but a bit slower, because PyTorch uses cuBLAS (NVIDIA's hand-tuned matmul) while our Numba kernel is a naive per-thread dot product.</p>
+<p><code>%%timeit -n 10</code> (note the <strong>double</strong> <code>%</code>, making it a cell magic that times the whole cell, not just one line) runs the launch+copy 10 times and reports the average. Expected on a modern NVIDIA GPU: a few milliseconds &mdash; competitive with PyTorch's GPU matmul but a bit slower, because PyTorch uses cuBLAS (NVIDIA's hand-tuned matmul) while our Numba kernel is a naive per-thread dot product.</p>
 </div>
 </div>
 </div>
@@ -11025,9 +11060,9 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Deep-Dive:-The-CUDA-Execution-Model">Deep Dive: The CUDA Execution Model<a class="anchor-link" href="#Deep-Dive:-The-CUDA-Execution-Model">¶</a></h1><p>Once you've seen the launch syntax in §9.3, the next questions are: <em>Why</em> are threads grouped into blocks? Why a 2-D grid? Why 16 × 16? What's the actual hardware doing?</p>
+<h1 id="Deep-Dive:-The-CUDA-Execution-Model">Deep Dive: The CUDA Execution Model<a class="anchor-link" href="#Deep-Dive:-The-CUDA-Execution-Model">¶</a></h1><p>Once you've seen the launch syntax in &sect;9.3, the next questions are: <em>Why</em> are threads grouped into blocks? Why a 2-D grid? Why 16 &times; 16? What's the actual hardware doing?</p>
 <hr/>
-<h2 id="The-Hardware-in-One-Paragraph">The Hardware in One Paragraph<a class="anchor-link" href="#The-Hardware-in-One-Paragraph">¶</a></h2><p>A modern NVIDIA GPU contains dozens of <strong>Streaming Multiprocessors (SMs)</strong> — small independent processors. Each SM has a pool of registers, a small chunk of fast on-chip "shared memory" (a few tens of KB), and hardware that can execute hundreds of threads in lock-step. The whole GPU has tens of thousands of cores in total, divided across these SMs.</p>
+<h2 id="The-Hardware-in-One-Paragraph">The Hardware in One Paragraph<a class="anchor-link" href="#The-Hardware-in-One-Paragraph">¶</a></h2><p>A modern NVIDIA GPU contains dozens of <strong>Streaming Multiprocessors (SMs)</strong> &mdash; small independent processors. Each SM has a pool of registers, a small chunk of fast on-chip "shared memory" (a few tens of KB), and hardware that can execute hundreds of threads in lock-step. The whole GPU has tens of thousands of cores in total, divided across these SMs.</p>
 <p>The execution model exposed to programmers is a three-level hierarchy:</p>
 <table>
 <thead>
@@ -11057,29 +11092,29 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 </table>
 <p>The hierarchy reflects the hardware: threads in a block run on the same SM, so they can share state. Blocks may run on different SMs, so cross-block synchronization is impossible during one kernel launch.</p>
 <hr/>
-<h2 id="Warps-%E2%80%94-The-Fundamental-Unit">Warps — The Fundamental Unit<a class="anchor-link" href="#Warps-%E2%80%94-The-Fundamental-Unit">¶</a></h2><p>There's a hidden fourth level: the <strong>warp</strong>. A warp is 32 threads that <em>physically execute in lock-step</em> on NVIDIA hardware — a single instruction is decoded once and applied to all 32 threads' registers simultaneously (Single-Instruction, Multiple-Data: SIMD).</p>
+<h2 id="Warps-%E2%80%94-The-Fundamental-Unit">Warps &mdash; The Fundamental Unit<a class="anchor-link" href="#Warps-%E2%80%94-The-Fundamental-Unit">¶</a></h2><p>There's a hidden fourth level: the <strong>warp</strong>. A warp is 32 threads that <em>physically execute in lock-step</em> on NVIDIA hardware &mdash; a single instruction is decoded once and applied to all 32 threads' registers simultaneously (Single-Instruction, Multiple-Data: SIMD).</p>
 <p>Why does this matter?</p>
 <ol>
-<li><strong>Thread counts should be multiples of 32</strong> — anything else wastes warp slots.</li>
-<li><strong>Threads in a warp should take the same code path</strong> — if they branch differently (<code>if (i % 2 == 0) ...</code>), the warp executes both branches sequentially with the inactive threads masked off. This is "warp divergence" and it cuts your throughput.</li>
-<li><strong>16 × 16 = 256 threads per block = exactly 8 warps</strong> — neat math, and a number that fits all GPU generations.</li>
+<li><strong>Thread counts should be multiples of 32</strong> &mdash; anything else wastes warp slots.</li>
+<li><strong>Threads in a warp should take the same code path</strong> &mdash; if they branch differently (<code>if (i % 2 == 0) ...</code>), the warp executes both branches sequentially with the inactive threads masked off. This is "warp divergence" and it cuts your throughput.</li>
+<li><strong>16 &times; 16 = 256 threads per block = exactly 8 warps</strong> &mdash; neat math, and a number that fits all GPU generations.</li>
 </ol>
 <hr/>
-<h2 id="Why-a-2-D-Grid-for-Matmul?">Why a 2-D Grid for Matmul?<a class="anchor-link" href="#Why-a-2-D-Grid-for-Matmul?">¶</a></h2><p>The output matrix is 2-D, so the natural mapping is: one thread per <code>(i, j)</code> output element. A 2-D grid makes this mapping trivial — <code>cuda.grid(2)</code> returns the thread's <code>(i, j)</code> directly.</p>
+<h2 id="Why-a-2-D-Grid-for-Matmul?">Why a 2-D Grid for Matmul?<a class="anchor-link" href="#Why-a-2-D-Grid-for-Matmul?">¶</a></h2><p>The output matrix is 2-D, so the natural mapping is: one thread per <code>(i, j)</code> output element. A 2-D grid makes this mapping trivial &mdash; <code>cuda.grid(2)</code> returns the thread's <code>(i, j)</code> directly.</p>
 <p>You could also use a 1-D grid and unflatten: <code>idx = cuda.grid(1)</code>, then <code>i = idx // N</code>, <code>j = idx % N</code>. That works but it's slightly slower (extra division and modulo per thread) and harder to read. The 2-D launch syntax exists <em>because</em> this pattern is so common.</p>
-<p>For convolutions you'd want a 3-D grid (height × width × output channel). For 1-D operations like vector add, 1-D is fine.</p>
+<p>For convolutions you'd want a 3-D grid (height &times; width &times; output channel). For 1-D operations like vector add, 1-D is fine.</p>
 <hr/>
 <h2 id="The-blockspergrid-Arithmetic,-Explained">The <code>blockspergrid</code> Arithmetic, Explained<a class="anchor-link" href="#The-blockspergrid-Arithmetic,-Explained">¶</a></h2><div class="highlight"><pre><span></span><span class="n">TPB</span> <span class="o">=</span> <span class="mi">16</span>
 <span class="n">rr</span><span class="p">,</span> <span class="n">rc</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">shape</span>   <span class="c1"># e.g. (50000, 10)</span>
 <span class="n">blockspergrid</span> <span class="o">=</span> <span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">rr</span> <span class="o">/</span> <span class="n">TPB</span><span class="p">),</span> <span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">rc</span> <span class="o">/</span> <span class="n">TPB</span><span class="p">))</span>
 </pre></div>
-<p>We want enough blocks to cover the entire output matrix. With 16 × 16 threads per block:</p>
+<p>We want enough blocks to cover the entire output matrix. With 16 &times; 16 threads per block:</p>
 <ul>
 <li><code>math.ceil(50000 / 16) = 3125</code> blocks in the row direction</li>
 <li><code>math.ceil(10 / 16) = 1</code> block in the column direction</li>
-<li>Total: 3125 × 1 = 3125 blocks × 256 threads/block = 800,000 threads</li>
+<li>Total: 3125 &times; 1 = 3125 blocks &times; 256 threads/block = 800,000 threads</li>
 </ul>
-<p>We only need 50,000 × 10 = 500,000 output elements computed, but we launched 800,000 threads. The extras are the threads whose <code>(i, j)</code> falls outside the output matrix. <strong>That's why every kernel must start with a bounds check</strong>:</p>
+<p>We only need 50,000 &times; 10 = 500,000 output elements computed, but we launched 800,000 threads. The extras are the threads whose <code>(i, j)</code> falls outside the output matrix. <strong>That's why every kernel must start with a bounds check</strong>:</p>
 <div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">c</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">c</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
     <span class="o">...</span><span class="n">do</span> <span class="n">work</span><span class="o">...</span>
 </pre></div>
@@ -11089,29 +11124,29 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 </pre></div>
 <p>Allocates GPU memory for each input, then copies the CPU-side bytes over the PCIe bus to the GPU. The returned <code>Device Array</code> is a small handle that lives in CPU Python but references the GPU-side data.</p>
 <p>Copies between CPU and GPU memory have significant latency (microseconds) and limited bandwidth (~16 GB/s on PCIe 4.0). The general rule: <strong>transfer once, compute many times.</strong> If you're calling a kernel in a loop, allocate device buffers once outside the loop and reuse them. Copying back and forth every iteration is a fast way to nuke your speedup.</p>
-<p><code>.copy_to_host()</code> does the reverse — copies the GPU result back to a NumPy array on the CPU.</p>
+<p><code>.copy_to_host()</code> does the reverse &mdash; copies the GPU result back to a NumPy array on the CPU.</p>
 <hr/>
 <h2 id="When-CUDA-Wins">When CUDA Wins<a class="anchor-link" href="#When-CUDA-Wins">¶</a></h2><p>CUDA wins when:</p>
 <ul>
 <li>The problem is <strong>embarrassingly parallel</strong>: thousands of independent work units.</li>
-<li>The arithmetic intensity is <strong>high</strong>: lots of math per byte of memory read. Matrix multiplication is the textbook example — each input element is reused many times.</li>
+<li>The arithmetic intensity is <strong>high</strong>: lots of math per byte of memory read. Matrix multiplication is the textbook example &mdash; each input element is reused many times.</li>
 <li><strong>One transfer covers a lot of compute</strong>: if you copy data over and compute once, the transfer cost dominates and you may lose to a CPU.</li>
 </ul>
 <p>CUDA loses or breaks even when:</p>
 <ul>
-<li>The problem is small (overhead of launching a kernel exceeds the work — under 10,000 elements typically).</li>
+<li>The problem is small (overhead of launching a kernel exceeds the work &mdash; under 10,000 elements typically).</li>
 <li>The control flow is highly branchy (warp divergence).</li>
 <li>Memory access patterns are scattered (uncoalesced reads).</li>
 </ul>
-<p>For matrix multiplication of any meaningful size, CUDA is a 50–1000× win over CPU. For a 5 × 784 by 784 × 10 matmul, the win is more modest because the work itself is small.</p>
+<p>For matrix multiplication of any meaningful size, CUDA is a 50&ndash;1000&times; win over CPU. For a 5 &times; 784 by 784 &times; 10 matmul, the win is more modest because the work itself is small.</p>
 <hr/>
-<h2 id="What-cuBLAS-Does-That-Our-Kernel-Doesn't">What <code>cuBLAS</code> Does That Our Kernel Doesn't<a class="anchor-link" href="#What-cuBLAS-Does-That-Our-Kernel-Doesn't">¶</a></h2><p>Our Numba kernel is a naive per-thread dot product. NVIDIA's cuBLAS library — which is what PyTorch dispatches to when you write <code>A @ B</code> on GPU tensors — does more sophisticated things:</p>
+<h2 id="What-cuBLAS-Does-That-Our-Kernel-Doesn't">What <code>cuBLAS</code> Does That Our Kernel Doesn't<a class="anchor-link" href="#What-cuBLAS-Does-That-Our-Kernel-Doesn't">¶</a></h2><p>Our Numba kernel is a naive per-thread dot product. NVIDIA's cuBLAS library &mdash; which is what PyTorch dispatches to when you write <code>A @ B</code> on GPU tensors &mdash; does more sophisticated things:</p>
 <ol>
 <li><strong>Tiling</strong>: each block cooperatively loads a sub-block of <code>A</code> and <code>B</code> into shared memory and reuses it for many threads. Cuts memory traffic dramatically.</li>
-<li><strong>Tensor Cores</strong>: on modern GPUs, dedicated hardware does 4 × 4 × 4 matmul in one cycle. cuBLAS uses these; our kernel doesn't.</li>
+<li><strong>Tensor Cores</strong>: on modern GPUs, dedicated hardware does 4 &times; 4 &times; 4 matmul in one cycle. cuBLAS uses these; our kernel doesn't.</li>
 <li><strong>Fused operations</strong>: cuBLAS variants can fuse matmul with bias, activation, scale, etc., avoiding round-trips through memory.</li>
 </ol>
-<p>The result: cuBLAS is 5–20× faster than a naive CUDA matmul. The lesson — same as before — is <strong>don't roll your own matmul in production</strong>.</p>
+<p>The result: cuBLAS is 5&ndash;20&times; faster than a naive CUDA matmul. The lesson &mdash; same as before &mdash; is <strong>don't roll your own matmul in production</strong>.</p>
 <hr/>
 <h2 id="Back-to-building.">Back to building.<a class="anchor-link" href="#Back-to-building.">¶</a></h2>
 </div>
@@ -11125,7 +11160,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Part-10:-PyTorch-on-the-GPU-%E2%80%94-the-One-Line-Move">Part 10: PyTorch on the GPU — the One-Line Move<a class="anchor-link" href="#Part-10:-PyTorch-on-the-GPU-%E2%80%94-the-One-Line-Move">¶</a></h1><p>After all that careful kernel work, the production-grade way to do matmul on the GPU is two characters: <code>.cuda()</code>.</p>
+<h1 id="Part-10:-PyTorch-on-the-GPU-%E2%80%94-the-One-Line-Move">Part 10: PyTorch on the GPU &mdash; the One-Line Move<a class="anchor-link" href="#Part-10:-PyTorch-on-the-GPU-%E2%80%94-the-One-Line-Move">¶</a></h1><p>After all that careful kernel work, the production-grade way to do matmul on the GPU is two characters: <code>.cuda()</code>.</p>
 <h2 id="10.1-PyTorch-GPU-matmul">10.1 PyTorch GPU matmul<a class="anchor-link" href="#10.1-PyTorch-GPU-matmul">¶</a></h2>
 </div>
 </div>
@@ -11189,15 +11224,15 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <p><strong>What does the code above do?</strong></p>
 <p>Three lines, three lessons.</p>
 <ol>
-<li><p><code>m1c, m2c = x_train.cuda(), weights.cuda()</code> — copy both input tensors to GPU memory. This is the PyTorch equivalent of <code>cuda.to_device</code>. After this line, <code>m1c</code> and <code>m2c</code> are tensors that live on the GPU; operations on them dispatch to CUDA kernels automatically.</p>
+<li><p><code>m1c, m2c = x_train.cuda(), weights.cuda()</code> &mdash; copy both input tensors to GPU memory. This is the PyTorch equivalent of <code>cuda.to_device</code>. After this line, <code>m1c</code> and <code>m2c</code> are tensors that live on the GPU; operations on them dispatch to CUDA kernels automatically.</p>
 </li>
-<li><p><code>r = (m1c @ m2c).cpu()</code> — the matmul itself runs on the GPU via cuBLAS, producing a GPU tensor. <code>.cpu()</code> copies the result back to CPU memory so we can print or save it.</p>
+<li><p><code>r = (m1c @ m2c).cpu()</code> &mdash; the matmul itself runs on the GPU via cuBLAS, producing a GPU tensor. <code>.cpu()</code> copies the result back to CPU memory so we can print or save it.</p>
 </li>
 <li><p>The <code>%timeit</code> benchmark measures the full round-trip: launch the kernel, wait for completion, copy the result back. On a modern GPU, expect something like <strong>0.5 ms for the full 50,000-image matmul</strong>.</p>
 </li>
 </ol>
-<p>Compare to the naive triple loop's projected ~5,000,000 ms for the same work and you have <strong>a 10,000,000× speedup, give or take an order of magnitude depending on hardware.</strong> The combination of compiled code (vs. interpreter), vectorization (vs. element-at-a-time), and parallel hardware (vs. one core) is the trifecta of numerical computing.</p>
-<p>In real training loops you do <em>not</em> call <code>.cpu()</code> after every matmul — you keep everything on the GPU and only transfer back at the end of an epoch (for printing metrics, saving checkpoints, etc.). The repeated <code>.cuda()</code> / <code>.cpu()</code> round-trips here are just for benchmarking.</p>
+<p>Compare to the naive triple loop's projected ~5,000,000 ms for the same work and you have <strong>a 10,000,000&times; speedup, give or take an order of magnitude depending on hardware.</strong> The combination of compiled code (vs. interpreter), vectorization (vs. element-at-a-time), and parallel hardware (vs. one core) is the trifecta of numerical computing.</p>
+<p>In real training loops you do <em>not</em> call <code>.cpu()</code> after every matmul &mdash; you keep everything on the GPU and only transfer back at the end of an epoch (for printing metrics, saving checkpoints, etc.). The repeated <code>.cuda()</code> / <code>.cpu()</code> round-trips here are just for benchmarking.</p>
 </div>
 </div>
 </div>
@@ -11209,7 +11244,19 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h1 id="Summary:-Six-Ways-to-Do-One-Matmul">Summary: Six Ways to Do One Matmul<a class="anchor-link" href="#Summary:-Six-Ways-to-Do-One-Matmul">¶</a></h1><p>Every implementation in this notebook computes the same arithmetic — $C_{ij} = \sum_k A_{ik} B_{kj}$ over the same shapes. The performance differences are entirely about <em>where</em> the work runs and <em>how</em> it's organized.</p>
+<div class="ce-interactive">
+  <h3>Interactive: The matmul speed race</h3>
+  <p class="ce-interactive-hint">Six implementations of the same 50,000&times;784 by 784&times;10 matmul, racing in real time at their actual measured speeds. Press <strong>Start race</strong> and watch each bar fill at a rate proportional to its real wall-clock time. The GPU bar finishes nearly instantly &mdash; that's the eight-orders-of-magnitude story of modern numerical computing.</p>
+  <div class="race-widget" id="race-widget"></div>
+  <div class="ms-controls">
+    <button id="race-start" class="ms-btn">Start race</button>
+    <button id="race-reset" class="ms-btn ms-secondary">Reset</button>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>Caveat:</strong> these are rough order-of-magnitude numbers, animated proportionally. Actual times depend on CPU, GPU, BLAS version, and problem size. But the <em>gaps</em> between implementations are real and repeatable &mdash; they're the four levers of numerical performance (compile the inner loop, vectorize, use a tuned library, use specialized hardware).
+  </p>
+</div>
+<h1 id="Summary:-Six-Ways-to-Do-One-Matmul">Summary: Six Ways to Do One Matmul<a class="anchor-link" href="#Summary:-Six-Ways-to-Do-One-Matmul">¶</a></h1><p>Every implementation in this notebook computes the same arithmetic &mdash; $C_{ij} = \sum_k A_{ik} B_{kj}$ over the same shapes. The performance differences are entirely about <em>where</em> the work runs and <em>how</em> it's organized.</p>
 <table>
 <thead>
 <tr>
@@ -11230,7 +11277,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <td>3</td>
 <td>~500 ms</td>
 <td>~5,000,000 ms (est.)</td>
-<td>1×</td>
+<td>1&times;</td>
 </tr>
 <tr>
 <td>2</td>
@@ -11239,7 +11286,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <td>2 (outer), 1 compiled</td>
 <td>~5 ms</td>
 <td>~50,000 ms (est.)</td>
-<td>~100×</td>
+<td>~100&times;</td>
 </tr>
 <tr>
 <td>3</td>
@@ -11248,7 +11295,7 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <td>1 (outer)</td>
 <td>~0.1 ms</td>
 <td>~600 ms</td>
-<td>~10,000×</td>
+<td>~10,000&times;</td>
 </tr>
 <tr>
 <td>4</td>
@@ -11256,8 +11303,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <td>CPU BLAS</td>
 <td>0</td>
 <td>~0.005 ms</td>
-<td>~5–15 ms</td>
-<td>~3,000,000×</td>
+<td>~5&ndash;15 ms</td>
+<td>~3,000,000&times;</td>
 </tr>
 <tr>
 <td>5</td>
@@ -11265,8 +11312,8 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <td>CPU BLAS</td>
 <td>0</td>
 <td>~0.005 ms</td>
-<td>~5–15 ms</td>
-<td>~3,000,000×</td>
+<td>~5&ndash;15 ms</td>
+<td>~3,000,000&times;</td>
 </tr>
 <tr>
 <td>6</td>
@@ -11275,34 +11322,568 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 <td>0</td>
 <td>~0.001 ms</td>
 <td>~0.5 ms</td>
-<td>~10,000,000×</td>
+<td>~10,000,000&times;</td>
 </tr>
 </tbody>
 </table>
-<p>(Times are rough orders of magnitude — exact numbers depend on hardware.)</p>
+<p>(Times are rough orders of magnitude &mdash; exact numbers depend on hardware.)</p>
 <p>The journey is a perfect microcosm of how performance is bought in numerical computing:</p>
 <ol>
-<li><strong>Compile the inner loop</strong> (Numba) → eliminate interpreter tax.</li>
-<li><strong>Vectorize</strong> (broadcasting, einsum) → push loops down into batched C calls.</li>
-<li><strong>Use a tuned library</strong> (BLAS, cuBLAS) → exploit hand-engineered cache blocking and SIMD.</li>
-<li><strong>Use specialized hardware</strong> (GPU, Tensor Cores) → parallel arithmetic at massive scale.</li>
+<li><strong>Compile the inner loop</strong> (Numba) &rarr; eliminate interpreter tax.</li>
+<li><strong>Vectorize</strong> (broadcasting, einsum) &rarr; push loops down into batched C calls.</li>
+<li><strong>Use a tuned library</strong> (BLAS, cuBLAS) &rarr; exploit hand-engineered cache blocking and SIMD.</li>
+<li><strong>Use specialized hardware</strong> (GPU, Tensor Cores) &rarr; parallel arithmetic at massive scale.</li>
 </ol>
-<p>These four levers are the <em>only</em> ways you ever speed up numerical code. Every framework you'll encounter — JAX, TensorFlow, MLX, Triton — packages the same four levers in slightly different wrapping.</p>
+<p>These four levers are the <em>only</em> ways you ever speed up numerical code. Every framework you'll encounter &mdash; JAX, TensorFlow, MLX, Triton &mdash; packages the same four levers in slightly different wrapping.</p>
 <hr/>
-<h2 id="How-This-Connects-to-the-Rest-of-the-Course">How This Connects to the Rest of the Course<a class="anchor-link" href="#How-This-Connects-to-the-Rest-of-the-Course">¶</a></h2><p>Notebook 03 (backprop) does many matmuls during the backward pass. Notebooks 09–14 are about training infrastructure that runs many matmuls per minibatch on the GPU. Notebooks 15+ (diffusion) do many matmuls per denoising step. Notebook 27 (attention) does several specially structured matmuls per layer.</p>
+<h2 id="How-This-Connects-to-the-Rest-of-the-Course">How This Connects to the Rest of the Course<a class="anchor-link" href="#How-This-Connects-to-the-Rest-of-the-Course">¶</a></h2><p>Notebook 03 (backprop) does many matmuls during the backward pass. Notebooks 09&ndash;14 are about training infrastructure that runs many matmuls per minibatch on the GPU. Notebooks 15+ (diffusion) do many matmuls per denoising step. Notebook 27 (attention) does several specially structured matmuls per layer.</p>
 <p>Everywhere you see "the model does a forward pass," 80%+ of that wall time is matmul. The single most consequential operation in deep learning is the one we just spent this notebook building four ways.</p>
 <p>You now know exactly what's happening under the hood when you write <code>model(x)</code>.</p>
 <hr/>
 <h2 id="Suggested-Next-Steps">Suggested Next Steps<a class="anchor-link" href="#Suggested-Next-Steps">¶</a></h2><ol>
-<li><strong>Read through the three deep-dive sections</strong> — broadcasting, einsum, and the CUDA execution model. These are the conceptual content that the rest of the course assumes you understand.</li>
-<li><strong>Run <code>concept-extraction</code> on this notebook</strong> to produce atomic cards for spaced review: "what does <code>'ik,kj-&gt;ij'</code> mean," "what are the three broadcasting rules," "why 16 × 16 threads per block," etc.</li>
-<li><strong>If you have a GPU</strong>, change the dataset size in §10 and verify the GPU speedup curves match the table above. Plot the speedup vs problem size — there's an inflection point where the GPU starts winning.</li>
+<li><strong>Read through the three deep-dive sections</strong> &mdash; broadcasting, einsum, and the CUDA execution model. These are the conceptual content that the rest of the course assumes you understand.</li>
+<li><strong>Run <code>concept-extraction</code> on this notebook</strong> to produce atomic cards for spaced review: "what does <code>'ik,kj-&gt;ij'</code> mean," "what are the three broadcasting rules," "why 16 &times; 16 threads per block," etc.</li>
+<li><strong>If you have a GPU</strong>, change the dataset size in &sect;10 and verify the GPU speedup curves match the table above. Plot the speedup vs problem size &mdash; there's an inflection point where the GPU starts winning.</li>
 </ol>
-<p>On to notebook 02 (mean shift) — which uses <em>exactly</em> the broadcasting and einsum patterns from this notebook to implement a clustering algorithm from scratch.</p>
+<p>On to notebook 02 (mean shift) &mdash; which uses <em>exactly</em> the broadcasting and einsum patterns from this notebook to implement a clustering algorithm from scratch.</p>
 </div>
 </div>
 </div>
 </div>
+<style>
+.ce-interactive .ms-controls {
+  display: flex; gap: 14px; align-items: center;
+  margin-top: 14px; flex-wrap: wrap;
+}
+.ce-interactive label {
+  font-family: var(--ce-font-mono, "JetBrains Mono", monospace);
+  font-size: 0.9em;
+  color: var(--ce-text-soft, #3c4257);
+}
+.ce-interactive input[type="range"] {
+  flex: 1; min-width: 160px;
+  accent-color: var(--ce-purple, #6c5ce7);
+  height: 6px; touch-action: manipulation;
+}
+.ce-interactive .ms-val {
+  font-family: var(--ce-font-mono, "JetBrains Mono", monospace);
+  font-size: 0.9em;
+  color: var(--ce-purple-dark, #4f3dd0);
+  min-width: 56px; text-align: right;
+}
+.ce-interactive .ms-btn {
+  background: var(--ce-purple, #6c5ce7); color: white;
+  border: none; padding: 8px 18px; border-radius: 8px;
+  font-family: var(--ce-font-body, "Inter", sans-serif);
+  font-weight: 500; font-size: 0.92em;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(108, 92, 231, 0.28);
+  transition: background 0.15s, transform 0.08s;
+  touch-action: manipulation;
+}
+.ce-interactive .ms-btn:hover  { background: var(--ce-purple-dark, #4f3dd0); }
+.ce-interactive .ms-btn:active { transform: translateY(1px); }
+.ce-interactive .ms-btn.ms-secondary {
+  background: transparent;
+  color: var(--ce-purple, #6c5ce7);
+  border: 1px solid var(--ce-purple, #6c5ce7);
+  box-shadow: none;
+}
+.ce-interactive .ms-btn.ms-secondary:hover {
+  background: rgba(108, 92, 231, 0.08);
+}
+
+/* Matmul step-through widget */
+.mm-widget {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 18px;
+  overflow-x: auto;
+}
+.mm-grids {
+  display: flex; gap: 14px; align-items: center;
+  justify-content: center; flex-wrap: nowrap; min-width: 0;
+}
+.mm-grids .mm-label {
+  font-family: var(--ce-font-mono, monospace);
+  font-size: 1.4em;
+  color: var(--ce-text-muted, #697386);
+  margin: 0 4px;
+}
+.mm-grids table {
+  border-collapse: collapse;
+  background: white;
+  font-family: var(--ce-font-mono, monospace);
+  font-size: 0.85em;
+}
+.mm-grids th {
+  font-weight: 500; font-size: 0.78em;
+  padding: 2px 6px; color: var(--ce-text-muted, #697386);
+}
+.mm-grids td {
+  border: 1px solid #e5e7eb;
+  padding: 6px 10px; min-width: 28px;
+  text-align: center; transition: all 0.2s;
+}
+.mm-grids .mm-name {
+  font-family: var(--ce-font-heading, Georgia, serif);
+  font-size: 1.1em; font-weight: 600;
+  color: var(--ce-purple-dark, #4f3dd0);
+  text-align: center; margin-bottom: 4px;
+}
+.mm-grids td.mm-highlight-row {
+  background: rgba(79, 70, 229, 0.18);
+  color: #1a1f36; font-weight: 600;
+}
+.mm-grids td.mm-highlight-col {
+  background: rgba(79, 70, 229, 0.18);
+  color: #1a1f36; font-weight: 600;
+}
+.mm-grids td.mm-highlight-both {
+  background: rgba(79, 70, 229, 0.42);
+  color: white; font-weight: 700;
+}
+.mm-grids td.mm-current-cell {
+  background: rgba(245, 158, 11, 0.25);
+  border: 2px solid #f59e0b;
+  font-weight: 600;
+}
+.mm-grids td.mm-cell-done {
+  background: rgba(15, 185, 177, 0.12);
+  color: #0f766e; font-weight: 600;
+}
+.mm-formula {
+  margin-top: 16px; padding: 10px 14px;
+  background: white; border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-family: var(--ce-font-mono, monospace);
+  font-size: 0.92em; min-height: 1.4em;
+  color: var(--ce-text-soft, #3c4257);
+  text-align: center;
+}
+
+/* Broadcasting widget */
+.bc-widget {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 18px;
+}
+.bc-pair-row {
+  display: flex; align-items: center;
+  gap: 12px; margin-bottom: 10px;
+}
+.bc-pair-row label { min-width: 80px; }
+.bc-pair-row select {
+  flex: 1; max-width: 320px;
+  padding: 6px 8px;
+  font-family: var(--ce-font-mono, monospace); font-size: 0.92em;
+  border: 1px solid #d1d5db; border-radius: 6px;
+  background: white;
+}
+.bc-result {
+  margin-top: 18px; padding: 14px;
+  background: white; border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  font-family: var(--ce-font-mono, monospace); font-size: 0.92em;
+}
+.bc-result table {
+  border-collapse: collapse; margin: 12px auto;
+}
+.bc-result td {
+  padding: 8px 14px; min-width: 60px; text-align: center;
+  border: 1px solid #e5e7eb;
+}
+.bc-result td.bc-label {
+  text-align: right; font-weight: 600;
+  color: var(--ce-text-muted, #697386);
+  padding-right: 16px; border: none;
+  background: transparent;
+}
+.bc-result td.bc-match {
+  background: rgba(15, 185, 177, 0.15); color: #0f766e;
+}
+.bc-result td.bc-stretch {
+  background: rgba(79, 70, 229, 0.15); color: #4f3dd0;
+}
+.bc-result td.bc-error {
+  background: rgba(220, 38, 38, 0.15); color: #b91c1c;
+}
+.bc-result td.bc-pad {
+  background: #f3f4f6; color: #9ca3af; font-style: italic;
+}
+.bc-verdict { margin-top: 14px; text-align: center; font-weight: 600; }
+.bc-verdict.bc-ok { color: #0f766e; }
+.bc-verdict.bc-err { color: #b91c1c; }
+
+/* Speed-race widget */
+.race-widget {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 18px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.race-row { display: flex; align-items: center; gap: 12px; }
+.race-row .race-label {
+  min-width: 130px;
+  font-family: var(--ce-font-mono, monospace);
+  font-size: 0.82em; color: var(--ce-text-soft, #3c4257);
+  text-align: right;
+}
+.race-row .race-bar-outer {
+  flex: 1; height: 22px;
+  background: #e5e7eb; border-radius: 4px;
+  overflow: hidden; position: relative;
+}
+.race-row .race-bar-inner {
+  height: 100%; width: 0;
+  background: linear-gradient(90deg, var(--ce-purple, #6c5ce7) 0%, #06b6d4 100%);
+  transition: none;
+}
+.race-row .race-time {
+  min-width: 84px;
+  font-family: var(--ce-font-mono, monospace);
+  font-size: 0.82em; color: var(--ce-purple-dark, #4f3dd0);
+  text-align: right;
+}
+.race-row.race-done .race-bar-inner {
+  background: linear-gradient(90deg, #10b981 0%, #06b6d4 100%);
+}
+</style>
+
+<script>
+(function() {
+'use strict';
+
+// ============================================================================
+// Interactive 1: Matmul step-by-step
+// ============================================================================
+(function matmulStep() {
+  var grids = document.getElementById('mm-grids');
+  if (!grids) return;
+
+  var M = 3, K = 4, N = 2;
+  var A = [[1,2,3,4],[2,3,1,4],[4,1,2,3]];
+  var B = [[2,1],[1,3],[3,2],[2,4]];
+  var C, i, j, k, totalSteps;
+  var autoTimer = null;
+
+  function reset() {
+    C = [];
+    for (var r = 0; r < M; r++) {
+      C.push(new Array(N).fill(0));
+    }
+    i = 0; j = 0; k = 0;
+    totalSteps = M * N * K;
+    stopAuto();
+    render();
+  }
+
+  function stepDone() {
+    return i >= M;
+  }
+
+  function step() {
+    if (stepDone()) { stopAuto(); return; }
+    C[i][j] += A[i][k] * B[k][j];
+    k++;
+    if (k >= K) {
+      k = 0; j++;
+      if (j >= N) { j = 0; i++; }
+    }
+    render();
+  }
+
+  function curStep() {
+    return i * (N * K) + j * K + k;
+  }
+
+  function tableHtml(name, M_, N_, vals, opts) {
+    opts = opts || {};
+    var hi_row = opts.hi_row, hi_col = opts.hi_col;
+    var cur_cell = opts.cur_cell;
+    var done_cells = opts.done_cells || function() { return false; };
+    var html = '<div><div class="mm-name">' + name + '</div><table>';
+    for (var r = 0; r < M_; r++) {
+      html += '<tr>';
+      for (var c = 0; c < N_; c++) {
+        var cls = '';
+        var v = vals[r] && vals[r][c] !== undefined ? vals[r][c] : 0;
+        var inRow = (hi_row !== undefined && r === hi_row);
+        var inCol = (hi_col !== undefined && c === hi_col);
+        if (cur_cell && cur_cell.r === r && cur_cell.c === c) cls = 'mm-current-cell';
+        else if (done_cells(r, c)) cls = 'mm-cell-done';
+        else if (inRow && inCol) cls = 'mm-highlight-both';
+        else if (inRow) cls = 'mm-highlight-row';
+        else if (inCol) cls = 'mm-highlight-col';
+        html += '<td class="' + cls + '">' + v + '</td>';
+      }
+      html += '</tr>';
+    }
+    return html + '</table></div>';
+  }
+
+  function render() {
+    var done = stepDone();
+    var hi_row_A = done ? undefined : i;
+    var hi_col_B = done ? undefined : j;
+    var cur_C = done ? null : { r: i, c: j };
+
+    function cIsDone(r, c) {
+      if (done) return true;
+      if (r < i) return true;
+      if (r === i && c < j) return true;
+      return false;
+    }
+
+    var html = '';
+    html += tableHtml('A (3&times;4)', M, K, A, { hi_row: hi_row_A, hi_col: done ? undefined : k });
+    html += '<span class="mm-label">&times;</span>';
+    html += tableHtml('B (4&times;2)', K, N, B, { hi_col: hi_col_B, hi_row: done ? undefined : k });
+    html += '<span class="mm-label">=</span>';
+    html += tableHtml('C (3&times;2)', M, N, C, { cur_cell: cur_C, done_cells: cIsDone });
+    grids.innerHTML = html;
+
+    var formula = document.getElementById('mm-formula');
+    if (done) {
+      formula.innerHTML = '<strong>Done.</strong> C = A &times; B computed in ' + totalSteps + ' multiply-adds.';
+    } else {
+      var prod = A[i][k] * B[k][j];
+      formula.innerHTML = 'C[' + i + ',' + j + '] += A[' + i + ',' + k + '] &times; B[' + k + ',' + j + '] = '
+        + A[i][k] + ' &times; ' + B[k][j] + ' = ' + prod
+        + '  (running sum: ' + C[i][j] + ')';
+    }
+
+    document.getElementById('mm-progress').textContent = curStep() + ' / ' + totalSteps;
+  }
+
+  function stopAuto() {
+    if (autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      var btn = document.getElementById('mm-auto');
+      if (btn) btn.textContent = 'Auto-play';
+    }
+  }
+
+  document.getElementById('mm-step').addEventListener('click', step);
+  document.getElementById('mm-auto').addEventListener('click', function() {
+    if (autoTimer) { stopAuto(); return; }
+    document.getElementById('mm-auto').textContent = 'Stop';
+    autoTimer = setInterval(function() {
+      if (stepDone()) { stopAuto(); return; }
+      step();
+    }, 250);
+  });
+  document.getElementById('mm-reset').addEventListener('click', reset);
+
+  reset();
+})();
+
+// ============================================================================
+// Interactive 2: Broadcasting shape-matcher
+// ============================================================================
+(function broadcasting() {
+  var aSel = document.getElementById('bc-a');
+  if (!aSel) return;
+  var bSel = document.getElementById('bc-b');
+  var resultEl = document.getElementById('bc-result');
+
+  var SHAPES = [
+    { label: '(3,)', dims: [3] },
+    { label: '(1,)', dims: [1] },
+    { label: '(5,)', dims: [5] },
+    { label: '(5, 3)', dims: [5, 3] },
+    { label: '(5, 1)', dims: [5, 1] },
+    { label: '(1, 3)', dims: [1, 3] },
+    { label: '(784,)', dims: [784] },
+    { label: '(784, 10)', dims: [784, 10] },
+    { label: '(784, 1)', dims: [784, 1] },
+    { label: '(50000, 784)', dims: [50000, 784] },
+    { label: '(32, 3, 28, 28) &mdash; batch of images', dims: [32, 3, 28, 28] },
+    { label: '(3, 1, 1) &mdash; per-channel scale', dims: [3, 1, 1] },
+  ];
+
+  function fillSelect(sel) {
+    SHAPES.forEach(function(s, idx) {
+      var opt = document.createElement('option');
+      opt.value = idx; opt.textContent = s.label;
+      sel.appendChild(opt);
+    });
+  }
+  fillSelect(aSel);
+  fillSelect(bSel);
+  aSel.value = '3'; // (5, 3)
+  bSel.value = '0'; // (3,)
+
+  function analyze(a, b) {
+    // Pad with 1s on the LEFT to match length
+    var n = Math.max(a.length, b.length);
+    var aPad = new Array(n - a.length).fill(1).concat(a);
+    var bPad = new Array(n - b.length).fill(1).concat(b);
+    var result = [];
+    var verdicts = [];
+    var ok = true;
+    for (var i = 0; i < n; i++) {
+      var av = aPad[i], bv = bPad[i];
+      var label;
+      if (av === bv) label = 'match';
+      else if (av === 1 || bv === 1) label = 'stretch';
+      else { label = 'error'; ok = false; }
+      result.push(Math.max(av, bv));
+      verdicts.push(label);
+    }
+    return { aPad: aPad, bPad: bPad, result: result, verdicts: verdicts, ok: ok, n: n };
+  }
+
+  function classFor(verdict, val, pad) {
+    if (pad) return 'bc-pad';
+    if (verdict === 'match') return 'bc-match';
+    if (verdict === 'stretch') return 'bc-stretch';
+    return 'bc-error';
+  }
+
+  function render() {
+    var a = SHAPES[parseInt(aSel.value)].dims;
+    var b = SHAPES[parseInt(bSel.value)].dims;
+    var info = analyze(a, b);
+
+    var html = '<table><tr>';
+    html += '<td class="bc-label">A:</td>';
+    for (var i = 0; i < info.n; i++) {
+      var isPad = i < (info.n - a.length);
+      html += '<td class="' + classFor(info.verdicts[i], info.aPad[i], isPad) + '">' + info.aPad[i] + '</td>';
+    }
+    html += '</tr><tr>';
+    html += '<td class="bc-label">B:</td>';
+    for (var i = 0; i < info.n; i++) {
+      var isPad = i < (info.n - b.length);
+      html += '<td class="' + classFor(info.verdicts[i], info.bPad[i], isPad) + '">' + info.bPad[i] + '</td>';
+    }
+    html += '</tr>';
+
+    if (info.ok) {
+      html += '<tr><td class="bc-label">&darr;</td>';
+      for (var i = 0; i < info.n; i++) html += '<td></td>';
+      html += '</tr><tr>';
+      html += '<td class="bc-label">Result:</td>';
+      for (var i = 0; i < info.n; i++) {
+        html += '<td class="bc-match" style="font-weight:700;">' + info.result[i] + '</td>';
+      }
+      html += '</tr>';
+    }
+    html += '</table>';
+
+    if (info.ok) {
+      html += '<div class="bc-verdict bc-ok">&#10003; Compatible &mdash; output shape (' + info.result.join(', ') + ')</div>';
+    } else {
+      html += '<div class="bc-verdict bc-err">&times; Incompatible &mdash; size mismatch on a non-1 axis</div>';
+    }
+    resultEl.innerHTML = html;
+  }
+
+  aSel.addEventListener('change', render);
+  bSel.addEventListener('change', render);
+  render();
+})();
+
+// ============================================================================
+// Interactive 3: Matmul speed race
+// ============================================================================
+(function speedRace() {
+  var widget = document.getElementById('race-widget');
+  if (!widget) return;
+
+  // Rough wall-clock for the full 50k x 784 by 784 x 10 matmul.
+  // Order-of-magnitude numbers; exact values vary by hardware.
+  var racers = [
+    { name: 'Naive triple loop',  ms: 5000000, label: '5,000 s (est)' },
+    { name: 'Numba dot product',  ms: 50000,   label: '50 s (est)' },
+    { name: 'Broadcasting',       ms: 600,     label: '600 ms' },
+    { name: 'einsum',             ms: 10,      label: '10 ms' },
+    { name: 'PyTorch @ (CPU)',    ms: 10,      label: '10 ms' },
+    { name: 'PyTorch @ (GPU)',    ms: 0.5,     label: '0.5 ms' },
+  ];
+
+  // Visual duration: log-scale the ms so the bars are actually watchable.
+  function visualDuration(ms) {
+    return Math.max(0.5, Math.log10(ms + 1)) * 1500; // seconds-to-display
+  }
+
+  function build() {
+    widget.innerHTML = '';
+    racers.forEach(function(r, idx) {
+      var row = document.createElement('div');
+      row.className = 'race-row';
+      row.innerHTML =
+        '<div class="race-label">' + r.name + '</div>' +
+        '<div class="race-bar-outer"><div class="race-bar-inner" id="race-bar-' + idx + '"></div></div>' +
+        '<div class="race-time" id="race-time-' + idx + '"></div>';
+      widget.appendChild(row);
+    });
+  }
+  build();
+
+  var running = false;
+  var startTime;
+  var rafId;
+  var done = [];
+
+  function startRace() {
+    if (running) return;
+    running = true;
+    done = racers.map(function() { return false; });
+    racers.forEach(function(_, idx) {
+      document.getElementById('race-bar-' + idx).style.width = '0%';
+      document.getElementById('race-time-' + idx).textContent = '';
+      var row = widget.children[idx];
+      row.classList.remove('race-done');
+    });
+    startTime = performance.now();
+    document.getElementById('race-start').textContent = 'Running...';
+    document.getElementById('race-start').disabled = true;
+    tick();
+  }
+
+  function tick() {
+    var t = performance.now() - startTime;
+    var allDone = true;
+    racers.forEach(function(r, idx) {
+      var dur = visualDuration(r.ms);
+      var frac = Math.min(1, t / dur);
+      document.getElementById('race-bar-' + idx).style.width = (frac * 100) + '%';
+      if (frac >= 1 && !done[idx]) {
+        done[idx] = true;
+        document.getElementById('race-time-' + idx).textContent = r.label;
+        widget.children[idx].classList.add('race-done');
+      }
+      if (frac < 1) allDone = false;
+    });
+    if (allDone) {
+      running = false;
+      document.getElementById('race-start').textContent = 'Race again';
+      document.getElementById('race-start').disabled = false;
+    } else {
+      rafId = requestAnimationFrame(tick);
+    }
+  }
+
+  function reset() {
+    cancelAnimationFrame(rafId);
+    running = false;
+    build();
+    document.getElementById('race-start').textContent = 'Start race';
+    document.getElementById('race-start').disabled = false;
+  }
+
+  document.getElementById('race-start').addEventListener('click', startRace);
+  document.getElementById('race-reset').addEventListener('click', reset);
+})();
+
+})();
+</script>
 </main>
 </div>
 </body>
