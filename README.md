@@ -44,7 +44,3 @@ A growing collection of detailed notebooks, mathematical derivations, and educat
 - **Notebooks** — Annotated walkthroughs of the fast.ai Part 2 notebooks. Detailed comments, "what does this code do" markdown blocks, and deep-dive sections for fundamental concepts.
 - **Derivations** — Standalone mathematical walkthroughs that derive every equation from first principles, with code that verifies the math.
 - **Blog posts** — Educational explanations of single concepts for readers with rudimentary math/stats/ML background. Interactive visualizations included.
-
-## About
-
-I'm Shammunul Islam, a PhD student in Climate Dynamics at George Mason University, applying deep learning to climate and Earth observation problems. These notes reflect my own learning process — corrections and questions welcome via [issues](https://github.com/shammun/shammunul-fastai-notes/issues).
