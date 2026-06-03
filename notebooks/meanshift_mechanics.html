@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mean Shift — Full Mechanics</title>
+<style>
+  :root{
+    --bg:#eef3fb;--bg2:#e3ebf7;--card:#fff;--ink:#25324a;--soft:#5a6b86;
+    --line:#dde5f2;--input:#f6921e;--output:#16a3a3;--action:#7b5cd6;
+    --action-soft:#ede7fb;--shadow:0 10px 30px rgba(123,92,214,.12);
+    --mono:"SF Mono","JetBrains Mono",Consolas,monospace;--sans:"Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;font-family:var(--sans);color:var(--ink);
+       background:radial-gradient(1200px 600px at 20% -10%,#f3f7ff,var(--bg)),var(--bg);
+       padding:8px 12px 10px;height:100vh;overflow:hidden;}
+  .wrap{max-width:1240px;margin:0 auto;height:100%;display:flex;flex-direction:column;}
+  h1{text-align:center;margin:0 0 2px;font-size:19px;letter-spacing:-.5px;}
+  .sub{text-align:center;color:var(--soft);margin:0 0 8px;font-size:12px;}
+
+  /* mode toggle */
+  .modes{display:flex;gap:8px;justify-content:center;margin-bottom:8px;}
+  .modes button{background:#fff;color:var(--soft);border:1px solid var(--line);
+                border-radius:999px;padding:6px 16px;font-weight:700;font-size:13px;cursor:pointer;}
+  .modes button.on{background:var(--action);color:#fff;border-color:var(--action);box-shadow:var(--shadow);}
+
+  /* step tabs — clickable */
+  .steps{display:flex;gap:8px;max-width:760px;margin:0 auto 8px;width:100%;}
+  .steps .s{flex:1;text-align:center;font-size:11px;font-weight:700;color:var(--soft);
+            background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 4px;
+            cursor:pointer;transition:.15s;user-select:none;}
+  .steps .s:hover{border-color:var(--action);}
+  .steps .s.active{background:var(--action);color:#fff;border-color:var(--action);
+                   box-shadow:var(--shadow);transform:translateY(-2px);}
+  .steps .s.done{background:var(--action-soft);color:var(--action);border-color:var(--action-soft);}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-height:0;}
+  @media(max-width:960px){.grid{grid-template-columns:1fr;}}
+  .card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);
+        border:1px solid var(--line);padding:12px;overflow-y:auto;min-height:0;}
+  .card h2{margin:0 0 7px;font-size:12px;color:var(--soft);font-weight:700;
+           text-transform:uppercase;letter-spacing:.6px;display:flex;justify-content:space-between;}
+  canvas{width:100%;background:linear-gradient(180deg,#fbfdff,#f4f8ff);
+         border-radius:12px;border:1px solid var(--line);display:block;
+         max-height:38vh;object-fit:contain;}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:7px;font-size:11px;color:var(--soft);}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .xmark{color:var(--output);font-weight:900;font-size:13px;}
+
+  .narrate{background:var(--bg2);border-radius:10px;padding:10px;border-left:5px solid var(--action);}
+  .narrate .kicker{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;
+                   color:var(--action);margin-bottom:4px;}
+  .narrate .big{font-size:14px;font-weight:700;line-height:1.3;margin:0 0 4px;}
+  .narrate p{margin:0;color:var(--soft);font-size:12px;line-height:1.4;}
+  .tag-in{color:var(--input);font-weight:800;}.tag-out{color:var(--output);font-weight:800;}
+  .tag-ac{color:var(--action);font-weight:800;}
+
+  /* distance/weight table */
+  .tblwrap{margin-top:8px;max-height:150px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+  th,td{padding:3px 7px;text-align:right;border-bottom:1px solid #eef2f8;}
+  th{position:sticky;top:0;background:#f3f6fc;color:var(--soft);font-weight:700;z-index:1;}
+  td:first-child,th:first-child{text-align:left;}
+  tr.inb{background:rgba(123,92,214,.07);}
+  tr.inb td:first-child{color:var(--action);font-weight:700;}
+  .wbar{display:inline-block;height:7px;background:var(--action);border-radius:4px;vertical-align:middle;}
+  .formula{margin-top:8px;background:#fff;border:1px dashed var(--line);border-radius:10px;
+           padding:9px;font-family:var(--mono);font-size:12px;line-height:1.6;}
+  .v-in{color:var(--input);font-weight:800;}.v-out{color:var(--output);font-weight:800;}.v-ac{color:var(--action);font-weight:800;}
+
+  pre.code{margin:8px 0 0;background:#1d2330;color:#e7ecf5;border-radius:10px;
+           padding:10px 13px;font-family:var(--mono);font-size:11px;line-height:1.55;overflow-x:auto;}
+  pre.code .cmt{color:#7d8aa3;}pre.code .kw{color:#c792ea;}pre.code .fn{color:#82aaff;}
+  pre.code .num{color:#f78c6c;}
+  pre.code .hl{display:block;background:rgba(246,146,30,.22);margin:0 -13px;padding:0 13px;border-left:3px solid var(--input);}
+
+  .controls{display:flex;gap:7px;justify-content:center;margin-top:9px;flex-wrap:wrap;}
+  button.ctl{font-family:var(--sans);font-size:13px;font-weight:700;border:none;border-radius:10px;
+         padding:8px 14px;cursor:pointer;box-shadow:0 4px 14px rgba(123,92,214,.12);transition:.1s;}
+  button.ctl:active{transform:translateY(1px);}
+  button.ctl:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;}
+  .next{background:var(--action);color:#fff;}.back{background:#fff;color:var(--soft);border:1px solid var(--line);}
+  .auto1{background:var(--input);color:#fff;}.autoAll{background:var(--output);color:#fff;}
+  .reset{background:var(--action-soft);color:var(--action);}
+  .speedrow{display:flex;align-items:center;gap:10px;justify-content:center;margin-top:8px;
+            font-size:12px;color:var(--soft);}
+  input[type=range]{accent-color:var(--action);width:180px;}
+  .roundbadge{background:var(--output);color:#fff;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:700;}
+  .hint{text-align:center;color:var(--soft);font-size:11px;margin-top:7px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Mean Shift — Full Mechanics</h1>
+  <p class="sub">See the distance to <b>every</b> point, the weight each one gets, and the same process running across <b>all</b> points.</p>
+
+  <div class="modes">
+    <button id="mOne" class="on">🔍 Track one point</button>
+    <button id="mAll">🌐 All points at once</button>
+  </div>
+
+  <div class="steps">
+    <div class="s" data-p="1" id="st1">1 · Distance to every point</div>
+    <div class="s" data-p="2" id="st2">2 · Weight each point</div>
+    <div class="s" data-p="3" id="st3">3 · Weighted average</div>
+    <div class="s" data-p="4" id="st4">4 · Shift</div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <div class="card">
+      <h2>Picture <span class="roundbadge" id="roundBadge">Round 1</span></h2>
+      <div id="idBanner" style="background:var(--action-soft);color:var(--action);border-radius:8px;padding:5px 10px;font-size:11.5px;font-weight:700;margin-bottom:6px;text-align:center;"></div>
+      <canvas id="cv" width="540" height="430"></canvas>
+      <div class="legend">
+        <span><i class="dot" style="background:#9bb4d8"></i> point</span>
+        <span><i class="dot" style="background:var(--input)"></i> current point</span>
+        <span><i class="dot" style="background:#cdb8f5"></i> neighbour (weight&gt;0)</span>
+        <span><span class="xmark">✕</span> weighted average</span>
+      </div>
+      <div class="controls">
+        <button class="ctl back" id="back">← Back</button>
+        <button class="ctl next" id="next">Next step →</button>
+        <button class="ctl auto1" id="nextPt" style="display:none">Next point →</button>
+      </div>
+      <div class="controls">
+        <button class="ctl auto1" id="auto1">⏩ Auto: this point</button>
+        <button class="ctl autoAll" id="autoAll">⏩ Auto: all points</button>
+        <button class="ctl reset" id="reset">↺ Reset</button>
+      </div>
+      <div class="speedrow">
+        <span>Slow</span><input type="range" id="speed" min="180" max="1600" value="800"><span>Fast</span>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="card">
+      <h2>The math, live</h2>
+      <div class="narrate">
+        <div class="kicker" id="kicker">Start</div>
+        <p class="big" id="bigText">Pick a step, click Next, or auto-play.</p>
+        <p id="subText"></p>
+      </div>
+      <div id="statusLine" style="margin-top:7px;font-size:11.5px;color:var(--soft);background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 10px;"></div>
+
+      <div id="stopBox" style="display:none;margin-top:7px;border-radius:8px;padding:8px 11px;font-size:12px;border:2px solid var(--line);background:var(--bg2);">
+        <div style="font-weight:800;text-transform:uppercase;letter-spacing:.6px;font-size:10px;color:var(--ink);margin-bottom:4px;">⛔ Stop this point?</div>
+        <div id="stopText" style="color:var(--soft);line-height:1.45;"></div>
+      </div>
+
+      <div class="formula" id="formula"></div>
+
+      <div id="shiftBox" style="display:none;margin-top:7px;border-radius:8px;padding:8px 11px;font-size:11.5px;border:2px solid var(--output);background:#f0fbfb;">
+        <div style="font-weight:800;text-transform:uppercase;letter-spacing:.6px;font-size:10px;color:var(--output);margin-bottom:4px;">📐 How far does it shift? (live calculation)</div>
+        <div id="shiftText" style="font-family:var(--mono);color:var(--ink);line-height:1.55;"></div>
+      </div>
+
+      <div class="tblwrap" id="tblwrap" style="display:none">
+        <table id="tbl"><thead><tr>
+          <th>point j</th><th>x,y</th><th id="thDyn">distance dⱼ</th><th>weight wⱼ</th>
+        </tr></thead><tbody id="tbody"></tbody></table>
+      </div>
+
+      <pre class="code" id="code"><span id="C1">  <span class="kw">for</span> each point <span style="color:#f6921e">xi</span>:</span>
+<span id="C2">      d  = sqrt(((points - <span style="color:#f6921e">xi</span>)**<span class="num">2</span>).sum(axis=<span class="num">1</span>))   <span class="cmt"># step 1: distance to all</span></span>
+<span id="C3">      w  = exp(-(d**<span class="num">2</span>) / (<span class="num">2</span>*bw**<span class="num">2</span>))            <span class="cmt"># step 2: Gaussian weight</span></span>
+<span id="C4">      avg = (w[:,None]*points).sum(<span class="num">0</span>) / w.sum()  <span class="cmt"># step 3: weighted mean</span></span>
+<span id="C5">      new[i] = avg                                <span class="cmt"># step 4: shift</span></span></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const W=cv.width,H=cv.height;
+let BW=60; // bandwidth (smaller -> distinct clusters emerge, motion visible over more rounds)
+const C={pt:'#9bb4d8',track:'#f6921e',neigh:'#cdb8f5',mean:'#16a3a3',
+         ring:'rgba(123,92,214,.40)',fill:'rgba(123,92,214,.07)',trail:'rgba(246,146,30,.30)'};
+const $=id=>document.getElementById(id);
+
+let pts,start,track,trail,phase,round_,mode,autoTimer=null,allTrails=[];
+
+function seed(){
+  const crowd=[[330,150],[360,180],[345,210],[380,150],[400,200],[355,250],
+               [390,240],[320,190],[410,170],[370,210],[335,170],[395,275],
+               [360,130],[300,220],[420,220],[150,300],[180,330],[160,360],[200,300]];
+  pts=crowd.map(([x,y])=>({x,y}));
+  track=0;                      // track a crowd-edge point by default
+  // choose an interesting edge point to track
+  track = pts.length-4;         // one of the lower-left group edge
+  trail=[{x:pts[track].x,y:pts[track].y}];
+  allTrails=pts.map(p=>[{x:p.x,y:p.y}]);
+  phase=0;round_=1;
+}
+seed();
+
+// Gaussian weight: full mechanics
+function weightOf(d){ return Math.exp(-(d*d)/(2*BW*BW)); }
+
+// compute distances + weights from point i to all
+function detail(i){
+  const p=pts[i];const rows=[];let swx=0,swy=0,sw=0;
+  pts.forEach((q,j)=>{
+    const d=Math.hypot(q.x-p.x,q.y-p.y);
+    const w=weightOf(d);
+    rows.push({j,x:q.x,y:q.y,d,w,inb:d<BW});
+    swx+=w*q.x;swy+=w*q.y;sw+=w;
+  });
+  return {p,rows,mx:swx/sw,my:swy/sw,swx,swy,sw,n:pts.length};
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(mode==='one'){
+    const D=detail(track);
+    // trail
+    if(trail.length>1){ctx.strokeStyle=C.trail;ctx.lineWidth=3;ctx.beginPath();
+      ctx.moveTo(trail[0].x,trail[0].y);trail.forEach(t=>ctx.lineTo(t.x,t.y));ctx.stroke();}
+    // ring
+    if(phase>=1){ctx.fillStyle=C.fill;ctx.strokeStyle=C.ring;ctx.lineWidth=2;ctx.setLineDash([6,5]);
+      ctx.beginPath();ctx.arc(D.p.x,D.p.y,BW,0,7);ctx.fill();ctx.stroke();ctx.setLineDash([]);}
+    // distance lines (step 1) — to all points
+    if(phase===1){ctx.strokeStyle='rgba(155,180,216,.5)';ctx.lineWidth=1;
+      D.rows.forEach(r=>{ctx.beginPath();ctx.moveTo(D.p.x,D.p.y);ctx.lineTo(r.x,r.y);ctx.stroke();});}
+    // points, sized by weight at step>=2
+    pts.forEach((p,i)=>{
+      const r=D.rows[i];let col=C.pt,rad=5;
+      if(phase>=2){ rad=4+r.w*9; if(r.w>0.05)col=C.neigh; }
+      if(i===track) return; // draw tracked point last, on top
+      ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,rad,0,7);ctx.fill();
+    });
+    // weighted average X (step 3 and 4 only; not on the round-complete beat)
+    if(phase===3||phase===4){
+      ctx.strokeStyle='rgba(22,163,163,.55)';ctx.lineWidth=2;ctx.setLineDash([5,4]);
+      ctx.beginPath();ctx.moveTo(D.p.x,D.p.y);ctx.lineTo(D.mx,D.my);ctx.stroke();ctx.setLineDash([]);
+      ctx.strokeStyle=C.mean;ctx.lineWidth=4;const s=10;
+      ctx.beginPath();ctx.moveTo(D.mx-s,D.my-s);ctx.lineTo(D.mx+s,D.my+s);
+      ctx.moveTo(D.mx+s,D.my-s);ctx.lineTo(D.mx-s,D.my+s);ctx.stroke();
+    }
+    // THE CURRENT POINT — drawn boldly on top so it is unmistakable
+    {
+      const p=pts[track];
+      // outer white halo
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(p.x,p.y,15,0,7);ctx.fill();
+      // pulsing ring
+      const t=(Date.now()%1200)/1200; const pr=15+t*10;
+      ctx.strokeStyle=`rgba(246,146,30,${(1-t)*0.8})`;ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(p.x,p.y,pr,0,7);ctx.stroke();
+      // the dot
+      ctx.fillStyle=C.track;ctx.beginPath();ctx.arc(p.x,p.y,10,0,7);ctx.fill();
+      ctx.strokeStyle='#9a5500';ctx.lineWidth=2.5;ctx.stroke();
+      // label
+      const lx=p.x, ly=p.y-30;
+      ctx.font='bold 12px Segoe UI, sans-serif';ctx.textAlign='center';
+      const label=`POINT #${track} (the one moving)`;
+      const wde=ctx.measureText(label).width;
+      ctx.fillStyle=C.track;
+      ctx.beginPath();ctx.roundRect?ctx.roundRect(lx-wde/2-7,ly-13,wde+14,20,6):ctx.rect(lx-wde/2-7,ly-13,wde+14,20);ctx.fill();
+      // little pointer triangle
+      ctx.beginPath();ctx.moveTo(lx-6,ly+7);ctx.lineTo(lx+6,ly+7);ctx.lineTo(lx,ly+15);ctx.fill();
+      ctx.fillStyle='#fff';ctx.fillText(label,lx,ly+1);
+      ctx.textAlign='left';
+    }
+  } else {
+    // ALL points mode — show the SAME 4 steps happening for EVERY point at once
+    // faint trails
+    allTrails.forEach(tr=>{if(tr.length>1){ctx.strokeStyle='rgba(246,146,30,.15)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(tr[0].x,tr[0].y);tr.forEach(t=>ctx.lineTo(t.x,t.y));ctx.stroke();}});
+
+    // precompute each point's own weighted target
+    const Ds=pts.map((_,i)=>detail(i));
+
+    // STEP 1: every point reaches out to its own neighbourhood (draw its bandwidth ring)
+    if(phase===1){
+      ctx.strokeStyle='rgba(123,92,214,.18)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+      pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,BW,0,7);ctx.stroke();});
+      ctx.setLineDash([]);
+    }
+    // STEP 2: size each point by how much weight it carries for its own neighbours
+    //         (draw faint links from each point to the neighbours that weight it)
+    if(phase===2){
+      ctx.strokeStyle='rgba(205,184,245,.35)';ctx.lineWidth=1;
+      pts.forEach((p,i)=>{Ds[i].rows.forEach(r=>{ if(r.w>0.15 && r.j!==i){
+        ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(r.x,r.y);ctx.stroke();}});});
+    }
+    // STEP 3: every point draws an arrow to ITS OWN weighted-average target ✕
+    if(phase===3){
+      Ds.forEach((D,i)=>{
+        ctx.strokeStyle='rgba(22,163,163,.45)';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+        ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(D.mx,D.my);ctx.stroke();ctx.setLineDash([]);
+        ctx.strokeStyle=C.mean;ctx.lineWidth=2.5;const s=5;
+        ctx.beginPath();ctx.moveTo(D.mx-s,D.my-s);ctx.lineTo(D.mx+s,D.my+s);
+        ctx.moveTo(D.mx+s,D.my-s);ctx.lineTo(D.mx-s,D.my+s);ctx.stroke();
+      });
+    }
+    // draw the points (sized by their own self-weight context at step 2)
+    pts.forEach((p,i)=>{ctx.fillStyle=C.track;ctx.beginPath();ctx.arc(p.x,p.y,5,0,7);ctx.fill();});
+  }
+}
+
+const SCRIPT={
+  0:{k:'Start',big:'Pick a step, click <b>Next step</b>, or auto-play.',
+     sub:'We lock onto <b>ONE</b> point and move it again and again until it stops. It stays the <b>same</b> point the whole time — it just walks to new spots. Only <b>Next point →</b> switches to a different point.',code:null,tbl:false,
+     f:''},
+  1:{k:'Step 1 of 4 — Distances',
+     big:'Take our <span class="tag-in">current point</span> and measure the <span class="tag-in">distance</span> to every other point.',
+     sub:'Still the <b>same point</b> we have been following. Lines go out to all points; the table lists each distance dⱼ.',code:'C2',tbl:true,
+     f:'d<sub>j</sub> = √( (x<sub>j</sub>−<span class="v-in">x<sub>i</sub></span>)² + (y<sub>j</sub>−<span class="v-in">y<sub>i</sub></span>)² )'},
+  2:{k:'Step 2 of 4 — Weights',
+     big:'Turn each distance into a <span class="tag-ac">weight</span>. Near = heavy, far ≈ 0.',
+     sub:'Same point still. Dot size = how much that neighbour counts for <b>our point</b>.',code:'C3',tbl:true,
+     f:'w<sub>j</sub> = exp( −d<sub>j</sub>² / (2·bw²) )&nbsp;&nbsp;<small>bw = <span class="v-ac">'+'BW'+'</span></small>'},
+  3:{k:'Step 3 of 4 — Weighted average',
+     big:'Average the neighbours by weight → the <span class="tag-out">teal ✕</span>.',
+     sub:'The ✕ is where <b>our point</b> wants to go. It is NOT a new point — just a target location.',code:'C4',tbl:true,
+     f:'<span class="v-out">target</span> = ( Σ w<sub>j</sub>·position<sub>j</sub> ) / ( Σ w<sub>j</sub> )'},
+  4:{k:'Step 4 of 4 — Shift (same point moves)',
+     big:'<span class="tag-in">Our point</span> walks toward the <span class="tag-out">✕</span>. ⚠️ It is the <b>SAME point</b>, now at a new spot — we did <b>not</b> pick a different point.',
+     sub:'Next we go back to Step 1 using this <b>same point</b> at its new location. The <b>📐 box below</b> shows exactly how far it shifts and how that distance is calculated. We keep repeating until it barely moves.',code:'C5',tbl:true,
+     f:'<span class="v-in">x<sub>i</sub></span> ← move halfway toward <span class="v-out">target</span>&nbsp;&nbsp;<small>(same i)</small>'}
+};
+
+function buildTable(D){
+  const tb=$('tbody');tb.innerHTML='';
+  // sort by weight desc so the important ones are on top
+  const rows=[...D.rows].sort((a,b)=>b.w-a.w);
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    if(r.j===track) tr.style.outline='2px solid var(--input)';
+    if(r.w>0.05) tr.className='inb';
+    const wpx=Math.round(r.w*70);
+    tr.innerHTML=`<td>${r.j===track?'★ self':'p'+r.j}</td>`+
+      `<td>${r.x.toFixed(0)},${r.y.toFixed(0)}</td>`+
+      `<td>${r.d.toFixed(1)}</td>`+
+      `<td><span class="wbar" style="width:${wpx}px"></span> ${r.w.toFixed(2)}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function render(){
+  if(phase===5){ // round-complete beat: narration already set by next(); just refresh visuals
+    $('roundBadge').textContent='Round '+round_;
+    [1,2,3,4].forEach(i=>{const el=$('st'+i);el.className='s';el.classList.add('done');});
+    $('idBanner').innerHTML = `🟠 <span style="color:var(--input)">Point #${track}</span> &nbsp;·&nbsp; Round ${round_} complete &nbsp;·&nbsp; <span style="color:var(--action)">same point moved</span>`;
+    renderStatus(); renderShift('actual'); draw(); return;
+  }
+  const s=SCRIPT[phase];
+  // mode-aware narration for all-points
+  const ALL={
+    1:{k:'Step 1 of 4 — Distance (every point)',big:'<b>Every</b> point measures distance to all others — each draws its own <span class="tag-ac">circle</span>.',sub:'The same Step 1 you saw for one point now happens for all points at once.'},
+    2:{k:'Step 2 of 4 — Weights (every point)',big:'Each point computes <span class="tag-ac">weights</span> for its own neighbours.',sub:'Purple links show who is pulling whom. Every point runs its own identical calculation.'},
+    3:{k:'Step 3 of 4 — Target (every point)',big:'Each point finds its <span class="tag-out">own weighted average ✕</span>.',sub:'Notice each point has its own target — they are not sharing one center.'},
+    4:{k:'Step 4 of 4 — Shift all',big:'<span class="tag-out">Every</span> point moves to its <b>own</b> target at the same time.',sub:'No point is "the current one" here — all of them shift together each round. Repeat until they merge into dense clumps = the clusters.'}
+  };
+  if(mode==='all' && ALL[phase]){
+    $('kicker').innerHTML=ALL[phase].k;$('bigText').innerHTML=ALL[phase].big;$('subText').innerHTML=ALL[phase].sub;
+  } else {
+    $('kicker').innerHTML=s.k;$('bigText').innerHTML=s.big;$('subText').innerHTML=s.sub;
+  }
+  $('roundBadge').textContent='Round '+round_;
+  [1,2,3,4].forEach(i=>{const el=$('st'+i);el.className='s';
+    if(i<phase)el.classList.add('done');if(i===phase)el.classList.add('active');});
+  // formula
+  $('formula').innerHTML = s.f ? s.f.replace('BW',BW) : '<span style="color:var(--soft)">—</span>';
+  $('formula').style.display = s.f? 'block':'none';
+  // table only in one-point mode
+  const showTbl = s.tbl && mode==='one';
+  $('tblwrap').style.display=showTbl?'block':'none';
+  $('thDyn').textContent='distance dⱼ';
+  if(showTbl) buildTable(detail(track));
+  // code highlight
+  ['C1','C2','C3','C4','C5'].forEach(c=>$(c).classList.remove('hl'));
+  if(s.code)$(s.code).classList.add('hl');
+  $('back').disabled=(phase===0&&round_===1);
+  // identity banner — always says which point is current and that it does not change mid-journey
+  const ib=$('idBanner');
+  if(mode==='one'){
+    const stepTxt = phase===0?'ready':('Step '+phase+' of 4');
+    ib.innerHTML = `🟠 Currently moving: <span style="color:var(--input)">Point #${track}</span> &nbsp;·&nbsp; Round ${round_} &nbsp;·&nbsp; ${stepTxt} &nbsp;·&nbsp; <span style="color:var(--action)">same point until it stops</span>`;
+    ib.style.display='block';
+  } else {
+    ib.innerHTML = `🌐 Moving <span style="color:var(--output)">all ${pts.length} points</span> together &nbsp;·&nbsp; Round ${round_} &nbsp;·&nbsp; ${phase===0?'ready':'Step '+phase+' of 4'}`;
+    ib.style.display='block';
+  }
+  // status line: convergence progress + selection explanation
+  renderStatus();
+  // shift calculation: preview at step 4 (before moving), hidden elsewhere
+  if(mode==='one' && phase===4) renderShift('preview');
+  else if(phase!==5) $('shiftBox').style.display='none';
+  draw();
+}
+
+// advance / commit logic
+let lastMove=null;
+let shiftCalc=null; // breakdown of the most recent shift, for display
+const STEP=0.5; // both modes ease halfway toward the true weighted mean each round
+function commitOnePoint(){
+  const D=detail(track);
+  const ox=D.p.x, oy=D.p.y;            // old position
+  const tx=D.mx, ty=D.my;              // target (weighted average)
+  const nx=ox+(tx-ox)*STEP, ny=oy+(ty-oy)*STEP;  // new position (half-step)
+  const dx=nx-ox, dy=ny-oy;            // actual movement components
+  const dist=Math.hypot(dx,dy);        // shift distance
+  shiftCalc={ox,oy,tx,ty,nx,ny,dx,dy,dist,step:STEP,swx:D.swx,swy:D.swy,sw:D.sw,n:D.n};
+  pts[track]={x:nx,y:ny};
+  trail.push({x:nx,y:ny});
+  lastMove=dist;
+  return lastMove;
+}
+function commitAllPoints(){
+  const targets=pts.map((_,i)=>{const D=detail(i);return {x:D.mx,y:D.my};});
+  let mv=0;
+  const next=targets.map((t,i)=>({x:pts[i].x+(t.x-pts[i].x)*STEP, y:pts[i].y+(t.y-pts[i].y)*STEP}));
+  next.forEach((n,i)=>{mv+=Math.hypot(n.x-pts[i].x,n.y-pts[i].y);allTrails[i].push({x:n.x,y:n.y});});
+  pts=next;return mv/pts.length;
+}
+
+function next(){
+  if(mode==='all'){
+    if(phase<4){ phase++; render(); return; }
+    // phase was 4 -> commit the shift for everyone, start next round at step 1
+    const mv=commitAllPoints();round_++;phase=1;
+    if(mv<0.25){phase=4;$('kicker').innerHTML='✓ Converged';
+      $('bigText').innerHTML='All points have collapsed into a few tight clumps — those clumps are the clusters.';
+      $('subText').innerHTML='No number of clusters was chosen in advance; they emerged.';
+      stopAuto();draw();return;}
+    render();return;
+  }
+  // ONE-POINT mode
+  if(phase<4){phase++;render();return;}
+  if(phase===4){
+    // commit the shift, then PAUSE on a 'round complete' beat (phase 5) so the
+    // user clearly sees: same point, new location, before we restart at step 1.
+    const before={x:pts[track].x,y:pts[track].y};
+    const mv=commitOnePoint();
+    phase=5; // round-complete beat
+    const after={x:pts[track].x,y:pts[track].y};
+    $('kicker').innerHTML='Round '+round_+' complete';
+    $('bigText').innerHTML=`<span class="tag-in">Point #${track}</span> moved from (${before.x.toFixed(0)}, ${before.y.toFixed(0)}) to (${after.x.toFixed(0)}, ${after.y.toFixed(0)}).`;
+    $('subText').innerHTML = mv<1.2
+      ? 'It barely moved — it has <b>converged</b>. This point is done.'
+      : 'Same point, new spot. Click <b>Next step</b> to run the 4 steps again <b>from here</b>.';
+    if(mv<1.2){ phase=4; onePointDone(); draw(); return; }
+    draw(); $('statusLine')&&renderStatus(); return;
+  }
+  if(phase===5){ round_++; phase=1; render(); return; }
+  render();
+}
+
+function renderShift(kind){
+  const box=$('shiftBox'), t=$('shiftText'); if(!box) return;
+  if(mode!=='one' || (kind!=='preview' && kind!=='actual')){ box.style.display='none'; return; }
+  let c;
+  if(kind==='preview'){
+    const D=detail(track);
+    const ox=D.p.x,oy=D.p.y,tx=D.mx,ty=D.my;
+    const nx=ox+(tx-ox)*STEP, ny=oy+(ty-oy)*STEP;
+    c={ox,oy,tx,ty,nx,ny,dx:nx-ox,dy:ny-oy,dist:Math.hypot(nx-ox,ny-oy),step:STEP,swx:D.swx,swy:D.swy,sw:D.sw,n:D.n};
+  } else {
+    if(!shiftCalc){ box.style.display='none'; return; }
+    c=shiftCalc;
+  }
+  const f=n=>n.toFixed(1);
+  box.style.display='block';
+  t.innerHTML =
+    `<span style="color:var(--soft)">① TARGET = weighted average of all points</span>\n`+
+    `   Tx = (Σ wⱼ·xⱼ) / (Σ wⱼ) = ${c.swx.toFixed(0)} / ${c.sw.toFixed(2)} = <span class="v-out">${f(c.tx)}</span>\n`+
+    `   Ty = (Σ wⱼ·yⱼ) / (Σ wⱼ) = ${c.swy.toFixed(0)} / ${c.sw.toFixed(2)} = <span class="v-out">${f(c.ty)}</span>\n`+
+    `   <span style="color:var(--soft)">(sums use all ${c.n} points; wⱼ from Step 2)</span>\n`+
+    `\n`+
+    `<span style="color:var(--soft)">② NEW point = move from old P toward target T</span>\n`+
+    `   old P = (<span class="v-in">${f(c.ox)}, ${f(c.oy)}</span>),  T = (<span class="v-out">${f(c.tx)}, ${f(c.ty)}</span>)\n`+
+    `   new = P + ${c.step}·(T − P)\n`+
+    `   newₓ = ${f(c.ox)} + ${c.step}·(${f(c.tx)} − ${f(c.ox)}) = <span class="v-ac">${f(c.nx)}</span>\n`+
+    `   newᵧ = ${f(c.oy)} + ${c.step}·(${f(c.ty)} − ${f(c.oy)}) = <span class="v-ac">${f(c.ny)}</span>\n`+
+    `   <span style="color:var(--soft)">×${c.step}: take only half the step so motion is smooth, not a sudden jump. (Use 1.0 to jump fully onto T.)</span>\n`+
+    `\n`+
+    `<span style="color:var(--soft)">③ DISTANCE moved (Pythagoras)</span>\n`+
+    `   Δx = ${f(c.nx)} − ${f(c.ox)} = ${f(c.dx)},  Δy = ${f(c.dy)}\n`+
+    `   dist = √(${f(c.dx)}² + ${f(c.dy)}²) = <b style="color:var(--output)">${c.dist.toFixed(2)} px</b>`;
+}
+
+function renderStop(){
+  const box=$('stopText'), outer=$('stopBox'); if(!box) return;
+  // only show at the decision moment: the shift step (4) or round-complete beat (5)
+  if(mode!=='one' || lastMove==null || (phase!==4 && phase!==5)){ outer.style.display='none'; return; }
+  outer.style.display='block';
+  const THRESH=1.2;
+  const met=lastMove<THRESH;
+  outer.style.borderColor = met ? 'var(--output)' : 'var(--line)';
+  const verdict = met
+    ? `<span style="color:var(--output);font-weight:700;">✓ ${lastMove.toFixed(2)} &lt; ${THRESH} → STOP (point converged).</span>`
+    : `<span style="color:var(--input);font-weight:700;">✗ ${lastMove.toFixed(2)} ≥ ${THRESH} → keep going.</span>`;
+  box.innerHTML = `Stop when the shift is tiny:&nbsp; <span style="font-family:var(--mono)">dist &lt; ε (${THRESH} px)</span><br>${verdict}`;
+}
+
+function renderStatus(){
+  renderStop();
+  const sl=$('statusLine'); if(!sl) return;
+  if(mode==='one'){
+    let conv='';
+    if(lastMove!=null){
+      const pct=Math.max(0,Math.min(100,Math.round((1-Math.min(lastMove,30)/30)*100)));
+      conv=` Last shift moved it <b>${lastMove.toFixed(1)} px</b>. `+
+           `<span style="color:var(--output)">Convergence ${pct}%</span> — when a shift drops below the tolerance ε (see box below), the point has reached a density peak and stops.`;
+    } else {
+      conv=' We keep moving this same point each round; when it barely moves, it has converged and stops.';
+    }
+    sl.innerHTML=`Tracking point #${track} of ${pts.length}.`+conv;
+  } else {
+    sl.innerHTML=`All <b>${pts.length}</b> points run the identical 4 steps every round, moving at the same time. They stop when the whole set barely moves.`;
+  }
+}
+
+function onePointDone(){
+  $('kicker').innerHTML='✓ Done';
+  $('bigText').innerHTML='This point stopped — it reached the center of its densest region.';
+  $('subText').innerHTML='Click <b>Next point →</b> to run the exact same computation on a different point.';
+  stopAuto();
+  renderStop();
+  $('nextPt').style.display='inline-block';
+}
+
+function nextPoint(){
+  // SELECTION RULE: Mean Shift processes EVERY point. Each point's journey is
+  // independent of the others, so the order does not matter. Here we simply
+  // step to the next index (wrapping around) so the user can confirm the same
+  // identical procedure runs on each one.
+  track=(track+1)%pts.length;
+  trail=[{x:pts[track].x,y:pts[track].y}];
+  round_=1;phase=0;lastMove=null;shiftCalc=null;
+  $('nextPt').style.display='none';
+  $('next').disabled=false;
+  $('kicker').innerHTML='New point selected';
+  $('bigText').innerHTML=`Now tracking <span class="tag-in">point #${track}</span>. We run the <b>exact same</b> 4 steps on it.`;
+  $('subText').innerHTML='Selection rule: Mean Shift visits <b>every</b> point. Each point moves on its own, independently — so the order we pick them in does not matter. We just go to the next one.';
+  draw();
+  // populate status without overwriting the message above
+  $('statusLine').innerHTML=`Tracking point #${track} of ${pts.length}. Click <b>Next step</b> to begin its journey.`;
+}
+function back(){ if(phase>0){phase--;render();} }
+function jumpTo(p){ phase=p;render(); }
+
+// autoplay
+function speed(){return +$('speed').value;}
+function stopAuto(){running=null;clearTimeout(autoTimer);autoTimer=null;$('auto1').textContent='⏩ Auto: this point';$('autoAll').textContent='⏩ Auto: all points';}
+let running=null; // 'one' | 'all' | null
+function autoOne(){
+  if(running){stopAuto();return;}
+  if(mode!=='one'){setMode('one');}
+  running='one';$('auto1').textContent='⏸ Pause';
+  const loop=()=>{
+    if(running!=='one')return;
+    next();
+    if($('kicker').textContent.includes('Done')){stopAuto();return;}
+    autoTimer=setTimeout(loop,speed());
+  };
+  autoTimer=setTimeout(loop,speed());
+}
+function autoAll(){
+  if(running){stopAuto();return;}
+  if(mode!=='all'){setMode('all');}
+  running='all';$('autoAll').textContent='⏸ Pause';
+  const loop=()=>{
+    if(running!=='all')return;
+    next();
+    if($('kicker').textContent.includes('Converged')){stopAuto();return;}
+    autoTimer=setTimeout(loop,speed());
+  };
+  autoTimer=setTimeout(loop,speed());
+}
+
+function setMode(m){
+  if(mode===m)return;
+  stopAuto();mode=m;
+  $('mOne').classList.toggle('on',m==='one');
+  $('mAll').classList.toggle('on',m==='all');
+  seed();phase=0;lastMove=null;shiftCalc=null;
+  $('nextPt').style.display='none';
+  $('next').disabled=false;
+  render();
+}
+
+// wire up
+$('next').onclick=()=>{stopAuto();next();};
+$('back').onclick=()=>{stopAuto();back();};
+$('reset').onclick=()=>{stopAuto();seed();phase=0;lastMove=null;shiftCalc=null;$('nextPt').style.display='none';$('next').disabled=false;render();};
+$('auto1').onclick=autoOne;
+$('autoAll').onclick=autoAll;
+$('nextPt').onclick=nextPoint;
+$('mOne').onclick=()=>setMode('one');
+$('mAll').onclick=()=>setMode('all');
+document.querySelectorAll('.steps .s').forEach(el=>el.onclick=()=>{stopAuto();jumpTo(+el.dataset.p);});
+
+mode='one';
+render();
+
+// gentle continuous redraw so the current-point pulse animates (one-point mode only)
+setInterval(()=>{ if(mode==='one') draw(); }, 60);
+</script>
+</body>
+</html>
