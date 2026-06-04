@@ -544,3 +544,10 @@ body { overflow-x: hidden; }
   width: min(1320px, calc(100vw - 32px));
   max-width: none;
 }
+/* Markdown cells: lay the input area out as a normal block, not a CSS table.
+   The original conversion sometimes left a cell's rendered markdown OUTSIDE its
+   RenderedHTMLCommon container, as a direct child of the display:table input
+   area -> it got squished into a narrow anonymous table-cell (tall empty-looking
+   gap). Block layout makes that content flow full-width. Code cells keep their
+   table layout so the In[ ]: prompt stays aligned with the code. */
+.jp-MarkdownCell .jp-InputArea { display: block; }
