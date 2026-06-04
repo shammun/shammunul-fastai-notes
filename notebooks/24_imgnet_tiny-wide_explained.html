@@ -8864,13 +8864,6 @@ Linear:  200 (classes)
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: TrivialAugment &mdash; random augmentation roulette</h3>
   <p class="ce-interactive-hint">TrivialAugment picks <em>one</em> augmentation uniformly from a list and applies it at random strength. No tuning, no grid search. Click <strong>Resample</strong> to see what gets picked. <strong>It works because</strong> the diversity of "one random augmentation per image" is enough to break the overfitting pattern that a single fixed augmentation can't.</p>
@@ -8881,6 +8874,14 @@ Linear:  200 (classes)
     </div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="Part-8:-Advanced-Augmentation-with-TrivialAugmentWide">Part 8: Advanced Augmentation with TrivialAugmentWide<a class="anchor-link" href="#Part-8:-Advanced-Augmentation-with-TrivialAugmentWide">¶</a></h2><p><strong>TrivialAugmentWide</strong> randomly applies ONE augmentation from a predefined set, with a random magnitude. It's simple yet very effective.</p>
 </div>
 </div>
@@ -9293,6 +9294,13 @@ Linear:    200 (classes)
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: Narrow vs wide ResNets &mdash; parameter cost vs accuracy</h3>
+  <p class="ce-interactive-hint">Each dot is one ResNet variant. <em>x-axis</em> = total parameter count (millions); <em>y-axis</em> = Tiny ImageNet top-1 accuracy. Click a point to see the configuration. <strong>Wider isn't always better</strong> &mdash; there's a sweet spot where the model has enough capacity for the dataset but isn't yet overfitting.</p>
+  <canvas id="wn-canvas" width="640" height="320"
+          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action: manipulation;"></canvas>
+  <div class="wn-info" id="wn-info">Click a dot to see the configuration.</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9330,13 +9338,7 @@ Linear:    200 (classes)
 <li>Mixed precision (FP16) for speed</li>
 <li>50 epochs of training</li>
 </ul>
-<div class="ce-interactive">
-  <h3>Interactive: Narrow vs wide ResNets &mdash; parameter cost vs accuracy</h3>
-  <p class="ce-interactive-hint">Each dot is one ResNet variant. <em>x-axis</em> = total parameter count (millions); <em>y-axis</em> = Tiny ImageNet top-1 accuracy. Click a point to see the configuration. <strong>Wider isn't always better</strong> &mdash; there's a sweet spot where the model has enough capacity for the dataset but isn't yet overfitting.</p>
-  <canvas id="wn-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action: manipulation;"></canvas>
-  <div class="wn-info" id="wn-info">Click a dot to see the configuration.</div>
-</div>
+
 <h3 id="Architecture-Comparison">Architecture Comparison<a class="anchor-link" href="#Architecture-Comparison">¶</a></h3><table>
 <thead>
 <tr>

@@ -8418,6 +8418,24 @@ $$v_t = \beta \cdot v_{t-1} + (1-\beta) \cdot g_t$$$$w_{t+1} = w_t - \eta \cdot 
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: Optimizer race on a 2D loss surface</h3>
+  <p class="ce-interactive-hint">Four optimizers chase the same minimum on an elongated ("ravine") quadratic. Plain SGD zig-zags down the steep walls; momentum smooths the zig-zag; RMSProp adapts per-dimension; Adam combines both. <strong>This is why every modern training uses some variant of Adam</strong> &mdash; momentum + adaptive scaling pays for itself many times over.</p>
+  <canvas id="opt-canvas" width="640" height="380"
+          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action:manipulation;"></canvas>
+  <div class="ms-controls">
+    <label>Learning rate: <span id="opt-lr-val" class="ms-val">0.05</span></label>
+    <input id="opt-lr" type="range" min="0.005" max="0.2" step="0.005" value="0.05">
+  </div>
+  <div class="ms-controls">
+    <button id="opt-run" class="ms-btn">Run</button>
+    <button id="opt-reset" class="ms-btn ms-secondary">Reset</button>
+    <span id="opt-iter" class="ms-val">step: 0</span>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>Try this:</strong> push LR above 0.12 and watch plain SGD explode out of the ravine while Adam stays stable. The adaptive scaling in RMSProp/Adam divides each gradient by an exponential moving average of its magnitude &mdash; so steep dimensions get small steps automatically, and the user-set LR becomes far less hyperparameter-sensitive.
+  </p>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8482,24 +8500,7 @@ $$\text{avg}_t = \beta \cdot \text{avg}_{t-1} + (1 - \beta) \cdot y_t$$<p>Where 
 </pre></div>
 <p>At $\beta = 0.5$, the red smoothed line still follows the noise closely. At $\beta = 0.9$, it traces the true underlying curve cleanly. At $\beta = 0.99$, it's so smooth it lags behind and misses the shape. The sweet spot for optimizers is typically $\beta = 0.9$.</p>
 <hr/>
-<div class="ce-interactive">
-  <h3>Interactive: Optimizer race on a 2D loss surface</h3>
-  <p class="ce-interactive-hint">Four optimizers chase the same minimum on an elongated ("ravine") quadratic. Plain SGD zig-zags down the steep walls; momentum smooths the zig-zag; RMSProp adapts per-dimension; Adam combines both. <strong>This is why every modern training uses some variant of Adam</strong> &mdash; momentum + adaptive scaling pays for itself many times over.</p>
-  <canvas id="opt-canvas" width="640" height="380"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action:manipulation;"></canvas>
-  <div class="ms-controls">
-    <label>Learning rate: <span id="opt-lr-val" class="ms-val">0.05</span></label>
-    <input id="opt-lr" type="range" min="0.005" max="0.2" step="0.005" value="0.05">
-  </div>
-  <div class="ms-controls">
-    <button id="opt-run" class="ms-btn">Run</button>
-    <button id="opt-reset" class="ms-btn ms-secondary">Reset</button>
-    <span id="opt-iter" class="ms-val">step: 0</span>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Try this:</strong> push LR above 0.12 and watch plain SGD explode out of the ravine while Adam stays stable. The adaptive scaling in RMSProp/Adam divides each gradient by an exponential moving average of its magnitude &mdash; so steep dimensions get small steps automatically, and the user-set LR becomes far less hyperparameter-sensitive.
-  </p>
-</div>
+
 <h2 id="How-Momentum-Uses-EMA">How Momentum Uses EMA<a class="anchor-link" href="#How-Momentum-Uses-EMA">¶</a></h2><p>The Momentum optimizer applies EMA to the <em>gradients</em> instead of using them raw:</p>
 $$v_t = \beta \cdot v_{t-1} + (1 - \beta) \cdot g_t$$$$w_{t+1} = w_t - \eta \cdot v_t$$<p>Where:</p>
 <ul>
@@ -9591,12 +9592,6 @@ opt = learn.opt                    # grab the optimizer object for inspection
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: Learning rate schedules, side by side</h3>
   <p class="ce-interactive-hint">Pick one or more schedule shapes, set total steps, and watch how the learning rate evolves. <strong>The cosine schedule has become the default for training transformers and diffusion models</strong> &mdash; smooth, finishes at zero, no hyperparameters beyond start/end. OneCycle (the warm-up + anneal shape) is fastai's signature.</p>
@@ -9616,6 +9611,13 @@ opt = learn.opt                    # grab the optimizer object for inspection
     <input id="sched-lr" type="range" min="0.01" max="0.5" step="0.01" value="0.10">
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h3 id="Cosine-Annealing-Scheduler">Cosine Annealing Scheduler<a class="anchor-link" href="#Cosine-Annealing-Scheduler">¶</a></h3><p>One of the most popular schedulers. Smoothly decreases LR following a cosine curve.</p>
 </div>
 </div>

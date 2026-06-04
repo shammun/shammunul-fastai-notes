@@ -8748,13 +8748,6 @@ n00002137\tabstraction, abstract entity
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: ResNet architecture flow on Tiny ImageNet</h3>
   <p class="ce-interactive-hint">Tensor shapes propagating through a small ResNet, stage by stage. Hover each stage to see its layer details. <strong>Notice the pattern</strong>: spatial size halves at every stride-2 conv, channels double. The total parameter count is the sum of each block's conv weights.</p>
@@ -8764,6 +8757,14 @@ n00002137\tabstraction, abstract entity
     <div class="arch-info" id="arch-info">Hover (or tap) a stage to see layer details.</div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="Basic-Model">Basic Model<a class="anchor-link" href="#Basic-Model">¶</a></h2><p>Now let's build a CNN classifier using ResNet blocks.</p>
 </div>
 </div>
@@ -10294,12 +10295,6 @@ The inspector just changes HOW the furniture is arranged (weight values).
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: A 25-epoch training curve, animated</h3>
   <p class="ce-interactive-hint">Click <strong>Run training</strong> to watch train + val loss and accuracy evolve epoch-by-epoch. The gap between train and val loss is the overfitting indicator: too much gap = need more regularization (augment, dropout, less compute); too little = underfitting.</p>
@@ -10311,6 +10306,13 @@ The inspector just changes HOW the furniture is arranged (weight values).
     <span class="ms-val" id="tr-status">epoch 0 / 25</span>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h1 id="Complete-Training-Workflow:-From-Data-Augmentation-to-learn.fit(1)">Complete Training Workflow: From Data Augmentation to <code>learn.fit(1)</code><a class="anchor-link" href="#Complete-Training-Workflow:-From-Data-Augmentation-to-learn.fit(1)">¶</a></h1><p>This part explains every piece of the training pipeline, step by step, using the actual function definitions from Jeremy Howard's <strong>miniai</strong> library (<a href="https://github.com/fastai/course22p2">source: fastai/course22p2</a>).</p>
 <hr/>
 <h2 id="Table-of-Contents">Table of Contents<a class="anchor-link" href="#Table-of-Contents">¶</a></h2><ol>

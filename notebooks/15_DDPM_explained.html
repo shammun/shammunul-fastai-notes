@@ -8889,19 +8889,7 @@ t=999:  Almost pure noise       [~0% signal, ~100% noise]
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1a1bedb9">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="The-DDPM-sample-Method:">The DDPM <code>sample</code> Method:<a class="anchor-link" href="#The-DDPM-sample-Method:">¶</a></h1><p>The <code>sample</code> method implements the <strong>reverse diffusion process</strong>&mdash;starting from pure noise and iteratively denoising to generate images.</p>
-<hr/>
-<h2 id="The-Big-Picture">The Big Picture<a class="anchor-link" href="#The-Big-Picture">¶</a></h2><pre><code>x_T (pure noise) &rarr; x_{T-1} &rarr; x_{T-2} &rarr; ... &rarr; x_1 &rarr; x_0 (generated image)
-</code></pre>
-<p>At each step, we need to compute x_{t-1} from x_t. The DDPM paper gives us a formula for this.</p>
-<hr/>
-<h2 id="The-Core-Equations">The Core Equations<a class="anchor-link" href="#The-Core-Equations">¶</a></h2><div class="ce-interactive">
+<div class="ce-interactive">
   <h3>Interactive: The forward diffusion process</h3>
   <p class="ce-interactive-hint">Drag the timestep slider to watch a 2D dataset progressively destroyed by Gaussian noise. At <code>t=0</code> you see structured data; by <code>t=1000</code> you see pure noise. The formulas under the canvas show the closed-form jump <code>x<sub>t</sub> = &radic;&#257;<sub>t</sub> &middot; x<sub>0</sub> + &radic;(1&minus;&#257;<sub>t</sub>) &middot; &epsilon;</code> in action.</p>
   <canvas id="fwd-canvas" width="640" height="320"
@@ -8918,6 +8906,34 @@ t=999:  Almost pure noise       [~0% signal, ~100% noise]
     The variance is engineered so that &#257;<sub>t</sub> &rarr; 0 by t = T. At that point the signal is fully destroyed and <code>x<sub>T</sub> &sim; &Nscr;(0, I)</code> &mdash; pure Gaussian noise, ready for the reverse process to undo.
   </p>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: Reverse sampling, step by step</h3>
+  <p class="ce-interactive-hint">Start at pure noise (t = 1000). Click <strong>Next step</strong> to apply one reverse-diffusion step. Watch the points slowly re-cohere into the original structured distribution. <strong>This is what a trained DDPM does at inference</strong> &mdash; chain 1000 of these denoising steps and you get a generated sample.</p>
+  <canvas id="rev-canvas" width="640" height="320"
+          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action: manipulation;"></canvas>
+  <div class="ms-controls">
+    <button id="rev-step" class="ms-btn">Next step</button>
+    <button id="rev-run" class="ms-btn">Run to end</button>
+    <button id="rev-reset" class="ms-btn ms-secondary">Reset</button>
+    <span class="ms-val" id="rev-t">t = 1000</span>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    The "neural network" here is a cheat &mdash; we use the true noise vector we added in the forward pass. A real DDPM trains a network to predict that noise from the noisy image. But the mechanics of the reverse loop are exactly what's animating below.
+  </p>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1a1bedb9">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="The-DDPM-sample-Method:">The DDPM <code>sample</code> Method:<a class="anchor-link" href="#The-DDPM-sample-Method:">¶</a></h1><p>The <code>sample</code> method implements the <strong>reverse diffusion process</strong>&mdash;starting from pure noise and iteratively denoising to generate images.</p>
+<hr/>
+<h2 id="The-Big-Picture">The Big Picture<a class="anchor-link" href="#The-Big-Picture">¶</a></h2><pre><code>x_T (pure noise) &rarr; x_{T-1} &rarr; x_{T-2} &rarr; ... &rarr; x_1 &rarr; x_0 (generated image)
+</code></pre>
+<p>At each step, we need to compute x_{t-1} from x_t. The DDPM paper gives us a formula for this.</p>
+<hr/>
+<h2 id="The-Core-Equations">The Core Equations<a class="anchor-link" href="#The-Core-Equations">¶</a></h2>
 <h3 id="Equation-1:-Forward-Process-(for-reference)">Equation 1: Forward Process (for reference)<a class="anchor-link" href="#Equation-1:-Forward-Process-(for-reference)">¶</a></h3>$$x_t = \sqrt{\bar{\alpha}_t} \cdot x_0 + \sqrt{1-\bar{\alpha}_t} \cdot \varepsilon$$<h3 id="Equation-2:-Estimate-x%E2%82%80-from-x%E2%82%9C-(rearranging-Equation-1)">Equation 2: Estimate x₀ from xₜ (rearranging Equation 1)<a class="anchor-link" href="#Equation-2:-Estimate-x%E2%82%80-from-x%E2%82%9C-(rearranging-Equation-1)">¶</a></h3>$$\hat{x}_0 = \frac{x_t - \sqrt{1-\bar{\alpha}_t} \cdot \varepsilon_{predicted}}{\sqrt{\bar{\alpha}_t}}$$<h3 id="Equation-3:-Compute-x_%7Bt-1%7D-(the-reverse-step)">Equation 3: Compute x_{t-1} (the reverse step)<a class="anchor-link" href="#Equation-3:-Compute-x_%7Bt-1%7D-(the-reverse-step)">¶</a></h3>$$x_{t-1} = \underbrace{\frac{\sqrt{\bar{\alpha}_{t-1}} \cdot (1-\alpha_t)}{1-\bar{\alpha}_t}}_{x_0 \text{ coefficient}} \cdot \hat{x}_0 + \underbrace{\frac{\sqrt{\alpha_t} \cdot (1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t}}_{x_t \text{ coefficient}} \cdot x_t + \sigma_t \cdot z$$<p>Where z is random noise (zero at final step).</p>
 <hr/>
 <h2 id="The-Complete-Code">The Complete Code<a class="anchor-link" href="#The-Complete-Code">¶</a></h2><div class="highlight"><pre><span></span><span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>  <span class="c1"># Disable gradient tracking - we don't need gradients during inference/sampling</span>
@@ -9272,21 +9288,7 @@ $$x_{t-1} = \text{x0\_coeff} \cdot \hat{x}_0 + \text{xt\_coeff} \cdot x_t + \sig
 └─────────────────────────────────────────────────────────────────┘
 </code></pre>
 <hr/>
-<div class="ce-interactive">
-  <h3>Interactive: Reverse sampling, step by step</h3>
-  <p class="ce-interactive-hint">Start at pure noise (t = 1000). Click <strong>Next step</strong> to apply one reverse-diffusion step. Watch the points slowly re-cohere into the original structured distribution. <strong>This is what a trained DDPM does at inference</strong> &mdash; chain 1000 of these denoising steps and you get a generated sample.</p>
-  <canvas id="rev-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action: manipulation;"></canvas>
-  <div class="ms-controls">
-    <button id="rev-step" class="ms-btn">Next step</button>
-    <button id="rev-run" class="ms-btn">Run to end</button>
-    <button id="rev-reset" class="ms-btn ms-secondary">Reset</button>
-    <span class="ms-val" id="rev-t">t = 1000</span>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    The "neural network" here is a cheat &mdash; we use the true noise vector we added in the forward pass. A real DDPM trains a network to predict that noise from the noisy image. But the mechanics of the reverse loop are exactly what's animating below.
-  </p>
-</div>
+
 <h2 id="Complete-Flow-for-1000-Steps">Complete Flow for 1000 Steps<a class="anchor-link" href="#Complete-Flow-for-1000-Steps">¶</a></h2><pre><code>t=999: x_999 (noise) &rarr; predict ε &rarr; estimate x̂₀ &rarr; compute x_998
 t=998: x_998         &rarr; predict ε &rarr; estimate x̂₀ &rarr; compute x_997
 t=997: x_997         &rarr; predict ε &rarr; estimate x̂₀ &rarr; compute x_996

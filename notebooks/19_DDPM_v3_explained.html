@@ -7832,13 +7832,6 @@ Pure Noise --&gt; Remove noise step by step --&gt; Clean Image
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: Linear vs cosine noise schedules</h3>
   <p class="ce-interactive-hint">The schedule controls how aggressively noise is added at each step. Linear ramps the per-step variance from <code>10<sup>&minus;4</sup></code> to <code>0.02</code>; cosine destroys signal more gradually in the middle of training. Toggle the two views to see <code>&beta;<sub>t</sub></code> (per-step noise variance) and <code>&#257;<sub>t</sub></code> (signal remaining).</p>
@@ -7853,6 +7846,14 @@ Pure Noise --&gt; Remove noise step by step --&gt; Clean Image
     <strong>Why cosine wins for diffusion models</strong>: with the linear schedule, the signal is already mostly destroyed by t = T/2, so the model spends half its training capacity on essentially-pure-noise. Cosine keeps useful signal longer &mdash; better gradient signal, better samples.
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="Noise-Schedules:-Linear-vs-Cosine">Noise Schedules: Linear vs Cosine<a class="anchor-link" href="#Noise-Schedules:-Linear-vs-Cosine">¶</a></h2><p>The <strong>noise schedule</strong> determines how much noise to add at each timestep. This is one of the most important design choices in diffusion models.</p>
 <h3 id="Key-Variables">Key Variables<a class="anchor-link" href="#Key-Variables">¶</a></h3><table>
 <thead>
@@ -8860,13 +8861,6 @@ $$<p>They are two sides of the same coin. The notebook (and the DDPM literature)
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: Signal vs noise &mdash; what each schedule destroys when</h3>
   <p class="ce-interactive-hint">Take a structured 2D dataset and noise it under both schedules. Drag the timestep slider to see how much signal remains at each schedule at any given t. <strong>At t = T/2, linear has already destroyed most of the signal; cosine still has structure visible.</strong></p>
@@ -8893,6 +8887,14 @@ $$<p>They are two sides of the same coin. The notebook (and the DDPM literature)
     </div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="Comparing-Linear-vs-Cosine-Schedules">Comparing Linear vs Cosine Schedules<a class="anchor-link" href="#Comparing-Linear-vs-Cosine-Schedules">¶</a></h2>
 </div>
 </div>

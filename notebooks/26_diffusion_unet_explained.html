@@ -9057,12 +9057,6 @@ $$\text{output} = \gamma \cdot \text{features} + \beta$$<p>This lets the network
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: Timestep embedding &mdash; turning t into a vector</h3>
   <p class="ce-interactive-hint">The diffusion U-Net needs to know <em>which</em> timestep it's operating on. The model can't ingest an integer directly; instead, t is mapped through a sinusoidal embedding (think positional encoding from transformers) then through an MLP to produce a per-step "conditioning vector" that gets added inside every ResBlock. Drag the timestep slider to watch the embedding rotate.</p>
@@ -9078,6 +9072,13 @@ $$\text{output} = \gamma \cdot \text{features} + \beta$$<p>This lets the network
     </p>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h3 id="Down-Block-with-Timestep-Conditioning">Down Block with Timestep Conditioning<a class="anchor-link" href="#Down-Block-with-Timestep-Conditioning">¶</a></h3>
 </div>
 </div>
@@ -10027,14 +10028,6 @@ $$\text{output} = \gamma \cdot \text{features} + \beta$$<p>This lets the network
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
-<h2 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h2><p>In this notebook, we built a complete diffusion U-Net from scratch:</p>
 <div class="ce-interactive">
   <h3>Interactive: The U-Net for diffusion &mdash; skip connections, traced</h3>
   <p class="ce-interactive-hint">A U-Net mirrors an encoder and a decoder. <strong>Skip connections from encoder to decoder are the magic</strong>: they let the decoder reuse high-resolution features from the corresponding encoder stage, preserving fine spatial detail through the bottleneck. Hover a block to see its shape.</p>
@@ -10044,6 +10037,15 @@ $$\text{output} = \gamma \cdot \text{features} + \beta$$<p>This lets the network
     <div class="un-info" id="un-info">Hover (or tap) a block to see its details.</div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+<h2 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h2><p>In this notebook, we built a complete diffusion U-Net from scratch:</p>
+
 <h3 id="Architecture-Components">Architecture Components<a class="anchor-link" href="#Architecture-Components">¶</a></h3><ol>
 <li><strong>Pre-activation Conv Blocks</strong>: Norm -&gt; Activation -&gt; Conv order</li>
 <li><strong>ResBlocks with Skip Connections</strong>: <code>output = convs(x) + identity(x)</code></li>

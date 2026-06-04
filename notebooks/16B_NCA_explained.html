@@ -7703,12 +7703,6 @@ Step 0:        Step 1:        Step 2:        ...
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=nca-concept">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: Conway's Game of Life &mdash; the simplest cellular automaton</h3>
   <p class="ce-interactive-hint">Every cell looks at its 8 neighbors and updates by a fixed rule: alive cells with 2-3 neighbors survive, dead cells with exactly 3 neighbors come alive, everything else dies. <strong>Out of these three lines emerges arbitrarily complex behavior &mdash; gliders, oscillators, even universal computation.</strong> NCA replaces the fixed rule with a learned neural network.</p>
@@ -7726,6 +7720,13 @@ Step 0:        Step 1:        Step 2:        ...
     <p style="margin-top: 12px; font-size: 0.86em; color: var(--ce-text-muted, #697386);">Click cells to toggle them. Try "Glider" then Play to watch a self-propagating pattern walk across the grid.</p>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=nca-concept">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h3 id="Neural-Cellular-Automata-(NCA)">Neural Cellular Automata (NCA)<a class="anchor-link" href="#Neural-Cellular-Automata-(NCA)">¶</a></h3><p><strong>Neural Cellular Automata</strong> extend classic CA in two key ways:</p>
 <ol>
 <li><p><strong>Continuous states</strong>: Instead of binary (alive/dead), cells have continuous values (like RGB colors + extra channels)</p>
@@ -8079,12 +8080,6 @@ Step 0:        Step 1:        Step 2:        ...
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=nca-architecture">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: NCA pattern growth from a single seed</h3>
   <p class="ce-interactive-hint">A neural cellular automaton is Conway's rule, but with the rule learned by a tiny network. Start from a single live cell. Each step, every cell reads its 3&times;3 neighborhood and computes its next state via a learned update. After many steps, a complex pattern emerges &mdash; <strong>the network has learned to grow a target shape from a single seed</strong>.</p>
@@ -8110,6 +8105,13 @@ Step 0:        Step 1:        Step 2:        ...
     </p>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=nca-architecture">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h3 id="NCA-Architecture-Overview">NCA Architecture Overview<a class="anchor-link" href="#NCA-Architecture-Overview">¶</a></h3><p>Our NCA has two main components:</p>
 <ol>
 <li><strong>Perception</strong>: Each cell looks at its neighbors using convolution filters</li>

@@ -8211,12 +8211,6 @@ Image optimization: Trainable image &rarr; Fixed model &rarr; Output &rarr; Loss
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=simple-mse-header">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: Style transfer optimization &mdash; watch a canvas paint itself</h3>
   <p class="ce-interactive-hint">Style transfer treats pixels as variables, not weights. We don't train a network &mdash; we update an image by gradient descent so its content loss + style loss is small. Watch a noisy canvas iteratively morph toward a target image as gradient descent runs.</p>
@@ -8245,6 +8239,13 @@ Image optimization: Trainable image &rarr; Fixed model &rarr; Output &rarr; Loss
     </div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=simple-mse-header">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h3 id="Demo:-Simple-MSE-Loss-Optimization">Demo: Simple MSE Loss Optimization<a class="anchor-link" href="#Demo:-Simple-MSE-Loss-Optimization">¶</a></h3><p>Let's first test our setup with a simple loss: Mean Squared Error (MSE) between our optimizable image and the content image. This will try to recreate the content image pixel-by-pixel.</p>
 </div>
 </div>
@@ -10065,12 +10066,6 @@ so: result[f, g] = sum over s of:  t[f, s] * t[g, s]
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d31dbe7f">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: Why a Gram matrix captures style</h3>
   <p class="ce-interactive-hint">A feature map has shape <code>C&times;H&times;W</code>: C channels detecting C different features. The Gram matrix <code>G[i,j] = &lt;f<sub>i</sub>, f<sub>j</sub>&gt;</code> measures how often features i and j co-occur, <em>regardless of where</em>. <strong>Spatial information is destroyed; correlation structure is preserved &mdash; and "correlation between feature detectors" is exactly what we mean by style.</strong></p>
@@ -10097,6 +10092,13 @@ so: result[f, g] = sum over s of:  t[f, s] * t[g, s]
     </p>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d31dbe7f">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h3 id="Computing-Gram-Matrices-for-Style-Transfer">Computing Gram Matrices for Style Transfer<a class="anchor-link" href="#Computing-Gram-Matrices-for-Style-Transfer">¶</a></h3><p>Now let's load a style image and compute its Gram matrices.</p>
 </div>
 </div>

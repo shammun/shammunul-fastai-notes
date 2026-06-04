@@ -9399,14 +9399,6 @@ After all batches:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
-<h1 id="Part-4:-Building-the-Autoencoder">Part 4: Building the Autoencoder<a class="anchor-link" href="#Part-4:-Building-the-Autoencoder">¶</a></h1><hr/>
 <div class="ce-interactive">
   <h3>Interactive: Autoencoder architecture &mdash; tensor shapes through the network</h3>
   <p class="ce-interactive-hint">An autoencoder funnels an input down through an encoder, hits a bottleneck, then expands back through a decoder. Hover or tap each box to see the layer details and tensor shape. <strong>The bottleneck is where the magic happens</strong> &mdash; the model is forced to compress all "what is this image?" information into a small latent representation.</p>
@@ -9416,7 +9408,6 @@ After all batches:
     <div class="ae-info" id="ae-info">Hover (or tap) a box to see layer details.</div>
   </div>
 </div>
-<h2 id="Autoencoder-Architecture-Overview">Autoencoder Architecture Overview<a class="anchor-link" href="#Autoencoder-Architecture-Overview">¶</a></h2><p>An autoencoder has two parts:</p>
 <div class="ce-interactive">
   <h3>Interactive: Latent bottleneck &mdash; the compression-quality tradeoff</h3>
   <p class="ce-interactive-hint">A tiny autoencoder's reconstruction quality, as a function of bottleneck size. We compress this 8&times;8 digit through a bottleneck of <em>k</em> floats, then reconstruct. Larger bottleneck = more information preserved = better reconstruction; smaller bottleneck = more aggressive compression.</p>
@@ -9453,6 +9444,17 @@ After all batches:
     <strong>Under the hood:</strong> we're doing a truncated SVD reconstruction at rank k &mdash; mathematically the best linear bottleneck of size k for a given input. A trained <em>nonlinear</em> autoencoder can do better than this baseline because it learns features specific to the data distribution. The MSE drops to near-zero once k matches the intrinsic dimensionality of the data.
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+<h1 id="Part-4:-Building-the-Autoencoder">Part 4: Building the Autoencoder<a class="anchor-link" href="#Part-4:-Building-the-Autoencoder">¶</a></h1><hr/>
+
+<h2 id="Autoencoder-Architecture-Overview">Autoencoder Architecture Overview<a class="anchor-link" href="#Autoencoder-Architecture-Overview">¶</a></h2><p>An autoencoder has two parts:</p>
+
 <h3 id="1.-Encoder-(Compression)">1. Encoder (Compression)<a class="anchor-link" href="#1.-Encoder-(Compression)">¶</a></h3><ul>
 <li>Takes the input image</li>
 <li>Uses convolutional layers to <strong>reduce spatial size</strong></li>

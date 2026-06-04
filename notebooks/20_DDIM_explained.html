@@ -7733,13 +7733,6 @@ If you skip steps, the noise doesn't accumulate correctly.
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: DDIM vs DDPM &mdash; deterministic vs stochastic sampling</h3>
   <p class="ce-interactive-hint">Both start from the same Gaussian noise and use the same trained model. DDPM injects fresh noise at every step (stochastic); DDIM does not (deterministic). <strong>From the same starting noise, DDIM always reaches the same image. DDPM reaches a different one every run.</strong> Click <strong>Run both</strong> to compare trajectories.</p>
@@ -7754,6 +7747,14 @@ If you skip steps, the noise doesn't accumulate correctly.
     <strong>Why DDIM matters in practice:</strong> determinism means you can <em>navigate the latent space</em>. Pick a noise seed, generate an image; tweak the seed slightly, get a similar image. With DDPM's stochastic sampling, every run gives a different result even from the same seed.
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="DDIM-Reverse-Process:-The-Key-Innovation">DDIM Reverse Process: The Key Innovation<a class="anchor-link" href="#DDIM-Reverse-Process:-The-Key-Innovation">¶</a></h2><p>DDIM (Denoising Diffusion Implicit Models) introduces a <strong>non-Markovian</strong> generalization of the diffusion process. The key insight is that we can define a different reverse process that:</p>
 <ol>
 <li>Still matches the same forward process (same training objective!)</li>
@@ -10158,13 +10159,6 @@ $$\hat{\mathbf{x}}_0 = \frac{\mathbf{x}_t - \sqrt{\bar{\beta}_t} \;\; \boldsymbo
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: How few steps can DDIM get away with?</h3>
   <p class="ce-interactive-hint">DDIM lets you sample with N &lt; T steps by skipping intermediate timesteps. Quality drops gracefully as N shrinks. <strong>This is the entire reason Stable Diffusion is usable</strong>: training at T = 1000 but sampling at N = 20&ndash;50 makes generation 20&ndash;50&times; faster with little visible quality loss.</p>
@@ -10181,6 +10175,14 @@ $$\hat{\mathbf{x}}_0 = \frac{\mathbf{x}_t - \sqrt{\bar{\beta}_t} \;\; \boldsymbo
     </div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h3 id="DDIM-with-Fewer-Steps">DDIM with Fewer Steps<a class="anchor-link" href="#DDIM-with-Fewer-Steps">¶</a></h3><p>Let's see how quality changes as we reduce the number of steps.</p>
 </div>
 </div>

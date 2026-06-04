@@ -8524,13 +8524,6 @@ show_progress receives:  exclamation="OK I guess", epoch=o
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: Callback flow on a training loop</h3>
   <p class="ce-interactive-hint">A miniature training loop with hookable events. Pick which callbacks are attached, then click <strong>Run</strong> to step through. Each event fires its registered callbacks in order. <strong>This is exactly the pattern fastai's Learner uses</strong> &mdash; the actual implementation is in notebook 09.</p>
@@ -8553,6 +8546,14 @@ show_progress receives:  exclamation="OK I guess", epoch=o
     Each event ("before_epoch", "after_batch" &hellip;) calls every registered callback that has that method. The training loop only knows about events; the <em>behavior</em> at each event is decided by which callbacks are attached. That's how you add logging, early stopping, mixed precision, or LR schedules without touching the core loop.
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="1.4-Callbacks-as-Callable-Classes">1.4 Callbacks as Callable Classes<a class="anchor-link" href="#1.4-Callbacks-as-Callable-Classes">¶</a></h2><p>So far, our callbacks have been functions. But Python allows us to make <strong>objects</strong> that can be called like functions. These are called "callable" objects.</p>
 <p><strong>Why use a class instead of a function?</strong></p>
 <ul>
@@ -9588,13 +9589,6 @@ show_progress receives:  exclamation="OK I guess", epoch=o
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: Which dunder fires when?</h3>
   <p class="ce-interactive-hint">Python's operator and syntax magic all routes through dunder methods. Pick an expression and see which method gets called &mdash; this is the mental model you need to understand how PyTorch's <code>tensor1 + tensor2</code>, <code>model(x)</code>, <code>len(dataset)</code>, etc. actually dispatch.</p>
@@ -9603,6 +9597,14 @@ show_progress receives:  exclamation="OK I guess", epoch=o
     <div class="dun-display" id="dun-display"></div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h1 id="Part-2:-__dunder__-Methods-(Magic-Methods)">Part 2: <code>__dunder__</code> Methods (Magic Methods)<a class="anchor-link" href="#Part-2:-__dunder__-Methods-(Magic-Methods)">¶</a></h1><hr/>
 <h2 id="What-are-Dunder-Methods?">What are Dunder Methods?<a class="anchor-link" href="#What-are-Dunder-Methods?">¶</a></h2><p>In Python, methods with names that start and end with double underscores (like <code>__init__</code>, <code>__add__</code>, <code>__call__</code>) are called "dunder" methods (short for "double underscore"). They're also called:</p>
 <ul>

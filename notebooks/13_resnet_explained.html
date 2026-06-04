@@ -9578,6 +9578,24 @@ Linear executes
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: Vanishing gradients &mdash; plain network vs ResNet</h3>
+  <p class="ce-interactive-hint">A 50-layer network, gradient magnitudes computed at each layer during backprop. Compare a plain stack of conv layers vs the same stack with skip connections. <strong>Without skips, the gradient gets multiplied through 50 weight matrices and decays exponentially</strong>; with skips, there's an identity path so gradients stay alive at the start of the network. This is why ResNets train at depths plain networks can't.</p>
+  <canvas id="vg-canvas" width="640" height="340"
+          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
+  <div class="ms-controls">
+    <label>Network depth: <span id="vg-depth-val" class="ms-val">50</span></label>
+    <input id="vg-depth" type="range" min="10" max="100" step="1" value="50">
+  </div>
+  <div class="ms-controls">
+    <label>Weight std (per layer): <span id="vg-std-val" class="ms-val">0.30</span></label>
+    <input id="vg-std" type="range" min="0.10" max="0.60" step="0.01" value="0.30">
+    <button id="vg-resample" class="ms-btn">Resample weights</button>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>Try this:</strong> turn the depth up to 100 with std 0.30. The plain-network gradient at layer 0 falls below 10<sup>&minus;10</sup> &mdash; effectively zero. The ResNet curve stays close to 1 across the whole network. <strong>This is the "Highway to the start" effect</strong> &mdash; the skip path is literally derivative-1 with respect to its input.
+  </p>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -10075,24 +10093,7 @@ Layer 6: 128 &rarr; 256   (huge!)
 <span class="n">summary</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">input_size</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">224</span><span class="p">,</span> <span class="mi">224</span><span class="p">))</span>
 </pre></div>
 <hr/>
-<div class="ce-interactive">
-  <h3>Interactive: Vanishing gradients &mdash; plain network vs ResNet</h3>
-  <p class="ce-interactive-hint">A 50-layer network, gradient magnitudes computed at each layer during backprop. Compare a plain stack of conv layers vs the same stack with skip connections. <strong>Without skips, the gradient gets multiplied through 50 weight matrices and decays exponentially</strong>; with skips, there's an identity path so gradients stay alive at the start of the network. This is why ResNets train at depths plain networks can't.</p>
-  <canvas id="vg-canvas" width="640" height="340"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
-  <div class="ms-controls">
-    <label>Network depth: <span id="vg-depth-val" class="ms-val">50</span></label>
-    <input id="vg-depth" type="range" min="10" max="100" step="1" value="50">
-  </div>
-  <div class="ms-controls">
-    <label>Weight std (per layer): <span id="vg-std-val" class="ms-val">0.30</span></label>
-    <input id="vg-std" type="range" min="0.10" max="0.60" step="0.01" value="0.30">
-    <button id="vg-resample" class="ms-btn">Resample weights</button>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Try this:</strong> turn the depth up to 100 with std 0.30. The plain-network gradient at layer 0 falls below 10<sup>&minus;10</sup> &mdash; effectively zero. The ResNet curve stays close to 1 across the whole network. <strong>This is the "Highway to the start" effect</strong> &mdash; the skip path is literally derivative-1 with respect to its input.
-  </p>
-</div>
+
 <h2 id="Mathematical-Insight">Mathematical Insight<a class="anchor-link" href="#Mathematical-Insight">¶</a></h2><h3 id="Why-Quadratic-Growth?">Why Quadratic Growth?<a class="anchor-link" href="#Why-Quadratic-Growth?">¶</a></h3><p>For a standard ResNet-style architecture where channels double at each stage:</p>
 <pre><code>Stage 1: c &rarr; 2c     &rarr; params ∝ c &times; 2c = 2c<sup>2</sup>
 Stage 2: 2c &rarr; 4c    &rarr; params ∝ 2c &times; 4c = 8c<sup>2</sup>
@@ -10368,19 +10369,6 @@ Stage 4: 8c &rarr; 16c   &rarr; params ∝ 8c &times; 16c = 128c<sup>2</sup>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
-<h2 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h2><h3 id="The-Degradation-Problem">The Degradation Problem<a class="anchor-link" href="#The-Degradation-Problem">¶</a></h3><p>Deeper networks don't always perform better:</p>
-<ul>
-<li>Not due to overfitting (training accuracy also drops)</li>
-<li>Due to optimization difficulty</li>
-<li>Hard for layers to learn identity mappings</li>
-</ul>
 <div class="ce-interactive">
   <h3>Interactive: The residual block, animated</h3>
   <p class="ce-interactive-hint">A residual block computes <code>F(x) + x</code> where <code>F</code> is two convolutions plus a nonlinearity. Click <strong>Step</strong> to watch the tensor flow through the conv branch and the identity branch, meeting at the addition. <strong>The identity branch is the key innovation</strong>: without it, gradients have to fight their way back through every conv layer; with it, they have a direct highway home.</p>
@@ -10396,6 +10384,20 @@ Stage 4: 8c &rarr; 16c   &rarr; params ∝ 8c &times; 16c = 128c<sup>2</sup>
     <div class="rb-info" id="rb-info">Click Step to begin.</div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+<h2 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h2><h3 id="The-Degradation-Problem">The Degradation Problem<a class="anchor-link" href="#The-Degradation-Problem">¶</a></h3><p>Deeper networks don't always perform better:</p>
+<ul>
+<li>Not due to overfitting (training accuracy also drops)</li>
+<li>Due to optimization difficulty</li>
+<li>Hard for layers to learn identity mappings</li>
+</ul>
+
 <h3 id="Skip-Connections-(Residual-Learning)">Skip Connections (Residual Learning)<a class="anchor-link" href="#Skip-Connections-(Residual-Learning)">¶</a></h3><p>Instead of learning <code>H(x)</code>, learn <code>F(x) = H(x) - x</code>:</p>
 <pre><code>output = F(x) + x
 </code></pre>

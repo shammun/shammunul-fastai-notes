@@ -7525,12 +7525,6 @@ a.anchor-link {
   </a>
 </div>
 <main>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=intro-header">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: Mixed precision &mdash; fp32 vs fp16 vs bf16</h3>
   <p class="ce-interactive-hint">Each format trades range for precision differently. Click a format to see its representable range and precision near 1.0. <strong>Why mixed precision is fine for most training</strong>: fp16 has plenty of precision for activations and gradients in the normal range; the catastrophic-loss-of-precision happens only for tiny gradients (which we don't have if the model is healthy) and huge values (which we don't have if the model is healthy).</p>
@@ -7544,6 +7538,13 @@ a.anchor-link {
     </p>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=intro-header">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h1 id="DDPM-v2:-Improved-Training-with-Mixed-Precision-and-Accelerate">DDPM v2: Improved Training with Mixed Precision and Accelerate<a class="anchor-link" href="#DDPM-v2:-Improved-Training-with-Mixed-Precision-and-Accelerate">¶</a></h1><hr/>
 <p><strong>What is this notebook about?</strong></p>
 <p>This notebook builds on our first DDPM implementation (notebook 15) with several important improvements:</p>
@@ -10583,6 +10584,27 @@ diagnostic outputs. A dataclass lets them return all of that cleanly under named
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: How Accelerate adapts the training loop</h3>
+  <p class="ce-interactive-hint">A regular fastai loop and an Accelerate-wrapped version. Click <strong>Step</strong> to see what's different at each event: the data move, the autocast context for fp16, the loss-scaled backward, the gradient unscaling. <strong>Accelerate's whole job</strong> is making distributed + mixed-precision training look like a plain training loop.</p>
+  <div class="acc-widget">
+    <div class="acc-cols">
+      <div class="acc-col">
+        <div class="acc-title">Plain fastai loop</div>
+        <div class="acc-code" id="acc-plain"></div>
+      </div>
+      <div class="acc-col">
+        <div class="acc-title">With Accelerate + AMP</div>
+        <div class="acc-code" id="acc-amp"></div>
+      </div>
+    </div>
+    <div class="ms-controls">
+      <button id="acc-step" class="ms-btn">Step</button>
+      <button id="acc-reset" class="ms-btn ms-secondary">Reset</button>
+      <span class="ms-val" id="acc-pos">Step 0 / 6</span>
+    </div>
+  </div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2d6f7828">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -10634,27 +10656,7 @@ learn.batch[n_inp:]   &rarr;  everything from n_inp on  &rarr;  targets for loss
 <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">noisy_images</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">)</span>   <span class="err">←</span> <span class="n">exactly</span> <span class="n">what</span> <span class="n">UNet2DModel</span><span class="o">.</span><span class="n">forward</span><span class="p">()</span> <span class="n">expects</span><span class="err">!</span>
 </pre></div>
 <hr/>
-<div class="ce-interactive">
-  <h3>Interactive: How Accelerate adapts the training loop</h3>
-  <p class="ce-interactive-hint">A regular fastai loop and an Accelerate-wrapped version. Click <strong>Step</strong> to see what's different at each event: the data move, the autocast context for fp16, the loss-scaled backward, the gradient unscaling. <strong>Accelerate's whole job</strong> is making distributed + mixed-precision training look like a plain training loop.</p>
-  <div class="acc-widget">
-    <div class="acc-cols">
-      <div class="acc-col">
-        <div class="acc-title">Plain fastai loop</div>
-        <div class="acc-code" id="acc-plain"></div>
-      </div>
-      <div class="acc-col">
-        <div class="acc-title">With Accelerate + AMP</div>
-        <div class="acc-code" id="acc-amp"></div>
-      </div>
-    </div>
-    <div class="ms-controls">
-      <button id="acc-step" class="ms-btn">Step</button>
-      <button id="acc-reset" class="ms-btn ms-secondary">Reset</button>
-      <span class="ms-val" id="acc-pos">Step 0 / 6</span>
-    </div>
-  </div>
-</div>
+
 <h2 id="get_loss:-How-the-Loss-Gets-Computed"><code>get_loss</code>: How the Loss Gets Computed<a class="anchor-link" href="#get_loss:-How-the-Loss-Gets-Computed">¶</a></h2><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
     <span class="n">learn</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss_func</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span><span class="p">,</span> <span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span><span class="p">:])</span>
 </pre></div>

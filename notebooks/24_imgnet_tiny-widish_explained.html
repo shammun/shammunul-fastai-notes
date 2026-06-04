@@ -8964,13 +8964,6 @@ After RandErase:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: Width-depth tradeoff explorer</h3>
   <p class="ce-interactive-hint">For a fixed parameter budget, you can spend it on more channels per layer (wider) or more layers (deeper). The "widish" middle ground often wins on small datasets like Tiny ImageNet where pure-depth models overfit. Drag the sliders to see how param count scales.</p>
@@ -8988,6 +8981,14 @@ After RandErase:
             style="width:100%; max-width:640px; height:auto; background:white; border-radius:6px; margin-top: 14px;"></canvas>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="Section-5:-Building-the-ResNet-Model">Section 5: Building the ResNet Model<a class="anchor-link" href="#Section-5:-Building-the-ResNet-Model">¶</a></h2><p>Now we'll build our neural network. We use a <strong>ResNet</strong> (Residual Network) architecture, which is one of the most successful architectures for image classification.</p>
 </div>
 </div>
@@ -9854,13 +9855,6 @@ AdamW adds:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: How block-per-stage configuration changes the architecture</h3>
   <p class="ce-interactive-hint">Click a config to see how many blocks at each stage and what the parameter distribution looks like. <strong>The "early-heavy" distribution (more blocks in early stages)</strong> is the modern preference &mdash; cheap operations at high resolution buy you a lot of representation power.</p>
@@ -9869,6 +9863,14 @@ AdamW adds:
     <div class="bs-display" id="bs-display"></div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="Section-9:-Training-the-Widish-Model">Section 9: Training the Widish Model<a class="anchor-link" href="#Section-9:-Training-the-Widish-Model">¶</a></h2><p>Now we create and train our "widish" model - wider than standard but not as wide as the full "wide" version.</p>
 </div>
 </div>

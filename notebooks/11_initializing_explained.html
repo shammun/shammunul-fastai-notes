@@ -11527,6 +11527,46 @@ With partial:
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: Forward hooks &mdash; inspecting activations on the fly</h3>
+  <p class="ce-interactive-hint">A hook is a callback that fires whenever a module's <code>forward</code> runs. Toggle hooks on each layer, then click <strong>Forward pass</strong>: hooks fire in order, each capturing its layer's output. <strong>This is exactly how the activation-stats analysis in this notebook works</strong> &mdash; hooks let you watch a model's internals without modifying it.</p>
+  <div class="hk-widget">
+    <div class="hk-network" id="hk-network"></div>
+    <div class="ms-controls">
+      <button id="hk-forward" class="ms-btn">Forward pass</button>
+      <button id="hk-reset" class="ms-btn ms-secondary">Reset</button>
+      <span id="hk-status" class="ms-val">Ready.</span>
+    </div>
+    <div class="hk-output" id="hk-output"></div>
+  </div>
+</div>
+<div class="ce-interactive">
+  <h3>Interactive: Activation variance through a deep network</h3>
+  <p class="ce-interactive-hint">A 20-layer linear network, fed random input. Pick an initialization scheme and activation, and watch what happens to the variance and mean of activations as they propagate forward. <strong>This is the whole story of weight initialization in one chart</strong>: bad init causes activations to explode or vanish; good init keeps them stable across depth.</p>
+  <canvas id="vp-canvas" width="640" height="320"
+          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
+  <div class="ms-controls">
+    <label>Init scheme:</label>
+    <select id="vp-init" class="vp-select">
+      <option value="naive">Naive N(0,1) &mdash; explodes</option>
+      <option value="small">Small N(0, 0.1) &mdash; vanishes</option>
+      <option value="xavier" selected>Xavier/Glorot &mdash; for tanh</option>
+      <option value="kaiming">Kaiming/He &mdash; for ReLU</option>
+    </select>
+  </div>
+  <div class="ms-controls">
+    <label>Activation:</label>
+    <select id="vp-act" class="vp-select">
+      <option value="linear">linear (none)</option>
+      <option value="tanh">tanh</option>
+      <option value="relu" selected>ReLU</option>
+    </select>
+    <button id="vp-resample" class="ms-btn">Resample weights</button>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>Try this:</strong> "Naive + ReLU" makes the variance climb past 10<sup>10</sup> by layer 20 &mdash; activations explode. "Small + tanh" decays to near zero &mdash; activations vanish. "Kaiming + ReLU" stays flat. <strong>Kaiming He's insight</strong>: because ReLU zeros half the inputs on average, you need 2/fan_in variance (not 1/fan_in like Xavier) to keep activations stable.
+  </p>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -11622,19 +11662,7 @@ Adjust these         Measure these
 <span class="c1"># Output std: 1.4567</span>
 <span class="c1"># ----------------------------------------</span>
 </pre></div>
-<div class="ce-interactive">
-  <h3>Interactive: Forward hooks &mdash; inspecting activations on the fly</h3>
-  <p class="ce-interactive-hint">A hook is a callback that fires whenever a module's <code>forward</code> runs. Toggle hooks on each layer, then click <strong>Forward pass</strong>: hooks fire in order, each capturing its layer's output. <strong>This is exactly how the activation-stats analysis in this notebook works</strong> &mdash; hooks let you watch a model's internals without modifying it.</p>
-  <div class="hk-widget">
-    <div class="hk-network" id="hk-network"></div>
-    <div class="ms-controls">
-      <button id="hk-forward" class="ms-btn">Forward pass</button>
-      <button id="hk-reset" class="ms-btn ms-secondary">Reset</button>
-      <span id="hk-status" class="ms-val">Ready.</span>
-    </div>
-    <div class="hk-output" id="hk-output"></div>
-  </div>
-</div>
+
 <h3 id="How-Hooks-Work">How Hooks Work<a class="anchor-link" href="#How-Hooks-Work">¶</a></h3><pre><code>You run: output = layer(input)
          ↓
 PyTorch internally:
@@ -12747,33 +12775,7 @@ KEY INSIGHT: Each layer gets its OWN temporary Hook object!
 </code></pre>
 <hr/>
 <p><a name="part-10"></a></p>
-<h2 id="Part-10:-Comparison-with-Other-Initialization-Methods">Part 10: Comparison with Other Initialization Methods<a class="anchor-link" href="#Part-10:-Comparison-with-Other-Initialization-Methods">¶</a></h2><div class="ce-interactive">
-  <h3>Interactive: Activation variance through a deep network</h3>
-  <p class="ce-interactive-hint">A 20-layer linear network, fed random input. Pick an initialization scheme and activation, and watch what happens to the variance and mean of activations as they propagate forward. <strong>This is the whole story of weight initialization in one chart</strong>: bad init causes activations to explode or vanish; good init keeps them stable across depth.</p>
-  <canvas id="vp-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
-  <div class="ms-controls">
-    <label>Init scheme:</label>
-    <select id="vp-init" class="vp-select">
-      <option value="naive">Naive N(0,1) &mdash; explodes</option>
-      <option value="small">Small N(0, 0.1) &mdash; vanishes</option>
-      <option value="xavier" selected>Xavier/Glorot &mdash; for tanh</option>
-      <option value="kaiming">Kaiming/He &mdash; for ReLU</option>
-    </select>
-  </div>
-  <div class="ms-controls">
-    <label>Activation:</label>
-    <select id="vp-act" class="vp-select">
-      <option value="linear">linear (none)</option>
-      <option value="tanh">tanh</option>
-      <option value="relu" selected>ReLU</option>
-    </select>
-    <button id="vp-resample" class="ms-btn">Resample weights</button>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Try this:</strong> "Naive + ReLU" makes the variance climb past 10<sup>10</sup> by layer 20 &mdash; activations explode. "Small + tanh" decays to near zero &mdash; activations vanish. "Kaiming + ReLU" stays flat. <strong>Kaiming He's insight</strong>: because ReLU zeros half the inputs on average, you need 2/fan_in variance (not 1/fan_in like Xavier) to keep activations stable.
-  </p>
-</div>
+<h2 id="Part-10:-Comparison-with-Other-Initialization-Methods">Part 10: Comparison with Other Initialization Methods<a class="anchor-link" href="#Part-10:-Comparison-with-Other-Initialization-Methods">¶</a></h2>
 <h3 id="Common-Initialization-Methods">Common Initialization Methods<a class="anchor-link" href="#Common-Initialization-Methods">¶</a></h3><h4 id="1.-Random-Initialization">1. Random Initialization<a class="anchor-link" href="#1.-Random-Initialization">¶</a></h4><div class="highlight"><pre><span></span><span class="c1"># Default PyTorch initialization</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleNet</span><span class="p">()</span>
 <span class="c1"># Weights: W ~ N(0, 1)</span>

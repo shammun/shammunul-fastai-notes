@@ -8512,12 +8512,6 @@ a.anchor-link {
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: Low-res &rarr; high-res &mdash; what super-resolution learns</h3>
   <p class="ce-interactive-hint">A trained super-resolution model takes a low-resolution input and predicts the high-resolution version. Drag the input image's "blur" level to simulate different starting resolutions. <strong>The model has learned image priors</strong> &mdash; what edges, textures, and shapes typically look like &mdash; and uses them to invent the missing detail.</p>
@@ -8545,6 +8539,13 @@ a.anchor-link {
     </div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h3 id="3.1-Upsampling-Block">3.1 Upsampling Block<a class="anchor-link" href="#3.1-Upsampling-Block">¶</a></h3>
 </div>
 </div>
@@ -8589,12 +8590,6 @@ a.anchor-link {
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: PixelShuffle &mdash; how 4&times; upsampling works in one move</h3>
   <p class="ce-interactive-hint">PixelShuffle rearranges a tensor of shape (C&middot;r<sup>2</sup>, H, W) into shape (C, H&middot;r, W&middot;r) by interleaving channels into spatial positions. <strong>It's not interpolation</strong> &mdash; the model learns r<sup>2</sup>&times; more channels at the low resolution, and PixelShuffle packs them into the high resolution. Click <strong>Run shuffle</strong> to watch a 2&times;2 grid of channels collapse into a 4&times; larger spatial map.</p>
@@ -8608,6 +8603,13 @@ a.anchor-link {
     </div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h3 id="3.2-Autoencoder-Model">3.2 Autoencoder Model<a class="anchor-link" href="#3.2-Autoencoder-Model">¶</a></h3>
 </div>
 </div>

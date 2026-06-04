@@ -7525,6 +7525,39 @@ a.anchor-link {
   </a>
 </div>
 <main>
+<div class="ce-interactive">
+  <h3>Interactive: Augmentation pipeline &mdash; see what each transform does</h3>
+  <p class="ce-interactive-hint">Pick augmentations to apply to a sample image, drag their parameter sliders, and watch the output. Each click of <strong>Resample</strong> draws a fresh random transformation &mdash; that's the same thing that happens at every training batch, which is why a model sees a new "version" of each image every epoch.</p>
+  <div class="aug-widget">
+    <div class="aug-toggles">
+      <label><input type="checkbox" data-aug="crop" checked> RandomCrop</label>
+      <label><input type="checkbox" data-aug="flip" checked> HorizontalFlip</label>
+      <label><input type="checkbox" data-aug="blur"> GaussianBlur</label>
+      <label><input type="checkbox" data-aug="erase"> RandomErasing</label>
+    </div>
+    <div class="aug-canvases">
+      <div>
+        <div class="aug-label">Original</div>
+        <canvas id="aug-orig" width="120" height="120" style="image-rendering:pixelated; background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
+      </div>
+      <div class="aug-arrow">&rarr;</div>
+      <div>
+        <div class="aug-label">Augmented (training input)</div>
+        <canvas id="aug-out" width="120" height="120" style="image-rendering:pixelated; background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
+      </div>
+    </div>
+    <div class="ms-controls">
+      <button id="aug-resample" class="ms-btn">Resample augmentation</button>
+      <button id="aug-newimg" class="ms-btn ms-secondary">New input image</button>
+    </div>
+    <div class="ms-controls">
+      <label>Blur sigma: <span id="aug-blur-val" class="ms-val">1.0</span></label>
+      <input id="aug-blur" type="range" min="0.5" max="3.0" step="0.1" value="1.0">
+      <label>Erase area: <span id="aug-erase-val" class="ms-val">0.20</span></label>
+      <input id="aug-erase" type="range" min="0.05" max="0.5" step="0.01" value="0.20">
+    </div>
+  </div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7562,39 +7595,7 @@ a.anchor-link {
 <pre><code>Training accuracy:   99.9%
 Validation accuracy: 92.4%  ← Big gap = overfitting!
 </code></pre>
-<div class="ce-interactive">
-  <h3>Interactive: Augmentation pipeline &mdash; see what each transform does</h3>
-  <p class="ce-interactive-hint">Pick augmentations to apply to a sample image, drag their parameter sliders, and watch the output. Each click of <strong>Resample</strong> draws a fresh random transformation &mdash; that's the same thing that happens at every training batch, which is why a model sees a new "version" of each image every epoch.</p>
-  <div class="aug-widget">
-    <div class="aug-toggles">
-      <label><input type="checkbox" data-aug="crop" checked> RandomCrop</label>
-      <label><input type="checkbox" data-aug="flip" checked> HorizontalFlip</label>
-      <label><input type="checkbox" data-aug="blur"> GaussianBlur</label>
-      <label><input type="checkbox" data-aug="erase"> RandomErasing</label>
-    </div>
-    <div class="aug-canvases">
-      <div>
-        <div class="aug-label">Original</div>
-        <canvas id="aug-orig" width="120" height="120" style="image-rendering:pixelated; background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
-      </div>
-      <div class="aug-arrow">&rarr;</div>
-      <div>
-        <div class="aug-label">Augmented (training input)</div>
-        <canvas id="aug-out" width="120" height="120" style="image-rendering:pixelated; background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
-      </div>
-    </div>
-    <div class="ms-controls">
-      <button id="aug-resample" class="ms-btn">Resample augmentation</button>
-      <button id="aug-newimg" class="ms-btn ms-secondary">New input image</button>
-    </div>
-    <div class="ms-controls">
-      <label>Blur sigma: <span id="aug-blur-val" class="ms-val">1.0</span></label>
-      <input id="aug-blur" type="range" min="0.5" max="3.0" step="0.1" value="1.0">
-      <label>Erase area: <span id="aug-erase-val" class="ms-val">0.20</span></label>
-      <input id="aug-erase" type="range" min="0.05" max="0.5" step="0.01" value="0.20">
-    </div>
-  </div>
-</div>
+
 <h3 id="Augmentation-Techniques-We'll-Cover">Augmentation Techniques We'll Cover<a class="anchor-link" href="#Augmentation-Techniques-We'll-Cover">¶</a></h3><ol>
 <li><strong>Going Wider</strong> - Wider ResNet models</li>
 <li><strong>Global Average Pooling</strong> - Reduce parameters</li>
@@ -10129,12 +10130,6 @@ PHASE 2: INFERENCE / DEPLOYMENT (where TTA lives)
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: Test-Time Augmentation &mdash; ensemble for free</h3>
   <p class="ce-interactive-hint">At inference time, we don't get a single prediction &mdash; we get one prediction <em>per augmented copy</em> of the test image, then average them. Click <strong>Generate</strong> to draw N augmented copies and watch the per-augmentation predictions average into a more confident answer.</p>
@@ -10154,6 +10149,13 @@ PHASE 2: INFERENCE / DEPLOYMENT (where TTA lives)
     <strong>Why TTA works:</strong> each augmented copy hits the model from a slightly different angle. Noise in individual predictions averages out, and the consensus is more reliable than any single forward pass &mdash; same logic as bagging in classical ML. Costs you N model evaluations per test image, but typically buys 1&ndash;2% accuracy.
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h1 id="Test-Time-Augmentation-(TTA)">Test Time Augmentation (TTA)<a class="anchor-link" href="#Test-Time-Augmentation-(TTA)">¶</a></h1><h2 id="The-Problem:-Our-Model-Only-Sees-One-Version-of-Each-Image">The Problem: Our Model Only Sees One Version of Each Image<a class="anchor-link" href="#The-Problem:-Our-Model-Only-Sees-One-Version-of-Each-Image">¶</a></h2><p>After training, when we evaluate our model on the test/validation set, we feed each image through the model <strong>exactly once</strong> and get a prediction. But think about this &mdash; if we slightly modify the image (say, flip it horizontally), the model might give a <strong>slightly different prediction</strong>. Sometimes that different prediction is actually <strong>more correct</strong>.</p>
 <p>A T-shirt is still a T-shirt whether it's facing left or facing right. But our model might be slightly more confident about one orientation than the other, just because of the random patterns it happened to learn during training.</p>
 <p><strong>What if we could get predictions from multiple versions of the same image and combine them?</strong></p>

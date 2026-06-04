@@ -7709,13 +7709,6 @@ CONTINUOUS (this notebook):
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: Continuous-time cosine schedule</h3>
   <p class="ce-interactive-hint">In continuous time, t goes from 0 to 1 smoothly &mdash; no discrete steps. <code>&#257;(t) = cos<sup>2</sup>(&pi;t/2)</code> gives a clean monotone decay from 1 to 0. Drag the <em>s</em> offset to see how the small "anti-singularity" shift (<code>cos<sup>2</sup>((t+s)/(1+s) &middot; &pi;/2)</code>) prevents the kernel from collapsing at t = 0.</p>
@@ -7729,6 +7722,14 @@ CONTINUOUS (this notebook):
     <strong>Why this matters:</strong> with s = 0, the schedule's derivative at t = 0 is exactly 0 &mdash; signal stays at 1 for an infinitesimal moment, then collapses. With s &gt; 0, the curve starts decaying immediately and gracefully. Tiny detail, real effect on training stability.
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="The-Cosine-Schedule-with-Continuous-Time">The Cosine Schedule with Continuous Time<a class="anchor-link" href="#The-Cosine-Schedule-with-Continuous-Time">¶</a></h2><p>This is the key innovation of this notebook. Instead of using discrete timesteps (0, 1, 2, ..., 999), we use continuous time t in the range [0, 1].</p>
 <h3 id="The-Cosine-Formula">The Cosine Formula<a class="anchor-link" href="#The-Cosine-Formula">¶</a></h3><p>The cosine schedule for alphabar is:</p>
 $$\bar{\alpha}(t) = \cos^2\left(\frac{\pi t}{2}\right)$$<p>Where:</p>
@@ -8625,6 +8626,20 @@ $$
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: log-SNR across schedules</h3>
+  <p class="ce-interactive-hint">The signal-to-noise ratio <code>SNR(t) = &#257;(t) / (1 &minus; &#257;(t))</code> is the most schedule-invariant way to compare diffusion processes. Plot <code>log SNR</code> over time for three popular schedules &mdash; you'll see they all start high (lots of signal) and end at &minus;&infin; (pure noise), but they curve differently.</p>
+  <canvas id="snr-canvas" width="640" height="320"
+          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
+  <div class="ms-controls">
+    <label><input type="checkbox" data-s="linear" checked> Linear</label>
+    <label><input type="checkbox" data-s="cosine" checked> Cosine (s=0.008)</label>
+    <label><input type="checkbox" data-s="sigmoid"> Sigmoid</label>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>The view from log-SNR:</strong> linear schedule descends almost linearly in log-SNR; cosine has a steeper drop at the end (more "easy" steps at high SNR, fewer at low SNR); sigmoid is symmetric. The right schedule is the one that distributes your training compute proportional to the difficulty at each timestep.
+  </p>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8648,20 +8663,7 @@ $$<p>This produces the sequence $\left(\frac{S-1}{S},\; \frac{S-2}{S},\; \dots,\
 x_T \sim \mathcal{N}(0, I)
 $$<hr/>
 <h2 id="3.-Per-Step-Computations">3. Per-Step Computations<a class="anchor-link" href="#3.-Per-Step-Computations">¶</a></h2><p>At each step $i$ with current time $t_i$:</p>
-<div class="ce-interactive">
-  <h3>Interactive: log-SNR across schedules</h3>
-  <p class="ce-interactive-hint">The signal-to-noise ratio <code>SNR(t) = &#257;(t) / (1 &minus; &#257;(t))</code> is the most schedule-invariant way to compare diffusion processes. Plot <code>log SNR</code> over time for three popular schedules &mdash; you'll see they all start high (lots of signal) and end at &minus;&infin; (pure noise), but they curve differently.</p>
-  <canvas id="snr-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
-  <div class="ms-controls">
-    <label><input type="checkbox" data-s="linear" checked> Linear</label>
-    <label><input type="checkbox" data-s="cosine" checked> Cosine (s=0.008)</label>
-    <label><input type="checkbox" data-s="sigmoid"> Sigmoid</label>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>The view from log-SNR:</strong> linear schedule descends almost linearly in log-SNR; cosine has a steeper drop at the end (more "easy" steps at high SNR, fewer at low SNR); sigmoid is symmetric. The right schedule is the one that distributes your training compute proportional to the difficulty at each timestep.
-  </p>
-</div>
+
 <h3 id="3a.-Noise-Schedule-Values">3a. Noise Schedule Values<a class="anchor-link" href="#3a.-Noise-Schedule-Values">¶</a></h3>$$
 \bar{\alpha}_{t} = \bar{\alpha}(t_i)
 $$$$

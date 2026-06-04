@@ -9305,6 +9305,22 @@ For each epoch:
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: How CancelException unwinds the training loop</h3>
+  <p class="ce-interactive-hint">The Learner uses three Cancel exceptions to give callbacks fine-grained control: skip one batch, skip the rest of an epoch, or end training entirely. The <code>@with_cbs</code> decorator on <code>one_batch</code>, <code>_one_epoch</code>, and <code>fit</code> catches the matching exception at the matching level. <strong>Click a Cancel button to see exactly how the loop unwinds.</strong></p>
+  <div class="cb-widget">
+    <div id="lc-canvas" class="cb-canvas"></div>
+    <div class="ms-controls">
+      <button id="lc-batch" class="ms-btn">Throw CancelBatchException</button>
+      <button id="lc-epoch" class="ms-btn">Throw CancelEpochException</button>
+      <button id="lc-fit"   class="ms-btn">Throw CancelFitException</button>
+      <button id="lc-reset" class="ms-btn ms-secondary">Reset</button>
+    </div>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
+    <strong>The trick:</strong> the <code>@with_cbs</code> decorator wraps each level (<code>fit</code>, <code>_one_epoch</code>, <code>one_batch</code>) in a try/except that catches just <em>its</em> Cancel type. A callback throwing <code>CancelBatchException</code> bubbles up to <code>one_batch</code>'s handler and stops there; the epoch and fit loops keep going. This is how learning-rate finders and early stopping work without touching the core loop.
+  </p>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9327,22 +9343,7 @@ For each epoch:
     after_fit()               # Called once at end
 </code></pre>
 <hr/>
-<div class="ce-interactive">
-  <h3>Interactive: How CancelException unwinds the training loop</h3>
-  <p class="ce-interactive-hint">The Learner uses three Cancel exceptions to give callbacks fine-grained control: skip one batch, skip the rest of an epoch, or end training entirely. The <code>@with_cbs</code> decorator on <code>one_batch</code>, <code>_one_epoch</code>, and <code>fit</code> catches the matching exception at the matching level. <strong>Click a Cancel button to see exactly how the loop unwinds.</strong></p>
-  <div class="cb-widget">
-    <div id="lc-canvas" class="cb-canvas"></div>
-    <div class="ms-controls">
-      <button id="lc-batch" class="ms-btn">Throw CancelBatchException</button>
-      <button id="lc-epoch" class="ms-btn">Throw CancelEpochException</button>
-      <button id="lc-fit"   class="ms-btn">Throw CancelFitException</button>
-      <button id="lc-reset" class="ms-btn ms-secondary">Reset</button>
-    </div>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>The trick:</strong> the <code>@with_cbs</code> decorator wraps each level (<code>fit</code>, <code>_one_epoch</code>, <code>one_batch</code>) in a try/except that catches just <em>its</em> Cancel type. A callback throwing <code>CancelBatchException</code> bubbles up to <code>one_batch</code>'s handler and stops there; the epoch and fit loops keep going. This is how learning-rate finders and early stopping work without touching the core loop.
-  </p>
-</div>
+
 <h2 id="Cancel-Exceptions">Cancel Exceptions<a class="anchor-link" href="#Cancel-Exceptions">¶</a></h2><p>Sometimes callbacks need to <strong>stop</strong> training early. We use custom exceptions for this:</p>
 </div>
 </div>
@@ -17447,6 +17448,17 @@ after_epoch:
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: Callback order, sortable</h3>
+  <p class="ce-interactive-hint">Multiple callbacks subscribe to the same event. The <code>order</code> attribute (default 0) decides who runs first. Click <strong>Swap order</strong> on a callback to change its priority and watch how the execution sequence updates &mdash; this is how you guarantee, e.g., that DeviceCB moves data to GPU <em>before</em> DDPMCB tries to noise it.</p>
+  <div class="lo-widget">
+    <div class="lo-table" id="lo-table"></div>
+    <p style="margin-top:10px; font-size:0.86em; color: var(--ce-text-muted, #697386);">
+      <strong>Run order on <code>before_batch</code>:</strong>
+    </p>
+    <ol id="lo-runlist" class="lo-runlist"></ol>
+  </div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -18484,17 +18496,7 @@ MetricsCB.after_epoch runs:
 <p>It's like someone swapping the label on a phone's speed dial before you make your calls. When MetricsCB later presses the button labeled <code>_log</code>, it reaches ProgressCB's version instead of its own, because the wiring was changed beforehand during <code>before_fit</code>.</p>
 <p><strong>Why this design?</strong> It's an elegant way for ProgressCB to intercept MetricsCB's output without MetricsCB needing to know anything about ProgressCB. MetricsCB just calls <code>self._log(log)</code> &mdash; it doesn't care who's on the other end. If ProgressCB isn't in the callback list, MetricsCB's original <code>_log</code> runs normally. If ProgressCB is present, it silently swaps in its own version during setup, and MetricsCB's output gets routed to the progress bar. Neither callback needs to import or reference the other.</p>
 <hr/>
-<div class="ce-interactive">
-  <h3>Interactive: Callback order, sortable</h3>
-  <p class="ce-interactive-hint">Multiple callbacks subscribe to the same event. The <code>order</code> attribute (default 0) decides who runs first. Click <strong>Swap order</strong> on a callback to change its priority and watch how the execution sequence updates &mdash; this is how you guarantee, e.g., that DeviceCB moves data to GPU <em>before</em> DDPMCB tries to noise it.</p>
-  <div class="lo-widget">
-    <div class="lo-table" id="lo-table"></div>
-    <p style="margin-top:10px; font-size:0.86em; color: var(--ce-text-muted, #697386);">
-      <strong>Run order on <code>before_batch</code>:</strong>
-    </p>
-    <ol id="lo-runlist" class="lo-runlist"></ol>
-  </div>
-</div>
+
 <h4 id="Clearing-Up-Common-Confusions-About-Callbacks">Clearing Up Common Confusions About Callbacks<a class="anchor-link" href="#Clearing-Up-Common-Confusions-About-Callbacks">¶</a></h4><p>The <code>_log</code> replacement and the <code>run_cbs</code> loop can be confusing because they seem related but are actually two completely independent mechanisms. Let's address the most common confusions head-on.</p>
 <hr/>
 <h5 id="Confusion-1:-%22Does-self-in-a-callback-refer-to-the-Learner?%22">Confusion 1: "Does <code>self</code> in a callback refer to the Learner?"<a class="anchor-link" href="#Confusion-1:-%22Does-self-in-a-callback-refer-to-the-Learner?%22">¶</a></h5><p><strong>No.</strong> This is the most important thing to get right. In a callback method, there are two separate objects:</p>

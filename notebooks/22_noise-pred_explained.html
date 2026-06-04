@@ -7937,12 +7937,6 @@ $$\text{logit}(p) = \log\left(\frac{p}{1-p}\right)$$<p>This makes the target unb
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: Three prediction targets &mdash; &epsilon;, x<sub>0</sub>, and v</h3>
   <p class="ce-interactive-hint">A diffusion model can be parameterized to predict the noise <code>&epsilon;</code>, the clean image <code>x<sub>0</sub></code>, or the "velocity" <code>v = &radic;&#257; &middot; &epsilon; &minus; &radic;(1&minus;&#257;) &middot; x<sub>0</sub></code>. All three are mathematically equivalent &mdash; given one you can compute the others &mdash; but they differ in training dynamics. Drag the timestep slider to see what each prediction <em>looks like</em> at every noise level.</p>
@@ -7956,6 +7950,28 @@ $$\text{logit}(p) = \log\left(\frac{p}{1-p}\right)$$<p>This makes the target unb
     <strong>Why v-prediction is increasingly the default:</strong> <code>&epsilon;</code>-prediction is degenerate at t = 0 (the noise has zero variance, so all targets are 0); <code>x<sub>0</sub></code>-prediction is degenerate at t = 1 (signal is gone). <code>v</code>-prediction interpolates between them and stays well-behaved at both ends &mdash; cleaner gradients across the whole schedule.
   </p>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: Convert between &epsilon;, x<sub>0</sub>, and v at any timestep</h3>
+  <p class="ce-interactive-hint">Given a noisy image x<sub>t</sub> and any one of the three quantities, the other two are determined by simple algebra. Drag the slider, watch the conversion formulas evaluate live. <strong>This is why fastai's framework can ask the same trained model to predict any of the three &mdash; they're all the same information in different coordinates.</strong></p>
+  <div class="conv-widget">
+    <div class="conv-grid" id="conv-grid"></div>
+    <div class="ms-controls">
+      <label>Timestep t/T: <span id="conv-t-val" class="ms-val">0.50</span></label>
+      <input id="conv-t" type="range" min="0.05" max="0.95" step="0.01" value="0.50">
+      <label>x<sub>0</sub>:</label>
+      <input id="conv-x0" type="range" min="-2" max="2" step="0.1" value="0.7" style="max-width: 140px;">
+      <label>&epsilon;:</label>
+      <input id="conv-eps" type="range" min="-2" max="2" step="0.1" value="-0.5" style="max-width: 140px;">
+    </div>
+  </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h1 id="Noisify:-From-Cosine-Schedule-to-Direct-Uniform-Sampling">Noisify: From Cosine Schedule to Direct Uniform Sampling<a class="anchor-link" href="#Noisify:-From-Cosine-Schedule-to-Direct-Uniform-Sampling">¶</a></h1><h2 id="What-we-did-in-Notebook-1-(DDPM/DDIM-with-Cosine-Schedule)">What we did in Notebook 1 (DDPM/DDIM with Cosine Schedule)<a class="anchor-link" href="#What-we-did-in-Notebook-1-(DDPM/DDIM-with-Cosine-Schedule)">¶</a></h2><p>In the previous notebook, we defined a <strong>cosine noise schedule</strong> that maps a continuous time $t \in [0, 1]$ to $\bar{\alpha}_t$:</p>
 $$
 \bar{\alpha}(t) = \cos^2\!\left(\frac{t \cdot \pi}{2}\right)
@@ -8066,21 +8082,7 @@ $$<hr/>
 <h2 id="Why-the-prediction-target-also-changed">Why the prediction target also changed<a class="anchor-link" href="#Why-the-prediction-target-also-changed">¶</a></h2><p>In Notebook 1, the model predicted noise $\epsilon$ and received time $t$ as input. The training loss was:</p>
 $$
 \mathcal{L} = \| \epsilon - \epsilon_\theta(x_t, t) \|^2
-$$<div class="ce-interactive">
-  <h3>Interactive: Convert between &epsilon;, x<sub>0</sub>, and v at any timestep</h3>
-  <p class="ce-interactive-hint">Given a noisy image x<sub>t</sub> and any one of the three quantities, the other two are determined by simple algebra. Drag the slider, watch the conversion formulas evaluate live. <strong>This is why fastai's framework can ask the same trained model to predict any of the three &mdash; they're all the same information in different coordinates.</strong></p>
-  <div class="conv-widget">
-    <div class="conv-grid" id="conv-grid"></div>
-    <div class="ms-controls">
-      <label>Timestep t/T: <span id="conv-t-val" class="ms-val">0.50</span></label>
-      <input id="conv-t" type="range" min="0.05" max="0.95" step="0.01" value="0.50">
-      <label>x<sub>0</sub>:</label>
-      <input id="conv-x0" type="range" min="-2" max="2" step="0.1" value="0.7" style="max-width: 140px;">
-      <label>&epsilon;:</label>
-      <input id="conv-eps" type="range" min="-2" max="2" step="0.1" value="-0.5" style="max-width: 140px;">
-    </div>
-  </div>
-</div>
+$$
 <h4 id="1.-$%5Cepsilon$-%E2%80%94-The-Actual-Noise-(Ground-Truth)">1. $\epsilon$ &mdash; The Actual Noise (Ground Truth)<a class="anchor-link" href="#1.-$%5Cepsilon$-%E2%80%94-The-Actual-Noise-(Ground-Truth)">¶</a></h4><p>This is random Gaussian noise we <strong>generate ourselves</strong> and add to the clean image. It's just samples from a standard normal distribution:</p>
 <div class="highlight"><pre><span></span><span class="c1"># This is ε &mdash; we create it ourselves</span>
 <span class="n">epsilon</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">x0</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>

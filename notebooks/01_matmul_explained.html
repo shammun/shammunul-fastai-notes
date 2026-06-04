@@ -9148,12 +9148,6 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>The formula is the universe in 
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=75fa476d">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: Matmul, step by step</h3>
   <p class="ce-interactive-hint">Click <strong>Next step</strong> to compute one multiply-add of <code>C = A &times; B</code>. Watch the highlighted row of A and column of B come together to fill in one cell of C, one product at a time. <strong>Auto-play</strong> runs the whole 24-step computation.</p>
@@ -9171,6 +9165,13 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>The formula is the universe in 
     <strong>What you're seeing:</strong> the textbook definition <code>C[i,j] = &sum;<sub>k</sub> A[i,k] &times; B[k,j]</code>. The triple loop in the code below does exactly this &mdash; 24 multiply-adds for a 3&times;4 by 4&times;2 matmul. For real-world MNIST (5&times;784 by 784&times;10) it's 39,200 multiply-adds for just 5 images, all in Python's slow interpreter.
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=75fa476d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h2 id="4.2-Matmul-as-three-nested-loops">4.2 Matmul as three nested loops<a class="anchor-link" href="#4.2-Matmul-as-three-nested-loops">¶</a></h2>
 </div>
 </div>
@@ -9833,13 +9834,6 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a2f1dff8">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: Broadcasting shape-matcher</h3>
   <p class="ce-interactive-hint">Pick two tensor shapes and see how (or whether) they broadcast. The widget aligns them from the right, marks each axis as matching, stretching (=1), or incompatible, and shows the output shape.</p>
@@ -9858,6 +9852,14 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
     <strong>The three rules</strong> (covered in the deep dive below): (1) align shapes from the right, (2) each axis must match exactly or one of them must be 1 (which then stretches), (3) the output shape is the elementwise max. Stretching is a stride-trick &mdash; no memory is actually copied.
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a2f1dff8">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h1 id="Deep-Dive:-Broadcasting">Deep Dive: Broadcasting<a class="anchor-link" href="#Deep-Dive:-Broadcasting">¶</a></h1><p>Broadcasting is the single most important shape-manipulation technique in tensor programming. It's worth a long, slow look &mdash; because once you have it in your bones, you'll find yourself writing matmuls, attention mechanisms, and loss functions without a single explicit loop.</p>
 <hr/>
 <h2 id="The-Problem-Broadcasting-Solves">The Problem Broadcasting Solves<a class="anchor-link" href="#The-Problem-Broadcasting-Solves">¶</a></h2><p>You want to add a per-feature bias to every row of a batch of activations. Or scale every column of a matrix by its corresponding standard deviation. Or compute pairwise distances between two sets of points. The naive way:</p>
@@ -11237,13 +11239,6 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f5f93d47">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: The matmul speed race</h3>
   <p class="ce-interactive-hint">Six implementations of the same 50,000&times;784 by 784&times;10 matmul, racing in real time at their actual measured speeds. Press <strong>Start race</strong> and watch each bar fill at a rate proportional to its real wall-clock time. The GPU bar finishes nearly instantly &mdash; that's the eight-orders-of-magnitude story of modern numerical computing.</p>
@@ -11256,6 +11251,14 @@ $$C_{ij} = \sum_{k=0}^{K-1} A_{ik}\, B_{kj}.$$<p>into three nested Python loops:
     <strong>Caveat:</strong> these are rough order-of-magnitude numbers, animated proportionally. Actual times depend on CPU, GPU, BLAS version, and problem size. But the <em>gaps</em> between implementations are real and repeatable &mdash; they're the four levers of numerical performance (compile the inner loop, vectorize, use a tuned library, use specialized hardware).
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f5f93d47">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h1 id="Summary:-Six-Ways-to-Do-One-Matmul">Summary: Six Ways to Do One Matmul<a class="anchor-link" href="#Summary:-Six-Ways-to-Do-One-Matmul">¶</a></h1><p>Every implementation in this notebook computes the same arithmetic &mdash; $C_{ij} = \sum_k A_{ik} B_{kj}$ over the same shapes. The performance differences are entirely about <em>where</em> the work runs and <em>how</em> it's organized.</p>
 <table>
 <thead>

@@ -8399,13 +8399,6 @@ Level 4: 1280 filters  ███████████████████
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: Hyperparameter sweep &mdash; which run wins?</h3>
   <p class="ce-interactive-hint">Each dot is one training run with a different (learning rate, batch size). Color = final validation loss. Hover/click to see the run. <strong>This is what you'd get from <code>wandb sweep</code> with 20 runs.</strong> The lowest-loss runs concentrate in a sweet spot &mdash; usually moderate LR (1e-3 to 5e-3) and moderate BS (64-256).</p>
@@ -8415,6 +8408,14 @@ Level 4: 1280 filters  ███████████████████
     <div class="hp-info" id="hp-info">Click a dot to see its run details.</div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="Training-Setup">Training Setup<a class="anchor-link" href="#Training-Setup">¶</a></h2>
 </div>
 </div>
@@ -9304,6 +9305,42 @@ Training Speed: 2.5 it/s
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: W&amp;B-style training dashboard</h3>
+  <p class="ce-interactive-hint">A simulated W&amp;B run: loss curve, sample images at three checkpoints, and a hyperparameter card. <strong>This is what you'd see in your browser at wandb.ai during an actual training run.</strong> Click <strong>Run training</strong> to animate epoch-by-epoch.</p>
+  <div class="wb-widget">
+    <div class="wb-header">
+      <div class="wb-title">project / cifar10_ddpm</div>
+      <div class="wb-run">run: bumblebee-92 &middot; status: <span id="wb-status">idle</span></div>
+    </div>
+    <div class="wb-body">
+      <div class="wb-panel">
+        <div class="wb-panel-title">training loss</div>
+        <canvas id="wb-loss-canvas" width="380" height="180" style="width: 100%; max-width: 380px; height: auto; background: white; border-radius: 4px;"></canvas>
+      </div>
+      <div class="wb-panel">
+        <div class="wb-panel-title">sample images</div>
+        <div class="wb-samples" id="wb-samples"></div>
+      </div>
+      <div class="wb-panel">
+        <div class="wb-panel-title">config</div>
+        <div class="wb-config">
+          <div><span>lr</span><span>0.001</span></div>
+          <div><span>bs</span><span>128</span></div>
+          <div><span>epochs</span><span>10</span></div>
+          <div><span>schedule</span><span>cosine</span></div>
+          <div><span>model</span><span>UNet</span></div>
+          <div><span>dataset</span><span>CIFAR-10</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="ms-controls">
+      <button id="wb-run" class="ms-btn">Run training</button>
+      <button id="wb-reset" class="ms-btn ms-secondary">Reset</button>
+      <span class="ms-val" id="wb-epoch">epoch 0</span>
+    </div>
+  </div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9343,42 +9380,7 @@ Training Speed: 2.5 it/s
 <li><strong><code>wandb.log()</code></strong>: Log metrics, images, and other data</li>
 <li><strong><code>wandb.finish()</code></strong>: Close the run</li>
 </ol>
-<div class="ce-interactive">
-  <h3>Interactive: W&amp;B-style training dashboard</h3>
-  <p class="ce-interactive-hint">A simulated W&amp;B run: loss curve, sample images at three checkpoints, and a hyperparameter card. <strong>This is what you'd see in your browser at wandb.ai during an actual training run.</strong> Click <strong>Run training</strong> to animate epoch-by-epoch.</p>
-  <div class="wb-widget">
-    <div class="wb-header">
-      <div class="wb-title">project / cifar10_ddpm</div>
-      <div class="wb-run">run: bumblebee-92 &middot; status: <span id="wb-status">idle</span></div>
-    </div>
-    <div class="wb-body">
-      <div class="wb-panel">
-        <div class="wb-panel-title">training loss</div>
-        <canvas id="wb-loss-canvas" width="380" height="180" style="width: 100%; max-width: 380px; height: auto; background: white; border-radius: 4px;"></canvas>
-      </div>
-      <div class="wb-panel">
-        <div class="wb-panel-title">sample images</div>
-        <div class="wb-samples" id="wb-samples"></div>
-      </div>
-      <div class="wb-panel">
-        <div class="wb-panel-title">config</div>
-        <div class="wb-config">
-          <div><span>lr</span><span>0.001</span></div>
-          <div><span>bs</span><span>128</span></div>
-          <div><span>epochs</span><span>10</span></div>
-          <div><span>schedule</span><span>cosine</span></div>
-          <div><span>model</span><span>UNet</span></div>
-          <div><span>dataset</span><span>CIFAR-10</span></div>
-        </div>
-      </div>
-    </div>
-    <div class="ms-controls">
-      <button id="wb-run" class="ms-btn">Run training</button>
-      <button id="wb-reset" class="ms-btn ms-secondary">Reset</button>
-      <span class="ms-val" id="wb-epoch">epoch 0</span>
-    </div>
-  </div>
-</div>
+
 <h3 id="WandBCB-Callback">WandBCB Callback<a class="anchor-link" href="#WandBCB-Callback">¶</a></h3><ul>
 <li>Extends MetricsCB to add W&amp;B logging</li>
 <li>Logs loss after each batch</li>

@@ -7525,12 +7525,6 @@ a.anchor-link {
   </a>
 </div>
 <main>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=intro-header">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: FID intuition &mdash; distance between two distributions</h3>
   <p class="ce-interactive-hint">FID treats each set of images as a multivariate Gaussian in feature space, then measures distance between the two Gaussians. Move the generated distribution (blue) toward the real distribution (teal) and watch FID drop. <strong>FID = 0 means the distributions match perfectly</strong> &mdash; that's what a trained generative model is aiming for.</p>
@@ -7552,6 +7546,13 @@ a.anchor-link {
     <div class="fid-result" id="fid-result"></div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=intro-header">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h1 id="FID-and-KID:-Evaluating-Generated-Image-Quality">FID and KID: Evaluating Generated Image Quality<a class="anchor-link" href="#FID-and-KID:-Evaluating-Generated-Image-Quality">¶</a></h1><hr/>
 <p><strong>What is this notebook about?</strong></p>
 <p>When we generate images with models like DDPM, how do we know if they're any good? We can look at them, but that's subjective and doesn't scale. We need <strong>quantitative metrics</strong>!</p>
@@ -12112,12 +12113,6 @@ mmd = mmd₀ + mmd₁ + mmd₂ + mmd₃ + mmd₄ + mmd₅
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=sanity-check-header">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: Common failure modes &mdash; which has the worst FID?</h3>
   <p class="ce-interactive-hint">Three "fake" generative models, each broken in a different way. The samples look fine individually but the <em>distribution</em> tells the story. <strong>FID catches all three failure modes that visual inspection often misses</strong>: mode collapse, mean drift, and over-smoothing.</p>
@@ -12147,6 +12142,13 @@ mmd = mmd₀ + mmd₁ + mmd₂ + mmd₃ + mmd₄ + mmd₅
     </div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=sanity-check-header">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h3 id="Sanity-Check:-FID/KID-of-Real-Images">Sanity Check: FID/KID of Real Images<a class="anchor-link" href="#Sanity-Check:-FID/KID-of-Real-Images">¶</a></h3><p>What if we evaluate real images? The scores should be very low!</p>
 </div>
 </div>

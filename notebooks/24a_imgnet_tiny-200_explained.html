@@ -9176,13 +9176,6 @@ Linear             200               200 classes
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: OneCycle learning rate over 200 epochs</h3>
   <p class="ce-interactive-hint">The signature fastai LR schedule: warm up to a peak, then anneal to zero. Over 200 epochs the curve is long and gentle. Drag the warm-up fraction and peak LR to see how the schedule reshapes.</p>
@@ -9195,6 +9188,14 @@ Linear             200               200 classes
     <input id="oc-lr" type="range" min="0.01" max="0.5" step="0.01" value="0.10">
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="Section-9:-Training-for-200-Epochs">Section 9: Training for 200 Epochs<a class="anchor-link" href="#Section-9:-Training-for-200-Epochs">¶</a></h2><p>Now we train for 200 epochs - this is the main training run that will take considerable time.</p>
 </div>
 </div>
@@ -9385,6 +9386,16 @@ Linear             200               200 classes
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: Why 200 epochs &mdash; the long-training payoff</h3>
+  <p class="ce-interactive-hint">Compare what happens at 25, 50, 100, and 200 epochs. With strong augmentation, accuracy keeps climbing well past the point where most training stops. <strong>The trick</strong>: heavy augmentation prevents overfitting, so the model gets to keep extracting signal long after a naive run would have plateaued.</p>
+  <canvas id="le-canvas" width="640" height="320"
+          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
+  <div class="ms-controls">
+    <button id="le-run" class="ms-btn">Run all four</button>
+    <button id="le-reset" class="ms-btn ms-secondary">Reset</button>
+  </div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9439,16 +9450,7 @@ Linear             200               200 classes
 </tr>
 </tbody>
 </table>
-<div class="ce-interactive">
-  <h3>Interactive: Why 200 epochs &mdash; the long-training payoff</h3>
-  <p class="ce-interactive-hint">Compare what happens at 25, 50, 100, and 200 epochs. With strong augmentation, accuracy keeps climbing well past the point where most training stops. <strong>The trick</strong>: heavy augmentation prevents overfitting, so the model gets to keep extracting signal long after a naive run would have plateaued.</p>
-  <canvas id="le-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
-  <div class="ms-controls">
-    <button id="le-run" class="ms-btn">Run all four</button>
-    <button id="le-reset" class="ms-btn ms-secondary">Reset</button>
-  </div>
-</div>
+
 <h3 id="Why-200-Epochs-Works">Why 200 Epochs Works<a class="anchor-link" href="#Why-200-Epochs-Works">¶</a></h3><ol>
 <li><strong>Strong augmentation</strong> (TrivialAugmentWide) creates infinite variations</li>
 <li><strong>OneCycleLR</strong> prevents learning rate from being too high at end</li>

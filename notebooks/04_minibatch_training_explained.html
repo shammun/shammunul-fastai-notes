@@ -8053,14 +8053,6 @@ The output of our model is called "logits" - these are raw scores, NOT probabili
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
-<h2 id="Part-2:-Cross-Entropy-Loss-for-Classification">Part 2: Cross-Entropy Loss for Classification<a class="anchor-link" href="#Part-2:-Cross-Entropy-Loss-for-Classification">¶</a></h2><p>For classification problems, we use <strong>cross-entropy loss</strong> instead of MSE (Mean Squared Error). Cross-entropy is specifically designed for picking one class out of many!</p>
 <div class="ce-interactive">
   <h3>Interactive: Softmax + cross-entropy explorer</h3>
   <p class="ce-interactive-hint">Drag any logit. Watch the softmax probabilities and the cross-entropy loss respond. The "true class" is what the model should predict; the loss is high when that class has low probability, low when high. <strong>This is the loss function that drives every classifier you'll train.</strong></p>
@@ -8078,6 +8070,15 @@ The output of our model is called "logits" - these are raw scores, NOT probabili
     <strong>Try this:</strong> drag the true-class logit up &mdash; loss drops sharply. Drag a wrong-class logit up &mdash; loss climbs. With all logits equal (the model's "I have no idea" state), loss is <code>ln(10) &asymp; 2.30</code> for 10 classes. A well-trained model on MNIST drives this below 0.1.
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+<h2 id="Part-2:-Cross-Entropy-Loss-for-Classification">Part 2: Cross-Entropy Loss for Classification<a class="anchor-link" href="#Part-2:-Cross-Entropy-Loss-for-Classification">¶</a></h2><p>For classification problems, we use <strong>cross-entropy loss</strong> instead of MSE (Mean Squared Error). Cross-entropy is specifically designed for picking one class out of many!</p>
+
 <h3 id="Step-1:-Softmax---Converting-Logits-to-Probabilities">Step 1: Softmax - Converting Logits to Probabilities<a class="anchor-link" href="#Step-1:-Softmax---Converting-Logits-to-Probabilities">¶</a></h3><p>The <strong>softmax</strong> function converts raw scores (logits) into probabilities that:</p>
 <ol>
 <li>Are all positive (between 0 and 1)</li>
@@ -8864,13 +8865,6 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: Watch the training loop converge</h3>
   <p class="ce-interactive-hint">A miniature SGD on a noisy quadratic. Drag the learning rate and batch size sliders, click <strong>Run</strong>. Larger batch = smoother trajectory; smaller batch = noisier but often faster wall-clock per epoch. Too-large LR diverges; too-small LR crawls.</p>
@@ -8890,6 +8884,14 @@ $$L = -\log(p_{\text{correct class}})$$</p>
     <strong>Why minibatches?</strong> bs=1 (true SGD) gives very noisy gradients &mdash; faster per step, but the trajectory bounces. bs=full (vanilla GD) is smooth but slow per epoch. Minibatches (8&ndash;256) split the difference: enough samples to estimate the gradient direction, small enough to update many times per epoch.
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="Part-3:-The-Basic-Training-Loop">Part 3: The Basic Training Loop<a class="anchor-link" href="#Part-3:-The-Basic-Training-Loop">¶</a></h2><p>Now we have all the pieces to train a neural network! Let's put it all together.</p>
 <h3 id="What-is-a-Training-Loop?">What is a Training Loop?<a class="anchor-link" href="#What-is-a-Training-Loop?">¶</a></h3><p>A training loop is the process of:</p>
 <ol>

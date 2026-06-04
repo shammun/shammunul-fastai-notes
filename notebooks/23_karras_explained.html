@@ -9188,13 +9188,6 @@ Result:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: Karras &sigma; schedule vs cosine vs linear</h3>
   <p class="ce-interactive-hint">Karras (EDM) parameterizes the diffusion process by noise level <code>&sigma;</code> directly &mdash; no &beta;/&alpha; bookkeeping. The Karras schedule is a power-law in &sigma; (rho = 7 by default). <strong>Why it matters:</strong> instead of distributing timesteps uniformly in t, it distributes them so that the model spends more compute where the SNR is changing fastest &mdash; mostly the middle of the schedule.</p>
@@ -9210,6 +9203,14 @@ Result:
     Higher &rho; concentrates sampling steps near the low-&sigma; end (sharp images); lower &rho; spreads them more evenly. The Karras paper's recommended &rho; = 7 was found empirically to minimize FID for a fixed step budget.
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h3 id="Karras-Sigma-Schedule">Karras Sigma Schedule<a class="anchor-link" href="#Karras-Sigma-Schedule">¶</a></h3><p>The EDM paper proposes an optimal schedule of sigma values for sampling.</p>
 </div>
 </div>
@@ -9638,13 +9639,6 @@ x_next = x + direction * step_size
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
 <div class="ce-interactive">
   <h3>Interactive: ODE samplers &mdash; Euler vs Heun vs LMS</h3>
   <p class="ce-interactive-hint">All three solve the same probability-flow ODE that drives diffusion sampling. Euler is the simplest (linear extrapolation); Heun is 2nd-order (Euler + a correction step); LMS uses multiple past gradients. <strong>The more accurate the solver, the fewer steps you need for the same quality.</strong> Run them on the same noise/data and compare trajectories.</p>
@@ -9660,6 +9654,14 @@ x_next = x + direction * step_size
     <span id="samp-info"></span>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+
 <h2 id="Comparing-Samplers">Comparing Samplers<a class="anchor-link" href="#Comparing-Samplers">¶</a></h2>
 </div>
 </div>

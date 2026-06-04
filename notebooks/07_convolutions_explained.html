@@ -9310,12 +9310,6 @@ Output is 2x2 (roughly half in each dimension)
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <div class="ce-interactive">
   <h3>Interactive: Output size calculator</h3>
   <p class="ce-interactive-hint">The formula <code>(H + 2p &minus; k) / s + 1</code> determines the output side. Drag the sliders to build intuition: kernel size shrinks output, padding grows it, stride compresses it.</p>
@@ -9339,6 +9333,13 @@ Output is 2x2 (roughly half in each dimension)
     <div class="os-result" id="os-result"></div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
 <h2 id="Output-Size-Formula">Output Size Formula<a class="anchor-link" href="#Output-Size-Formula">¶</a></h2><p>For input size <code>n</code>, kernel size <code>k</code>, padding <code>p</code>, and stride <code>s</code>:</p>
 $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Common cases:</strong></p>
 <table>
@@ -10356,15 +10357,7 @@ Blue  ──────► [kernel_B] ─┘
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
-<h1 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h1><hr/>
-<h2 id="Key-Concepts-Learned">Key Concepts Learned<a class="anchor-link" href="#Key-Concepts-Learned">¶</a></h2><div class="ce-interactive">
+<div class="ce-interactive">
   <h3>Interactive: 2D convolution, sliding window</h3>
   <p class="ce-interactive-hint">The kernel slides over the input one position at a time. Each output cell is a dot product of the kernel with the overlapping input window. Adjust stride and padding sliders to see how the output shape changes. <strong>This is what every conv layer in a CNN is doing &mdash; just with learned kernel weights.</strong></p>
   <div class="cv-widget" id="cv-widget">
@@ -10383,11 +10376,6 @@ Blue  ──────► [kernel_B] ─┘
     <div class="cv-formula" id="cv-formula"></div>
   </div>
 </div>
-<h3 id="Convolution-Operation">Convolution Operation<a class="anchor-link" href="#Convolution-Operation">¶</a></h3><ul>
-<li><strong>What</strong>: Sliding a kernel over an image, computing dot products</li>
-<li><strong>Formula</strong>: Element-wise multiply, then sum</li>
-<li><strong>Purpose</strong>: Extract local features (edges, textures, patterns)</li>
-</ul>
 <div class="ce-interactive">
   <h3>Interactive: Pick a kernel, see what it detects</h3>
   <p class="ce-interactive-hint">Click a preset kernel and watch it run over the input image. Edge detectors highlight boundaries; blur kernels smooth; sharpen kernels amplify high frequencies. <strong>A trained CNN learns thousands of these from scratch &mdash; in the early layers they end up looking very much like the hand-crafted classics below.</strong></p>
@@ -10409,6 +10397,21 @@ Blue  ──────► [kernel_B] ─┘
     </div>
   </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+<h1 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h1><hr/>
+<h2 id="Key-Concepts-Learned">Key Concepts Learned<a class="anchor-link" href="#Key-Concepts-Learned">¶</a></h2>
+<h3 id="Convolution-Operation">Convolution Operation<a class="anchor-link" href="#Convolution-Operation">¶</a></h3><ul>
+<li><strong>What</strong>: Sliding a kernel over an image, computing dot products</li>
+<li><strong>Formula</strong>: Element-wise multiply, then sum</li>
+<li><strong>Purpose</strong>: Extract local features (edges, textures, patterns)</li>
+</ul>
+
 <h3 id="Kernels-(Filters)">Kernels (Filters)<a class="anchor-link" href="#Kernels-(Filters)">¶</a></h3><ul>
 <li>Small matrices (typically 3&times;3 or 5&times;5)</li>
 <li>Different kernels detect different features</li>

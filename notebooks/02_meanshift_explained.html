@@ -8375,21 +8375,12 @@ Step 4: Compute weighted average:
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<div class="ce-interactive" style="position:relative; left:50%; transform:translateX(-50%); width:96vw; max-width:1320px; box-sizing:border-box;">
+<div class="ce-interactive ce-fullbleed">
 <h3>Interactive: watch the four steps run</h3>
 <p class="ce-interactive-hint">This runs the exact four steps defined above &mdash; <em>distance &rarr; weight &rarr; weighted average &rarr; shift</em> &mdash; on a small 2-D point cloud. Use <strong>Track one point</strong> to follow a single point with the live math, or <strong>All points at once</strong> to watch the clusters emerge. Step through, jump to any step, or auto-play.</p>
 <iframe src="meanshift_mechanics.html" style="width:100%; height:960px; border:1px solid #dde5f2; border-radius:12px; box-shadow:0 10px 30px rgba(123,92,214,.12);" loading="lazy" title="Mean Shift - Full Mechanics"></iframe>
 </div>
-</div>
-</div>
-</div>
-</div>
+
 <div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=b8d45620">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8967,17 +8958,6 @@ $$K(d) = \frac{1}{\sigma\sqrt{2\pi}}\,\exp\!\left(-\frac{1}{2}\left(\frac{d}{\si
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f2728ca7">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
-<p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Connection to Part 2 of the notebook:</strong> in the formula <code>K(d) = exp(-d<sup>2</sup> / 2&sigma;<sup>2</sup>) / (&sigma;&radic;(2&pi;))</code>, the bandwidth <code>&sigma;</code> is the only parameter. Doubling <code>&sigma;</code> doubles the effective neighborhood radius and halves the peak height (the area under the curve stays at 1 &mdash; it's a proper density).
-  </p>
-</div>
 <div class="ce-interactive">
   <h3>Interactive: The Gaussian kernel &mdash; how bandwidth shapes influence</h3>
   <p class="ce-interactive-hint">The kernel converts distance into weight: nearby points get a loud vote, far points are barely heard. Bandwidth controls the <em>geometric scale</em> of "nearby." The dashed orange line marks the 3&sigma; point &mdash; beyond it, weights are essentially zero.</p>
@@ -8992,6 +8972,15 @@ $$K(d) = \frac{1}{\sigma\sqrt{2\pi}}\,\exp\!\left(-\frac{1}{2}\left(\frac{d}{\si
     <strong>Connection to Part 2 of the notebook:</strong> in the formula <code>K(d) = exp(-d<sup>2</sup> / 2&sigma;<sup>2</sup>) / (&sigma;&radic;(2&pi;))</code>, the bandwidth <code>&sigma;</code> is the only parameter. Doubling <code>&sigma;</code> doubles the effective neighborhood radius and halves the peak height (the area under the curve stays at 1 &mdash; it's a proper density).
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f2728ca7">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
+</div>
+
 <h1 id="Deep-Dive:-Kernels-and-Bandwidth">Deep Dive: Kernels and Bandwidth<a class="anchor-link" href="#Deep-Dive:-Kernels-and-Bandwidth">¶</a></h1><p>We've used both the Gaussian and triangular kernels above without saying <em>why</em> this whole "convert distance to weight" idea is the right thing to do for clustering. This section answers that &mdash; and explains what the bandwidth parameter actually controls geometrically.</p>
 <hr/>
 <h2 id="What-is-a-Kernel?">What is a Kernel?<a class="anchor-link" href="#What-is-a-Kernel?">¶</a></h2><p>In the kernel-methods literature, a <strong>kernel</strong> is a function $K(x, y)$ that measures similarity between two points. The "kernel" we're using here is technically the <strong>radial basis kernel</strong> (depends only on distance, not the points themselves):</p>
@@ -9083,7 +9072,7 @@ $$\hat{p}(x) = \frac{1}{n}\sum_{i=1}^{n} K_\sigma(x - x_i)$$<p>That's it. Place 
 </div>
 </div>
 </div>
-</div>
+
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f0add595">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9827,17 +9816,6 @@ for i, x in enumerate(X):
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=07c37bc9">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<hr/>
-<p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Try this:</strong> set bandwidth to <code>0.5</code> and run &mdash; you get many tiny clusters (over-segmentation). Set it to <code>10</code> and run &mdash; everything merges into one global mean (under-segmentation). Around <code>2&ndash;3.5</code> is the sweet spot for this data. The convergence deep-dive below explains <em>why</em> this works mathematically.
-  </p>
-</div>
 <div class="ce-interactive">
   <h3>Interactive: Watch mean shift discover clusters</h3>
   <p class="ce-interactive-hint">Drag the bandwidth slider, then click <strong>Run</strong>. Points start scattered around hidden centers; mean shift pulls them toward density modes. Lower bandwidth &rarr; many small clusters; higher &rarr; fewer (eventually one global cluster). This is the algorithm you just saw implemented, running live.</p>
@@ -9854,6 +9832,15 @@ for i, x in enumerate(X):
     <strong>Try this:</strong> set bandwidth to <code>0.5</code> and run &mdash; you get many tiny clusters (over-segmentation). Set it to <code>10</code> and run &mdash; everything merges into one global mean (under-segmentation). Around <code>2&ndash;3.5</code> is the sweet spot for this data. The convergence deep-dive below explains <em>why</em> this works mathematically.
   </p>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=07c37bc9">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
+</div>
+
 <h1 id="Deep-Dive:-Why-Mean-Shift-Converges">Deep Dive: Why Mean Shift Converges<a class="anchor-link" href="#Deep-Dive:-Why-Mean-Shift-Converges">¶</a></h1><p>We've watched mean shift converge in the plot. But <em>why</em> does it converge? What's the math that guarantees points move toward density peaks rather than drifting randomly or oscillating?</p>
 <p>The answer is one of the most elegant results in unsupervised learning: <strong>mean shift is gradient ascent on a kernel density estimate.</strong> Once you see this, the entire algorithm &mdash; including the choice of Gaussian kernel, the weighted-average update, and the fact that it converges to local maxima &mdash; falls out of one short derivation.</p>
 <hr/>
@@ -9918,7 +9905,7 @@ $$y_{\text{new}} \;=\; m(y) \;=\; y + [m(y) - y].$$<p>That is: <strong>step from
 </div>
 </div>
 </div>
-</div>
+
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=888dec61">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
