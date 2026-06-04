@@ -552,10 +552,3 @@ body { overflow-x: hidden; }
    table layout so the In[ ]: prompt stays aligned with the code. */
 .jp-MarkdownCell .jp-InputArea { display: block; }
 
-/* Interactive figures embedded as code-cell output iframes render at their
-   design width (a touch wider than the text column so multi-panel figures don't
-   wrap), centred on the viewport, never exceeding it. */
-.jp-OutputArea-output iframe {
-  position: relative; left: 50%; transform: translateX(-50%);
-  width: min(720px, calc(100vw - 32px)) !important; max-width: none;
-}
