@@ -8665,6 +8665,178 @@ OK   b2             rel-err = 2.74e-09
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=bp441md">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h4 id="4.4.1-The-original-03_backprop-code-(PyTorch)-%E2%80%94-and-how-l2.g-is-available-after-the-call">4.4.1 The original <code>03_backprop</code> code (PyTorch) &mdash; and how <code>l2.g</code> is available after the call<a class="anchor-link" href="#4.4.1-The-original-03_backprop-code-(PyTorch)-%E2%80%94-and-how-l2.g-is-available-after-the-call">¶</a></h4><p>The NumPy port above <em>returns</em> the gradients. The original <code>03_backprop.ipynb</code> does something slicker (and, at first, more mysterious): each <code>lin_grad</code> call <strong>stores</strong> the gradients as a <code>.g</code> attribute <em>on the tensors themselves</em>, and the next step just reads them back. The full, commented code is in the next cell. First, the question it always raises:</p>
+<blockquote>
+<p>Inside <code>forward_and_backward</code> we call <code>lin_grad(l2, out, w2, b2)</code>, and <code>lin_grad</code> sets <code>inp.g</code> internally. So how does <strong><code>l2.g</code></strong> suddenly exist back in <code>forward_and_backward</code>?</p>
+</blockquote>
+<p><strong>Because <code>inp</code> (inside <code>lin_grad</code>) and <code>l2</code> (outside) are the <em>same object</em></strong> &mdash; Python passes objects <em>by reference</em>, and assigning an <strong>attribute</strong> mutates that shared object in place. No copy is made.</p>
+<p>When you call <code>lin_grad(l2, out, w2, b2)</code>, Python binds the parameters to the very objects you passed:</p>
+<table>
+<thead>
+<tr>
+<th>parameter inside <code>lin_grad</code></th>
+<th>is bound to (object outside)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inp</code></td>
+<td><code>l2</code></td>
+</tr>
+<tr>
+<td><code>out</code></td>
+<td><code>out</code></td>
+</tr>
+<tr>
+<td><code>w</code></td>
+<td><code>w2</code></td>
+</tr>
+<tr>
+<td><code>b</code></td>
+<td><code>b2</code></td>
+</tr>
+</tbody>
+</table>
+<p>The first line of <code>lin_grad</code> is <code>inp.g = out.g @ w.t()</code>. Since <code>inp</code> <em>is</em> <code>l2</code> (one and the same tensor in memory), this writes the <code>.g</code> attribute <strong>onto that object</strong>. When the function returns, the object still carries <code>.g</code>, and outside it is reachable under its other name &mdash; <code>l2</code>. So <code>l2.g</code> now exists.</p>
+<p>Two facts make this work:</p>
+<ol>
+<li><strong>Pass-by-object-reference.</strong> Python does not copy <code>l2</code> when you pass it; <code>inp</code> and <code>l2</code> are two <em>names for one object</em> (two labels on the same box). A change made through one name is visible through the other.</li>
+<li><strong>Attribute assignment is a mutation, not a rebinding.</strong> <code>inp.g = &hellip;</code> stores <code>g</code> <em>inside</em> the object; it does <strong>not</strong> rebind the local name <code>inp</code>. Contrast <code>inp = out.g @ w.t()</code> (no dot): that would just point the <em>local</em> label <code>inp</code> at a new object and be thrown away when the function returns &mdash; nothing outside would change. <strong>The dot is everything.</strong></li>
+</ol>
+<p>So the backward half of <code>forward_and_backward</code> reads like a relay, each step writing the <code>.g</code> that the next step consumes:</p>
+<div class="highlight"><pre><span></span><span class="n">out</span><span class="o">.</span><span class="n">g</span> <span class="o">=</span> <span class="mf">2.</span><span class="o">*</span><span class="n">diff</span><span class="p">[:,</span><span class="kc">None</span><span class="p">]</span><span class="o">/</span><span class="n">n</span>     <span class="c1"># write .g onto the output object</span>
+<span class="n">lin_grad</span><span class="p">(</span><span class="n">l2</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">w2</span><span class="p">,</span> <span class="n">b2</span><span class="p">)</span>     <span class="c1"># reads out.g; writes l2.g, w2.g, b2.g   ← l2.g now exists</span>
+<span class="n">l1</span><span class="o">.</span><span class="n">g</span> <span class="o">=</span> <span class="p">(</span><span class="n">l1</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span> <span class="o">*</span> <span class="n">l2</span><span class="o">.</span><span class="n">g</span>  <span class="c1"># reads the freshly-written l2.g (ReLU gate)</span>
+<span class="n">lin_grad</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">l1</span><span class="p">,</span> <span class="n">w1</span><span class="p">,</span> <span class="n">b1</span><span class="p">)</span>     <span class="c1"># reads l1.g; writes inp.g, w1.g, b1.g</span>
+</pre></div>
+<p>The gradients are handed from one step to the next by <strong>stashing them as attributes on the very tensors that flowed through the forward pass</strong> &mdash; a tidy bookkeeping trick that avoids returning and threading values around. (PyTorch's own autograd uses essentially this idea: the real <code>.grad</code> attribute on a leaf tensor is filled in the same in-place way during <code>loss.backward()</code>.)</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=bp441code">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># THE ORIGINAL 03_backprop IMPLEMENTATION (PyTorch), fully commented.</span>
+<span class="c1"># Wrapped in one function so its names (lin, lin_grad, w1, ...) do NOT clobber</span>
+<span class="c1"># the NumPy versions used elsewhere in this notebook. Run it and watch the .g</span>
+<span class="c1"># attributes appear at the end. Random tensors stand in for the MNIST batch and</span>
+<span class="c1"># the initialised weights.</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+
+<span class="k">def</span> <span class="nf">run_03_backprop_demo</span><span class="p">():</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">n_samples</span><span class="p">,</span> <span class="n">n_in</span><span class="p">,</span> <span class="n">n_hidden</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">784</span><span class="p">,</span> <span class="mi">50</span>
+    <span class="n">xb</span>   <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n_samples</span><span class="p">,</span> <span class="n">n_in</span><span class="p">)</span>              <span class="c1"># a batch of "images"  (n, 784)</span>
+    <span class="n">targ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n_samples</span><span class="p">)</span>                    <span class="c1"># their targets        (n,)</span>
+    <span class="n">w1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n_in</span><span class="p">,</span> <span class="n">n_hidden</span><span class="p">)</span> <span class="o">/</span> <span class="n">n_in</span><span class="o">**</span><span class="mf">0.5</span><span class="p">;</span>    <span class="n">b1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_hidden</span><span class="p">)</span>   <span class="c1"># (784,50),(50,)</span>
+    <span class="n">w2</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n_hidden</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>    <span class="o">/</span> <span class="n">n_hidden</span><span class="o">**</span><span class="mf">0.5</span><span class="p">;</span> <span class="n">b2</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>         <span class="c1"># (50,1),(1,)</span>
+
+    <span class="c1"># -- THE LINEAR LAYER:  output = input @ weights + bias  (y = x @ W + b) --</span>
+    <span class="c1"># each output neuron is a weighted sum of all inputs, plus its own bias.</span>
+    <span class="k">def</span> <span class="nf">lin</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">x</span> <span class="o">@</span> <span class="n">w</span> <span class="o">+</span> <span class="n">b</span>
+
+    <span class="c1"># -- ReLU:  max(0, x)  -- keeps positives, zeroes negatives. This is the</span>
+    <span class="c1"># non-linearity; without it, stacked linear layers collapse to one linear map.</span>
+    <span class="k">def</span> <span class="nf">relu</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">clamp_min</span><span class="p">(</span><span class="mf">0.</span><span class="p">)</span>                       <span class="c1"># clip everything below 0 to 0</span>
+
+    <span class="c1"># -- FORWARD PASS:  input -&gt; linear1 -&gt; relu -&gt; linear2 -&gt; output --</span>
+    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="n">xb</span><span class="p">):</span>
+        <span class="n">l1</span>     <span class="o">=</span> <span class="n">lin</span><span class="p">(</span><span class="n">xb</span><span class="p">,</span> <span class="n">w1</span><span class="p">,</span> <span class="n">b1</span><span class="p">)</span>                      <span class="c1"># (n,784)@(784,50) -&gt; (n,50)</span>
+        <span class="n">l2</span>     <span class="o">=</span> <span class="n">relu</span><span class="p">(</span><span class="n">l1</span><span class="p">)</span>                             <span class="c1"># (n,50)  negatives zeroed</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">lin</span><span class="p">(</span><span class="n">l2</span><span class="p">,</span> <span class="n">w2</span><span class="p">,</span> <span class="n">b2</span><span class="p">)</span>                      <span class="c1"># (n,50)@(50,1)   -&gt; (n,1)</span>
+        <span class="k">return</span> <span class="n">output</span>
+
+    <span class="c1"># -- MSE LOSS:  mean( (prediction - target)^2 ).  output[:,0] reshapes</span>
+    <span class="c1"># (n,1) -&gt; (n,) so it lines up with targ (n,).</span>
+    <span class="k">def</span> <span class="nf">mse</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">targ</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">output</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">targ</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+    <span class="c1"># -- GRADIENT OF A LINEAR LAYER.  Assumes out.g already holds dL/d(out).</span>
+    <span class="c1"># It STORES three gradients as ATTRIBUTES on the objects it was handed:</span>
+    <span class="c1">#   inp.g = dL/d(input)  = out.g @ w.T     (the signal passed back)</span>
+    <span class="c1">#   w.g   = dL/d(weight) = inp.T @ out.g   (summed over the batch)</span>
+    <span class="c1">#   b.g   = dL/d(bias)   = out.g.sum(0)    (summed over the batch)</span>
+    <span class="c1"># Because Python passes objects by reference, writing inp.g here makes that</span>
+    <span class="c1"># .g visible to the caller under the object's other name (see 4.4.1 above).</span>
+    <span class="k">def</span> <span class="nf">lin_grad</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="n">inp</span><span class="o">.</span><span class="n">g</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">g</span> <span class="o">@</span> <span class="n">w</span><span class="o">.</span><span class="n">t</span><span class="p">()</span>                         <span class="c1"># dL/d(input)</span>
+        <span class="c1"># dL/d(weight): for each w[k,j], sum over the batch of inp[i,k]*out.g[i,j].</span>
+        <span class="c1"># The explicit broadcast form below equals inp.t() @ out.g:</span>
+        <span class="n">w</span><span class="o">.</span><span class="n">g</span> <span class="o">=</span> <span class="p">(</span><span class="n">inp</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">out</span><span class="o">.</span><span class="n">g</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># w.g = inp.t() @ out.g                       # the compact equivalent</span>
+        <span class="c1"># dL/d(bias): the bias is broadcast over every sample forward, so backward</span>
+        <span class="c1"># its gradient is the SUM over the batch of the incoming gradient.</span>
+        <span class="n">b</span><span class="o">.</span><span class="n">g</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">g</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># -- COMPLETE FORWARD + BACKWARD PASS --</span>
+    <span class="c1"># Forward:  input -&gt; linear1 -&gt; relu -&gt; linear2 -&gt; loss</span>
+    <span class="c1"># Backward (reverse): loss -&gt; linear2 -&gt; relu -&gt; linear1 -&gt; input</span>
+    <span class="k">def</span> <span class="nf">forward_and_backward</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">targ</span><span class="p">):</span>
+        <span class="c1"># forward</span>
+        <span class="n">l1</span>  <span class="o">=</span> <span class="n">lin</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">w1</span><span class="p">,</span> <span class="n">b1</span><span class="p">)</span>                         <span class="c1"># (n,50)</span>
+        <span class="n">l2</span>  <span class="o">=</span> <span class="n">relu</span><span class="p">(</span><span class="n">l1</span><span class="p">)</span>                                 <span class="c1"># (n,50)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">lin</span><span class="p">(</span><span class="n">l2</span><span class="p">,</span> <span class="n">w2</span><span class="p">,</span> <span class="n">b2</span><span class="p">)</span>                          <span class="c1"># (n,1)</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">out</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">targ</span>                        <span class="c1"># (n,)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">diff</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>                      <span class="c1"># a single number</span>
+
+        <span class="c1"># backward (reverse order)</span>
+        <span class="c1"># 1. dL/d(out) = 2*(out - targ)/n.  [:,None] makes it (n,1) like out.</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">g</span> <span class="o">=</span> <span class="mf">2.</span> <span class="o">*</span> <span class="n">diff</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">/</span> <span class="n">inp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c1"># 2. through linear layer 2 -&gt; WRITES l2.g, w2.g, b2.g   (l2.g now exists!)</span>
+        <span class="n">lin_grad</span><span class="p">(</span><span class="n">l2</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">w2</span><span class="p">,</span> <span class="n">b2</span><span class="p">)</span>
+        <span class="c1"># 3. through ReLU: keep the gradient where l1&gt;0, zero it where l1&lt;=0.</span>
+        <span class="n">l1</span><span class="o">.</span><span class="n">g</span> <span class="o">=</span> <span class="p">(</span><span class="n">l1</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span> <span class="o">*</span> <span class="n">l2</span><span class="o">.</span><span class="n">g</span>                 <span class="c1"># reads the l2.g just written</span>
+        <span class="c1"># 4. through linear layer 1 -&gt; writes inp.g, w1.g, b1.g.</span>
+        <span class="n">lin_grad</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">l1</span><span class="p">,</span> <span class="n">w1</span><span class="p">,</span> <span class="n">b1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">loss</span>
+
+    <span class="c1"># run it, then confirm the .g attributes were filled in place</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="n">forward_and_backward</span><span class="p">(</span><span class="n">xb</span><span class="p">,</span> <span class="n">targ</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"loss = </span><span class="si">{</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"After forward_and_backward, each parameter object now carries a .g attribute:"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">[(</span><span class="s2">"w1"</span><span class="p">,</span> <span class="n">w1</span><span class="p">),</span> <span class="p">(</span><span class="s2">"b1"</span><span class="p">,</span> <span class="n">b1</span><span class="p">),</span> <span class="p">(</span><span class="s2">"w2"</span><span class="p">,</span> <span class="n">w2</span><span class="p">),</span> <span class="p">(</span><span class="s2">"b2"</span><span class="p">,</span> <span class="n">b2</span><span class="p">)]:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.g.shape = </span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">g</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="si">}</span><span class="s2">   (matches </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+
+<span class="n">run_03_backprop_demo</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>loss = 1.5662
+After forward_and_backward, each parameter object now carries a .g attribute:
+  w1.g.shape = (784, 50)   (matches w1: (784, 50))
+  b1.g.shape = (50,)   (matches b1: (50,))
+  w2.g.shape = (50, 1)   (matches w2: (50, 1))
+  b2.g.shape = (1,)   (matches b2: (1,))
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
 <div class="ce-interactive">
   <h3>Interactive (3D): The loss surface and gradient descent</h3>
   <p class="ce-interactive-hint">Here is what &ldquo;the gradient&rdquo; is <em>for</em>. The surface is the MSE loss of a tiny model <code>&Ycirc; = w&#8320; + w&#8321;x</code> over its two weights. <strong>Drag to rotate</strong> the 3D surface. Press <strong>Run descent</strong> to drop a ball from a corner: at each step it moves <em>downhill along the negative gradient</em> &mdash; the very gradients we derived by hand &mdash; until it reaches the bowl&rsquo;s minimum. Change the learning rate to see steady descent, overshoot, or divergence. <em>(If the 3D area is blank, your browser cached an old copy &mdash; hard-refresh with Ctrl+F5.)</em></p>
