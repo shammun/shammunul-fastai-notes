@@ -8284,13 +8284,14 @@ where $t$ is <strong>the column of $M$ and the row of $N$</strong> &mdash; the t
 </div>
 <div class="ce-interactive">
   <h3>Interactive: Fan-out decides which sum survives</h3>
-  <p class="ce-interactive-hint">Toggle between <strong>a weight</strong> and <strong>an activation</strong> and watch what it touches in the forward pass. A <em>weight</em> <code>W<sub>kj</sub></code> drives <strong>one</strong> output but is reused for <strong>every sample</strong> &rarr; backward you sum over samples (<code>&sum;<sub>i</sub></code>, the <code>inp.T</code>). An <em>activation</em> <code>a<sub>k</sub></code> fans out to <strong>every output</strong> &rarr; backward you sum over outputs (<code>&sum;<sub>j</sub></code>, the <code>w.T</code>). <strong>Whatever a quantity fanned out to forward, you sum over backward.</strong></p>
+  <p class="ce-interactive-hint">Switch between <strong>a weight</strong> and <strong>an activation</strong> and watch <em>two</em> things at once: the <strong>edges</strong> (which outputs it drives) and the <strong>sample chips</strong> (which samples it lives in). A <em>weight</em> drives <strong>one</strong> output but is reused in <strong>every sample</strong> &rarr; sum over samples (<code>&sum;<sub>i</sub></code>, the <code>inp.T</code>). An <em>activation</em> belongs to <strong>one</strong> sample but fans out to <strong>every</strong> output &rarr; sum over outputs (<code>&sum;<sub>j</sub></code>, the <code>w.T</code>). <strong>The dimension that lights up &ldquo;all&rdquo; is the one you sum over.</strong></p>
   <div class="bp-fan-controls">
     <button id="bp-fan-w" class="ms-btn">Highlight a weight</button>
     <button id="bp-fan-a" class="ms-btn ms-secondary">Highlight an activation</button>
   </div>
   <div class="bp-fan-controls" id="bp-fan-pick"></div>
-  <svg id="bp-fan-svg" class="bp-fan" viewBox="0 0 380 280" role="img" aria-label="fan-out diagram"></svg>
+  <div id="bp-fan-samples" class="bp-fan-samples"></div>
+  <svg id="bp-fan-svg" class="bp-fan" viewBox="0 0 380 290" role="img" aria-label="fan-out diagram"></svg>
   <div id="bp-fan-caption" class="bp-formula">Pick a mode above&hellip;</div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=bp432md">
@@ -8620,7 +8621,7 @@ OK   b2             rel-err = 2.74e-09
 </div>
 <div class="ce-interactive">
   <h3>Interactive (3D): The loss surface and gradient descent</h3>
-  <p class="ce-interactive-hint">Here is what &ldquo;the gradient&rdquo; is <em>for</em>. The surface is the MSE loss of a tiny model <code>&Ycirc; = w&#8320; + w&#8321;x</code> over its two weights. <strong>Drag to rotate</strong> the 3D surface. Press <strong>Run descent</strong> to drop a ball from a corner: at each step it moves <em>downhill along the negative gradient</em> &mdash; the very gradients we derived by hand &mdash; until it reaches the bowl&rsquo;s minimum. Change the learning rate to see steady descent, overshoot, or divergence.</p>
+  <p class="ce-interactive-hint">Here is what &ldquo;the gradient&rdquo; is <em>for</em>. The surface is the MSE loss of a tiny model <code>&Ycirc; = w&#8320; + w&#8321;x</code> over its two weights. <strong>Drag to rotate</strong> the 3D surface. Press <strong>Run descent</strong> to drop a ball from a corner: at each step it moves <em>downhill along the negative gradient</em> &mdash; the very gradients we derived by hand &mdash; until it reaches the bowl&rsquo;s minimum. Change the learning rate to see steady descent, overshoot, or divergence. <em>(If the 3D area is blank, your browser cached an old copy &mdash; hard-refresh with Ctrl+F5.)</em></p>
   <div class="ms-controls">
     <button id="bp-gd-run" class="ms-btn">Run descent</button>
     <button id="bp-gd-reset" class="ms-btn ms-secondary">Reset</button>
@@ -9824,6 +9825,11 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
 .ce-interactive .bp-fan { width:100%; max-width:420px; height:auto; display:block; margin:6px auto; background:var(--ce-code-bg,#f9fafb); border-radius:8px; }
 .ce-interactive .bp-fan-controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; margin:6px 0; }
 .ce-interactive .bp-fan-controls select { font-family:var(--ce-font-mono,monospace); padding:4px 6px; border-radius:6px; border:1px solid var(--ce-border,#d8dce3); min-height:34px; }
+.ce-interactive .bp-fan-samples { display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:center; margin:8px 0 2px; font-family:var(--ce-font-mono,monospace); font-size:0.85em; }
+.ce-interactive .bp-chip-lbl { color:var(--ce-text-muted,#697386); }
+.ce-interactive .bp-chip { display:inline-block; padding:3px 9px; border-radius:14px; border:1px solid #c7ccd6; background:#fff; color:#697386; }
+.ce-interactive .bp-chip.on { background:var(--ce-purple,#5b46e5); border-color:var(--ce-purple-dark,#4f3dd0); color:#fff; }
+.ce-interactive .bp-chip-note { color:var(--ce-text-muted,#697386); font-size:0.92em; }
 .ce-interactive .bp-edge { stroke:#c7ccd6; stroke-width:1.4; }
 .ce-interactive .bp-edge.on { stroke:var(--ce-purple,#5b46e5); stroke-width:3; }
 .ce-interactive .bp-node { fill:#fff; stroke:#9aa2b1; stroke-width:1.5; }
@@ -9839,7 +9845,7 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
 .ce-interactive .bp-out td { cursor:default; }
 .ce-interactive .bp-out td.bp-hl { background:var(--ce-purple,#5b46e5); color:#fff; }
 .ce-interactive .bp-relu { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:8px 0; }
-.ce-interactive .bp-unit { width:118px; border:1px solid var(--ce-border,#d8dce3); border-radius:10px; padding:8px; text-align:center; cursor:pointer; font-family:var(--ce-font-mono,monospace); font-size:0.82em; transition:background .12s,border-color .12s; user-select:none; }
+.ce-interactive .bp-unit { width:124px; border:1px solid var(--ce-border,#d8dce3); border-radius:10px; padding:8px; text-align:center; cursor:pointer; font-family:var(--ce-font-mono,monospace); font-size:0.82em; transition:background .12s,border-color .12s; user-select:none; }
 .ce-interactive .bp-unit.off { background:#fbeaea; border-color:#e6b0b0; }
 .ce-interactive .bp-unit.on  { background:#e7f6ec; border-color:#9fd6b2; }
 .ce-interactive .bp-unit .bp-big { font-size:1.15em; font-weight:700; margin:3px 0; }
@@ -9857,9 +9863,10 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
 (function(){
   "use strict";
   var fmt = function(x){ return (Math.round(x*100)/100).toString(); };
+  function safe(name, fn){ try { fn(); } catch(e){ if(window.console&&console.error) console.error("[interactive '"+name+"' failed]", e); } }
 
   /* ============ Widget 1: matmul inner-index sum ============ */
-  (function(){
+  safe("matmul", function(){
     var wrap = document.getElementById('bp-mm');
     if(!wrap) return;
     var A = [[1,2,3],[4,5,6]];
@@ -9888,67 +9895,84 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
         wrap.querySelectorAll('.bp-B td').forEach(function(x){ if(+x.dataset.c===j) x.className='bp-hi-col'; });
         var terms=[]; for(var t=0;t<3;t++) terms.push(A[i][t]+'&times;'+B[t][j]);
         f.innerHTML = 'C['+i+','+j+'] = &sum;<sub>t</sub> A['+i+',t]&middot;B[t,'+j+'] = '
-          + terms.join(' + ') + ' = <strong>'+C[i][j]+'</strong>';
+          + terms.join(' + ') + ' = <strong>'+C[i][j]+'</strong>  <span style="color:var(--ce-text-muted,#697386)">(t is the inner index &mdash; the one summed over)</span>';
       });
     });
-  })();
+  });
 
   /* ============ Widget 2: fan-out (weight vs activation) ============ */
-  (function(){
+  safe("fanout", function(){
     var svg = document.getElementById('bp-fan-svg');
     if(!svg) return;
-    var K=3, J=3, NS='http://www.w3.org/2000/svg';
-    var hx=90, ox=300, ys=[70,140,210];
+    var K=3, J=3, N=4, NS='http://www.w3.org/2000/svg';
+    var hx=110, ox=300, ys=[90,160,230];
     var caption=document.getElementById('bp-fan-caption');
     var pick=document.getElementById('bp-fan-pick');
-    var mode='w', selK=1, selJ=2;
+    var sampleBox=document.getElementById('bp-fan-samples');
+    var mode='w', selK=1, selJ=2, selSample=0;
     function el(tag,attrs){ var e=document.createElementNS(NS,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+    function txt(x,y,cls,s,anchor){ var t=el('text',{x:x,y:y,class:cls}); if(anchor)t.setAttribute('text-anchor',anchor); t.appendChild(document.createTextNode(s)); return t; }
+    function drawSamples(){
+      sampleBox.innerHTML='';
+      var lab=document.createElement('span'); lab.className='bp-chip-lbl'; lab.textContent='samples in the batch:'; sampleBox.appendChild(lab);
+      for(var s=0;s<N;s++){
+        var lit = (mode==='w') ? true : (s===selSample);
+        var c=document.createElement('span'); c.className='bp-chip'+(lit?' on':''); c.textContent='s'+(s+1);
+        sampleBox.appendChild(c);
+      }
+      var note=document.createElement('span'); note.className='bp-chip-note';
+      note.innerHTML = (mode==='w')
+        ? 'ALL lit &rarr; the weight is shared across samples &rArr; sum over i'
+        : 'ONE lit &rarr; the activation lives in a single sample';
+      sampleBox.appendChild(note);
+    }
     function draw(){
       svg.innerHTML='';
-      svg.appendChild(el('text',{x:hx-30,y:40,class:'bp-col-lbl'})).textContent='hidden a';
-      svg.appendChild(el('text',{x:ox-18,y:40,class:'bp-col-lbl'})).textContent='outputs &Ycirc;';
+      svg.appendChild(txt(hx-22,46,'bp-col-lbl','inputs a',null));
+      svg.appendChild(txt(ox-22,46,'bp-col-lbl','outputs y',null));
       var k,j;
       for(k=0;k<K;k++) for(j=0;j<J;j++){
         var on = (mode==='w') ? (k===selK && j===selJ) : (k===selK);
-        var ln=el('line',{x1:hx,y1:ys[k],x2:ox,y2:ys[j],class:'bp-edge'+(on?' on':'')});
-        svg.appendChild(ln);
+        svg.appendChild(el('line',{x1:hx,y1:ys[k],x2:ox,y2:ys[j],class:'bp-edge'+(on?' on':'')}));
       }
       for(k=0;k<K;k++){
-        var on=(k===selK);
-        svg.appendChild(el('circle',{cx:hx,cy:ys[k],r:16,class:'bp-node'+(on?' on':'')}));
-        var tl=el('text',{x:hx,y:ys[k]+4,'text-anchor':'middle',class:'bp-node-lbl'}); tl.textContent='a'+k; if(on) tl.setAttribute('fill','#fff'); svg.appendChild(tl);
+        var onN=(k===selK);
+        svg.appendChild(el('circle',{cx:hx,cy:ys[k],r:16,class:'bp-node'+(onN?' on':'')}));
+        var t=txt(hx,ys[k]+4,'bp-node-lbl','a'+k,'middle'); if(onN) t.setAttribute('fill','#fff'); svg.appendChild(t);
       }
       for(j=0;j<J;j++){
         var on2=(mode==='w')? (j===selJ) : true;
         svg.appendChild(el('circle',{cx:ox,cy:ys[j],r:16,class:'bp-node'+(on2?' on':'')}));
-        var tr=el('text',{x:ox,y:ys[j]+4,'text-anchor':'middle',class:'bp-node-lbl'}); tr.textContent='y'+j; if(on2) tr.setAttribute('fill','#fff'); svg.appendChild(tr);
+        var t2=txt(ox,ys[j]+4,'bp-node-lbl','y'+j,'middle'); if(on2) t2.setAttribute('fill','#fff'); svg.appendChild(t2);
       }
     }
     function controls(){
-      if(mode==='w'){
-        pick.innerHTML='weight <select id="bpf-k"></select> &rarr; <select id="bpf-j"></select>';
-      } else {
-        pick.innerHTML='activation a<select id="bpf-k"></select>';
-      }
-      var ks=document.getElementById('bpf-k'); var i;
+      if(mode==='w'){ pick.innerHTML='weight <select id="bpf-k"></select> &rarr; <select id="bpf-j"></select>'; }
+      else { pick.innerHTML='activation a<select id="bpf-k"></select> (in sample <select id="bpf-s"></select>)'; }
+      var ks=document.getElementById('bpf-k'), i;
       for(i=0;i<K;i++) ks.add(new Option('a'+i,i));
-      ks.value=selK; ks.onchange=function(){ selK=+this.value; draw(); say(); };
-      if(mode==='w'){ var js=document.getElementById('bpf-j'); for(i=0;i<J;i++) js.add(new Option('y'+i,i)); js.value=selJ; js.onchange=function(){ selJ=+this.value; draw(); say(); }; }
+      ks.value=selK; ks.onchange=function(){ selK=+this.value; redraw(); };
+      if(mode==='w'){
+        var js=document.getElementById('bpf-j'); for(i=0;i<J;i++) js.add(new Option('y'+i,i)); js.value=selJ; js.onchange=function(){ selJ=+this.value; redraw(); };
+      } else {
+        var ss=document.getElementById('bpf-s'); for(i=0;i<N;i++) ss.add(new Option('s'+(i+1),i)); ss.value=selSample; ss.onchange=function(){ selSample=+this.value; redraw(); };
+      }
     }
     function say(){
       if(mode==='w'){
-        caption.innerHTML='Weight <code>W['+selK+','+selJ+']</code> drives <strong>only output y'+selJ+'</strong> &mdash; but it is reused for <strong>every sample</strong>. So its gradient <strong>sums over samples</strong>: <code>&part;L/&part;W[k,j] = &sum;<sub>i</sub> G[i,j]&middot;a[i,k]</code> = the <code>A1.T @ G</code> rule.';
+        caption.innerHTML='Weight <code>W['+selK+','+selJ+']</code> drives <strong>only output y'+selJ+'</strong> (one edge) &mdash; but it is reused in <strong>every sample</strong> (all chips lit). So its gradient <strong>sums over samples</strong>: <code>&part;L/&part;W[k,j] = &sum;<sub>i</sub> G[i,j]&middot;a[i,k]</code> &nbsp;=&nbsp; the <code>A1.T @ G</code> rule.';
       } else {
-        caption.innerHTML='Activation <code>a'+selK+'</code> fans out to <strong>every output</strong>. So its gradient <strong>sums over outputs</strong>: <code>&part;L/&part;a[i,'+selK+'] = &sum;<sub>j</sub> G[i,j]&middot;W['+selK+',j]</code> = the <code>G @ W2.T</code> rule.';
+        caption.innerHTML='Activation <code>a'+selK+'</code> lives in <strong>one sample</strong> (one chip lit) &mdash; but it fans out to <strong>every output</strong> (all edges). So its gradient <strong>sums over outputs</strong>: <code>&part;L/&part;a[i,'+selK+'] = &sum;<sub>j</sub> G[i,j]&middot;W['+selK+',j]</code> &nbsp;=&nbsp; the <code>G @ W2.T</code> rule.';
       }
     }
-    document.getElementById('bp-fan-w').onclick=function(){ mode='w'; controls(); draw(); say(); };
-    document.getElementById('bp-fan-a').onclick=function(){ mode='a'; controls(); draw(); say(); };
-    controls(); draw(); say();
-  })();
+    function redraw(){ drawSamples(); draw(); say(); }
+    document.getElementById('bp-fan-w').onclick=function(){ mode='w'; controls(); redraw(); };
+    document.getElementById('bp-fan-a').onclick=function(){ mode='a'; controls(); redraw(); };
+    controls(); redraw();
+  });
 
   /* ============ Widget 3: Step-2 gradient calculator ============ */
-  (function(){
+  safe("calculator", function(){
     var root=document.getElementById('bp-calc');
     if(!root) return;
     var A1=[[1,2],[3,4]], W2=[[10,30],[20,40]];
@@ -9970,6 +9994,7 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
       + outTable('w2.g = A1.T@G','bp-o-w',2,2)
       + outTable('a1.g = G@W2.T','bp-o-a',2,2)
       + outTable('b2.g = G.sum(0)','bp-o-b',1,2);
+    function fill(id,M){ document.getElementById(id).querySelectorAll('td').forEach(function(td){ td.textContent=fmt(M[+td.dataset.r][+td.dataset.c]); }); }
     function recompute(){
       var i,j,k;
       var w=[[0,0],[0,0]]; for(k=0;k<2;k++) for(j=0;j<2;j++){ var s=0; for(i=0;i<2;i++) s+=A1[i][k]*G[i][j]; w[k][j]=s; }
@@ -9977,7 +10002,6 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
       var b=[0,0]; for(j=0;j<2;j++){ var s3=0; for(i=0;i<2;i++) s3+=G[i][j]; b[j]=s3; }
       fill('bp-o-w',w); fill('bp-o-a',a); fill('bp-o-b',[b]);
     }
-    function fill(id,M){ document.getElementById(id).querySelectorAll('td').forEach(function(td){ td.textContent=fmt(M[+td.dataset.r][+td.dataset.c]); }); }
     root.querySelectorAll('input[type=range]').forEach(function(inp){
       inp.addEventListener('input',function(){
         G[+inp.dataset.i][+inp.dataset.j]=+inp.value;
@@ -9985,7 +10009,6 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
         recompute();
       });
     });
-    // hover explanations
     function hookHover(id, kind){
       document.getElementById(id).querySelectorAll('td').forEach(function(td){
         td.addEventListener('mouseenter',function(){
@@ -9999,10 +10022,10 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
       });
     }
     recompute(); hookHover('bp-o-w','w'); hookHover('bp-o-a','a'); hookHover('bp-o-b','b');
-  })();
+  });
 
   /* ============ Widget 4: ReLU gate ============ */
-  (function(){
+  safe("relu", function(){
     var root=document.getElementById('bp-relu');
     if(!root) return;
     var z=[1.5,-0.8,2.1,-1.3,0.4];   // pre-activations
@@ -10017,31 +10040,32 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
           +'mask (z&gt;0) = <strong>'+(on?1:0)+'</strong>'
           +'<div class="bp-flow">grad in '+fmt(g[idx])+' &rarr; out <strong>'+fmt(on?g[idx]:0)+'</strong></div>';
         d.title='click to flip the sign of z';
-        d.addEventListener('click',function(){ z[idx]=-zi || (on?-1.0:1.0); render(); });
+        d.addEventListener('click',function(){ z[idx]=-zi; if(z[idx]===0) z[idx]=on?-1.0:1.0; render(); });
         root.appendChild(d);
       });
     }
     render();
-  })();
+  });
 
   /* ============ Widget 5: 3D loss surface + gradient descent (Plotly) ============ */
-  (function(){
+  safe("plotly3d", function(){
     var div=document.getElementById('bp-gd-plot');
     if(!div) return;
+    var tries=0;
     function start(){
-      if(typeof Plotly==='undefined'){ setTimeout(start,200); return; }
+      if(typeof Plotly==='undefined'){ if(tries++>50){ div.innerHTML='<p style="color:var(--ce-text-muted,#697386)">Could not load Plotly (offline?). The 3D plot needs an internet connection.</p>'; return; } setTimeout(start,200); return; }
       var xs=[-2,-1,0,1,2], ys=[-3,-1,1,3,5];   // true line y = 1 + 2x
       function loss(w0,w1){ var s=0; for(var i=0;i<xs.length;i++){ var e=(w0+w1*xs[i])-ys[i]; s+=e*e; } return s/xs.length; }
       function grad(w0,w1){ var g0=0,g1=0; for(var i=0;i<xs.length;i++){ var e=(w0+w1*xs[i])-ys[i]; g0+=2*e; g1+=2*e*xs[i]; } return [g0/xs.length,g1/xs.length]; }
-      var w0r=[], w1r=[], i, j, N=45, lo0=-3,hi0=5, lo1=-1,hi1=5;
-      for(i=0;i<N;i++){ w0r.push(lo0+(hi0-lo0)*i/(N-1)); w1r.push(lo1+(hi1-lo1)*i/(N-1)); }
-      var Z=[]; for(j=0;j<N;j++){ var row=[]; for(i=0;i<N;i++) row.push(loss(w0r[i],w1r[j])); Z.push(row); }
+      var w0r=[], w1r=[], i, j, M=45, lo0=-3,hi0=5, lo1=-1,hi1=5;
+      for(i=0;i<M;i++){ w0r.push(lo0+(hi0-lo0)*i/(M-1)); w1r.push(lo1+(hi1-lo1)*i/(M-1)); }
+      var Z=[]; for(j=0;j<M;j++){ var row=[]; for(i=0;i<M;i++) row.push(loss(w0r[i],w1r[j])); Z.push(row); }
       var surface={type:'surface',x:w0r,y:w1r,z:Z,colorscale:'Viridis',opacity:0.92,showscale:false,
                    contours:{z:{show:true,usecolormap:true,project:{z:true}}}};
       var ball={type:'scatter3d',mode:'lines+markers',x:[],y:[],z:[],
                 line:{color:'#ff2d55',width:6},marker:{size:4,color:'#ff2d55'},name:'descent'};
       var layout={margin:{l:0,r:0,t:0,b:0},showlegend:false,
-                  scene:{xaxis:{title:'w&#8320;'},yaxis:{title:'w&#8321;'},zaxis:{title:'L'},
+                  scene:{xaxis:{title:'w0'},yaxis:{title:'w1'},zaxis:{title:'L'},
                   camera:{eye:{x:1.5,y:1.5,z:1.1}}}};
       Plotly.newPlot(div,[surface,ball],layout,{responsive:true,displayModeBar:false});
       var status=document.getElementById('bp-gd-status');
@@ -10057,18 +10081,18 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
           px.push(w0); py.push(w1); pz.push(loss(w0,w1)+0.4);
           Plotly.restyle(div,{x:[px],y:[py],z:[pz]},[1]);
           var L=loss(w0,w1);
-          status.innerHTML='step '+step+': w&#8320;='+fmt(w0)+', w&#8321;='+fmt(w1)+', L='+fmt(L)
+          status.innerHTML='step '+step+': w0='+fmt(w0)+', w1='+fmt(w1)+', L='+fmt(L)
             +(L>1e4?'  &mdash; <strong>diverging!</strong> lower the learning rate.':'');
           var gr=grad(w0,w1); w0-=eta*gr[0]; w1-=eta*gr[1]; step++;
           if(step>60 || L>1e6 || (Math.abs(gr[0])+Math.abs(gr[1])<1e-3)){ clearInterval(timer); timer=null;
-            if(L<=1) status.innerHTML+='  &mdash; <strong>reached the minimum</strong> (w&#8320;&asymp;1, w&#8321;&asymp;2).'; }
+            if(L<=1) status.innerHTML+='  &mdash; <strong>reached the minimum</strong> (w0&asymp;1, w1&asymp;2).'; }
         },180);
       }
       document.getElementById('bp-gd-run').onclick=run;
       document.getElementById('bp-gd-reset').onclick=reset;
     }
     start();
-  })();
+  });
 })();
 </script>
 
