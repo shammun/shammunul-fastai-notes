@@ -7718,12 +7718,24 @@ $$\frac{\partial z_j}{\partial W_{kj}} = a_k, \qquad \frac{\partial z_j}{\partia
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: What a derivative is (and the numerical-gradient check)</h3>
+  <p class="ce-interactive-hint">A gradient is just the <strong>slope</strong> of the curve at a point. The numerical check estimates that slope with a tiny step, <code>(f(x+h) &minus; f(x&minus;h)) / 2h</code> &mdash; the slope of a nearby <em>secant</em> line (orange). Drag <strong>x</strong> to move along the curve, then shrink <strong>h</strong> and watch the orange secant snap onto the true tangent (green dashed).</p>
+  <canvas id="bp-ng-canvas" class="bp-canvas" width="600" height="300"></canvas>
+  <div class="bp-cr-controls">
+    <label>x = <input id="bp-ng-x" type="range" min="-3.3" max="3.3" step="0.1" value="1.2"></label>
+    <label>h = <input id="bp-ng-h" type="range" min="0.05" max="2.5" step="0.05" value="1.5"></label>
+  </div>
+  <div id="bp-ng-readout" class="bp-formula"></div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=85998823">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
+
 <h3 id="1.4-Our-verification-tool:-the-numerical-gradient">1.4 Our verification tool: the <strong>numerical gradient</strong><a class="anchor-link" href="#1.4-Our-verification-tool:-the-numerical-gradient">¶</a></h3><p>Before deriving anything, here is how we'll <em>prove</em> every analytic gradient is correct. The definition of a derivative is a limit of a difference quotient. The <strong>centered finite difference</strong> approximates it to high accuracy:</p>
 $$\frac{\partial L}{\partial \theta_i} \;\approx\; \frac{L(\theta_i + \varepsilon) - L(\theta_i - \varepsilon)}{2\varepsilon}, \qquad \varepsilon \approx 10^{-6}.$$<p>We wiggle each parameter up and down, re-run the forward pass, and see how the loss changes. If our hand-derived (analytic) gradient matches this numerical one, the derivation is correct. This is <em>exactly</em> the spirit of <code>03_backprop.ipynb</code>'s final check against PyTorch autograd &mdash; but here we don't even need PyTorch.</p>
 </div>
@@ -7854,12 +7866,25 @@ $$\frac{d}{dz}\big(z\,\sigma(z)\big) = \sigma(z) + z\,\sigma(z)\big(1-\sigma(z)\
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: The chain rule, walked one step at a time</h3>
+  <p class="ce-interactive-hint">Backprop <em>is</em> the chain rule: <strong>multiply the local slopes along the path from the loss back to a parameter.</strong> Set the inputs, then press <strong>Step backward</strong> to walk from <code>L</code> leftward &mdash; each step multiplies in one more local slope. The red number under a node is its gradient <code>&part;L/&part;(node)</code>.</p>
+  <div class="bp-cr-controls" id="bp-cr-sliders"></div>
+  <svg id="bp-cr-svg" class="bp-cr" viewBox="0 0 460 250" role="img" aria-label="computation graph"></svg>
+  <div class="ms-controls">
+    <button id="bp-cr-step" class="ms-btn">Step backward</button>
+    <button id="bp-cr-reset" class="ms-btn ms-secondary">Reset</button>
+  </div>
+  <div id="bp-cr-explain" class="bp-formula"></div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5a710e91">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
+
 <h2 id="2.-The-simplest-network:-a-single-linear-neuron-(no-hidden-layer)">2. The simplest network: a single linear neuron (no hidden layer)<a class="anchor-link" href="#2.-The-simplest-network:-a-single-linear-neuron-(no-hidden-layer)">¶</a></h2><p><strong>Model.</strong> One output, no activation, MSE loss. For one example with input $\mathbf{x}\in\mathbb{R}^d$:</p>
 $$\hat y = \mathbf{w}^\top \mathbf{x} + b = \sum_{k} w_k x_k + b, \qquad L = (\hat y - y)^2.$$<p>This is just linear regression, but it already contains forward + backward in miniature.</p>
 <h3 id="2.1-Forward">2.1 Forward<a class="anchor-link" href="#2.1-Forward">¶</a></h3><p>Compute $\hat y$, then $L$. Done.</p>
@@ -7923,12 +7948,26 @@ OK   dL/db          rel-err = 1.58e-10
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: The sigmoid + BCE &ldquo;magic cancellation&rdquo;</h3>
+  <p class="ce-interactive-hint">Why does the gradient collapse to the clean <code>a &minus; y</code>? Move the logit <code>z</code> and pick the true label <code>y</code>. The readout shows the two chain-rule pieces &mdash; <code>&part;L/&part;a</code> and <code>&part;a/&part;z</code> &mdash; and how the <code>a(1&minus;a)</code> factor in one <strong>cancels</strong> the one in the other (struck through), leaving exactly <code>a &minus; y</code>.</p>
+  <canvas id="bp-sg-canvas" class="bp-canvas" width="600" height="240"></canvas>
+  <div class="bp-cr-controls">
+    <label>z = <input id="bp-sg-z" type="range" min="-6" max="6" step="0.1" value="1.0"></label>
+    <span>true label:</span>
+    <button id="bp-sg-y1" class="ms-btn">y = 1</button>
+    <button id="bp-sg-y0" class="ms-btn ms-secondary">y = 0</button>
+  </div>
+  <div id="bp-sg-readout" class="bp-formula"></div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a20b70b0">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
+
 <h2 id="3.-Adding-a-nonlinearity:-logistic-regression-(sigmoid-+-BCE)">3. Adding a nonlinearity: logistic regression (sigmoid + BCE)<a class="anchor-link" href="#3.-Adding-a-nonlinearity:-logistic-regression-(sigmoid-+-BCE)">¶</a></h2><p>Now the output passes through a <strong>sigmoid</strong> (squashing it into $(0,1)$ as a probability) and we use <strong>binary cross-entropy</strong> loss. This single neuron is the classic <em>logistic regression</em> classifier, and it reveals the most beautiful cancellation in all of deep learning.</p>
 <p><strong>Model (one example):</strong>
 $$z = \mathbf{w}^\top\mathbf{x} + b, \qquad a = \sigma(z) = \frac{1}{1+e^{-z}}, \qquad L = -\big(y\log a + (1-y)\log(1-a)\big).$$</p>
@@ -8819,12 +8858,22 @@ OK   b[3]           rel-err = 1.20e-10
 </div>
 </div>
 </div>
+<div class="ce-interactive">
+  <h3>Interactive: Softmax probabilities and the gradient a &minus; y</h3>
+  <p class="ce-interactive-hint">Drag the three class scores (logits). The purple bars are the softmax <strong>probabilities</strong>; choose which class is the true one. The bars below are the gradient <code>a &minus; y</code>: it <strong>pushes the true class's score up</strong> (blue, negative gradient) and every wrong class's score <strong>down</strong> (orange) &mdash; by exactly how wrong each probability is.</p>
+  <div class="bp-cr-controls" id="bp-sm-sliders"></div>
+  <div class="bp-sm-row"><span class="bp-sm-lab">probabilities&nbsp;a</span><div id="bp-sm-probs" class="bp-sm-bars"></div></div>
+  <div class="bp-sm-row"><span class="bp-sm-lab">gradient&nbsp;a&minus;y</span><div id="bp-sm-grad" class="bp-sm-bars"></div></div>
+  <div id="bp-sm-readout" class="bp-formula"></div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d1a4a42e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+
+
 <h2 id="6.-Multi-class-classification:-softmax-+-cross-entropy">6. Multi-class classification: softmax + cross-entropy<a class="anchor-link" href="#6.-Multi-class-classification:-softmax-+-cross-entropy">¶</a></h2><p>The most common output head for classification. For an example with $C$ class scores (logits) $\mathbf{z}=(z_1,\dots,z_C)$:</p>
 $$a_i = \mathrm{softmax}(\mathbf z)_i = \frac{e^{z_i}}{\sum_{k} e^{z_k}}, \qquad L = -\sum_i y_i \log a_i,$$<p>where $\mathbf y$ is a <strong>one-hot</strong> vector (1 for the true class, 0 elsewhere).</p>
 <h3 id="6.1-Derivative-of-softmax">6.1 Derivative of softmax<a class="anchor-link" href="#6.1-Derivative-of-softmax">¶</a></h3><p>Using the quotient rule, for the diagonal ($i=j$) and off-diagonal ($i\neq j$) cases this combines into the compact <strong>Jacobian</strong>:
@@ -9860,6 +9909,23 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
 .jp-RenderedHTMLCommon mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width: 100%; }
 .jp-RenderedHTMLCommon pre { overflow-x: auto; max-width: 100%; }
 .jp-RenderedHTMLCommon table:not(.bp-grid):not(.bp-out) { display: block; overflow-x: auto; max-width: 100%; }
+
+/* ---- added interactive widgets (chain rule, numerical grad, sigmoid, softmax) ---- */
+.ce-interactive .bp-canvas { width:100%; max-width:600px; height:auto; display:block; margin:6px auto; background:var(--ce-code-bg,#f9fafb); border-radius:8px; border:1px solid var(--ce-border,#e3e6ea); }
+.ce-interactive .bp-cr-controls { display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:center; margin:8px 0; font-family:var(--ce-font-mono,monospace); font-size:0.9em; }
+.ce-interactive .bp-cr-controls input[type=range]{ width:120px; vertical-align:middle; }
+.ce-interactive .bp-cr { width:100%; max-width:480px; height:auto; display:block; margin:6px auto; background:var(--ce-code-bg,#f9fafb); border-radius:8px; }
+.ce-interactive .bp-cr-node { fill:#fff; stroke:#9aa2b1; stroke-width:1.5; }
+.ce-interactive .bp-cr-edge { stroke:#c7ccd6; stroke-width:1.6; }
+.ce-interactive .bp-cr-edge.active { stroke:var(--ce-purple,#5b46e5); stroke-width:3; }
+.ce-interactive .bp-cr-txt { font-family:var(--ce-font-mono,monospace); font-size:12px; fill:#33373f; }
+.ce-interactive .bp-cr-grad { font-family:var(--ce-font-mono,monospace); font-size:11px; fill:#c0392b; font-weight:700; }
+.ce-interactive .bp-sm-row { display:flex; align-items:flex-end; gap:10px; margin:8px 0; }
+.ce-interactive .bp-sm-lab { width:120px; font-size:0.78em; color:var(--ce-text-muted,#697386); font-family:var(--ce-font-mono,monospace); text-align:right; padding-bottom:4px; }
+.ce-interactive .bp-sm-bars { flex:1; display:flex; gap:16px; align-items:flex-end; height:92px; border-bottom:1px solid var(--ce-border,#d8dce3); }
+.ce-interactive .bp-sm-bar { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
+.ce-interactive .bp-sm-bar .bar { width:62%; min-height:2px; border-radius:4px 4px 0 0; transition:height .12s,background .12s; }
+.ce-interactive .bp-sm-bar .cap { font-size:0.76em; font-family:var(--ce-font-mono,monospace); margin-top:3px; white-space:nowrap; }
 </style>
 
 <!-- nbconvert ships require.js (AMD); Plotly's UMD bundle would register via define()
@@ -10101,6 +10167,142 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
     }
     start();
   });
+
+  /* ============ Widget: numerical gradient (secant -> tangent) ============ */
+  safe("numgrad", function(){
+    var cv=document.getElementById('bp-ng-canvas'); if(!cv) return;
+    var ctx=cv.getContext('2d'); var W=cv.width, H=cv.height;
+    var xs=document.getElementById('bp-ng-x'), hs=document.getElementById('bp-ng-h'), out=document.getElementById('bp-ng-readout');
+    function f(x){ return 0.15*x*x*x; }   // derivative 0.45 x^2
+    var xmin=-3.5,xmax=3.5,ymin=-7,ymax=7;
+    function PX(x){ return (x-xmin)/(xmax-xmin)*W; }
+    function PY(y){ return H-(y-ymin)/(ymax-ymin)*H; }
+    function r(v){ return Math.round(v*1000)/1000; }
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      ctx.strokeStyle='#d8dce3'; ctx.lineWidth=1; ctx.beginPath();
+      ctx.moveTo(PX(0),0); ctx.lineTo(PX(0),H); ctx.moveTo(0,PY(0)); ctx.lineTo(W,PY(0)); ctx.stroke();
+      ctx.strokeStyle='#5b46e5'; ctx.lineWidth=2.5; ctx.beginPath();
+      for(var px=0;px<=W;px+=2){ var x=xmin+px/W*(xmax-xmin); if(px===0)ctx.moveTo(px,PY(f(x))); else ctx.lineTo(px,PY(f(x))); }
+      ctx.stroke();
+      var x0=+xs.value, h=+hs.value, xa=x0-h, xb=x0+h, slope=(f(xb)-f(xa))/(2*h), tru=0.45*x0*x0;
+      ctx.strokeStyle='#ff8c00'; ctx.lineWidth=2; ctx.beginPath();
+      ctx.moveTo(PX(xmin),PY(f(x0)+slope*(xmin-x0))); ctx.lineTo(PX(xmax),PY(f(x0)+slope*(xmax-x0))); ctx.stroke();
+      ctx.strokeStyle='#1a9850'; ctx.setLineDash([6,4]); ctx.beginPath();
+      ctx.moveTo(PX(xmin),PY(f(x0)+tru*(xmin-x0))); ctx.lineTo(PX(xmax),PY(f(x0)+tru*(xmax-x0))); ctx.stroke(); ctx.setLineDash([]);
+      function dot(x,y,c){ ctx.fillStyle=c; ctx.beginPath(); ctx.arc(PX(x),PY(y),4.5,0,7); ctx.fill(); }
+      dot(xa,f(xa),'#ff8c00'); dot(xb,f(xb),'#ff8c00'); dot(x0,f(x0),'#5b46e5');
+      out.innerHTML='numerical slope = (f('+r(xb)+')&minus;f('+r(xa)+'))/2h = <strong>'+r(slope)+'</strong> &nbsp;vs&nbsp; true f&prime;('+r(x0)+') = 0.45&times;'+r(x0)+'<sup>2</sup> = <strong>'+r(tru)+'</strong> &nbsp;(gap '+r(Math.abs(slope-tru))+' &rarr; 0 as h&rarr;0)';
+    }
+    xs.addEventListener('input',draw); hs.addEventListener('input',draw); draw();
+  });
+
+  /* ============ Widget: chain-rule walker ============ */
+  safe("chainrule", function(){
+    var svg=document.getElementById('bp-cr-svg'); if(!svg) return;
+    var NS='http://www.w3.org/2000/svg';
+    var sl=document.getElementById('bp-cr-sliders'), explain=document.getElementById('bp-cr-explain');
+    var v={w:2,x:3,b:1,y:5}, step=0;
+    var P={w:[70,55],x:[70,120],b:[70,185],z:[235,120],L:[400,120]};
+    function rr(n){ return Math.round(n*100)/100; }
+    sl.innerHTML=['w','x','b','y'].map(function(k){ return k+' <input type="range" id="cr-'+k+'" min="0" max="6" step="1" value="'+v[k]+'"><span id="crv-'+k+'">'+v[k]+'</span>'; }).join(' &nbsp; ');
+    function el(t,a){ var e=document.createElementNS(NS,t); for(var k in a)e.setAttribute(k,a[k]); return e; }
+    function tx(x,y,sx,cls){ var t=el('text',{x:x,y:y,'text-anchor':'middle',class:cls||'bp-cr-txt'}); t.appendChild(document.createTextNode(sx)); return t; }
+    function fwd(){ v.z=v.w*v.x+v.b; v.L=Math.pow(v.z-v.y,2); }
+    function grads(){ var dz=2*(v.z-v.y); return {z:dz,w:dz*v.x,b:dz,x:dz*v.w}; }
+    function draw(){
+      fwd(); var g=grads(); svg.innerHTML='';
+      [['w','z'],['x','z'],['b','z'],['z','L']].forEach(function(e){
+        var a=P[e[0]],b=P[e[1]], active=(step>=2&&e[1]==='L')||(step>=3&&e[1]==='z');
+        svg.appendChild(el('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1],class:'bp-cr-edge'+(active?' active':'')}));
+      });
+      svg.appendChild(el('line',{x1:400,y1:205,x2:P.L[0],y2:P.L[1],class:'bp-cr-edge'}));
+      ['w','x','b','z','L'].forEach(function(k){ var p=P[k];
+        svg.appendChild(el('circle',{cx:p[0],cy:p[1],r:23,class:'bp-cr-node'}));
+        svg.appendChild(tx(p[0],p[1]-3,k)); svg.appendChild(tx(p[0],p[1]+13,'='+rr(v[k]))); });
+      svg.appendChild(tx(400,210,'y='+rr(v.y)));
+      if(step>=2) svg.appendChild(tx(P.L[0],P.L[1]+42,'dL/dL=1','bp-cr-grad'));
+      if(step>=3) svg.appendChild(tx(P.z[0],P.z[1]+42,'dL/dz='+rr(g.z),'bp-cr-grad'));
+      if(step>=4){ svg.appendChild(tx(P.w[0],P.w[1]+42,'dL/dw='+rr(g.w),'bp-cr-grad'));
+        svg.appendChild(tx(P.x[0],P.x[1]+42,'dL/dx='+rr(g.x),'bp-cr-grad'));
+        svg.appendChild(tx(P.b[0],P.b[1]+42,'dL/db='+rr(g.b),'bp-cr-grad')); }
+    }
+    function say(){ var g=grads();
+      if(step===0) explain.innerHTML='Forward: <code>z = w&middot;x + b = '+rr(v.z)+'</code>, <code>L = (z &minus; y)<sup>2</sup> = '+rr(v.L)+'</code>. Press &ldquo;Step backward&rdquo;.';
+      else if(step===1) explain.innerHTML='Forward done. The gradient starts at the very end: <code>&part;L/&part;L = 1</code>.';
+      else if(step===2) explain.innerHTML='<code>&part;L/&part;L = 1</code>. Next we cross the edge z&rarr;L.';
+      else if(step===3) explain.innerHTML='Edge z&rarr;L has local slope <code>&part;L/&part;z = 2(z&minus;y) = '+rr(g.z)+'</code> (&times; the 1 we carried) &rArr; <code>&part;L/&part;z = '+rr(g.z)+'</code>.';
+      else explain.innerHTML='Now multiply along each edge into z: <code>&part;L/&part;w = &part;L/&part;z &times; &part;z/&part;w = '+rr(g.z)+' &times; '+v.x+' = '+rr(g.w)+'</code>; &nbsp;<code>&part;L/&part;b = '+rr(g.z)+'&times;1 = '+rr(g.b)+'</code>; &nbsp;<code>&part;L/&part;x = '+rr(g.z)+'&times;'+v.w+' = '+rr(g.x)+'</code>. <strong>That chain of multiplies is backprop.</strong>';
+    }
+    function refresh(){ draw(); say(); }
+    ['w','x','b','y'].forEach(function(k){ document.getElementById('cr-'+k).addEventListener('input',function(){ v[k]=+this.value; document.getElementById('crv-'+k).textContent=this.value; step=0; refresh(); }); });
+    document.getElementById('bp-cr-step').onclick=function(){ step=Math.min(4,step+1); refresh(); };
+    document.getElementById('bp-cr-reset').onclick=function(){ step=0; refresh(); };
+    refresh();
+  });
+
+  /* ============ Widget: sigmoid + BCE cancellation ============ */
+  safe("sigmoid", function(){
+    var cv=document.getElementById('bp-sg-canvas'); if(!cv) return;
+    var ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+    var zs=document.getElementById('bp-sg-z'), out=document.getElementById('bp-sg-readout'), y=1;
+    function sig(z){ return 1/(1+Math.exp(-z)); }
+    var zmin=-6,zmax=6;
+    function PX(z){ return (z-zmin)/(zmax-zmin)*W; }
+    function PY(a){ return H-14-a*(H-28); }
+    function r(v){ return Math.round(v*1000)/1000; }
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      ctx.strokeStyle='#d8dce3'; ctx.lineWidth=1; ctx.beginPath();
+      ctx.moveTo(PX(0),0); ctx.lineTo(PX(0),H); ctx.moveTo(0,PY(0)); ctx.lineTo(W,PY(0)); ctx.moveTo(0,PY(1)); ctx.lineTo(W,PY(1)); ctx.stroke();
+      ctx.strokeStyle='#5b46e5'; ctx.lineWidth=2.5; ctx.beginPath();
+      for(var px=0;px<=W;px+=2){ var z=zmin+px/W*(zmax-zmin); if(px===0)ctx.moveTo(px,PY(sig(z))); else ctx.lineTo(px,PY(sig(z))); }
+      ctx.stroke();
+      var z=+zs.value, a=sig(z);
+      ctx.strokeStyle='#ff8c00'; ctx.setLineDash([4,3]); ctx.beginPath(); ctx.moveTo(PX(z),PY(a)); ctx.lineTo(PX(z),PY(0)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle='#5b46e5'; ctx.beginPath(); ctx.arc(PX(z),PY(a),5,0,7); ctx.fill();
+      var dLda=(a-y)/(a*(1-a)), dadz=a*(1-a);
+      out.innerHTML='a = &sigma;(z) = <strong>'+r(a)+'</strong>, &nbsp; y = '+y+'<br>'
+        +'&part;L/&part;a = (a&minus;y) / [a(1&minus;a)] = '+r(a-y)+' / '+r(a*(1-a))+' = '+r(dLda)+'<br>'
+        +'&part;a/&part;z = a(1&minus;a) = '+r(dadz)+'<br>'
+        +'&part;L/&part;z = &part;L/&part;a &times; &part;a/&part;z = (a&minus;y)/[<s>a(1&minus;a)</s>] &times; <s>a(1&minus;a)</s> = <strong style="color:#c0392b">a &minus; y = '+r(a-y)+'</strong>';
+    }
+    zs.addEventListener('input',draw);
+    document.getElementById('bp-sg-y1').onclick=function(){ y=1; draw(); };
+    document.getElementById('bp-sg-y0').onclick=function(){ y=0; draw(); };
+    draw();
+  });
+
+  /* ============ Widget: softmax + cross-entropy ============ */
+  safe("softmax", function(){
+    var sl=document.getElementById('bp-sm-sliders'); if(!sl) return;
+    var probsEl=document.getElementById('bp-sm-probs'), gradEl=document.getElementById('bp-sm-grad'), out=document.getElementById('bp-sm-readout');
+    var z=[2.0,1.0,0.2], trueC=0;
+    sl.innerHTML=z.map(function(val,i){ return 'z'+i+' <input type="range" id="sm-'+i+'" min="-3" max="5" step="0.1" value="'+val+'">'; }).join(' &nbsp; ')
+      + ' &nbsp; true class: ' + z.map(function(_,i){ return '<label><input type="radio" name="smtrue" value="'+i+'"'+(i===0?' checked':'')+'> '+i+'</label>'; }).join(' ');
+    function softmax(z){ var m=Math.max.apply(null,z), e=z.map(function(v){return Math.exp(v-m);}), s=e.reduce(function(a,b){return a+b;},0); return e.map(function(v){return v/s;}); }
+    function bars(c, vals, kind){
+      c.innerHTML='';
+      vals.forEach(function(v,i){
+        var d=document.createElement('div'); d.className='bp-sm-bar';
+        var bar=document.createElement('div'); bar.className='bar';
+        if(kind==='prob'){ bar.style.height=Math.round(v*100)+'%'; bar.style.background='#5b46e5'; }
+        else { bar.style.height=Math.min(100,Math.abs(v)*100)+'%'; bar.style.background=(v<0?'#2d7ef7':'#ff8c00'); }
+        var cap=document.createElement('div'); cap.className='cap';
+        cap.innerHTML=(kind==='prob') ? ('a'+i+'='+Math.round(v*100)+'%') : ((v<0?'':'+')+(Math.round(v*100)/100));
+        d.appendChild(bar); d.appendChild(cap); c.appendChild(d);
+      });
+    }
+    function refresh(){
+      var a=softmax(z), yv=[0,0,0]; yv[trueC]=1; var g=a.map(function(v,i){return v-yv[i];});
+      bars(probsEl,a,'prob'); bars(gradEl,g,'grad');
+      out.innerHTML='loss = &minus;log(a<sub>true</sub>) = &minus;log('+(Math.round(a[trueC]*1000)/1000)+') = <strong>'+(Math.round(-Math.log(a[trueC])*1000)/1000)+'</strong>. &nbsp; Gradient a&minus;y: true class '+trueC+' = <span style="color:#2d7ef7">'+(Math.round(g[trueC]*100)/100)+'</span> (negative &rarr; push its score <strong>up</strong>); the wrong classes are positive (push <strong>down</strong>).';
+    }
+    z.forEach(function(_,i){ document.getElementById('sm-'+i).addEventListener('input',function(){ z[i]=+this.value; refresh(); }); });
+    Array.prototype.forEach.call(document.getElementsByName('smtrue'),function(rb){ rb.addEventListener('change',function(){ trueC=+this.value; refresh(); }); });
+    refresh();
+  });
+
 })();
 </script>
 
