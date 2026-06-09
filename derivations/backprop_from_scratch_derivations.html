@@ -7292,18 +7292,11 @@ a.anchor-link {
   }
 }
 </style>
-<!-- MathJax v3 (jsdelivr) - replaces nbconvert's deprecated cdnjs 2.7.7 latest.js loader,
-     which was retired by MathJax and silently fails on many networks/browsers (raw $ shown). -->
+<!-- MathJax v3 (jsdelivr) - replaces nbconvert deprecated cdnjs latest.js loader -->
 <script>
 window.MathJax = {
-  tex: {
-    inlineMath: [['$','$'], ['\\(','\\)']],
-    displayMath: [['$$','$$'], ['\\[','\\]']],
-    processEscapes: true,
-    processEnvironments: true,
-    tags: 'ams'
-  },
-  options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+  tex: { inlineMath: [["$","$"], ["\\(","\\)"]], displayMath: [["$$","$$"], ["\\[","\\]"]], processEscapes: true, processEnvironments: true, tags: "ams" },
+  options: { skipHtmlTags: ["script","noscript","style","textarea","pre","code"] }
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
@@ -7521,7 +7514,7 @@ window.MathJax = {
 <h3 id="Roadmap-(increasing-complexity)">Roadmap (increasing complexity)<a class="anchor-link" href="#Roadmap-(increasing-complexity)">¶</a></h3><table>
 <thead>
 <tr>
-<th>&sect;</th>
+<th>Section</th>
 <th>Model</th>
 <th>New idea introduced</th>
 </tr>
@@ -7645,7 +7638,7 @@ $$\frac{\partial z_j}{\partial W_{kj}} = a_k, \qquad \frac{\partial z_j}{\partia
 </tr>
 </tbody>
 </table>
-<p><em>Why these closed forms are so clean:</em> for sigmoid, $a=\sigma(z)$ gives $a'=a(1-a)$ &mdash; the derivative is expressible <strong>using the output itself</strong>, so the forward pass already computed what the backward pass needs. (Derived in &sect;3.)</p>
+<p><em>Why these closed forms are so clean:</em> for sigmoid, $a=\sigma(z)$ gives $a'=a(1-a)$ &mdash; the derivative is expressible <strong>using the output itself</strong>, so the forward pass already computed what the backward pass needs. (Derived in Section 3.)</p>
 <h3 id="1.3-Loss-functions-and-their-derivatives">1.3 Loss functions and their derivatives<a class="anchor-link" href="#1.3-Loss-functions-and-their-derivatives">¶</a></h3><table>
 <thead>
 <tr>
@@ -7778,7 +7771,7 @@ $$\frac{\partial L}{\partial \theta_i} \;\approx\; \frac{L(\theta_i + \varepsilo
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="1.5-More-activation-functions-you-will-meet-(LeakyReLU,-Softplus,-SiLU,-GELU)">1.5 More activation functions you will meet (LeakyReLU, Softplus, SiLU, GELU)<a class="anchor-link" href="#1.5-More-activation-functions-you-will-meet-(LeakyReLU,-Softplus,-SiLU,-GELU)">¶</a></h3><p>The three activations above (sigmoid, tanh, ReLU) are enough for &sect;2&ndash;&sect;8. But modern nets &mdash; transformers, diffusion U-Nets, EfficientNets &mdash; use a few more. Each is still <strong>elementwise</strong>, so backprop through it is the <em>same one rule</em>: multiply the incoming gradient by the local derivative $g'(z)$ (a mask/gate). Only the closed form of $g'$ changes.</p>
+<h3 id="1.5-More-activation-functions-you-will-meet-(LeakyReLU,-Softplus,-SiLU,-GELU)">1.5 More activation functions you will meet (LeakyReLU, Softplus, SiLU, GELU)<a class="anchor-link" href="#1.5-More-activation-functions-you-will-meet-(LeakyReLU,-Softplus,-SiLU,-GELU)">¶</a></h3><p>The three activations above (sigmoid, tanh, ReLU) are enough for Sections 2&ndash;8. But modern nets &mdash; transformers, diffusion U-Nets, EfficientNets &mdash; use a few more. Each is still <strong>elementwise</strong>, so backprop through it is the <em>same one rule</em>: multiply the incoming gradient by the local derivative $g'(z)$ (a mask/gate). Only the closed form of $g'$ changes.</p>
 <table>
 <thead>
 <tr>
@@ -7816,7 +7809,7 @@ $$\frac{\partial L}{\partial \theta_i} \;\approx\; \frac{L(\theta_i + \varepsilo
 </tbody>
 </table>
 <p>Here $\Phi$ is the standard-normal <strong>CDF</strong> and $\phi$ its <strong>pdf</strong>, with $\Phi(z)=\tfrac12\big(1+\operatorname{erf}(z/\sqrt2)\big)$ and $\phi(z)=\tfrac{1}{\sqrt{2\pi}}e^{-z^2/2}$.</p>
-<p><em>Deriving SiLU's slope</em> (product rule on $z\cdot\sigma(z)$, using $\sigma'=\sigma(1-\sigma)$ from &sect;3.1):
+<p><em>Deriving SiLU's slope</em> (product rule on $z\cdot\sigma(z)$, using $\sigma'=\sigma(1-\sigma)$ from Section 3.1):
 $$\frac{d}{dz}\big(z\,\sigma(z)\big) = \sigma(z) + z\,\sigma(z)\big(1-\sigma(z)\big) = \sigma(z)\big(1+z(1-\sigma(z))\big).$$</p>
 <p><em>Deriving GELU's slope</em> (product rule on $z\cdot\Phi(z)$, with $\Phi'=\phi$): $\;\frac{d}{dz}\big(z\,\Phi(z)\big)=\Phi(z)+z\,\phi(z).$</p>
 <p>Below we add them to our toolbox and verify each derivative against a finite difference &mdash; exactly the elementwise check, applied to all four at once.</p>
@@ -7873,7 +7866,7 @@ $$\hat y = \mathbf{w}^\top \mathbf{x} + b = \sum_{k} w_k x_k + b, \qquad L = (\h
 <h3 id="2.2-Backward-%E2%80%94-derive-each-gradient-with-the-chain-rule">2.2 Backward &mdash; derive each gradient with the chain rule<a class="anchor-link" href="#2.2-Backward-%E2%80%94-derive-each-gradient-with-the-chain-rule">¶</a></h3><p>We want $\dfrac{\partial L}{\partial w_k}$ and $\dfrac{\partial L}{\partial b}$. Walk the chain $L \leftarrow \hat y \leftarrow (w_k, b)$.</p>
 <p><strong>Step 1 &mdash; loss w.r.t. the output:</strong>
 $$\frac{\partial L}{\partial \hat y} = \frac{\partial}{\partial \hat y}(\hat y - y)^2 = 2(\hat y - y).$$</p>
-<p><strong>Step 2 &mdash; output w.r.t. parameters</strong> (from &sect;1.1):
+<p><strong>Step 2 &mdash; output w.r.t. parameters</strong> (from Section 1.1):
 $$\frac{\partial \hat y}{\partial w_k} = x_k, \qquad \frac{\partial \hat y}{\partial b} = 1.$$</p>
 <p><strong>Step 3 &mdash; multiply (chain rule):</strong>
 $$\boxed{\frac{\partial L}{\partial w_k} = 2(\hat y - y)\,x_k}, \qquad \boxed{\frac{\partial L}{\partial b} = 2(\hat y - y)}.$$</p>
@@ -7959,7 +7952,7 @@ $$\frac{\partial L}{\partial \mathbf{w}} = \frac1n X^\top\mathbf{e}, \qquad \fra
 <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
 <span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>     <span class="c1"># binary 0/1 labels</span>
 <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.5</span>
-<span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>                                  <span class="c1"># (1,) array, see &sect;2 note</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>                                  <span class="c1"># (1,) array, see Section 2 note</span>
 
 <span class="k">def</span> <span class="nf">forward</span><span class="p">():</span>
     <span class="n">a</span> <span class="o">=</span> <span class="n">sigmoid</span><span class="p">(</span><span class="n">X</span> <span class="o">@</span> <span class="n">w</span> <span class="o">+</span> <span class="n">b</span><span class="p">)</span>
@@ -8005,8 +7998,8 @@ $$\underbrace{\mathbf{x}}_{784} \;\xrightarrow{\;W_1,\mathbf{b}_1\;}\; \mathbf{z
 <h3 id="4.1-Forward-(batched,-one-example-per-row)">4.1 Forward (batched, one example per row)<a class="anchor-link" href="#4.1-Forward-(batched,-one-example-per-row)">¶</a></h3>$$Z_1 = X\,W_1 + \mathbf{b}_1, \qquad A_1 = \mathrm{ReLU}(Z_1), \qquad \hat Y = A_1 W_2 + \mathbf{b}_2, \qquad L = \frac1n\sum_i (\hat y_i - y_i)^2.$$<h3 id="4.2-Backward-%E2%80%94-derive-it-layer-by-layer-(reverse-order)">4.2 Backward &mdash; derive it layer by layer (reverse order)<a class="anchor-link" href="#4.2-Backward-%E2%80%94-derive-it-layer-by-layer-(reverse-order)">¶</a></h3><p>We propagate the error signal <strong>from the loss backwards</strong>. This is the heart of the course notebook; below, each boxed result is the line of <code>lin_grad</code> / <code>forward_and_backward</code> it corresponds to.</p>
 <p><strong>(a) Loss &rarr; output.</strong> With $\hat y$ of shape <code>(n,1)</code> and <code>out.g</code> $=\partial L/\partial \hat Y$:
 $$\frac{\partial L}{\partial \hat Y} = \frac{2}{n}\,(\hat Y - Y). \qquad\Longleftrightarrow\qquad \texttt{out.g = 2.*diff[:,None]/n}$$</p>
-<p><strong>(b) Through linear layer 2.</strong> With output $\hat Y = A_1 W_2 + \mathbf b_2$ and incoming gradient $G \equiv \partial L/\partial \hat Y$, the three local rules from &sect;1.1 give:</p>
-$$\underbrace{\frac{\partial L}{\partial A_1} = G\,W_2^\top}_{\texttt{l2.g = out.g @ w2.T}}, \qquad \underbrace{\frac{\partial L}{\partial W_2} = A_1^\top G}_{\texttt{w2.g = l2.T @ out.g}}, \qquad \underbrace{\frac{\partial L}{\partial \mathbf b_2} = \textstyle\sum_i G_{i\cdot}}_{\texttt{b2.g = out.g.sum(0)}}.$$<p><em>Why $A_1^\top G$ for the weight?</em> Each weight $W_{2,kj}$ multiplies input feature $A_{1,k}$ for every example $i$; summing the chain-rule contributions over the batch is exactly the matrix product $A_1^\top G$. <em>Why $\sum_i$ for the bias?</em> The same bias is <strong>added to every row</strong> in the forward pass, so its gradient is the sum of the per-row gradients (<code>03_backprop</code> calls this out explicitly). Every one of these three lines is proved element-by-element below, with a worked numeric example, in <strong>&sect;4.3 Step 2</strong> &mdash; go there if any step here feels like it appeared from nowhere.</p>
+<p><strong>(b) Through linear layer 2.</strong> With output $\hat Y = A_1 W_2 + \mathbf b_2$ and incoming gradient $G \equiv \partial L/\partial \hat Y$, the three local rules from Section 1.1 give:</p>
+$$\underbrace{\frac{\partial L}{\partial A_1} = G\,W_2^\top}_{\texttt{l2.g = out.g @ w2.T}}, \qquad \underbrace{\frac{\partial L}{\partial W_2} = A_1^\top G}_{\texttt{w2.g = l2.T @ out.g}}, \qquad \underbrace{\frac{\partial L}{\partial \mathbf b_2} = \textstyle\sum_i G_{i\cdot}}_{\texttt{b2.g = out.g.sum(0)}}.$$<p><em>Why $A_1^\top G$ for the weight?</em> Each weight $W_{2,kj}$ multiplies input feature $A_{1,k}$ for every example $i$; summing the chain-rule contributions over the batch is exactly the matrix product $A_1^\top G$. <em>Why $\sum_i$ for the bias?</em> The same bias is <strong>added to every row</strong> in the forward pass, so its gradient is the sum of the per-row gradients (<code>03_backprop</code> calls this out explicitly). Every one of these three lines is proved element-by-element below, with a worked numeric example, in <strong>Section 4.3 Step 2</strong> &mdash; go there if any step here feels like it appeared from nowhere.</p>
 <p><strong>(c) Through ReLU.</strong> ReLU acts elementwise with derivative $\mathbb 1[z&gt;0]$, so we just <strong>mask</strong>:
 $$\underbrace{\frac{\partial L}{\partial Z_1} = \frac{\partial L}{\partial A_1}\odot \mathbb{1}[Z_1&gt;0]}_{\texttt{l1.g = (l1&gt;0).float()*l2.g}}.$$
 ($\odot$ is elementwise multiply. Gradient passes through where the unit was active, and is killed where it was off.)</p>
@@ -8032,7 +8025,7 @@ $$\frac{\partial L}{\partial X} = \frac{\partial L}{\partial Z_1}W_1^\top, \qqua
 <li>the <strong>definition of matrix multiplication</strong> $\big((MN)_{rc}=\sum_t M_{rt}N_{tc}\big)$.</li>
 </ul>
 <p>Nothing is skipped, and there is a <strong>worked example with real numbers</strong> further down so the symbols stop being abstract.</p>
-<h4 id="The-ONE-new-idea-%E2%80%94-this-is-the-entire-difficulty-of-%C2%A74">The ONE new idea &mdash; this is the entire difficulty of &sect;4<a class="anchor-link" href="#The-ONE-new-idea-%E2%80%94-this-is-the-entire-difficulty-of-%C2%A74">¶</a></h4><p>In &sect;2 (single neuron) each weight affected <strong>exactly one</strong> output, so the chain rule was a single multiplication:
+<h4 id="The-ONE-new-idea-%E2%80%94-this-is-the-entire-difficulty-of-Section-4">The ONE new idea &mdash; this is the entire difficulty of Section 4<a class="anchor-link" href="#The-ONE-new-idea-%E2%80%94-this-is-the-entire-difficulty-of-Section-4">¶</a></h4><p>In Section 2 (single neuron) each weight affected <strong>exactly one</strong> output, so the chain rule was a single multiplication:
 $$\frac{\partial L}{\partial w_k}=\frac{\partial L}{\partial \hat y}\cdot\frac{\partial \hat y}{\partial w_k}.$$</p>
 <p>In a real network &mdash; <strong>matrices + a whole batch of samples</strong> &mdash; a single number usually affects <strong>many</strong> outputs at once:</p>
 <ul>
@@ -8041,7 +8034,7 @@ $$\frac{\partial L}{\partial w_k}=\frac{\partial L}{\partial \hat y}\cdot\frac{\
 </ul>
 <p>The rule for that situation is the <strong>multivariable chain rule</strong>: if a quantity $q$ influences the loss through several outputs $o_1,o_2,\dots,o_m$, then you <strong>add up the contribution along every path</strong>:
 $$\frac{\partial L}{\partial q}=\sum_{m}\underbrace{\frac{\partial L}{\partial o_m}}_{\text{error at that output}}\;\underbrace{\frac{\partial o_m}{\partial q}}_{\text{local slope}}.$$</p>
-<p>That <strong>sum</strong> is the <em>only</em> genuinely new thing in &sect;4. Every transpose and every <code>.sum(0)</code> you are about to see comes from it &mdash; nothing more mysterious is happening.</p>
+<p>That <strong>sum</strong> is the <em>only</em> genuinely new thing in Section 4. Every transpose and every <code>.sum(0)</code> you are about to see comes from it &mdash; nothing more mysterious is happening.</p>
 <h4 id="Notation-%E2%80%94-pin-the-three-index-letters-down-once">Notation &mdash; pin the three index letters down once<a class="anchor-link" href="#Notation-%E2%80%94-pin-the-three-index-letters-down-once">¶</a></h4><table>
 <thead>
 <tr>
@@ -8091,7 +8084,7 @@ $$\frac{\partial L}{\partial \hat y_{i1}}=\frac1n\cdot\frac{\partial}{\partial \
 $$\boxed{\;G\;\equiv\;\frac{\partial L}{\partial \hat Y}=\frac{2}{n}(\hat Y-Y)\;}\qquad\Longleftrightarrow\qquad\texttt{out.g = 2.*diff[:,None]/n}.$$
 Call this $G$. It has <strong>one column per output unit</strong>, and it is the error signal we now push back through layer 2. (In the example just below we deliberately use <em>two</em> output units so this column index isn't trivial.)</p>
 <hr/>
-<h4 id="Step-2-%E2%80%94-back-through-linear-layer-2-%C2%A0%C2%A0(this-is-%C2%A74.2-part-(b),-with-nothing-skipped)">Step 2 &mdash; back through linear layer 2   (this is <strong>&sect;4.2 part (b)</strong>, with nothing skipped)<a class="anchor-link" href="#Step-2-%E2%80%94-back-through-linear-layer-2-%C2%A0%C2%A0(this-is-%C2%A74.2-part-(b),-with-nothing-skipped)">¶</a></h4><p>The forward pass of this layer was $\;\hat y_{ij}=\sum_k A_{1,ik}W_{2,kj}+b_{2,j}.$ We want <strong>three</strong> gradients, and it really helps to know <em>why each one exists</em> before deriving it:</p>
+<h4 id="Step-2-%E2%80%94-back-through-linear-layer-2-%C2%A0%C2%A0(this-is-Section-4.2-part-(b),-with-nothing-skipped)">Step 2 &mdash; back through linear layer 2   (this is <strong>Section 4.2 part (b)</strong>, with nothing skipped)<a class="anchor-link" href="#Step-2-%E2%80%94-back-through-linear-layer-2-%C2%A0%C2%A0(this-is-Section-4.2-part-(b),-with-nothing-skipped)">¶</a></h4><p>The forward pass of this layer was $\;\hat y_{ij}=\sum_k A_{1,ik}W_{2,kj}+b_{2,j}.$ We want <strong>three</strong> gradients, and it really helps to know <em>why each one exists</em> before deriving it:</p>
 <table>
 <thead>
 <tr>
@@ -8114,7 +8107,7 @@ Call this $G$. It has <strong>one column per output unit</strong>, and it is the
 </tr>
 </tbody>
 </table>
-<h5 id="A-worked-example-that-makes-the-index-$j$-do-something">A worked example that makes the index $j$ do something<a class="anchor-link" href="#A-worked-example-that-makes-the-index-$j$-do-something">¶</a></h5><p>The real <code>03_backprop</code> net has a <strong>single</strong> output, which makes the output index $j$ trivial (only one column) and hides what is really going on. So in this example we give the layer <strong>two output units</strong> &mdash; then $j$ genuinely ranges over $\{0,1\}$ and you can <em>see</em> why a sum over outputs appears. (With one output every $\sum_{j'}$ below has a single term and just drops away &mdash; which is exactly why &sect;4.2's compact formulas looked sum-free.)</p>
+<h5 id="A-worked-example-that-makes-the-index-$j$-do-something">A worked example that makes the index $j$ do something<a class="anchor-link" href="#A-worked-example-that-makes-the-index-$j$-do-something">¶</a></h5><p>The real <code>03_backprop</code> net has a <strong>single</strong> output, which makes the output index $j$ trivial (only one column) and hides what is really going on. So in this example we give the layer <strong>two output units</strong> &mdash; then $j$ genuinely ranges over $\{0,1\}$ and you can <em>see</em> why a sum over outputs appears. (With one output every $\sum_{j'}$ below has a single term and just drops away &mdash; which is exactly why Section 4.2's compact formulas looked sum-free.)</p>
 <p>Take $n=2$ samples, hidden width $2$, and now <strong>2 outputs</strong>:
 $$A_1=\begin{bmatrix}1&amp;2\\3&amp;4\end{bmatrix},\qquad W_2=\begin{bmatrix}10&amp;30\\20&amp;40\end{bmatrix}\;(\text{rows}=k,\ \text{cols}=j),\qquad b_2=[\,5,\;7\,].$$
 $$\Rightarrow\quad \hat Y=A_1W_2+b_2=\begin{bmatrix}55&amp;117\\115&amp;257\end{bmatrix}.$$
@@ -8185,7 +8178,7 @@ $$\boxed{\;\frac{\partial L}{\partial Z_1}=\underbrace{\frac{\partial L}{\partia
 <li><strong>Parameter gradients</strong> $\partial L/\partial W_1,\,\partial L/\partial b_1,\,\partial L/\partial W_2,\,\partial L/\partial b_2$ &rarr; handed to the optimizer: <code>p -= lr * p.g</code>. <strong>These are the only quantities that change the network.</strong> They are <em>why</em> we did any of this.</li>
 <li><strong>Activation / input gradients</strong> $\partial L/\partial A_1,\,\partial L/\partial Z_1,\,\partial L/\partial X$ &rarr; they update <strong>nothing</strong> by themselves. They are the <strong>relay baton</strong> that carries the error from the loss back to each layer, so that layer can compute its own parameter gradients. Each layer multiplies the baton by its local derivative and passes it to the layer before it.</li>
 </ul>
-<p>So the entire backward pass is just: <strong>Step 1</strong> (seed the error $G$) &rarr; <strong>Step 2</strong> (layer-2 params + baton $A_1$) &rarr; <strong>Step 3</strong> (ReLU gate &rarr; baton $H$) &rarr; <strong>Step 4</strong> (layer-1 params). Three tiny rules &mdash; <code>inp.T @ g</code>, <code>g.sum(0)</code>, <code>g @ w.T</code> &mdash; plus a ReLU mask, applied right-to-left. The reusable <code>lin_grad</code> in &sect;4.4 is literally those three lines.</p>
+<p>So the entire backward pass is just: <strong>Step 1</strong> (seed the error $G$) &rarr; <strong>Step 2</strong> (layer-2 params + baton $A_1$) &rarr; <strong>Step 3</strong> (ReLU gate &rarr; baton $H$) &rarr; <strong>Step 4</strong> (layer-1 params). Three tiny rules &mdash; <code>inp.T @ g</code>, <code>g.sum(0)</code>, <code>g @ w.T</code> &mdash; plus a ReLU mask, applied right-to-left. The reusable <code>lin_grad</code> in Section 4.4 is literally those three lines.</p>
 </div>
 </div>
 </div>
@@ -8196,7 +8189,7 @@ $$\boxed{\;\frac{\partial L}{\partial Z_1}=\underbrace{\frac{\partial L}{\partia
   <div id="bp-mm" class="bp-mm"></div>
   <div id="bp-mm-formula" class="bp-formula">Click a cell of <strong>C</strong> to see how it is computed&hellip;</div>
   <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Connection to &sect;4.3.1 (Fact 2):</strong> when a gradient came out as &ldquo;a sum over samples <code>i</code>&rdquo; we wrote it as <code>A1.T @ G</code>; when it was &ldquo;a sum over outputs <code>j</code>&rdquo; we wrote <code>G @ W2.T</code>. In both cases the transpose just makes the summed index the inner one you see highlighted here.
+    <strong>Connection to Section 4.3.1 (Fact 2):</strong> when a gradient came out as &ldquo;a sum over samples <code>i</code>&rdquo; we wrote it as <code>A1.T @ G</code>; when it was &ldquo;a sum over outputs <code>j</code>&rdquo; we wrote <code>G @ W2.T</code>. In both cases the transpose just makes the summed index the inner one you see highlighted here.
   </p>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=bp431md">
@@ -8334,7 +8327,7 @@ That is <em>exactly</em> what <code>g.sum(0)</code> does for a bias: add up the 
   <div class="bp-calc" id="bp-calc"></div>
   <div id="bp-calc-formula" class="bp-formula">Hover a gradient cell to see its sum&hellip;</div>
   <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Connection to &sect;4.3.3:</strong> the code cell just below computes these same three gradients three independent ways (loops, matrix ops, numerical) and asserts they match. This widget is the matrix-op view, live.
+    <strong>Connection to Section 4.3.3:</strong> the code cell just below computes these same three gradients three independent ways (loops, matrix ops, numerical) and asserts they match. This widget is the matrix-op view, live.
   </p>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=bp433md">
@@ -8446,7 +8439,7 @@ Now finite-differencing this $L$ tests our formulas against reality. <strong>If 
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 
 
-<h3 id="4.3.4-Capstone:-the-whole-tiny-network,-every-gradient-auto-checked">4.3.4 Capstone: the whole tiny network, every gradient auto-checked<a class="anchor-link" href="#4.3.4-Capstone:-the-whole-tiny-network,-every-gradient-auto-checked">¶</a></h3><p>Steps 1&ndash;4 chain into the complete backward pass. Below is the <em>entire</em> &sect;4 network &mdash; $X\to W_1,b_1\to\mathrm{ReLU}\to W_2,b_2\to\text{MSE}$ &mdash; in a few lines, with <strong>all four</strong> parameter gradients verified against the numerical gradient.</p>
+<h3 id="4.3.4-Capstone:-the-whole-tiny-network,-every-gradient-auto-checked">4.3.4 Capstone: the whole tiny network, every gradient auto-checked<a class="anchor-link" href="#4.3.4-Capstone:-the-whole-tiny-network,-every-gradient-auto-checked">¶</a></h3><p>Steps 1&ndash;4 chain into the complete backward pass. Below is the <em>entire</em> Section 4 network &mdash; $X\to W_1,b_1\to\mathrm{ReLU}\to W_2,b_2\to\text{MSE}$ &mdash; in a few lines, with <strong>all four</strong> parameter gradients verified against the numerical gradient.</p>
 <p>Read <code>backward()</code> top to bottom: it is literally <strong>Step 1</strong> (seed $G$), then <strong>Step 2</strong> (<code>w2g, b2g, a1g</code>), then <strong>Step 3</strong> (the ReLU gate), then <strong>Step 4</strong> (<code>w1g, b1g</code>). Nothing else is going on &mdash; a deep network is just this block, stacked. The errors print at $\sim\!10^{-10}$, i.e. the analytic formulas match reality to machine precision.</p>
 </div>
 </div>
@@ -8615,7 +8608,7 @@ OK   b2             rel-err = 2.74e-09
   <div id="bp-gd-plot" class="bp-plot"></div>
   <div id="bp-gd-status" class="bp-formula">Press &ldquo;Run descent&rdquo;. Each step: <code>w &larr; w &minus; lr &times; &part;L/&part;w</code>.</div>
   <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Connection to &sect;4.5:</strong> the training loop below does exactly this, but in 784-dimensional weight space instead of 2 &mdash; impossible to draw, identical in principle. Backprop (Steps 1&ndash;4) is just the machine that computes <code>&part;L/&part;w</code> efficiently so this ball knows which way is downhill.
+    <strong>Connection to Section 4.5:</strong> the training loop below does exactly this, but in 784-dimensional weight space instead of 2 &mdash; impossible to draw, identical in principle. Backprop (Steps 1&ndash;4) is just the machine that computes <code>&part;L/&part;w</code> efficiently so this ball knows which way is downhill.
   </p>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c739d569">
@@ -8727,12 +8720,12 @@ $$<p><strong>Reading them in words:</strong></p>
 <ul>
 <li><strong>BP1</strong> &mdash; the error at the <em>last</em> layer = (how the loss reacts to the output) &times; (slope of the output's activation). With a matched loss/activation pair (sigmoid+BCE, softmax+CE) this collapses to $\hat{\mathbf y}-\mathbf y$.</li>
 <li><strong>BP2</strong> &mdash; to get the error one layer <em>earlier</em>, push the next layer's error back through its weights ($W^{\top}$) and gate it by <em>this</em> layer's activation slope. This is the recursive heart: $\boldsymbol\delta^{[l+1]}\to\boldsymbol\delta^{[l]}$.</li>
-<li><strong>BP3 / BP4</strong> &mdash; once you have $\boldsymbol\delta^{[l]}$, the weight gradient is "error <strong>outer-product</strong> the layer's input", and the bias gradient is just the error. (In &sect;4 you saw the <em>exact</em> same two facts as <code>w.g = inp.T @ out.g</code> and <code>b.g = out.g.sum(0)</code>.)</li>
+<li><strong>BP3 / BP4</strong> &mdash; once you have $\boldsymbol\delta^{[l]}$, the weight gradient is "error <strong>outer-product</strong> the layer's input", and the bias gradient is just the error. (In Section 4 you saw the <em>exact</em> same two facts as <code>w.g = inp.T @ out.g</code> and <code>b.g = out.g.sum(0)</code>.)</li>
 </ul>
 <blockquote>
 <p><strong>Batched NumPy form</strong> (batch of $n$ rows, <code>A[l]</code> shape <code>(n, n_l)</code>, <code>W[l]</code> shape <code>(n_{l-1}, n_l)</code>): with $\Delta^{[l]} = \partial L/\partial Z^{[l]}$ of shape <code>(n, n_l)</code>,
 $$\Delta^{[l]} = \big(\Delta^{[l+1]}W^{[l+1]\top}\big)\odot g'(Z^{[l]}),\quad \frac{\partial L}{\partial W^{[l]}}=A^{[l-1]\top}\Delta^{[l]},\quad \frac{\partial L}{\partial \mathbf b^{[l]}}=\textstyle\sum_{\text{rows}}\Delta^{[l]}.$$
-(Transposes flip versus the per-example form because here data is row-wise &mdash; the NumPy convention of &sect;0.)</p>
+(Transposes flip versus the per-example form because here data is row-wise &mdash; the NumPy convention of Section 0.)</p>
 </blockquote>
 <h3 id="5.1-A-general-feed-forward-network-in-NumPy">5.1 A general feed-forward network in NumPy<a class="anchor-link" href="#5.1-A-general-feed-forward-network-in-NumPy">¶</a></h3><p>We store each layer as <code>(W, b, activation, activation_deriv)</code>, cache the forward intermediates, then sweep backwards applying BP1&ndash;BP4.</p>
 </div>
@@ -8827,7 +8820,7 @@ $$a_i = \mathrm{softmax}(\mathbf z)_i = \frac{e^{z_i}}{\sum_{k} e^{z_k}}, \qquad
 $$\frac{\partial a_i}{\partial z_j} = a_i(\delta_{ij} - a_j), \qquad \delta_{ij}=\begin{cases}1 &amp; i=j\\ 0 &amp; i\neq j\end{cases}.$$</p>
 <h3 id="6.2-The-cancellation-again:-$%5Cpartial-L/%5Cpartial-z_j$">6.2 The cancellation again: $\partial L/\partial z_j$<a class="anchor-link" href="#6.2-The-cancellation-again:-$%5Cpartial-L/%5Cpartial-z_j$">¶</a></h3>$$\frac{\partial L}{\partial z_j} = \sum_i \frac{\partial L}{\partial a_i}\frac{\partial a_i}{\partial z_j} = \sum_i \Big(-\frac{y_i}{a_i}\Big)\,a_i(\delta_{ij}-a_j) = -\sum_i y_i(\delta_{ij}-a_j) = -y_j + a_j\underbrace{\sum_i y_i}_{=1}.$$<p>So once more, with a matched loss/activation,
 $$\boxed{\;\boldsymbol{\delta} = \frac{\partial L}{\partial \mathbf z} = \mathbf a - \mathbf y\;}$$
-&mdash; the softmax output minus the one-hot target. This is why frameworks fuse "softmax + cross-entropy" into one op: the gradient is trivially $\mathbf a-\mathbf y$ and numerically stable. (Compare &sect;3.3 &mdash; same beautiful result, multi-class version.)</p>
+&mdash; the softmax output minus the one-hot target. This is why frameworks fuse "softmax + cross-entropy" into one op: the gradient is trivially $\mathbf a-\mathbf y$ and numerically stable. (Compare Section 3.3 &mdash; same beautiful result, multi-class version.)</p>
 <h3 id="6.3-Putting-it-together:-a-deep-classifier-on-a-2-D-spiral">6.3 Putting it together: a deep classifier on a 2-D spiral<a class="anchor-link" href="#6.3-Putting-it-together:-a-deep-classifier-on-a-2-D-spiral">¶</a></h3>
 </div>
 </div>
@@ -8942,7 +8935,7 @@ $$Y_{i,j} = \sum_{u=0}^{k_h-1}\sum_{v=0}^{k_w-1} X_{i+u,\,j+v}\,K_{u,v}.$$</p>
 <ol>
 <li><strong>Kernel gradient is itself a cross-correlation</strong> of the input with the upstream gradient:</li>
 </ol>
-$$\frac{\partial L}{\partial K_{u,v}} = \sum_{i,j} G_{i,j}\,X_{i+u,\,j+v}.$$<p><em>Why:</em> $K_{u,v}$ is reused at every output position $(i,j)$, so its gradient sums the chain-rule contribution $G_{i,j}\cdot X_{i+u,j+v}$ over all positions (the &sect;1.1 "shared parameter ⇒ sum the paths" rule, applied spatially).</p>
+$$\frac{\partial L}{\partial K_{u,v}} = \sum_{i,j} G_{i,j}\,X_{i+u,\,j+v}.$$<p><em>Why:</em> $K_{u,v}$ is reused at every output position $(i,j)$, so its gradient sums the chain-rule contribution $G_{i,j}\cdot X_{i+u,j+v}$ over all positions (the Section 1.1 "shared parameter ⇒ sum the paths" rule, applied spatially).</p>
 <ol start="2">
 <li><strong>Input gradient is a <em>full</em> convolution</strong> of $G$ with the <strong>flipped</strong> kernel:</li>
 </ol>
@@ -9014,8 +9007,8 @@ OK   conv dL/dX     rel-err = 1.09e-07
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="7.1-The-real-thing:-a-multi-channel-convolution-($C_%5Ctext%7Bin%7D%5Cto-C_%5Ctext%7Bout%7D$)">7.1 The real thing: a <strong>multi-channel</strong> convolution ($C_\text{in}\to C_\text{out}$)<a class="anchor-link" href="#7.1-The-real-thing:-a-multi-channel-convolution-($C_%5Ctext%7Bin%7D%5Cto-C_%5Ctext%7Bout%7D$)">¶</a></h3><p>Section 7 used one input channel and one kernel for clarity. A real conv layer maps a stack of $C_\text{in}$ input feature-maps to $C_\text{out}$ output maps. The kernel is now a 4-D tensor $K$ of shape $(C_\text{out}, C_\text{in}, k_h, k_w)$, and each output channel <strong>sums over all input channels</strong>:</p>
-$$Y_{c_o,i,j} = \sum_{c_i=0}^{C_\text{in}-1}\sum_{u=0}^{k_h-1}\sum_{v=0}^{k_w-1} X_{c_i,\,i+u,\,j+v}\;K_{c_o,c_i,u,v}.$$<p>The backward pass is the &sect;7 pair, now carrying the channel indices. With $G=\partial L/\partial Y$ (shape $(C_\text{out},o_h,o_w)$):</p>
-$$\frac{\partial L}{\partial K_{c_o,c_i,u,v}} = \sum_{i,j} G_{c_o,i,j}\,X_{c_i,\,i+u,\,j+v}, \qquad \frac{\partial L}{\partial X_{c_i,p,q}} = \sum_{c_o}\sum_{u,v} G_{c_o,\,p-u,\,q-v}\,K_{c_o,c_i,u,v}.$$<p>It is <em>literally</em> &sect;7's two facts (correlate-input-with-upstream for the kernel; scatter-the-flipped-kernel for the input) wrapped in an extra sum over channels. Biases (one per output channel) would add $\partial L/\partial b_{c_o}=\sum_{i,j}G_{c_o,i,j}$, exactly the &sect;1.1 "broadcast forward ⇒ sum backward" rule.</p>
+$$Y_{c_o,i,j} = \sum_{c_i=0}^{C_\text{in}-1}\sum_{u=0}^{k_h-1}\sum_{v=0}^{k_w-1} X_{c_i,\,i+u,\,j+v}\;K_{c_o,c_i,u,v}.$$<p>The backward pass is the Section 7 pair, now carrying the channel indices. With $G=\partial L/\partial Y$ (shape $(C_\text{out},o_h,o_w)$):</p>
+$$\frac{\partial L}{\partial K_{c_o,c_i,u,v}} = \sum_{i,j} G_{c_o,i,j}\,X_{c_i,\,i+u,\,j+v}, \qquad \frac{\partial L}{\partial X_{c_i,p,q}} = \sum_{c_o}\sum_{u,v} G_{c_o,\,p-u,\,q-v}\,K_{c_o,c_i,u,v}.$$<p>It is <em>literally</em> Section 7's two facts (correlate-input-with-upstream for the kernel; scatter-the-flipped-kernel for the input) wrapped in an extra sum over channels. Biases (one per output channel) would add $\partial L/\partial b_{c_o}=\sum_{i,j}G_{c_o,i,j}$, exactly the Section 1.1 "broadcast forward ⇒ sum backward" rule.</p>
 </div>
 </div>
 </div>
@@ -9072,7 +9065,7 @@ $$\frac{\partial L}{\partial K_{c_o,c_i,u,v}} = \sum_{i,j} G_{c_o,i,j}\,X_{c_i,\
 <h3 id="7.2-Pooling-layers-(max-&amp;-average)-%E2%80%94-backprop-with-no-parameters">7.2 Pooling layers (max &amp; average) &mdash; backprop with <strong>no parameters</strong><a class="anchor-link" href="#7.2-Pooling-layers-(max-&amp;-average)-%E2%80%94-backprop-with-no-parameters">¶</a></h3><p>After convolutions, CNNs <strong>downsample</strong> with a pooling layer. It has <em>no weights</em>, so there is nothing to learn &mdash; but gradients still have to flow <em>through</em> it to the conv layers below. Take a $2\times2$ window, stride 2.</p>
 <p><strong>Max pooling.</strong> Forward keeps the largest value in each window: $Y_{i,j}=\max_{(u,v)\in\text{window}}X_{\cdot}$. Backward, only the <strong>winning</strong> element influenced the output, so the upstream gradient is routed entirely to that one position; the other three get $0$:
 $$\frac{\partial L}{\partial X_{p,q}} = \begin{cases}G_{i,j} &amp; (p,q)=\arg\max\text{ of window }(i,j)\\ 0 &amp; \text{otherwise.}\end{cases}$$
-(This is the &sect;1.2 ReLU idea taken to the extreme: a hard <em>router</em> &mdash; gradient goes to the input that "won".)</p>
+(This is the Section 1.2 ReLU idea taken to the extreme: a hard <em>router</em> &mdash; gradient goes to the input that "won".)</p>
 <p><strong>Average pooling.</strong> Forward is the mean of the window, $Y_{i,j}=\tfrac14\sum_{\text{window}}X$. Since each input contributed equally with weight $\tfrac14$, the gradient is shared equally:
 $$\frac{\partial L}{\partial X_{p,q}} = \tfrac14\,G_{i,j}\quad\text{for each of the 4 inputs of window }(i,j).$$</p>
 </div>
@@ -9311,7 +9304,7 @@ while $\partial L/\partial\gamma_j=\sum_i \mathrm dy_{ij}\hat x_{ij}$ and $\part
 <h2 id="10.-Dropout-%E2%80%94-a-random-gate-(and-its-trivial-backward)">10. Dropout &mdash; a random gate (and its trivial backward)<a class="anchor-link" href="#10.-Dropout-%E2%80%94-a-random-gate-(and-its-trivial-backward)">¶</a></h2><p>Dropout regularizes by randomly <strong>zeroing</strong> activations during training, so the net can't lean on any single unit. We use <strong>inverted dropout</strong>: draw a 0/1 mask with keep-probability $p$ and <em>rescale by $1/p$</em> so the expected value is unchanged (then test-time is a plain identity &mdash; no rescaling needed).</p>
 <p><strong>Forward (train):</strong> with mask $m_{ij}\sim\mathrm{Bernoulli}(p)/p$,
 $$y_{ij} = m_{ij}\,x_{ij}.$$</p>
-<p><strong>Backward.</strong> $y_{ij}$ is just $x_{ij}$ times the constant $m_{ij}$ (the mask is frozen for this forward pass), so by the &sect;1.1 product-with-a-constant rule the gradient passes through the <strong>same gate</strong>:
+<p><strong>Backward.</strong> $y_{ij}$ is just $x_{ij}$ times the constant $m_{ij}$ (the mask is frozen for this forward pass), so by the Section 1.1 product-with-a-constant rule the gradient passes through the <strong>same gate</strong>:
 $$\frac{\partial L}{\partial x_{ij}} = m_{ij}\,\frac{\partial L}{\partial y_{ij}}.$$
 Dropped units ($m=0$) get zero gradient; kept units pass through scaled by $1/p$. No learnable parameters.</p>
 </div>
@@ -9349,9 +9342,9 @@ Dropped units ($m=0$) get zero gradient; kept units pass through scaled by $1/p$
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="11.-Residual-/-skip-connections-%E2%80%94-the-gradient-highway">11. Residual / skip connections &mdash; the gradient highway<a class="anchor-link" href="#11.-Residual-/-skip-connections-%E2%80%94-the-gradient-highway">¶</a></h2><p>A residual block computes $\;\mathbf y = \mathbf x + F(\mathbf x)\;$ &mdash; the input is <strong>added back</strong> to the output of some sub-network $F$ (two conv layers in a ResNet, attention or an MLP in a transformer). This one addition is why 100-layer nets train at all.</p>
-<p><strong>Backward.</strong> The output depends on $\mathbf x$ through two parallel paths &mdash; the identity branch and $F$ &mdash; so their gradients <strong>add</strong> (the &sect;0 "sum over every path" rule):
+<p><strong>Backward.</strong> The output depends on $\mathbf x$ through two parallel paths &mdash; the identity branch and $F$ &mdash; so their gradients <strong>add</strong> (the Section 0 "sum over every path" rule):
 $$\frac{\partial L}{\partial \mathbf x} = \underbrace{\frac{\partial L}{\partial \mathbf y}}_{\text{identity branch}} \;+\; \underbrace{J_F^\top\,\frac{\partial L}{\partial \mathbf y}}_{\text{through }F},$$
-where $J_F$ is the Jacobian of $F$. The crucial term is the first one: the upstream gradient $\partial L/\partial\mathbf y$ reaches $\mathbf x$ <strong>undiminished</strong>, even if $F$'s own gradient has shrunk to nearly zero. That direct "$+\,\partial L/\partial\mathbf y$" is the <em>gradient highway</em> that defeats vanishing gradients in very deep stacks (contrast the multiplicative chains of &sect;8 that vanish). Below, $F(\mathbf x)=\mathrm{ReLU}(\mathbf x W)$ as a concrete example.</p>
+where $J_F$ is the Jacobian of $F$. The crucial term is the first one: the upstream gradient $\partial L/\partial\mathbf y$ reaches $\mathbf x$ <strong>undiminished</strong>, even if $F$'s own gradient has shrunk to nearly zero. That direct "$+\,\partial L/\partial\mathbf y$" is the <em>gradient highway</em> that defeats vanishing gradients in very deep stacks (contrast the multiplicative chains of Section 8 that vanish). Below, $F(\mathbf x)=\mathrm{ReLU}(\mathbf x W)$ as a concrete example.</p>
 </div>
 </div>
 </div>
@@ -9392,7 +9385,7 @@ where $J_F$ is the Jacobian of $F$. The crucial term is the first one: the upstr
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="12.-Embedding-layer-%E2%80%94-a-lookup-table,-and-scatter-add-backward">12. Embedding layer &mdash; a lookup table, and scatter-add backward<a class="anchor-link" href="#12.-Embedding-layer-%E2%80%94-a-lookup-table,-and-scatter-add-backward">¶</a></h2><p>The first layer of every language model maps an integer <strong>token id</strong> to a dense vector. An embedding matrix $W$ has shape $(V, d)$ ($V$ = vocabulary size). Given a list of ids $\mathrm{idx}=(\mathrm{idx}_1,\dots,\mathrm{idx}_n)$, the forward pass is a pure <strong>row lookup</strong>:
 $$\mathbf y_i = W_{\mathrm{idx}_i,\,:}\,.$$</p>
-<p>This is secretly a matrix multiply by a one-hot matrix $O$ (with $O_{i,\mathrm{idx}_i}=1$): $\,Y=OW$. So by &sect;1.1's weight rule $\partial L/\partial W = O^\top\,\partial L/\partial Y$ &mdash; and $O^\top(\cdot)$ is exactly a <strong>scatter-add</strong>: each upstream row $\partial L/\partial\mathbf y_i$ is added into row $\mathrm{idx}_i$ of $\partial L/\partial W$. If a token appears several times, its gradient <strong>accumulates</strong> (the shared-parameter rule again):
+<p>This is secretly a matrix multiply by a one-hot matrix $O$ (with $O_{i,\mathrm{idx}_i}=1$): $\,Y=OW$. So by Section 1.1's weight rule $\partial L/\partial W = O^\top\,\partial L/\partial Y$ &mdash; and $O^\top(\cdot)$ is exactly a <strong>scatter-add</strong>: each upstream row $\partial L/\partial\mathbf y_i$ is added into row $\mathrm{idx}_i$ of $\partial L/\partial W$. If a token appears several times, its gradient <strong>accumulates</strong> (the shared-parameter rule again):
 $$\boxed{\;\frac{\partial L}{\partial W_v} = \sum_{i:\,\mathrm{idx}_i = v} \frac{\partial L}{\partial \mathbf y_i}.\;}$$
 There is no gradient w.r.t. the input &mdash; the ids are discrete. (Rows for tokens not in the batch get zero gradient and don't update.)</p>
 </div>
@@ -9439,13 +9432,13 @@ $$Q = X W_Q,\quad K = X W_K,\quad V = X W_V\qquad (W_Q,W_K\in\mathbb R^{d_\text{
 $$S = \frac{Q K^\top}{\sqrt{d_k}}\ \ (n\times n),\qquad A = \mathrm{softmax}_{\text{row}}(S),\qquad O = A V\ \ (n\times d_v).$$
 $S_{ij}$ is "how much token $i$ attends to token $j$"; the $\sqrt{d_k}$ keeps the logits from exploding as $d_k$ grows (so the softmax doesn't saturate). $A$'s rows are probability distributions; $O_i$ is token $i$'s output &mdash; a convex combination of value vectors.</p>
 <h3 id="13.2-Backward-%E2%80%94-peel-it-off-one-op-at-a-time">13.2 Backward &mdash; peel it off one op at a time<a class="anchor-link" href="#13.2-Backward-%E2%80%94-peel-it-off-one-op-at-a-time">¶</a></h3><p>Start from $\partial L/\partial O\equiv \mathrm dO$ and walk backwards through $O=AV$, the softmax, and $S=QK^\top/\sqrt{d_k}$.</p>
-<p><strong>(a) through $O = AV$</strong> (two &sect;1.1 matmul rules): $\;\mathrm dV = A^\top\,\mathrm dO,\qquad \mathrm dA = \mathrm dO\,V^\top.$</p>
-<p><strong>(b) through the row-wise softmax.</strong> Each output row $A_i$ depends only on the corresponding logit row $S_i$, via the softmax Jacobian we already derived in &sect;6.1, $\partial A_{ij}/\partial S_{ik}=A_{ij}(\delta_{jk}-A_{ik})$. Contracting $\mathrm dA_i$ against it gives the clean row formula
+<p><strong>(a) through $O = AV$</strong> (two Section 1.1 matmul rules): $\;\mathrm dV = A^\top\,\mathrm dO,\qquad \mathrm dA = \mathrm dO\,V^\top.$</p>
+<p><strong>(b) through the row-wise softmax.</strong> Each output row $A_i$ depends only on the corresponding logit row $S_i$, via the softmax Jacobian we already derived in Section 6.1, $\partial A_{ij}/\partial S_{ik}=A_{ij}(\delta_{jk}-A_{ik})$. Contracting $\mathrm dA_i$ against it gives the clean row formula
 $$\mathrm dS_{ij} = A_{ij}\Big(\mathrm dA_{ij} - \sum_k \mathrm dA_{ik}A_{ik}\Big) \quad\Longleftrightarrow\quad \mathrm dS = A\odot\big(\mathrm dA - (\mathrm dA\odot A)\mathbf 1\big),$$
-i.e. subtract, per row, the $A$-weighted average of $\mathrm dA$ &mdash; the exact same "subtract the mean then scale by the prob" shape as softmax+CE in &sect;6.</p>
+i.e. subtract, per row, the $A$-weighted average of $\mathrm dA$ &mdash; the exact same "subtract the mean then scale by the prob" shape as softmax+CE in Section 6.</p>
 <p><strong>(c) through the scaling and $S_\text{raw}=QK^\top$:</strong> $\;\mathrm dS_\text{raw} = \mathrm dS/\sqrt{d_k}$, then the two matmul rules once more:
 $$\mathrm dQ = \mathrm dS_\text{raw}\,K,\qquad \mathrm dK = \mathrm dS_\text{raw}^\top\,Q.$$</p>
-<p><strong>(d) through the three projections</strong> (&sect;1.1 again, with input $X$):
+<p><strong>(d) through the three projections</strong> (Section 1.1 again, with input $X$):
 $$\mathrm dW_Q = X^\top \mathrm dQ,\quad \mathrm dW_K = X^\top \mathrm dK,\quad \mathrm dW_V = X^\top \mathrm dV,\qquad \mathrm dX = \mathrm dQ\,W_Q^\top + \mathrm dK\,W_K^\top + \mathrm dV\,W_V^\top.$$
 ($X$ feeds all three projections, so its three gradient streams <strong>add</strong> &mdash; the path-sum rule.)</p>
 <blockquote>
@@ -9504,10 +9497,10 @@ $$\mathrm dW_Q = X^\top \mathrm dQ,\quad \mathrm dW_K = X^\top \mathrm dK,\quad 
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h2 id="14.-Multi-head-attention-and-the-Transformer-block">14. Multi-head attention and the Transformer block<a class="anchor-link" href="#14.-Multi-head-attention-and-the-Transformer-block">¶</a></h2><h3 id="14.1-Multi-head-attention">14.1 Multi-head attention<a class="anchor-link" href="#14.1-Multi-head-attention">¶</a></h3><p>One attention pattern is limiting; a transformer runs $H$ of them in <strong>parallel heads</strong>, each on a $d_h=d_\text{model}/H$ slice, then concatenates and mixes with an output projection $W_O$. With $Q=XW_Q,\;K=XW_K,\;V=XW_V$ all of width $d_\text{model}$, head $h$ takes the slice $[\,h d_h:(h{+}1)d_h\,]$:
 $$\mathrm{head}_h = \mathrm{softmax}\!\Big(\tfrac{Q_h K_h^\top}{\sqrt{d_h}}\Big)V_h,\qquad O = \big[\mathrm{head}_1\,\|\,\cdots\,\|\,\mathrm{head}_H\big]\,W_O.$$</p>
-<p><strong>Backward</strong> introduces <em>no new math</em>: back through $W_O$ ($\mathrm dW_O=\text{concat}^\top \mathrm dO$, $\mathrm d(\text{concat})=\mathrm dO\,W_O^\top$), <strong>slice</strong> that gradient per head, run each slice through the &sect;13 single-head backward, then <strong>write each head's $\mathrm dQ_h,\mathrm dK_h,\mathrm dV_h$ back into its column block</strong> of $\mathrm dQ,\mathrm dK,\mathrm dV$ (concatenation forward ⇒ slice the gradient backward). Finally the &sect;13.2(d) projection step. We verify the whole thing below.</p>
-<h3 id="14.2-The-Transformer-encoder-block">14.2 The Transformer encoder block<a class="anchor-link" href="#14.2-The-Transformer-encoder-block">¶</a></h3><p>A real block wraps attention with the pieces from &sect;9 and &sect;11 (here in the now-standard <strong>pre-LN</strong> arrangement):
+<p><strong>Backward</strong> introduces <em>no new math</em>: back through $W_O$ ($\mathrm dW_O=\text{concat}^\top \mathrm dO$, $\mathrm d(\text{concat})=\mathrm dO\,W_O^\top$), <strong>slice</strong> that gradient per head, run each slice through the Section 13 single-head backward, then <strong>write each head's $\mathrm dQ_h,\mathrm dK_h,\mathrm dV_h$ back into its column block</strong> of $\mathrm dQ,\mathrm dK,\mathrm dV$ (concatenation forward ⇒ slice the gradient backward). Finally the Section 13.2(d) projection step. We verify the whole thing below.</p>
+<h3 id="14.2-The-Transformer-encoder-block">14.2 The Transformer encoder block<a class="anchor-link" href="#14.2-The-Transformer-encoder-block">¶</a></h3><p>A real block wraps attention with the pieces from Section 9 and Section 11 (here in the now-standard <strong>pre-LN</strong> arrangement):
 $$\mathbf a = \mathbf x + \mathrm{MHA}\big(\mathrm{LN}_1(\mathbf x)\big),\qquad \mathbf{out} = \mathbf a + \mathrm{FFN}\big(\mathrm{LN}_2(\mathbf a)\big),\qquad \mathrm{FFN}(\mathbf u)=\mathrm{GELU}(\mathbf u W_1+\mathbf b_1)W_2+\mathbf b_2.$$
-There is <strong>nothing new to derive</strong>: its backward pass is just our verified pieces composed &mdash; LayerNorm (&sect;9), multi-head attention (&sect;14.1), the GELU MLP (&sect;1.5 + &sect;5), and <strong>two residual adds (&sect;11)</strong> that give two gradient highways straight back to the input. The cell below builds the block and confirms a finite loss with a well-defined $\partial L/\partial X$ &mdash; the proof that "a transformer is just these blocks, stacked."</p>
+There is <strong>nothing new to derive</strong>: its backward pass is just our verified pieces composed &mdash; LayerNorm (Section 9), multi-head attention (Section 14.1), the GELU MLP (Section 1.5 + Section 5), and <strong>two residual adds (Section 11)</strong> that give two gradient highways straight back to the input. The cell below builds the block and confirms a finite loss with a well-defined $\partial L/\partial X$ &mdash; the proof that "a transformer is just these blocks, stacked."</p>
 </div>
 </div>
 </div>
@@ -9543,7 +9536,7 @@ There is <strong>nothing new to derive</strong>: its backward pass is just our v
 <span class="n">O</span><span class="p">,</span> <span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">Vv</span><span class="p">,</span> <span class="n">cat</span><span class="p">,</span> <span class="n">cc</span><span class="p">)</span> <span class="o">=</span> <span class="n">mha_forward</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Wq</span><span class="p">,</span> <span class="n">Wk</span><span class="p">,</span> <span class="n">Wv</span><span class="p">,</span> <span class="n">Wo</span><span class="p">);</span> <span class="n">dO</span> <span class="o">=</span> <span class="n">O</span> <span class="o">-</span> <span class="n">target</span>
 <span class="n">dWo</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">dO</span><span class="p">;</span> <span class="n">dcat</span> <span class="o">=</span> <span class="n">dO</span> <span class="o">@</span> <span class="n">Wo</span><span class="o">.</span><span class="n">T</span>
 <span class="n">dQ</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">Q</span><span class="p">);</span> <span class="n">dK</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">K</span><span class="p">);</span> <span class="n">dV</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">Vv</span><span class="p">)</span>
-<span class="k">for</span> <span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">sl</span><span class="p">)</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">:</span>                                   <span class="c1"># per head: the &sect;13 backward</span>
+<span class="k">for</span> <span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">sl</span><span class="p">)</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">:</span>                                   <span class="c1"># per head: the Section 13 backward</span>
     <span class="n">dout</span> <span class="o">=</span> <span class="n">dcat</span><span class="p">[:,</span> <span class="n">sl</span><span class="p">]</span>
     <span class="n">dV</span><span class="p">[:,</span><span class="n">sl</span><span class="p">]</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">dout</span>
     <span class="n">dA</span> <span class="o">=</span> <span class="n">dout</span> <span class="o">@</span> <span class="n">v</span><span class="o">.</span><span class="n">T</span>
@@ -9582,18 +9575,18 @@ There is <strong>nothing new to derive</strong>: its backward pass is just our v
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="15.-LSTM-%E2%80%94-gated-recurrence-and-its-backward-through-time">15. LSTM &mdash; gated recurrence and its backward through time<a class="anchor-link" href="#15.-LSTM-%E2%80%94-gated-recurrence-and-its-backward-through-time">¶</a></h2><p>The vanilla RNN of &sect;8 vanishes/explodes over long sequences because the same $W_{hh}^\top$ is chained at every step. The <strong>LSTM</strong> fixes this with a protected <strong>cell state</strong> $\mathbf c_t$ that is updated by <em>additive</em> gates, so gradients can flow far back in time with little decay.</p>
+<h2 id="15.-LSTM-%E2%80%94-gated-recurrence-and-its-backward-through-time">15. LSTM &mdash; gated recurrence and its backward through time<a class="anchor-link" href="#15.-LSTM-%E2%80%94-gated-recurrence-and-its-backward-through-time">¶</a></h2><p>The vanilla RNN of Section 8 vanishes/explodes over long sequences because the same $W_{hh}^\top$ is chained at every step. The <strong>LSTM</strong> fixes this with a protected <strong>cell state</strong> $\mathbf c_t$ that is updated by <em>additive</em> gates, so gradients can flow far back in time with little decay.</p>
 <h3 id="15.1-Forward-(per-step-$t$)">15.1 Forward (per step $t$)<a class="anchor-link" href="#15.1-Forward-(per-step-$t$)">¶</a></h3><p>Four gates read the previous hidden state $\mathbf h_{t-1}$ and current input $\mathbf x_t$:
 $$\mathbf i_t = \sigma(W_i\mathbf x_t + U_i\mathbf h_{t-1} + \mathbf b_i)\ \ \text{(input)},\qquad \mathbf f_t = \sigma(W_f\mathbf x_t + U_f\mathbf h_{t-1} + \mathbf b_f)\ \ \text{(forget)},$$
 $$\mathbf g_t = \tanh(W_g\mathbf x_t + U_g\mathbf h_{t-1} + \mathbf b_g)\ \ \text{(candidate)},\qquad \mathbf o_t = \sigma(W_o\mathbf x_t + U_o\mathbf h_{t-1} + \mathbf b_o)\ \ \text{(output)},$$
 $$\boxed{\;\mathbf c_t = \mathbf f_t\odot\mathbf c_{t-1} + \mathbf i_t\odot\mathbf g_t,\qquad \mathbf h_t = \mathbf o_t\odot\tanh(\mathbf c_t).\;}$$
 Then a readout $\hat{\mathbf y}_t = W_{hy}\mathbf h_t + \mathbf b_y$ and (here) a per-step squared-error loss.</p>
-<h3 id="15.2-Backward-(BPTT-with-two-carries)">15.2 Backward (BPTT with <strong>two</strong> carries)<a class="anchor-link" href="#15.2-Backward-(BPTT-with-two-carries)">¶</a></h3><p>Like &sect;8, weights are shared across time so their gradients <strong>sum over $t$</strong>. The new feature is a <strong>second</strong> recurrent carry: $\mathbf h_t$ flows into the loss (via $\hat{\mathbf y}_t$) and into step $t{+}1$, <em>and</em> $\mathbf c_t$ flows directly into $\mathbf c_{t+1}$. Sweeping $t=T\to1$ with incoming carries $\mathrm dh_\text{next},\mathrm dc_\text{next}$ (both start at $\mathbf 0$):
+<h3 id="15.2-Backward-(BPTT-with-two-carries)">15.2 Backward (BPTT with <strong>two</strong> carries)<a class="anchor-link" href="#15.2-Backward-(BPTT-with-two-carries)">¶</a></h3><p>Like Section 8, weights are shared across time so their gradients <strong>sum over $t$</strong>. The new feature is a <strong>second</strong> recurrent carry: $\mathbf h_t$ flows into the loss (via $\hat{\mathbf y}_t$) and into step $t{+}1$, <em>and</em> $\mathbf c_t$ flows directly into $\mathbf c_{t+1}$. Sweeping $t=T\to1$ with incoming carries $\mathrm dh_\text{next},\mathrm dc_\text{next}$ (both start at $\mathbf 0$):
 $$\mathrm dh_t = W_{hy}^\top(\hat{\mathbf y}_t-\mathbf y_t) + \mathrm dh_\text{next},\qquad \mathrm dc_t = \mathrm dh_t\odot\mathbf o_t\odot\big(1-\tanh^2\mathbf c_t\big) + \mathrm dc_\text{next}.$$
 Distribute $\mathrm dc_t$ and $\mathrm dh_t$ to the four gate <strong>pre-activations</strong> (using $\sigma'=s(1-s)$ and $\tanh'=1-g^2$):
 $$\mathrm do_t = \mathrm dh_t\odot\tanh(\mathbf c_t),\quad \mathrm di_t = \mathrm dc_t\odot\mathbf g_t,\quad \mathrm dg_t = \mathrm dc_t\odot\mathbf i_t,\quad \mathrm df_t = \mathrm dc_t\odot\mathbf c_{t-1},$$
 $$\widetilde{\mathrm d i}_t=\mathrm di_t\,\mathbf i_t(1{-}\mathbf i_t),\quad \widetilde{\mathrm d f}_t=\mathrm df_t\,\mathbf f_t(1{-}\mathbf f_t),\quad \widetilde{\mathrm d o}_t=\mathrm do_t\,\mathbf o_t(1{-}\mathbf o_t),\quad \widetilde{\mathrm d g}_t=\mathrm dg_t\,(1{-}\mathbf g_t^2).$$
-Each gate is a &sect;2-style linear layer, so its weight grads accumulate (outer products) and the two carries pass to the earlier step:
+Each gate is a Section 2-style linear layer, so its weight grads accumulate (outer products) and the two carries pass to the earlier step:
 $$\mathrm dW_\bullet \mathrel{+}= \widetilde{\mathrm d\bullet}_t\,\mathbf x_t^\top,\quad \mathrm dU_\bullet \mathrel{+}= \widetilde{\mathrm d\bullet}_t\,\mathbf h_{t-1}^\top,\quad \mathrm db_\bullet \mathrel{+}= \widetilde{\mathrm d\bullet}_t \quad(\bullet\in\{i,f,g,o\}),$$
 $$\mathrm dh_\text{next} = U_i^\top\widetilde{\mathrm d i}_t + U_f^\top\widetilde{\mathrm d f}_t + U_g^\top\widetilde{\mathrm d g}_t + U_o^\top\widetilde{\mathrm d o}_t,\qquad \mathrm dc_\text{next} = \mathrm dc_t\odot\mathbf f_t.$$
 That last term $\mathrm dc_\text{next}=\mathrm dc_t\odot\mathbf f_t$ is the whole point: with the forget gate near 1, the cell-state gradient is passed back <strong>almost unchanged</strong> &mdash; the additive carry that vanilla RNNs lack.</p>
@@ -9785,7 +9778,7 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
 <p><strong>Shared weights ⇒ sum the gradient</strong> over wherever they're reused: over the batch (dense), over spatial positions (CNN), over time steps (RNN/BPTT).</p>
 <p><strong>Gradient descent</strong> turns gradients into learning: $\theta \leftarrow \theta - \eta\,\partial L/\partial\theta$.</p>
 <hr/>
-<h3 id="A-bridge-to-my-own-work-(climate-/-Earth-observation)">A bridge to my own work (climate / Earth-observation)<a class="anchor-link" href="#A-bridge-to-my-own-work-(climate-/-Earth-observation)">¶</a></h3><p>The exact same backprop machinery trains every model I care about in climate AI: a <strong>U-Net</strong> for statistical downscaling or LST super-resolution is just &sect;5's deep net with convolutional layers (&sect;7) and skip connections; a <strong>diffusion weather emulator</strong> is trained by backprop through a noise-prediction loss; <strong>ConvLSTM</strong> nowcasting stacks &sect;7 (conv) inside &sect;8 (BPTT). Understanding &sect;4&ndash;&sect;5 by hand is exactly what lets me debug <em>why</em> a downscaling net's gradients vanish, or why a custom physics-informed loss won't train &mdash; I can see it's BP1/BP2, not magic.</p>
+<h3 id="A-bridge-to-my-own-work-(climate-/-Earth-observation)">A bridge to my own work (climate / Earth-observation)<a class="anchor-link" href="#A-bridge-to-my-own-work-(climate-/-Earth-observation)">¶</a></h3><p>The exact same backprop machinery trains every model I care about in climate AI: a <strong>U-Net</strong> for statistical downscaling or LST super-resolution is just Section 5's deep net with convolutional layers (Section 7) and skip connections; a <strong>diffusion weather emulator</strong> is trained by backprop through a noise-prediction loss; <strong>ConvLSTM</strong> nowcasting stacks Section 7 (conv) inside Section 8 (BPTT). Understanding Sections 4&ndash;5 by hand is exactly what lets me debug <em>why</em> a downscaling net's gradients vanish, or why a custom physics-informed loss won't train &mdash; I can see it's BP1/BP2, not magic.</p>
 <hr/>
 <p><em>That's the whole of backpropagation: three small matrix rules &mdash; <code>inp.T @ g</code>, <code>g.sum(0)</code>, <code>g @ w.T</code> &mdash; plus the chain rule, stacked. I derived every line by hand and watched the finite-difference checks pass, and that is when it stopped feeling like magic.</em></p>
 </div>
