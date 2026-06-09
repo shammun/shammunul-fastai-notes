@@ -9787,9 +9787,9 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
 </div>
 <style>
 .ce-interactive .bp-mm { display:flex; flex-wrap:nowrap; gap:12px; align-items:center; justify-content:center; margin:6px 0 4px; overflow-x:auto; padding:4px 2px 8px; }
-.ce-interactive .bp-grid { border-collapse:separate; border-spacing:0; font-family:var(--ce-font-mono,monospace); flex:0 0 auto; }
+.ce-interactive .bp-grid { border-collapse:separate; border-spacing:0; font-family:var(--ce-font-mono,monospace); flex:0 0 auto; width:auto !important; min-width:0; table-layout:fixed; }
 .ce-interactive .bp-grid caption { font-size:0.78em; color:var(--ce-text-muted,#697386); padding-bottom:5px; font-weight:600; white-space:nowrap; }
-.ce-interactive .bp-grid td { border:1px solid var(--ce-border,#d8dce3); width:38px; height:38px; text-align:center; font-size:0.92em; transition:background .12s,color .12s; }
+.ce-interactive .bp-grid td { border:1px solid var(--ce-border,#d8dce3); width:44px; height:44px; text-align:center; font-size:0.98em; transition:background .12s,color .12s; }
 .ce-interactive .bp-grid td.bp-click { cursor:pointer; }
 .ce-interactive .bp-grid td.bp-click:hover { outline:2px solid var(--ce-purple,#5b46e5); }
 .ce-interactive .bp-hi-row { background:#e7f0ff; }
@@ -9870,7 +9870,7 @@ Through $\tilde{\mathbf h}$'s tanh, $\widetilde{\mathrm dh}_t=\mathrm d\tilde{\m
       + '<span class="bp-sign">&times;</span>'
       + table('B',B,3,2,'bp-B')
       + '<span class="bp-sign">=</span>'
-      + table('C = A&times;B',C,2,2,'bp-C');
+      + table('C',C,2,2,'bp-C');
     var f = document.getElementById('bp-mm-formula');
     function clear(){ wrap.querySelectorAll('td').forEach(function(td){ td.className=''; }); }
     wrap.querySelectorAll('.bp-C td').forEach(function(td){
