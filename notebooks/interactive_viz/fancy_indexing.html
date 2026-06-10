@@ -1,0 +1,113 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fancy indexing</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .wrap{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 6px 16px rgba(123,92,214,.08)}
+  table{border-collapse:collapse;font-family:monospace;font-size:11px}
+  td,th{border:1px solid #e8edf7;padding:4px 5px;text-align:center;min-width:42px;transition:background .25s, box-shadow .25s}
+  th{background:#f4f7fd;color:#5a6b86;font-weight:700}
+  td.rowhead{background:#f4f7fd;color:#5a6b86;font-weight:700}
+  td.dimrow{background:#fff7ec;color:#b06900;font-weight:700}
+  td.tgt{outline:2px solid #f6921e;outline-offset:-2px}
+  td.active{background:#7b5cd6;color:#fff;font-weight:800;box-shadow:0 0 0 3px rgba(123,92,214,.3)}
+  td.done{background:#e7f6f4;color:#0e7d7d;font-weight:700}
+  .cap{text-align:center;font-size:12.5px;font-weight:700;margin:0 0 8px}
+  .btnrow{display:flex;gap:8px;justify-content:center;margin:12px 0 4px;flex-wrap:wrap}
+  button{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px}
+  button.alt{background:#fff;color:var(--ac);border:1px solid var(--ac)}
+  button:disabled{opacity:.45;cursor:default}
+  .code{background:#f4f7fd;border-radius:8px;padding:8px 11px;font-family:monospace;font-size:12.5px;line-height:1.7;margin-top:8px}
+  .gather{display:flex;gap:6px;flex-wrap:wrap;min-height:30px;align-items:center;margin-top:6px}
+  .chip{background:#e7f6f4;color:#0e7d7d;border:1px solid #bfe7e2;border-radius:7px;padding:4px 8px;font-family:monospace;font-size:12px;font-weight:700;animation:pop .3s}
+  @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:10px;max-width:640px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .pair{color:var(--ac);font-weight:800}
+</style></head><body>
+<h1>One line, no loops: <span style="font-family:monospace">sp[range(n), targets]</span></h1>
+<p class="sub">Row indices <b>[0,1,2,3,4]</b> pair up with the target labels <b>[5,0,4,1,9]</b>. Each (row, column) pair plucks exactly one cell &mdash; the log-prob of the <i>correct</i> class.</p>
+
+<div class="wrap">
+  <div class="card">
+    <div class="cap">log-softmax matrix <span style="color:var(--soft)">(5 samples &times; 10 classes)</span> &mdash; <span style="color:var(--in)">orange box = true class</span></div>
+    <table id="tbl"></table>
+  </div>
+  <div class="card" style="min-width:280px;max-width:330px">
+    <div class="cap" style="color:var(--ac)">Gathering&hellip;</div>
+    <div class="code" id="codeline">pairs: <span class="pair" id="pair">&mdash;</span></div>
+    <div class="gather" id="gather"></div>
+    <div class="code" id="result">loss = &minus;mean(&hellip;) = <b>?</b></div>
+    <div class="btnrow">
+      <button id="step">Step &#9654;</button>
+      <button id="play" class="alt">Auto-play</button>
+      <button id="reset" class="alt">Reset</button>
+    </div>
+  </div>
+</div>
+
+<p class="note">This is "fancy" (integer-array) indexing: give PyTorch two index lists of the same length and it zips them into coordinate pairs. The alternative &mdash; a Python for-loop over 50,000 samples &mdash; would be thousands of times slower. One vectorized gather, then <b>mean</b> and <b>negate</b>, and you have the NLL loss.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+// fixed, plausible log-softmax rows (each row's exp sums ~ 1)
+const M=[
+ [-2.61,-2.47,-2.39,-2.10,-2.55,-1.48,-2.30,-2.62,-2.44,-2.36],
+ [-1.32,-2.71,-2.55,-2.43,-2.62,-2.50,-2.37,-2.66,-2.20,-2.78],
+ [-2.55,-2.40,-2.62,-2.50,-1.39,-2.66,-2.30,-2.59,-2.47,-2.33],
+ [-2.48,-1.55,-2.36,-2.61,-2.44,-2.30,-2.57,-2.25,-2.52,-2.41],
+ [-2.59,-2.42,-2.51,-2.33,-2.62,-2.47,-2.38,-2.55,-2.28,-1.44]];
+const T=[5,0,4,1,9];
+let i=0, picked=[], timer=null;
+function buildTable(){
+  const t=$('tbl');let h='<tr><th></th>';
+  for(let c=0;c<10;c++)h+='<th>c'+c+'</th>';h+='</tr>';
+  for(let r=0;r<5;r++){
+    h+='<tr><td class="rowhead">row '+r+'</td>';
+    for(let c=0;c<10;c++){
+      const cls=(c===T[r])?'tgt':'';
+      h+='<td id="cell'+r+'_'+c+'" class="'+cls+'">'+M[r][c].toFixed(2)+'</td>';
+    }
+    h+='</tr>';
+  }
+  h+='<tr><td class="rowhead">target</td>';
+  for(let c=0;c<10;c++){
+    const hit=T.indexOf(c);
+    h+='<td class="dimrow">'+(T.filter(x=>x===c).length? '&#8593;':'')+'</td>';
+  }
+  h+='</tr>';
+  t.innerHTML=h;
+}
+function step(){
+  if(i>=5){stop();return;}
+  const r=i,c=T[r],cell=$('cell'+r+'_'+c);
+  document.querySelectorAll('td.active').forEach(e=>{e.classList.remove('active');e.classList.add('done');});
+  cell.classList.add('active');
+  $('pair').textContent='(row '+r+', col '+c+')';
+  picked.push(M[r][c]);
+  const chip=document.createElement('span');chip.className='chip';chip.textContent=M[r][c].toFixed(2);
+  $('gather').appendChild(chip);
+  i++;
+  if(i===5){
+    const mean=picked.reduce((a,b)=>a+b,0)/picked.length;
+    $('result').innerHTML='mean = '+mean.toFixed(3)+'<br>loss = &minus;mean = <b style="color:#16a3a3">'+(-mean).toFixed(3)+'</b>';
+    $('pair').textContent='all 5 gathered \u2713';
+    $('step').disabled=true;
+    stop();
+  }
+}
+function stop(){if(timer){clearInterval(timer);timer=null;$('play').textContent='Auto-play';}}
+function reset(){
+  stop();i=0;picked=[];$('gather').innerHTML='';
+  $('pair').textContent='\u2014';$('result').innerHTML='loss = \u2212mean(\u2026) = <b>?</b>';
+  $('step').disabled=false;buildTable();
+}
+$('step').onclick=step;
+$('reset').onclick=reset;
+$('play').onclick=()=>{ if(timer){stop();} else { if(i>=5)reset(); timer=setInterval(step,800); $('play').textContent='Pause'; } };
+buildTable();
+</script></body></html>

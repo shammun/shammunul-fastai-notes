@@ -1,0 +1,71 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NLL loss curve</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .wrap{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;align-items:stretch}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;box-shadow:0 6px 16px rgba(123,92,214,.08)}
+  canvas{display:block;background:#fbfdff;border-radius:8px;border:1px solid var(--line);width:100%;height:auto}
+  .ctrl{display:flex;align-items:center;gap:10px;justify-content:center;margin:10px 0 4px;font-size:13px}
+  .ctrl input{width:280px;max-width:62vw;accent-color:var(--in)}
+  .readout{background:#f4f7fd;border-radius:8px;padding:8px 12px;font-family:monospace;font-size:13px;margin:8px auto 0;max-width:480px;line-height:1.8;text-align:center}
+  .p{color:var(--in);font-weight:800}.l{color:var(--out);font-weight:800}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:8px;max-width:600px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .mood{font-size:13px;font-weight:700;text-align:center;margin-top:4px}
+</style></head><body>
+<h1>NLL loss = &minus;log(p of the correct class)</h1>
+<p class="sub">Drag the model's predicted probability <b>p</b> for the <i>true</i> class. The loss is gentle when the model is confident and right, and <b>explodes</b> as the model becomes confidently wrong.</p>
+
+<div class="card" style="max-width:560px;margin:0 auto">
+  <canvas id="c" width="540" height="300"></canvas>
+  <div class="ctrl">p(correct class) = <input type="range" id="p" min="0.005" max="1" step="0.005" value="0.10"><span style="font-family:monospace;font-weight:800;color:var(--in)" id="pv">0.10</span></div>
+  <div class="readout">loss = &minus;log(<span class="p" id="rp">0.10</span>) = <span class="l" id="rl">2.30</span></div>
+  <div class="mood" id="mood"></div>
+</div>
+
+<p class="note">Landmarks: p = 1.0 &rarr; loss 0 (perfect). p = 0.1 &rarr; loss 2.30 &mdash; exactly what an untrained 10-class model scores by random guessing, which is why our first training report starts near 2.3. p &rarr; 0 &rarr; loss &rarr; &infin;, so the gradient pushes hardest on the most embarrassing mistakes.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('c'),ctx=cv.getContext('2d');
+const W=540,H=300,M={l:46,r:14,t:14,b:34},LMAX=5.5;
+const X=p=>M.l+(p-0)*(W-M.l-M.r)/1.0, Y=l=>H-M.b-(Math.min(l,LMAX)/LMAX)*(H-M.t-M.b);
+function draw(p){
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='#dde5f2';ctx.fillStyle='#5a6b86';ctx.font='11px monospace';ctx.lineWidth=1;
+  for(let l=0;l<=5;l++){ctx.beginPath();ctx.moveTo(M.l,Y(l));ctx.lineTo(W-M.r,Y(l));ctx.stroke();ctx.fillText(l.toFixed(0),M.l-18,Y(l)+4);}
+  for(let q=0;q<=1.001;q+=0.25){ctx.beginPath();ctx.moveTo(X(q),M.t);ctx.lineTo(X(q),H-M.b);ctx.stroke();ctx.fillText(q.toFixed(2),X(q)-12,H-M.b+16);}
+  ctx.fillText('p(correct class)',W/2-45,H-6);
+  ctx.save();ctx.translate(12,H/2+22);ctx.rotate(-Math.PI/2);ctx.fillText('loss = -log(p)',0,0);ctx.restore();
+  // landmark: random guessing
+  ctx.strokeStyle='#c9b8f2';ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(X(0.1),M.t);ctx.lineTo(X(0.1),H-M.b);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(M.l,Y(2.30));ctx.lineTo(W-M.r,Y(2.30));ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#7b5cd6';ctx.fillText('random (10 classes): p=0.1, loss=2.30',X(0.12),Y(2.30)-6);
+  // curve
+  ctx.strokeStyle='#16a3a3';ctx.lineWidth=2.5;ctx.beginPath();
+  for(let q=0.004;q<=1.0001;q+=0.002){const y=Y(-Math.log(q));if(q<=0.005)ctx.moveTo(X(q),y);else ctx.lineTo(X(q),y);}
+  ctx.stroke();
+  // point
+  const l=-Math.log(p);
+  ctx.strokeStyle='#f6921e';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(X(p),H-M.b);ctx.lineTo(X(p),Y(l));ctx.lineTo(M.l,Y(l));ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#f6921e';ctx.beginPath();ctx.arc(X(p),Y(l),6,0,7);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(X(p),Y(l),6,0,7);ctx.stroke();
+}
+function render(){
+  const p=parseFloat($('p').value), l=-Math.log(p);
+  $('pv').textContent=p.toFixed(3);$('rp').textContent=p.toFixed(3);$('rl').textContent=l.toFixed(3);
+  const m=$('mood');
+  if(p>0.85){m.textContent='\uD83D\uDE0E Confident AND correct \u2192 tiny loss, tiny gradient';m.style.color='#16a3a3';}
+  else if(p>0.3){m.textContent='\uD83D\uDE42 Decent \u2014 still room to improve';m.style.color='#5a6b86';}
+  else if(p>0.08){m.textContent='\uD83E\uDD14 Roughly random guessing territory (\u22482.3 for 10 classes)';m.style.color='#7b5cd6';}
+  else{m.textContent='\uD83D\uDD25 Confidently WRONG \u2192 huge loss, huge corrective gradient';m.style.color='#d6455c';}
+  draw(p);
+}
+$('p').oninput=render; render();
+</script></body></html>

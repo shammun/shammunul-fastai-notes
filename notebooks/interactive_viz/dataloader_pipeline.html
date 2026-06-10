@@ -1,0 +1,112 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataLoader pipeline</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);max-width:700px;margin:0 auto 10px}
+  .cap{font-size:12.5px;font-weight:700;margin:0 0 6px}
+  .idxrow{display:flex;gap:4px;flex-wrap:wrap}
+  .idx{width:28px;height:28px;border-radius:6px;background:#eef3fb;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:11px;font-weight:700;transition:all .3s}
+  .batchwrap{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .batch{display:flex;gap:3px;padding:5px;border:1.5px dashed #c9b8f2;border-radius:8px;cursor:pointer;transition:all .2s}
+  .batch:hover{background:#f6f2ff}
+  .batch.sel{border-style:solid;border-color:var(--ac);background:#f4effd;box-shadow:0 0 0 3px rgba(123,92,214,.15)}
+  .batch.dropped{opacity:.3;border-color:#d6455c;cursor:default}
+  .ctr{display:flex;gap:16px;align-items:center;justify-content:center;margin:6px 0;font-size:13px;flex-wrap:wrap}
+  .ctr input[type=range]{width:130px;accent-color:var(--in)}
+  .ctr input[type=checkbox]{accent-color:var(--ac);width:16px;height:16px}
+  .v{font-family:monospace;font-weight:800;color:var(--in)}
+  button{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px}
+  .collate{display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap}
+  .stack{display:flex;flex-direction:column;gap:3px}
+  .samp{display:flex;gap:6px;align-items:center;font-family:monospace;font-size:11px}
+  .xrow{height:16px;border-radius:4px;background:linear-gradient(90deg,#f6921e22,#f6921e66);border:1px solid #f6921e;display:flex;align-items:center;padding:0 6px;color:#b06900;font-weight:700}
+  .yc{width:30px;height:16px;border-radius:4px;background:#e7f6f4;border:1px solid #16a3a3;color:#0e7d7d;display:flex;align-items:center;justify-content:center;font-weight:800}
+  .tensor{border:2px solid var(--ac);border-radius:8px;padding:7px 10px;font-family:monospace;font-size:12px;color:var(--ac);font-weight:800;background:#f4effd;text-align:center;line-height:1.6}
+  .arrow{font-size:22px;color:var(--ac);font-weight:800}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:8px;max-width:660px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .readout{background:#f4f7fd;border-radius:8px;padding:7px 11px;font-family:monospace;font-size:12px;margin-top:8px;line-height:1.7;text-align:center}
+</style></head><body>
+<h1>Inside a DataLoader: Sampler &rarr; BatchSampler &rarr; collate</h1>
+<p class="sub">A toy dataset of <b>22 samples</b>. Watch indices flow through the three stages, then <b>click any batch</b> to see collate stack its samples into tensors.</p>
+
+<div class="card">
+  <div class="cap" style="color:var(--in)">Stage 1 &mdash; Sampler: in what ORDER do we visit samples?</div>
+  <div class="ctr">
+    <label><input type="checkbox" id="shuf" checked> shuffle</label>
+    <label>bs = <input type="range" id="bs" min="3" max="8" step="1" value="5"><span class="v" id="bsv">5</span></label>
+    <label><input type="checkbox" id="drop"> drop_last</label>
+    <button id="epoch">New epoch &#127922;</button>
+  </div>
+  <div class="idxrow" id="indices"></div>
+</div>
+
+<div class="card">
+  <div class="cap" style="color:var(--ac)">Stage 2 &mdash; BatchSampler: chunk that order into groups of bs <span style="color:var(--soft);font-weight:400">(click a batch!)</span></div>
+  <div class="batchwrap" id="batches"></div>
+  <div class="readout" id="bro"></div>
+</div>
+
+<div class="card">
+  <div class="cap" style="color:var(--out)">Stage 3 &mdash; collate: fetch ds[i] for each index, stack into (xb, yb)</div>
+  <div class="collate" id="coll"><span style="color:var(--soft);font-size:12px">click a batch above&hellip;</span></div>
+</div>
+
+<p class="note">Shuffling happens to the <b>indices</b>, never to the data itself &mdash; the dataset stays put on disk/memory and the sampler just visits it in a new order each epoch. Toggle <b>drop_last</b> to see the ragged final batch get discarded (handy when a layer like BatchNorm dislikes tiny batches). Untick <b>shuffle</b> to get the sequential order you'd use for validation.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=22, LBL=[5,0,4,1,9,2,1,3,1,4,3,5,3,6,1,7,2,8,6,9,4,0];
+let order=[], sel=-1;
+const PAL=['#f6921e','#16a3a3','#7b5cd6','#e2588a','#3f8efc','#d9a514'];
+function newEpoch(){
+  order=Array.from({length:N},(_,i)=>i);
+  if($('shuf').checked){for(let i=N-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}}
+  sel=-1;render();
+}
+function render(){
+  const bs=parseInt($('bs').value);$('bsv').textContent=bs;
+  const drop=$('drop').checked;
+  // stage 1
+  const ir=$('indices');ir.innerHTML='';
+  const nb=Math.ceil(N/bs);
+  order.forEach((idx,pos)=>{
+    const b=Math.floor(pos/bs);
+    const d=document.createElement('div');d.className='idx';d.textContent=idx;
+    d.style.borderColor=PAL[b%PAL.length];d.style.color=PAL[b%PAL.length];
+    ir.appendChild(d);
+  });
+  // stage 2
+  const bw=$('batches');bw.innerHTML='';
+  let kept=0;
+  for(let b=0;b<nb;b++){
+    const chunk=order.slice(b*bs,(b+1)*bs);
+    const isPartial=chunk.length<bs, dropped=isPartial&&drop;
+    const div=document.createElement('div');div.className='batch'+(b===sel?' sel':'')+(dropped?' dropped':'');
+    chunk.forEach(idx=>{
+      const d=document.createElement('div');d.className='idx';d.textContent=idx;
+      d.style.background=PAL[b%PAL.length]+'22';d.style.borderColor=PAL[b%PAL.length];d.style.color=PAL[b%PAL.length];
+      div.appendChild(d);
+    });
+    if(!dropped){div.onclick=()=>{sel=b;render();};kept++;}
+    bw.appendChild(div);
+  }
+  $('bro').innerHTML='yields <b>'+kept+'</b> batches'+(drop&&N%bs?' &nbsp;(<span style="color:#d6455c;font-weight:700">1 partial batch of '+(N%bs)+' dropped</span>)':(N%bs? ' &nbsp;(last one is partial: '+(N%bs)+' samples)':''));
+  // stage 3
+  const co=$('coll');
+  if(sel<0){co.innerHTML='<span style="color:#5a6b86;font-size:12px">click a batch above\u2026</span>';return;}
+  const chunk=order.slice(sel*bs,(sel+1)*bs);
+  let html='<div class="stack">';
+  chunk.forEach(idx=>{html+='<div class="samp"><div class="xrow" style="width:'+(110+(idx%5)*8)+'px">x['+idx+'] (784,)</div><div class="yc">'+LBL[idx]+'</div></div>';});
+  html+='</div><div class="arrow">&#10145;<br><span style="font-size:10px;font-family:monospace">torch.stack</span></div>';
+  html+='<div class="tensor">xb: ('+chunk.length+', 784)<br>yb: ('+chunk.length+',) = ['+chunk.map(i=>LBL[i]).join(',')+']</div>';
+  co.innerHTML=html;
+}
+$('shuf').onchange=newEpoch;$('bs').oninput=()=>{sel=-1;render();};$('drop').onchange=()=>{sel=-1;render();};
+$('epoch').onclick=newEpoch;
+newEpoch();
+</script></body></html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minibatch slicing</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);max-width:700px;margin:0 auto}
+  .strip{display:grid;grid-template-columns:repeat(40,1fr);gap:2px;margin:8px 0}
+  .cell{aspect-ratio:1;border-radius:2px;background:#e3eaf6;transition:background .2s, transform .2s}
+  .cell.cur{background:var(--in);transform:scale(1.18)}
+  .cell.seen{background:#bfe7e2}
+  .cell.partial{background:#7b5cd6}
+  .ctrl{display:flex;align-items:center;gap:10px;justify-content:center;margin:8px 0;font-size:13px;flex-wrap:wrap}
+  .ctrl input{width:220px;accent-color:var(--in)}
+  .v{font-family:monospace;font-weight:800;color:var(--in)}
+  .btnrow{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+  button{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px}
+  button.alt{background:#fff;color:var(--ac);border:1px solid var(--ac)}
+  .readout{background:#f4f7fd;border-radius:8px;padding:8px 12px;font-family:monospace;font-size:12.5px;margin-top:10px;line-height:1.8;text-align:center}
+  .hl{color:var(--ac);font-weight:800}.tl{color:var(--out);font-weight:800}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:8px;max-width:640px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .legend{display:flex;gap:14px;justify-content:center;font-size:11px;color:var(--soft);margin-top:6px;flex-wrap:wrap}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:4px}
+</style></head><body>
+<h1>Walking through the data: <span style="font-family:monospace">for i in range(0, n, bs)</span></h1>
+<p class="sub">A toy dataset of <b>n = 200</b> samples (each square = 1 image). Step through it batch by batch and watch the slice window slide.</p>
+
+<div class="card">
+  <div class="ctrl">batch size bs = <input type="range" id="bs" min="10" max="90" step="10" value="50"><span class="v" id="bsv">50</span></div>
+  <div class="strip" id="strip"></div>
+  <div class="legend">
+    <span><span class="sw" style="background:#f6921e"></span>current batch</span>
+    <span><span class="sw" style="background:#7b5cd6"></span>current (partial last batch)</span>
+    <span><span class="sw" style="background:#bfe7e2"></span>already trained on</span>
+    <span><span class="sw" style="background:#e3eaf6"></span>not yet seen</span>
+  </div>
+  <div class="readout" id="ro"></div>
+  <div class="btnrow">
+    <button id="step">Next batch &#9654;</button>
+    <button id="auto" class="alt">Auto-run epoch</button>
+    <button id="reset" class="alt">Reset epoch</button>
+  </div>
+</div>
+
+<p class="note">Notice two things. First, <span style="font-family:monospace">min(n, i+bs)</span> protects the <b>last batch</b>: with bs = 60, the final slice is [180:200] &mdash; only 20 samples, and that's fine. Second, one full pass over all squares = <b>one epoch</b>. With n = 50,000 and bs = 50 the real loop makes 1,000 weight updates per epoch &mdash; that's the whole point of minibatches: many small, frequent updates instead of one giant one.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const n=200; let bs=50, i=0, timer=null, epochDone=false;
+const strip=$('strip');
+for(let k=0;k<n;k++){const d=document.createElement('div');d.className='cell';d.id='sq'+k;strip.appendChild(d);}
+function render(){
+  const end=Math.min(n,i+bs);
+  for(let k=0;k<n;k++){
+    const d=$('sq'+k);
+    d.className='cell'+(k<i?' seen':(k<end?(end-i<bs?' partial':' cur'):''));
+  }
+  const bnum=Math.floor(i/bs)+1, btot=Math.ceil(n/bs);
+  if(!epochDone){
+    $('ro').innerHTML='i = '+i+' &nbsp;&rarr;&nbsp; slice = <span class="hl">x_train['+i+':'+end+']</span> &nbsp;&rarr;&nbsp; xb.shape = <span class="tl">('+(end-i)+', 784)</span>'+
+      '<br>batch <b>'+bnum+'</b> of <b>'+btot+'</b>'+(end-i<bs?' &nbsp;<span style="color:#7b5cd6;font-weight:800">&larr; partial last batch: min(n, i+bs) saved us!</span>':'');
+  } else {
+    $('ro').innerHTML='<b style="color:#16a3a3">Epoch complete \u2713</b> &nbsp; '+Math.ceil(n/bs)+' batches = '+Math.ceil(n/bs)+' weight updates from one pass through the data';
+  }
+}
+function step(){
+  if(epochDone){reset();return;}
+  i+=bs;
+  if(i>=n){epochDone=true;i=n;stopAuto();}
+  render();
+}
+function reset(){i=0;epochDone=false;render();}
+function stopAuto(){if(timer){clearInterval(timer);timer=null;$('auto').textContent='Auto-run epoch';}}
+$('bs').oninput=e=>{bs=parseInt(e.target.value);$('bsv').textContent=bs;reset();};
+$('step').onclick=step;
+$('reset').onclick=()=>{stopAuto();reset();};
+$('auto').onclick=()=>{ if(timer){stopAuto();} else { if(epochDone)reset(); timer=setInterval(step,550); $('auto').textContent='Pause'; } };
+render();
+</script></body></html>

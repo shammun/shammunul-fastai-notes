@@ -1,0 +1,220 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D SGD</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;box-shadow:0 6px 16px rgba(123,92,214,.08);max-width:720px;margin:0 auto}
+  #stage{width:100%;height:380px;border-radius:8px;border:1px solid var(--line);background:#fbfdff;cursor:grab;touch-action:none}
+  .ctr{display:flex;gap:14px;justify-content:center;align-items:center;margin-top:10px;font-size:13px;flex-wrap:wrap}
+  .ctr label{display:flex;align-items:center;gap:7px}
+  .ctr input{width:130px;accent-color:var(--in)}
+  .v{font-family:monospace;font-weight:800;color:var(--in);min-width:44px}
+  .btnrow{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+  button{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-weight:700;cursor:pointer;font-size:13px}
+  button.alt{background:#fff;color:var(--ac);border:1px solid var(--ac)}
+  .readout{background:#f4f7fd;border-radius:8px;padding:7px 12px;font-family:monospace;font-size:12.5px;margin-top:10px;text-align:center;line-height:1.7}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:8px;max-width:680px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .warn{color:#d6455c;font-weight:800}
+</style></head><body>
+<h1>SGD in 3D: learning rate &times; batch size on a loss surface</h1>
+<p class="sub"><b>Drag to rotate, scroll to zoom.</b> A gently wavy loss landscape with its contour map projected below, the way optimization figures are usually drawn. The orange ball is the model's two weights; <b>Reset ball</b> drops it somewhere new, and the dotted trail records its full descent path.</p>
+
+<div class="card">
+  <div id="stage"></div>
+  <div class="ctr">
+    <label>lr <input type="range" id="lr" min="0.01" max="0.42" step="0.01" value="0.10"><span class="v" id="lrv">0.10</span></label>
+    <label>batch size <input type="range" id="bs" min="0" max="8" step="1" value="3"><span class="v" id="bsv">8</span></label>
+    <label>speed <input type="range" id="spd" min="2" max="40" step="1" value="12"><span class="v" id="spdv">12/s</span></label>
+  </div>
+  <div class="btnrow">
+    <button id="run">Run &#9654;</button>
+    <button id="step" class="alt">1 step</button>
+    <button id="reset" class="alt">Reset ball &#127922;</button>
+  </div>
+  <div class="readout" id="ro"></div>
+</div>
+<p class="note">Try: <b>lr = 0.40</b> &mdash; the ball overshoots across the steep direction and <span class="warn">diverges</span> (the steepest curvature sets the speed limit, here lr &asymp; 0.3). <b>lr = 0.02</b> &mdash; it crawls and settles short of the bottom. <b>batch size = 1</b> &mdash; a drunken stagger that still finds the valley on average; <b>batch size = 256</b> &mdash; a smooth, confident descent (gradient noise shrinks like 1/&radic;bs). One honest subtlety: with a <i>constant</i> learning rate, SGD never truly stops &mdash; noise keeps it hovering in a small &ldquo;noise ball&rdquo; around the minimum. Real training therefore <b>decays the learning rate</b>, and this demo does the same: once the ball enters the basin, the effective lr is annealed toward 0 (watch the readout), so it settles and reports <b>CONVERGED &#10003;</b>. Use the <b>speed</b> slider to slow the dance down or fast-forward it.</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const BSVALS=[1,2,4,8,16,32,64,128,256];
+
+// ----------------------------------------------------------------------------
+// THE LOSS FUNCTION  (textbook style: anisotropic quadratic form + gentle waves)
+//   quadratic axes are rotated 45 deg so the valley runs along one diagonal,
+//   like the quadratic-form surfaces in optimization texts; the cosine ripples
+//   give it the soft non-convex-looking waviness of real loss-landscape figures
+//   (it remains convex: ripple curvature 1.0 < smallest quadratic curvature 2.2)
+// ----------------------------------------------------------------------------
+const Aq=2.2, Bq=7.2, RP=1.0, K=0.95;
+function f(x,y){
+  const u=x+y, v=x-y;
+  return 0.25*(Aq*u*u + Bq*v*v) + RP*(Math.cos(K*x)*Math.cos(K*y) - 1);
+}
+function gradf(x,y){
+  const u=x+y, v=x-y;
+  return [0.5*(Aq*u + Bq*v) - RP*K*Math.sin(K*x)*Math.cos(K*y),
+          0.5*(Aq*u - Bq*v) - RP*K*Math.cos(K*x)*Math.sin(K*y)];
+}
+
+const DOM=3.4, ZS=0.095;                   // square domain [-DOM,DOM]^2, height scale
+const stage=$('stage');
+const W=stage.clientWidth||690,H=380;
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(W,H);renderer.setPixelRatio(window.devicePixelRatio||1);
+renderer.setClearColor(0xfbfdff,1);stage.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45,W/H,0.1,200);
+scene.add(new THREE.AmbientLight(0xffffff,0.78));
+const dl=new THREE.DirectionalLight(0xffffff,0.55);dl.position.set(5,10,7);scene.add(dl);
+
+// shared colormap: teal (low) -> pale (mid) -> purple (high)
+const cLow=new THREE.Color(0x16a3a3), cMid=new THREE.Color(0xeef3fb), cHigh=new THREE.Color(0x7b5cd6);
+function cmap(t){t=Math.max(0,Math.min(1,t));return t<0.5?cLow.clone().lerp(cMid,t*2):cMid.clone().lerp(cHigh,(t-0.5)*2);}
+
+// ---- surface: square grid, matplotlib plot_surface style ----
+const SEG=80;
+const geo=new THREE.PlaneGeometry(2*DOM,2*DOM,SEG,SEG);
+geo.rotateX(-Math.PI/2);
+const pos=geo.attributes.position, cols=[];
+let zmax=0;
+for(let i=0;i<pos.count;i++){zmax=Math.max(zmax,f(pos.getX(i),pos.getZ(i))*ZS);}
+for(let i=0;i<pos.count;i++){
+  const x=pos.getX(i),y=pos.getZ(i),z=f(x,y)*ZS;
+  pos.setY(i,z);
+  const c=cmap(Math.pow(z/zmax,0.62));     // gamma so the basin isn't one flat color
+  cols.push(c.r,c.g,c.b);
+}
+geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+geo.computeVertexNormals();
+const surf=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:0.84}));
+scene.add(surf);
+const wire=new THREE.LineSegments(new THREE.WireframeGeometry(geo),new THREE.LineBasicMaterial({color:0xa9b9d8,transparent:true,opacity:0.16}));
+scene.add(wire);
+
+// ---- contour map projected on the base plane (the classic textbook companion) ----
+const CTX=document.createElement('canvas');CTX.width=CTX.height=300;
+const c2=CTX.getContext('2d');
+const fmax=zmax/ZS, NB=13;                 // 13 filled contour bands
+const img=c2.createImageData(300,300);
+for(let py=0;py<300;py++)for(let px=0;px<300;px++){
+  const x=-DOM+2*DOM*px/299, y=-DOM+2*DOM*py/299;
+  const t=Math.pow(Math.max(0,Math.min(1,f(x,y)/fmax)),0.62);
+  const band=Math.min(NB-1,Math.floor(t*NB));
+  const c=cmap((band+0.5)/NB);
+  const edge=Math.abs(t*NB-Math.round(t*NB))<0.045;   // thin dark contour lines
+  const k=(py*300+px)*4, d=edge?0.72:1;
+  img.data[k]=c.r*255*d; img.data[k+1]=c.g*255*d; img.data[k+2]=c.b*255*d; img.data[k+3]=255;
+}
+c2.putImageData(img,0,0);
+const tex=new THREE.CanvasTexture(CTX);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(2*DOM,2*DOM),
+                           new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:0.95}));
+floor.rotateX(-Math.PI/2); floor.position.y=-1.15;
+scene.add(floor);
+
+// minimum marker on surface and on the contour map
+const star=new THREE.Mesh(new THREE.SphereGeometry(0.07,16,16),new THREE.MeshBasicMaterial({color:0x0e7d7d}));
+star.position.set(0,0.02,0);scene.add(star);
+const star2=star.clone();star2.position.set(0,-1.13,0);scene.add(star2);
+
+// ---- ball + trail (line, breadcrumb dots, and shadow path on the contour map) ----
+const ball=new THREE.Mesh(new THREE.SphereGeometry(0.13,20,20),new THREE.MeshLambertMaterial({color:0xf6921e}));
+scene.add(ball);
+const MAXT=500;
+let trailPts=[];
+function makeTrailBuf(){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(MAXT*3),3));g.setDrawRange(0,0);return g;}
+const trailGeo=makeTrailBuf(), shadowGeo=makeTrailBuf();
+scene.add(new THREE.Line(trailGeo,new THREE.LineBasicMaterial({color:0xf6921e})));
+scene.add(new THREE.Points(trailGeo,new THREE.PointsMaterial({color:0xf6921e,size:0.10,sizeAttenuation:true})));
+scene.add(new THREE.Line(shadowGeo,new THREE.LineBasicMaterial({color:0xc05621,transparent:true,opacity:0.85})));
+
+// ---- camera: custom drag-orbit ----
+let theta=0.95, phi=1.03, R=13.5;
+function placeCam(){
+  camera.position.set(R*Math.sin(phi)*Math.cos(theta), R*Math.cos(phi), R*Math.sin(phi)*Math.sin(theta));
+  camera.lookAt(0,1.0,0);
+}
+let dragging=false,px=0,py=0;
+const el=renderer.domElement;
+el.addEventListener('pointerdown',e=>{dragging=true;px=e.clientX;py=e.clientY;el.setPointerCapture(e.pointerId);el.style.cursor='grabbing';});
+el.addEventListener('pointermove',e=>{if(!dragging)return;theta+=(e.clientX-px)*0.008;phi=Math.min(1.5,Math.max(0.2,phi-(e.clientY-py)*0.006));px=e.clientX;py=e.clientY;placeCam();});
+el.addEventListener('pointerup',e=>{dragging=false;el.style.cursor='grab';});
+el.addEventListener('wheel',e=>{e.preventDefault();R=Math.min(26,Math.max(7,R+e.deltaY*0.01));placeCam();},{passive:false});
+
+// ---- SGD with lr annealing once inside the basin ----
+let w=[0,0], steps=0, running=false, diverged=false, converged=false, ann=1;
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function randomStart(){
+  // random direction, scaled so the starting loss is comparable each time,
+  // then clamped inside the plotted domain
+  const ang=Math.random()*Math.PI*2, dx=Math.cos(ang), dy=Math.sin(ang);
+  const target=12+Math.random()*8;                 // starting loss in [12,20]
+  let r=Math.sqrt(target/Math.max(f(dx,dy),1e-6)); // f is ~quadratic in r
+  let x=r*dx, y=r*dy;
+  const cap=DOM*0.93;
+  x=Math.max(-cap,Math.min(cap,x)); y=Math.max(-cap,Math.min(cap,y));
+  return [x,y];
+}
+function setBall(){ball.position.set(w[0],f(w[0],w[1])*ZS+0.13,w[1]);}
+function pushTrail(){
+  trailPts.push([w[0],f(w[0],w[1])*ZS+0.08,w[1]]);
+  if(trailPts.length>MAXT)trailPts.shift();
+  const a=trailGeo.attributes.position.array, s=shadowGeo.attributes.position.array;
+  trailPts.forEach((p,i)=>{a[i*3]=p[0];a[i*3+1]=p[1];a[i*3+2]=p[2];
+                           s[i*3]=p[0];s[i*3+1]=-1.12;  s[i*3+2]=p[2];});
+  trailGeo.setDrawRange(0,trailPts.length);  trailGeo.attributes.position.needsUpdate=true;
+  shadowGeo.setDrawRange(0,trailPts.length); shadowGeo.attributes.position.needsUpdate=true;
+}
+function sgdStep(){
+  if(diverged||converged)return;
+  const lr=parseFloat($('lr').value), bs=BSVALS[parseInt($('bs').value)];
+  const g=gradf(w[0],w[1]);
+  const noise=1.6/Math.sqrt(bs);
+  if(f(w[0],w[1])<0.35) ann*=0.96;          // lr decay schedule kicks in inside the basin
+  const eff=lr*ann;
+  w[0]-=eff*(g[0]+noise*gauss());
+  w[1]-=eff*(g[1]+noise*gauss());
+  steps++;
+  if(Math.abs(w[0])>30||Math.abs(w[1])>30){diverged=true;running=false;$('run').textContent='Run \u25B6';}
+  if(ann<0.02){converged=true;running=false;$('run').textContent='Run \u25B6';}
+  setBall();pushTrail();readout();
+}
+function readout(){
+  const lr=parseFloat($('lr').value), bs=BSVALS[parseInt($('bs').value)];
+  $('lrv').textContent=lr.toFixed(2);$('bsv').textContent=bs;
+  let status;
+  if(diverged) status='<b style="color:#d6455c">DIVERGED \uD83D\uDCA5 (lower the lr!)</b>';
+  else if(converged) status='<b style="color:#16a3a3">CONVERGED \u2713 in '+steps+' steps (loss '+f(w[0],w[1]).toFixed(3)+')</b>';
+  else status='loss = <b style="color:#16a3a3">'+f(w[0],w[1]).toFixed(3)+'</b>';
+  $('ro').innerHTML='step '+steps+' &nbsp; w = ('+w[0].toFixed(2)+', '+w[1].toFixed(2)+') &nbsp; '+status+
+    '<br>effective lr = lr &times; decay = '+lr.toFixed(2)+' &times; '+ann.toFixed(2)+' = <b style="color:#f6921e">'+(lr*ann).toFixed(3)+'</b>'+
+    ' &nbsp; gradient noise &prop; 1/&radic;'+bs+' = '+(1/Math.sqrt(bs)).toFixed(2);
+}
+function reset(){w=randomStart();steps=0;diverged=false;converged=false;ann=1;trailPts=[];
+  trailGeo.setDrawRange(0,0);shadowGeo.setDrawRange(0,0);setBall();pushTrail();readout();}
+$('step').onclick=()=>{sgdStep();};
+$('run').onclick=()=>{if(diverged||converged)reset();running=!running;$('run').textContent=running?'Pause \u23F8':'Run \u25B6';};
+$('reset').onclick=()=>{running=false;$('run').textContent='Run \u25B6';reset();};
+$('lr').oninput=readout;$('bs').oninput=readout;
+$('spd').oninput=()=>{$('spdv').textContent=$('spd').value+'/s';};
+
+// ---- time-based animation so the speed slider sets exact steps/second ----
+let last=performance.now(), acc=0;
+function animate(now){
+  requestAnimationFrame(animate);
+  const dt=Math.min(0.1,(now-last)/1000); last=now;
+  if(running){
+    acc+=dt*parseInt($('spd').value);
+    let guard=0;
+    while(acc>=1 && guard++<60 && running){sgdStep();acc-=1;}
+  } else acc=0;
+  renderer.render(scene,camera);
+}
+placeCam();reset();requestAnimationFrame(animate);
+</script></body></html>

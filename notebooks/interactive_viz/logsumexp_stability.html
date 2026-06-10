@@ -1,0 +1,83 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogSumExp trick</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#d6455c;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .ctrl{display:flex;align-items:center;gap:10px;justify-content:center;margin:4px 0 12px;font-size:13px}
+  .ctrl input{width:300px;max-width:60vw;accent-color:var(--in)}
+  .ctrl .v{font-family:monospace;font-weight:700;color:var(--in)}
+  .wrap{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);flex:1 1 0;min-width:280px;max-width:380px}
+  .cap{text-align:center;font-size:13px;font-weight:700;margin:0 0 8px}
+  .step{font-family:monospace;font-size:12.5px;background:#f4f7fd;border-radius:7px;padding:6px 9px;margin:6px 0;line-height:1.55}
+  .step b{font-weight:700}
+  .inf{color:var(--bad);font-weight:800}
+  .fin{color:var(--out);font-weight:800}
+  .verdict{text-align:center;font-weight:800;border-radius:8px;padding:7px;margin-top:8px;font-size:13px}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:10px;max-width:640px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .danger-zone{height:6px;border-radius:3px;background:linear-gradient(90deg,#16a3a3 0%,#16a3a3 68%,#f6921e 76%,#d6455c 90%);max-width:300px;margin:0 auto 2px}
+  .dz{text-align:center;font-size:10.5px;color:var(--soft);margin-bottom:8px}
+</style></head><body>
+<h1>The LogSumExp trick: same answer, no explosion</h1>
+<p class="sub">Both panels compute <b>log(&Sigma; e&#690;&#690;)</b> for logits <b>[s+2, s+1, s+0.1]</b>. Drag the shift <b>s</b> toward 1000 and watch the naive version melt down while the trick stays perfectly calm.</p>
+
+<div class="ctrl">shift s = <input type="range" id="s" min="0" max="1000" step="5" value="0"><span class="v" id="sv">0</span></div>
+<div class="danger-zone"></div>
+<div class="dz">float32's exp() overflows near x &asymp; 88.7 (float64 near 709) &mdash; slide right to cross the cliff</div>
+
+<div class="wrap">
+  <div class="card" id="naivecard">
+    <div class="cap" style="color:var(--bad)">&#10060; Naive: log(sum(exp(x)))</div>
+    <div id="naive"></div>
+    <div class="verdict" id="nv"></div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--out)">&#9989; Trick: m + log(sum(exp(x &minus; m)))</div>
+    <div id="stable"></div>
+    <div class="verdict" id="sv2"></div>
+  </div>
+</div>
+
+<p class="note">The trick works because <b>x &minus; m &le; 0</b> for every element, so every exp() lands safely in (0, 1]. We pull the big number <b>m</b> outside the exp where it is just harmless addition. Mathematically nothing changed &mdash; it's the same shift-invariance you saw in the softmax playground.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const base=[2,1,0.1];
+const fmt=v=>{
+  if(!isFinite(v)) return '<span class="inf">inf</span>';
+  if(v===0) return '0';
+  if(v>=1e5||v<1e-3) return v.toExponential(2);
+  return v.toFixed(3).replace(/\.?0+$/,'');
+};
+function render(){
+  const s=parseFloat($('s').value); $('sv').textContent=s;
+  const x=base.map(b=>b+s);
+  // emulate float32 exp overflow threshold (~88.72)
+  const e32=v=> v>88.72 ? Infinity : Math.exp(v);
+  const ex=x.map(e32), S=ex.reduce((a,b)=>a+b,0), naiveOut=Math.log(S);
+  const m=Math.max(...x), sh=x.map(v=>v-m), exs=sh.map(Math.exp), Ss=exs.reduce((a,b)=>a+b,0), stableOut=m+Math.log(Ss);
+  $('naive').innerHTML=
+    '<div class="step">x = ['+x.map(v=>v.toFixed(1)).join(', ')+']</div>'+
+    '<div class="step">exp(x) = ['+ex.map(fmt).join(', ')+']</div>'+
+    '<div class="step">sum = '+fmt(S)+'</div>'+
+    '<div class="step">log(sum) = '+(isFinite(naiveOut)?'<b>'+naiveOut.toFixed(3)+'</b>':'<span class="inf">inf</span>')+'</div>'+
+    '<div class="step">&#8594; log_softmax = x &minus; log(sum) = '+(isFinite(naiveOut)?'fine':'<span class="inf">inf &minus; inf = NaN</span>')+'</div>';
+  $('nv').textContent = isFinite(naiveOut) ? 'OK (for now\u2026)' : 'OVERFLOW \u2192 NaN loss \u2192 training dies';
+  $('nv').style.background = isFinite(naiveOut) ? '#e7f6f4' : '#fdeaee';
+  $('nv').style.color = isFinite(naiveOut) ? '#16a3a3' : '#d6455c';
+  $('naivecard').style.borderColor = isFinite(naiveOut) ? '#dde5f2' : '#f3b6c2';
+  $('stable').innerHTML=
+    '<div class="step">m = max(x) = <b>'+m.toFixed(1)+'</b></div>'+
+    '<div class="step">x &minus; m = ['+sh.map(v=>v.toFixed(1)).join(', ')+'] &nbsp;(all &le; 0 &#10004;)</div>'+
+    '<div class="step">exp(x&minus;m) = ['+exs.map(v=>v.toFixed(3)).join(', ')+'] &nbsp;(all &le; 1 &#10004;)</div>'+
+    '<div class="step">sum = '+Ss.toFixed(3)+', &nbsp;log(sum) = '+Math.log(Ss).toFixed(3)+'</div>'+
+    '<div class="step">m + log(sum) = <span class="fin">'+stableOut.toFixed(3)+'</span></div>';
+  $('sv2').textContent='Always finite, always correct';
+  $('sv2').style.background='#e7f6f4';$('sv2').style.color='#16a3a3';
+}
+$('s').oninput=render; render();
+</script></body></html>

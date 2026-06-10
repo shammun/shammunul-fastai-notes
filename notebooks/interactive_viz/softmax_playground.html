@@ -1,0 +1,92 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Softmax playground</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .wrap{display:flex;gap:12px;justify-content:center;align-items:stretch;flex-wrap:wrap}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);flex:1 1 0;min-width:215px;max-width:300px}
+  .cap{text-align:center;font-size:12.5px;font-weight:700;margin:2px 0 8px}
+  .barrow{display:flex;align-items:center;gap:8px;margin:7px 0;font-family:monospace;font-size:12px}
+  .lbl{width:30px;color:var(--soft)}
+  .track{flex:1;height:18px;background:#f4f7fd;border-radius:5px;position:relative;overflow:hidden}
+  .fill{position:absolute;top:0;bottom:0;border-radius:5px;transition:width .12s,left .12s}
+  .num{width:52px;text-align:right;font-weight:700}
+  .ctrl{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:13px}
+  .ctrl input{flex:1;accent-color:var(--in)}
+  .ctrl .v{font-family:monospace;font-weight:700;color:var(--in);width:44px;text-align:right}
+  .arrowcol{display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--ac);font-weight:700;padding:0 1px}
+  button{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer;font-size:12.5px}
+  button.alt{background:#fff;color:var(--ac);border:1px solid var(--ac)}
+  .btnrow{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+  .readout{background:#f4f7fd;border-radius:8px;padding:8px 12px;font-family:monospace;font-size:12.5px;margin:10px auto 0;max-width:620px;line-height:1.7;text-align:center}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:8px;max-width:620px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .ok{color:var(--out);font-weight:700}
+</style></head><body>
+<h1>Softmax: from any 3 numbers to a probability distribution</h1>
+<p class="sub">Drag the logits. Watch <b>exp()</b> make everything positive, then division by the sum make everything add to <b>1.0</b>.</p>
+
+<div class="card" style="max-width:640px;margin:0 auto 12px">
+  <div class="cap" style="color:var(--in)">Step 0 &mdash; logits (model's raw scores, any real numbers)</div>
+  <div class="ctrl">z&#8320; <input type="range" id="s0" min="-5" max="5" step="0.1" value="2.0"><span class="v" id="v0">2.0</span></div>
+  <div class="ctrl">z&#8321; <input type="range" id="s1" min="-5" max="5" step="0.1" value="1.0"><span class="v" id="v1">1.0</span></div>
+  <div class="ctrl">z&#8322; <input type="range" id="s2" min="-5" max="5" step="0.1" value="0.1"><span class="v" id="v2">0.1</span></div>
+  <div class="btnrow">
+    <button id="plus2">+2 to ALL logits</button>
+    <button id="minus2" class="alt">&minus;2 from ALL logits</button>
+    <button id="reset" class="alt">Reset</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="cap" style="color:var(--in)">1&#65039;&#8419; logits z&#7522;</div>
+    <div id="logits"></div>
+  </div>
+  <div class="arrowcol">&#10145;<br><span style="font-size:11px">exp</span></div>
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">2&#65039;&#8419; e&#690;&#8305; (all positive)</div>
+    <div id="exps"></div>
+  </div>
+  <div class="arrowcol">&#10145;<br><span style="font-size:11px">&divide; sum</span></div>
+  <div class="card">
+    <div class="cap" style="color:var(--out)">3&#65039;&#8419; probabilities</div>
+    <div id="probs"></div>
+  </div>
+</div>
+
+<div class="readout" id="ro"></div>
+<p class="note">Try <b>+2 to ALL</b>: every exponential grows by the same factor e&sup2;, so the ratios &mdash; and therefore the probabilities &mdash; <b>do not change</b>. Softmax only cares about the <i>differences</i> between logits. This shift-invariance is exactly what the LogSumExp trick will exploit later.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+let z=[2.0,1.0,0.1];
+function bar(parent,label,val,maxAbs,color,fmt){
+  const row=document.createElement('div');row.className='barrow';
+  const pct=Math.min(100,Math.abs(val)/maxAbs*100);
+  row.innerHTML='<span class="lbl">'+label+'</span><div class="track"><div class="fill" style="background:'+color+';width:'+pct+'%;left:0;opacity:'+(val<0?0.45:1)+'"></div></div><span class="num" style="color:'+color+'">'+fmt+'</span>';
+  parent.appendChild(row);
+}
+function render(){
+  for(let i=0;i<3;i++){$('s'+i).value=z[i];$('v'+i).textContent=z[i].toFixed(1);}
+  const ex=z.map(Math.exp), S=ex.reduce((a,b)=>a+b,0), p=ex.map(e=>e/S);
+  const L=$('logits'),E=$('exps'),P=$('probs');L.innerHTML='';E.innerHTML='';P.innerHTML='';
+  const mz=Math.max(5,...z.map(Math.abs)), me=Math.max(...ex);
+  for(let i=0;i<3;i++){
+    bar(L,'z'+i,z[i],mz,'#f6921e',z[i].toFixed(1));
+    bar(E,'e'+i,ex[i],me,'#7b5cd6',ex[i]<1000?ex[i].toFixed(2):ex[i].toExponential(1));
+    bar(P,'p'+i,p[i],1,'#16a3a3',(p[i]*100).toFixed(1)+'%');
+  }
+  $('ro').innerHTML='sum of exponentials = <b>'+(S<10000?S.toFixed(2):S.toExponential(2))+
+    '</b> &nbsp;&nbsp;|&nbsp;&nbsp; sum of probabilities = <span class="ok">'+(p[0]+p[1]+p[2]).toFixed(3)+'</span> &#10004;'+
+    '<br>biggest logit (z'+z.indexOf(Math.max(...z))+') &#8594; biggest probability &mdash; ordering is preserved';
+}
+for(let i=0;i<3;i++) $('s'+i).oninput=e=>{z[i]=parseFloat(e.target.value);render();};
+$('plus2').onclick=()=>{z=z.map(v=>Math.min(5,v+2));render();};
+$('minus2').onclick=()=>{z=z.map(v=>Math.max(-5,v-2));render();};
+$('reset').onclick=()=>{z=[2.0,1.0,0.1];render();};
+render();
+</script></body></html>

@@ -2,9 +2,9 @@
 
 <html lang="en">
 <head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
-<title>04_minibatch_training_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>_tmp04</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
 td.linenos .normal { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
@@ -7512,18 +7512,20 @@ a.anchor-link {
 <body class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
 <div class="ce-container">
 <header class="ce-breadcrumb">
-  <a href="../index.html">&larr; All notes</a>
+  <a href="../index.html">← All notes</a>
   <span class="ce-source">Source: <code>04_minibatch_training_explained.ipynb</code></span>
 </header>
 <div class="ce-actions">
   <span class="ce-actions-label">Get the notebook</span>
   <a class="ce-action-btn" href="04_minibatch_training_explained.ipynb" download>
-    <span class="ce-action-icon">&darr;</span> Download .ipynb
+    <span class="ce-action-icon">↓</span> Download .ipynb
   </a>
   <a class="ce-action-btn ce-action-colab" href="https://colab.research.google.com/github/shammun/shammunul-fastai-notes/blob/main/notebooks/04_minibatch_training_explained_colab.ipynb" target="_blank" rel="noopener">
-    <span class="ce-action-icon">&#9654;</span> Open in Colab
+    <span class="ce-action-icon">▶</span> Open in Colab
   </a>
 </div>
+<main>
+
 <main>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -7629,6 +7631,18 @@ a.anchor-link {
 <li><strong>Parallelization</strong>: GPUs are optimized for parallel computation on batches of data</li>
 </ul>
 <p>Typical batch sizes range from 16 to 256 depending on your GPU memory and task.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-About-the-interactive-cells-in-this-notebook">🎮 About the interactive cells in this notebook<a class="anchor-link" href="#%F0%9F%8E%AE-About-the-interactive-cells-in-this-notebook">¶</a></h3><p>Sprinkled through this notebook you'll find cells marked <strong>🎮 Interactive</strong>. Each one loads a small, self-contained visualization (an HTML + JavaScript file from the <code>interactive_viz/</code> folder that sits next to this notebook) inside an isolated iframe &mdash; just <strong>run the cell</strong> and play with the sliders and buttons. They work in Jupyter, JupyterLab, and VS Code; re-run a cell to reset its visualization. The 3D one (SGD on a loss surface) additionally loads three.js from a CDN, so it needs an internet connection. If you move or share this notebook, keep the <code>interactive_viz/</code> folder with it (or point the <code>IFrame(...)</code> calls at your published GitHub Pages copies, as shown in the comments).</p>
+<p>Reading code builds knowledge, but <em>moving a slider and watching the math respond</em> builds intuition &mdash; use both.</p>
 </div>
 </div>
 </div>
@@ -8053,23 +8067,6 @@ The output of our model is called "logits" - these are raw scores, NOT probabili
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Softmax + cross-entropy explorer</h3>
-  <p class="ce-interactive-hint">Drag any logit. Watch the softmax probabilities and the cross-entropy loss respond. The "true class" is what the model should predict; the loss is high when that class has low probability, low when high. <strong>This is the loss function that drives every classifier you'll train.</strong></p>
-  <div class="ce-pad">
-    <div id="ce-logits"></div>
-    <div class="ms-controls">
-      <label>True class:</label>
-      <select id="ce-true"></select>
-      <span class="ms-val" id="ce-loss">Loss: 2.30</span>
-    </div>
-    <svg id="ce-bars" viewBox="0 0 600 200"
-         style="width:100%; max-width:600px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></svg>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Try this:</strong> drag the true-class logit up &mdash; loss drops sharply. Drag a wrong-class logit up &mdash; loss climbs. With all logits equal (the model's "I have no idea" state), loss is <code>ln(10) &asymp; 2.30</code> for 10 classes. A well-trained model on MNIST drives this below 0.1.
-  </p>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8078,7 +8075,6 @@ The output of our model is called "logits" - these are raw scores, NOT probabili
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="Part-2:-Cross-Entropy-Loss-for-Classification">Part 2: Cross-Entropy Loss for Classification<a class="anchor-link" href="#Part-2:-Cross-Entropy-Loss-for-Classification">¶</a></h2><p>For classification problems, we use <strong>cross-entropy loss</strong> instead of MSE (Mean Squared Error). Cross-entropy is specifically designed for picking one class out of many!</p>
-
 <h3 id="Step-1:-Softmax---Converting-Logits-to-Probabilities">Step 1: Softmax - Converting Logits to Probabilities<a class="anchor-link" href="#Step-1:-Softmax---Converting-Logits-to-Probabilities">¶</a></h3><p>The <strong>softmax</strong> function converts raw scores (logits) into probabilities that:</p>
 <ol>
 <li>Are all positive (between 0 and 1)</li>
@@ -8167,6 +8163,53 @@ $$\text{softmax}(x)_i = \frac{e^{x_i}}{\sum_j e^{x_j}}$$<p><strong>Step-by-step 
 <span class="nb">print</span><span class="p">(</span><span class="s2">"3. Output always sums to 1.0"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"4. Uses exp() to make all values positive first"</span><span class="p">)</span>
 </pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-softmax-machine">🎮 Interactive: the softmax machine<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-softmax-machine">¶</a></h3><p>Drag the three logit sliders and watch the full pipeline: <strong>logits &rarr; exp() &rarr; divide by sum &rarr; probabilities</strong>. Two things to internalize: (1) no matter what numbers you feed in, the output bars are always positive and always total exactly 1.0; (2) press <strong>“+2 to ALL logits”</strong> &mdash; the probabilities don't move at all. Softmax only sees the <em>differences</em> between logits, a fact the LogSumExp trick will exploit in a few cells.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/softmax_playground.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># If you publish your notes online (GitHub Pages), you can instead point to</span>
+<span class="c1"># the published copy, e.g.:</span>
+<span class="c1">#   IFrame("https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/softmax_playground.html",</span>
+<span class="c1">#          width="100%", height=760)</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">IFrame</span>
+<span class="n">IFrame</span><span class="p">(</span><span class="s2">"interactive_viz/softmax_playground.html"</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="s2">"100%"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">760</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe allowfullscreen="" frameborder="0" height="760" src="interactive_viz/softmax_playground.html" width="100%"></iframe>
 </div>
 </div>
 </div>
@@ -8398,6 +8441,53 @@ $$= \max(x) + \log\sum e^{x_j - \max(x)}$$</p>
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-watch-the-naive-version-melt-down-(and-the-trick-stay-calm)">🎮 Interactive: watch the naive version melt down (and the trick stay calm)<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-watch-the-naive-version-melt-down-(and-the-trick-stay-calm)">¶</a></h3><p>Both panels compute the exact same quantity, $\log\sum_j e^{x_j}$. Drag the shift slider to push the logits toward 1000. The naive panel hits float32's exp() cliff (around $x \approx 88.7$) and collapses into <code>inf &rarr; NaN</code>; the LogSumExp panel never even notices, because after subtracting the max every exponent is &le; 0 and every <code>exp()</code> lands safely in (0, 1].</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/logsumexp_stability.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># If you publish your notes online (GitHub Pages), you can instead point to</span>
+<span class="c1"># the published copy, e.g.:</span>
+<span class="c1">#   IFrame("https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/logsumexp_stability.html",</span>
+<span class="c1">#          width="100%", height=660)</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">IFrame</span>
+<span class="n">IFrame</span><span class="p">(</span><span class="s2">"interactive_viz/logsumexp_stability.html"</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="s2">"100%"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">660</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe allowfullscreen="" frameborder="0" height="660" src="interactive_viz/logsumexp_stability.html" width="100%"></iframe>
+</div>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8568,6 +8658,53 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-feel-the-shape-of-%E2%88%92log(p)">🎮 Interactive: feel the shape of −log(p)<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-feel-the-shape-of-%E2%88%92log(p)">¶</a></h3><p>Drag the probability the model assigns to the <strong>true</strong> class and watch where you land on the loss curve. Notice the landmarks: p = 1.0 gives loss 0; p = 0.1 gives loss 2.30 &mdash; exactly the score of random guessing over 10 classes, which is why every fresh model in this notebook starts near 2.3; and as p &rarr; 0 the loss (and its gradient) explodes, so the model gets corrected hardest on its most confident mistakes.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/nll_curve.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># If you publish your notes online (GitHub Pages), you can instead point to</span>
+<span class="c1"># the published copy, e.g.:</span>
+<span class="c1">#   IFrame("https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/nll_curve.html",</span>
+<span class="c1">#          width="100%", height=620)</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">IFrame</span>
+<span class="n">IFrame</span><span class="p">(</span><span class="s2">"interactive_viz/nll_curve.html"</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="s2">"100%"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">620</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe allowfullscreen="" frameborder="0" height="620" src="interactive_viz/nll_curve.html" width="100%"></iframe>
+</div>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8664,6 +8801,53 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 <span class="c1"># For all samples: range(n) gives row indices, y_train gives column indices</span>
 <span class="c1"># This gets the log-prob of the correct class for EVERY sample at once!</span>
 </pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-watch-fancy-indexing-gather-the-right-cells">🎮 Interactive: watch fancy indexing gather the right cells<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-watch-fancy-indexing-gather-the-right-cells">¶</a></h3><p>Here is the line <code>sp[range(n), targets]</code> running in slow motion on 5 samples. Press <strong>Step</strong> (or <strong>Auto-play</strong>): the row indices <code>[0,1,2,3,4]</code> zip together with the targets <code>[5,0,4,1,9]</code> into coordinate pairs, and each pair plucks exactly one cell &mdash; the log-probability of the correct class (the orange-boxed cell in each row). Average the gathered values, flip the sign, and you have the NLL loss.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/fancy_indexing.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># If you publish your notes online (GitHub Pages), you can instead point to</span>
+<span class="c1"># the published copy, e.g.:</span>
+<span class="c1">#   IFrame("https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/fancy_indexing.html",</span>
+<span class="c1">#          width="100%", height=700)</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">IFrame</span>
+<span class="n">IFrame</span><span class="p">(</span><span class="s2">"interactive_viz/fancy_indexing.html"</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="s2">"100%"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">700</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe allowfullscreen="" frameborder="0" height="700" src="interactive_viz/fancy_indexing.html" width="100%"></iframe>
 </div>
 </div>
 </div>
@@ -8865,25 +9049,6 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Watch the training loop converge</h3>
-  <p class="ce-interactive-hint">A miniature SGD on a noisy quadratic. Drag the learning rate and batch size sliders, click <strong>Run</strong>. Larger batch = smoother trajectory; smaller batch = noisier but often faster wall-clock per epoch. Too-large LR diverges; too-small LR crawls.</p>
-  <canvas id="tl-canvas" width="600" height="320"
-          style="width:100%; max-width:600px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action:manipulation;"></canvas>
-  <div class="ms-controls">
-    <label>Learning rate: <span id="tl-lr-val" class="ms-val">0.10</span></label>
-    <input id="tl-lr" type="range" min="0.01" max="0.6" step="0.01" value="0.10">
-  </div>
-  <div class="ms-controls">
-    <label>Batch size: <span id="tl-bs-val" class="ms-val">8</span></label>
-    <input id="tl-bs" type="range" min="1" max="64" step="1" value="8">
-    <button id="tl-run" class="ms-btn">Run</button>
-    <button id="tl-reset" class="ms-btn ms-secondary">Reset</button>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Why minibatches?</strong> bs=1 (true SGD) gives very noisy gradients &mdash; faster per step, but the trajectory bounces. bs=full (vanilla GD) is smooth but slow per epoch. Minibatches (8&ndash;256) split the difference: enough samples to estimate the gradient direction, small enough to update many times per epoch.
-  </p>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8891,7 +9056,6 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-
 <h2 id="Part-3:-The-Basic-Training-Loop">Part 3: The Basic Training Loop<a class="anchor-link" href="#Part-3:-The-Basic-Training-Loop">¶</a></h2><p>Now we have all the pieces to train a neural network! Let's put it all together.</p>
 <h3 id="What-is-a-Training-Loop?">What is a Training Loop?<a class="anchor-link" href="#What-is-a-Training-Loop?">¶</a></h3><p>A training loop is the process of:</p>
 <ol>
@@ -9005,6 +9169,53 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Shape: </span><span class="si">{</span><span class="n">preds</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Each image has 10 output values (logits, one per class)"</span><span class="p">)</span>
 </pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-sliding-batch-window">🎮 Interactive: the sliding batch window<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-sliding-batch-window">¶</a></h3><p>This is <code>for i in range(0, n, bs)</code> made visible on a toy dataset of 200 squares. Step through an epoch and watch the orange window slide. Pick bs = 60 and notice the final batch: <code>min(n, i+bs)</code> quietly shrinks it to the 20 leftover samples instead of crashing. One full sweep of the strip = one <strong>epoch</strong>, and each highlighted window = one <strong>weight update</strong>.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/minibatch_slicing.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># If you publish your notes online (GitHub Pages), you can instead point to</span>
+<span class="c1"># the published copy, e.g.:</span>
+<span class="c1">#   IFrame("https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/minibatch_slicing.html",</span>
+<span class="c1">#          width="100%", height=580)</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">IFrame</span>
+<span class="n">IFrame</span><span class="p">(</span><span class="s2">"interactive_viz/minibatch_slicing.html"</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="s2">"100%"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">580</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe allowfullscreen="" frameborder="0" height="580" src="interactive_viz/minibatch_slicing.html" width="100%"></iframe>
 </div>
 </div>
 </div>
@@ -9169,6 +9380,53 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-argmax-%E2%86%92-compare-%E2%86%92-mean,-on-a-live-batch">🎮 Interactive: argmax &rarr; compare &rarr; mean, on a live batch<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-argmax-%E2%86%92-compare-%E2%86%92-mean,-on-a-live-batch">¶</a></h3><p>Each mini-chart shows one sample's 10 logits; the tallest bar (purple) is the model's answer, the orange outline marks the truth. Slide <strong>model skill</strong> from untrained to well-trained and watch accuracy climb from ~10% (pure chance with 10 classes) toward 100%. The readout at the bottom is literally <code>(out.argmax(dim=1) == yb).float().mean()</code> happening before your eyes.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/argmax_accuracy.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># If you publish your notes online (GitHub Pages), you can instead point to</span>
+<span class="c1"># the published copy, e.g.:</span>
+<span class="c1">#   IFrame("https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/argmax_accuracy.html",</span>
+<span class="c1">#          width="100%", height=700)</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">IFrame</span>
+<span class="n">IFrame</span><span class="p">(</span><span class="s2">"interactive_viz/argmax_accuracy.html"</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="s2">"100%"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">700</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe allowfullscreen="" frameborder="0" height="700" src="interactive_viz/argmax_accuracy.html" width="100%"></iframe>
+</div>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9217,6 +9475,61 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 </ul>
 </li>
 </ul>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-learning-rate-%C3%97-batch-size,-in-3D">🎮 Interactive: learning rate &times; batch size, in 3D<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-learning-rate-%C3%97-batch-size,-in-3D">¶</a></h3><p>A model with two weights descending a loss valley (drag to rotate, scroll to zoom &mdash; it loads three.js from a CDN). The valley is deliberately much steeper in one direction than the other, just like real loss landscapes. Experiments to run:</p>
+<ul>
+<li><strong>lr = 0.02</strong> &rarr; painfully slow crawl (this is "learning rate too low")</li>
+<li><strong>lr = 0.40</strong> &rarr; the ball overshoots across the steep direction and <strong>diverges</strong> &mdash; the steepest direction sets the speed limit</li>
+<li><strong>batch size = 1</strong> &rarr; the gradient is estimated from a single sample, so the path is a drunken stagger that still finds the valley <em>on average</em></li>
+<li><strong>batch size = 256</strong> &rarr; noise shrinks like $1/\sqrt{bs}$, giving a smooth, confident descent &mdash; at the cost of more compute per step</li>
+</ul>
+<p>This is exactly the trade-off behind the <code>lr = 0.5</code>, <code>bs = 50</code> choices we just made.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/sgd_3d.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># If you publish your notes online (GitHub Pages), you can instead point to</span>
+<span class="c1"># the published copy, e.g.:</span>
+<span class="c1">#   IFrame("https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/sgd_3d.html",</span>
+<span class="c1">#          width="100%", height=740)</span>
+<span class="c1"># NOTE: this visualization also loads three.js from cdnjs (needs internet).</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">IFrame</span>
+<span class="n">IFrame</span><span class="p">(</span><span class="s2">"interactive_viz/sgd_3d.html"</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="s2">"100%"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">740</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe allowfullscreen="" frameborder="0" height="740" src="interactive_viz/sgd_3d.html" width="100%"></iframe>
+</div>
 </div>
 </div>
 </div>
@@ -9322,6 +9635,53 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="The-Complete-Training-Loop">The Complete Training Loop<a class="anchor-link" href="#The-Complete-Training-Loop">¶</a></h3><p>Now let's put it all together! This is the core of neural network training.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-5-step-heartbeat-(and-the-most-common-PyTorch-bug)">🎮 Interactive: the 5-step heartbeat (and the most common PyTorch bug)<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-5-step-heartbeat-(and-the-most-common-PyTorch-bug)">¶</a></h3><p>Before reading the full training-loop code below, step through one iteration on a toy one-weight model: <strong>forward &rarr; loss &rarr; backward &rarr; update &rarr; zero_grad</strong>, round and round. Then tick the red <strong>“I forgot zero_grad()”</strong> box and auto-run: because PyTorch <em>accumulates</em> into <code>.grad</code> (note the <code>+=</code> at step 3), the updates start using stale, summed gradients &mdash; the weight overshoots back and forth and the loss never converges. Burn this failure mode into memory now; it will save you a debugging afternoon later.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/training_loop.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># If you publish your notes online (GitHub Pages), you can instead point to</span>
+<span class="c1"># the published copy, e.g.:</span>
+<span class="c1">#   IFrame("https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/training_loop.html",</span>
+<span class="c1">#          width="100%", height=640)</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">IFrame</span>
+<span class="n">IFrame</span><span class="p">(</span><span class="s2">"interactive_viz/training_loop.html"</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="s2">"100%"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">640</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe allowfullscreen="" frameborder="0" height="640" src="interactive_viz/training_loop.html" width="100%"></iframe>
+</div>
 </div>
 </div>
 </div>
@@ -10548,6 +10908,53 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-whole-DataLoader-assembly-line">🎮 Interactive: the whole DataLoader assembly line<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-whole-DataLoader-assembly-line">¶</a></h3><p>Everything we just built, animated in one place: the <strong>Sampler</strong> decides the <em>order</em> of indices (toggle shuffle, press “New epoch” &mdash; only the order changes, never the data itself), the <strong>BatchSampler</strong> chunks that order into groups of <code>bs</code> (toggle <code>drop_last</code> to discard the ragged final batch), and <strong>collate</strong> &mdash; click any batch! &mdash; fetches <code>ds[i]</code> for each index and stacks the samples into the <code>(xb, yb)</code> tensors your training loop consumes.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/dataloader_pipeline.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># If you publish your notes online (GitHub Pages), you can instead point to</span>
+<span class="c1"># the published copy, e.g.:</span>
+<span class="c1">#   IFrame("https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/dataloader_pipeline.html",</span>
+<span class="c1">#          width="100%", height=800)</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">IFrame</span>
+<span class="n">IFrame</span><span class="p">(</span><span class="s2">"interactive_viz/dataloader_pipeline.html"</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="s2">"100%"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">800</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe allowfullscreen="" frameborder="0" height="800" src="interactive_viz/dataloader_pipeline.html" width="100%"></iframe>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="PyTorch's-Built-in-DataLoader">PyTorch's Built-in DataLoader<a class="anchor-link" href="#PyTorch's-Built-in-DataLoader">¶</a></h3><p>PyTorch provides all this functionality (and much more) built-in! Let's use PyTorch's DataLoader with its samplers.</p>
 </div>
 </div>
@@ -10674,6 +11081,53 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 |                                                                             |
 +-----------------------------------------------------------------------------+
 </code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-watch-overfitting-happen">🎮 Interactive: watch overfitting happen<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-watch-overfitting-happen">¶</a></h3><p>Drag <strong>epochs trained</strong> and keep your eye on the two curves: the orange training loss falls forever (with enough capacity, the model can simply memorize), but the teal validation loss bottoms out and then turns <em>up</em> &mdash; that turning point is where the model stops learning patterns and starts memorizing quirks of the training set. Crank <strong>model capacity</strong> up and watch overfitting arrive earlier and bite harder. The dashed purple line marks where <strong>early stopping</strong> would halt training &mdash; and finding it is precisely why <code>fit()</code> runs the validation loop after every epoch.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/overfitting_curves.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># If you publish your notes online (GitHub Pages), you can instead point to</span>
+<span class="c1"># the published copy, e.g.:</span>
+<span class="c1">#   IFrame("https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/overfitting_curves.html",</span>
+<span class="c1">#          width="100%", height=620)</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">IFrame</span>
+<span class="n">IFrame</span><span class="p">(</span><span class="s2">"interactive_viz/overfitting_curves.html"</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="s2">"100%"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">620</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe allowfullscreen="" frameborder="0" height="620" src="interactive_viz/overfitting_curves.html" width="100%"></iframe>
+</div>
 </div>
 </div>
 </div>
@@ -11049,231 +11503,6 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 </div>
 </div>
 </div>
-<style>
-.ce-interactive .ce-pad { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive input[type="range"] { flex: 1; min-width: 160px; accent-color: var(--ce-purple, #6c5ce7); height: 6px; touch-action: manipulation; }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 70px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactive .ms-btn.ms-secondary { background: transparent; color: var(--ce-purple, #6c5ce7); border: 1px solid var(--ce-purple, #6c5ce7); box-shadow: none; }
-.ce-interactive #ce-logits { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin-bottom: 14px; }
-.ce-interactive #ce-logits .logit-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.ce-interactive #ce-logits input[type=range] { writing-mode: bt-lr; -webkit-appearance: slider-vertical; appearance: slider-vertical; width: 24px; height: 80px; min-width: 24px; }
-.ce-interactive #ce-logits .logit-label { font-family: var(--ce-font-mono, monospace); font-size: 0.78em; color: var(--ce-text-muted, #697386); }
-.ce-interactive #ce-logits .logit-val { font-family: var(--ce-font-mono, monospace); font-size: 0.78em; color: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactive #ce-true { padding: 4px 8px; border-radius: 6px; border: 1px solid #d1d5db; background: white; font-family: var(--ce-font-mono, monospace); }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-// ============================================================================
-// Interactive 1: Softmax + cross-entropy explorer
-// ============================================================================
-(function ceExplorer() {
-  var host = document.getElementById('ce-logits');
-  if (!host) return;
-  var trueSel = document.getElementById('ce-true');
-  var lossEl = document.getElementById('ce-loss');
-  var bars = document.getElementById('ce-bars');
-  var NS = 'http://www.w3.org/2000/svg';
-
-  var logits = [0,0,0,0,0,0,0,0,0,0];
-  var trueClass = 3;
-
-  for (var i = 0; i < 10; i++) {
-    var col = document.createElement('div');
-    col.className = 'logit-col';
-    col.innerHTML = '<span class="logit-val" id="lv-' + i + '">0.0</span>' +
-                    '<input type="range" min="-4" max="4" step="0.1" value="0" data-i="' + i + '">' +
-                    '<span class="logit-label">' + i + '</span>';
-    host.appendChild(col);
-    var opt = document.createElement('option');
-    opt.value = i; opt.textContent = 'Class ' + i;
-    trueSel.appendChild(opt);
-  }
-  trueSel.value = trueClass;
-
-  function softmax(z) {
-    var m = Math.max.apply(null, z);
-    var ex = z.map(function(v) { return Math.exp(v - m); });
-    var s = ex.reduce(function(a,b) { return a+b; }, 0);
-    return ex.map(function(v) { return v / s; });
-  }
-
-  function update() {
-    var p = softmax(logits);
-    var loss = -Math.log(Math.max(p[trueClass], 1e-12));
-    lossEl.textContent = 'Loss: ' + loss.toFixed(3);
-    for (var i = 0; i < 10; i++) {
-      document.getElementById('lv-' + i).textContent = logits[i].toFixed(1);
-    }
-    while (bars.firstChild) bars.removeChild(bars.firstChild);
-    var W = 600, H = 200, margin = { l: 36, r: 16, t: 20, b: 32 };
-    var iW = W - margin.l - margin.r, iH = H - margin.t - margin.b;
-    var g = document.createElementNS(NS, 'g');
-    g.setAttribute('transform', 'translate(' + margin.l + ',' + margin.t + ')');
-    bars.appendChild(g);
-    var bw = iW / 10 * 0.7, gap = iW / 10 * 0.3;
-    for (var i = 0; i < 10; i++) {
-      var x = i * (iW / 10) + gap / 2;
-      var h = p[i] * iH;
-      var rect = document.createElementNS(NS, 'rect');
-      rect.setAttribute('x', x); rect.setAttribute('y', iH - h);
-      rect.setAttribute('width', bw); rect.setAttribute('height', h);
-      rect.setAttribute('fill', i === trueClass ? '#0fb9b1' : '#4f46e5');
-      rect.setAttribute('rx', '3');
-      g.appendChild(rect);
-      var lbl = document.createElementNS(NS, 'text');
-      lbl.setAttribute('x', x + bw / 2); lbl.setAttribute('y', iH + 16);
-      lbl.setAttribute('text-anchor', 'middle');
-      lbl.setAttribute('font-size', '11'); lbl.setAttribute('fill', '#6b7280');
-      lbl.textContent = i;
-      g.appendChild(lbl);
-      var val = document.createElementNS(NS, 'text');
-      val.setAttribute('x', x + bw / 2); val.setAttribute('y', iH - h - 4);
-      val.setAttribute('text-anchor', 'middle');
-      val.setAttribute('font-size', '10'); val.setAttribute('fill', '#4f3dd0');
-      val.textContent = p[i].toFixed(2);
-      g.appendChild(val);
-    }
-    var ttl = document.createElementNS(NS, 'text');
-    ttl.setAttribute('x', iW / 2); ttl.setAttribute('y', -4);
-    ttl.setAttribute('text-anchor', 'middle');
-    ttl.setAttribute('font-size', '11'); ttl.setAttribute('fill', '#374151');
-    ttl.textContent = 'softmax(logits) &mdash; teal bar = true class';
-    g.appendChild(ttl);
-  }
-
-  host.addEventListener('input', function(e) {
-    if (e.target.tagName === 'INPUT') {
-      var i = parseInt(e.target.dataset.i);
-      logits[i] = parseFloat(e.target.value);
-      update();
-    }
-  });
-  trueSel.addEventListener('change', function() {
-    trueClass = parseInt(trueSel.value);
-    update();
-  });
-
-  update();
-})();
-
-// ============================================================================
-// Interactive 2: Training loop visualizer
-// ============================================================================
-(function trainingLoop() {
-  var canvas = document.getElementById('tl-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-  var lr = 0.10, bs = 8;
-  var running = false;
-  var rafId = null;
-  var weight, losses, step, MAX_STEPS;
-
-  // Loss function: noisy quadratic centered at w*=0
-  function trueLoss(w) { return w * w; }
-  function noisyGrad(w, bs) {
-    // gradient = 2w; noise scales as 1/sqrt(bs)
-    var noise = (Math.random() * 2 - 1) * 2.5 / Math.sqrt(bs);
-    return 2 * w + noise;
-  }
-
-  function reset() {
-    weight = -2.5;
-    losses = [];
-    step = 0;
-    MAX_STEPS = 80;
-    running = false;
-    cancelAnimationFrame(rafId);
-    document.getElementById('tl-run').textContent = 'Run';
-    draw();
-  }
-
-  function tick() {
-    if (!running) return;
-    var g = noisyGrad(weight, bs);
-    weight = weight - lr * g;
-    losses.push(trueLoss(weight));
-    step++;
-    draw();
-    if (step < MAX_STEPS) {
-      rafId = requestAnimationFrame(tick);
-    } else {
-      running = false;
-      document.getElementById('tl-run').textContent = 'Run again';
-    }
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, W, H);
-    var margin = { l: 50, r: 16, t: 24, b: 36 };
-    var iW = W - margin.l - margin.r, iH = H - margin.t - margin.b;
-    // grid
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-    for (var i = 0; i <= 4; i++) {
-      var y = margin.t + (i / 4) * iH;
-      ctx.beginPath(); ctx.moveTo(margin.l, y); ctx.lineTo(margin.l + iW, y); ctx.stroke();
-    }
-    // axis labels
-    ctx.fillStyle = '#6b7280'; ctx.font = '11px monospace';
-    ctx.fillText('loss', 8, margin.t + 14);
-    ctx.fillText('step', margin.l + iW - 30, margin.t + iH + 24);
-    var yMax = 8;
-    for (var i = 0; i <= 4; i++) {
-      var y = margin.t + iH - (i / 4) * iH;
-      ctx.fillText((yMax * i / 4).toFixed(1), 14, y + 4);
-    }
-    // plot loss curve
-    if (losses.length > 1) {
-      ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 2;
-      ctx.beginPath();
-      for (var i = 0; i < losses.length; i++) {
-        var x = margin.l + (i / MAX_STEPS) * iW;
-        var y = margin.t + iH - Math.min(losses[i], yMax) / yMax * iH;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-    // current point
-    if (losses.length > 0) {
-      var x = margin.l + ((losses.length - 1) / MAX_STEPS) * iW;
-      var y = margin.t + iH - Math.min(losses[losses.length - 1], yMax) / yMax * iH;
-      ctx.fillStyle = '#0fb9b1';
-      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
-    }
-    // status text
-    ctx.fillStyle = '#374151'; ctx.font = '12px monospace';
-    ctx.fillText('step ' + step + ' / ' + MAX_STEPS + '   w=' + weight.toFixed(2) + '   loss=' + (losses.length ? losses[losses.length-1].toFixed(3) : '-'), margin.l, 18);
-  }
-
-  document.getElementById('tl-lr').addEventListener('input', function(e) {
-    lr = parseFloat(e.target.value);
-    document.getElementById('tl-lr-val').textContent = lr.toFixed(2);
-  });
-  document.getElementById('tl-bs').addEventListener('input', function(e) {
-    bs = parseInt(e.target.value);
-    document.getElementById('tl-bs-val').textContent = bs;
-  });
-  document.getElementById('tl-run').addEventListener('click', function() {
-    if (running) { running = false; document.getElementById('tl-run').textContent = 'Run'; return; }
-    if (step >= MAX_STEPS) reset();
-    running = true;
-    document.getElementById('tl-run').textContent = 'Pause';
-    tick();
-  });
-  document.getElementById('tl-reset').addEventListener('click', reset);
-
-  reset();
-})();
-
-})();
-</script>
 </main>
 </div>
 </body>

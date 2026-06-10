@@ -1,0 +1,97 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Training loop</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#d6455c;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .wrap{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;align-items:stretch}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 6px 16px rgba(123,92,214,.08)}
+  .stages{display:flex;flex-direction:column;gap:6px;min-width:260px}
+  .st{border:1.5px solid var(--line);border-radius:9px;padding:7px 11px;font-family:monospace;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:8px;transition:all .25s}
+  .st .nm{font-weight:700}
+  .st .desc{font-family:"Segoe UI",sans-serif;font-size:10.5px;color:var(--soft);text-align:right}
+  .st.on{border-color:var(--ac);background:#f4effd;box-shadow:0 0 0 3px rgba(123,92,214,.15);transform:translateX(4px)}
+  .st.skipped{opacity:.35;text-decoration:line-through}
+  canvas{display:block;background:#fbfdff;border-radius:8px;border:1px solid var(--line)}
+  .btnrow{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+  button{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px}
+  button.alt{background:#fff;color:var(--ac);border:1px solid var(--ac)}
+  .readout{background:#f4f7fd;border-radius:8px;padding:8px 11px;font-family:monospace;font-size:12px;margin-top:8px;line-height:1.8}
+  .tog{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:10px;font-size:13px;font-weight:700}
+  .tog input{accent-color:var(--bad);width:17px;height:17px}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:10px;max-width:660px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .g{color:var(--out);font-weight:800}.w{color:var(--in);font-weight:800}.bad{color:var(--bad);font-weight:800}
+</style></head><body>
+<h1>The 5-step heartbeat of training (and why zero_grad matters)</h1>
+<p class="sub">Click <b>Step</b> to advance through one minibatch iteration on a toy 1-weight model (loss = &frac12;w&sup2;, lr = 0.4). Then tick the red box and watch what forgetting <span style="font-family:monospace">zero_grad()</span> does.</p>
+
+<div class="wrap">
+  <div class="card stages" id="stages">
+    <div class="st" id="st0"><span class="nm" style="color:#7b5cd6">1&#65039;&#8419; preds = model(xb)</span><span class="desc">forward pass</span></div>
+    <div class="st" id="st1"><span class="nm" style="color:#f6921e">2&#65039;&#8419; loss = loss_func(preds, yb)</span><span class="desc">how wrong?</span></div>
+    <div class="st" id="st2"><span class="nm" style="color:#16a3a3">3&#65039;&#8419; loss.backward()</span><span class="desc">grad += d(loss)/dw</span></div>
+    <div class="st" id="st3"><span class="nm" style="color:#7b5cd6">4&#65039;&#8419; w -= lr * w.grad</span><span class="desc">gradient descent step</span></div>
+    <div class="st" id="st4"><span class="nm" style="color:#5a6b86">5&#65039;&#8419; w.grad.zero_()</span><span class="desc">clear for next batch</span></div>
+    <div class="tog"><input type="checkbox" id="skip"><label for="skip" style="color:var(--bad)">&#128165; "oops, I forgot zero_grad()"</label></div>
+    <div class="readout" id="state"></div>
+  </div>
+  <div class="card">
+    <div style="text-align:center;font-size:12.5px;font-weight:700;margin-bottom:6px">loss over iterations</div>
+    <canvas id="c" width="340" height="240"></canvas>
+    <div class="btnrow">
+      <button id="step">Step &#9654;</button>
+      <button id="auto" class="alt">Auto-run</button>
+      <button id="reset" class="alt">Reset</button>
+    </div>
+  </div>
+</div>
+
+<p class="note">PyTorch <b>accumulates</b> into <span style="font-family:monospace">.grad</span> on purpose (it enables gradient accumulation tricks for huge models). But in a normal loop, skipping step 5 means each update uses the sum of <i>every gradient so far</i> &mdash; stale gradients keep pushing the weight long after it has passed the minimum, so it overshoots back and forth and the loss <b>oscillates forever instead of converging</b> (in a real network this usually blows up outright). This is one of the most common real-world PyTorch bugs, and now you'll recognize it instantly.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+let stage=-1, w=3.0, grad=0, lossHist=[], iter=0, timer=null;
+const LR=0.4;
+const loss=x=>0.5*x*x, dldw=x=>x;
+function paintStages(){
+  for(let i=0;i<5;i++){const e=$('st'+i);e.classList.toggle('on',i===stage);e.classList.remove('skipped');}
+  if($('skip').checked)$('st4').classList.add('skipped');
+}
+function stateRO(msg){
+  $('state').innerHTML='w = <span class="w">'+w.toFixed(3)+'</span> &nbsp; w.grad = <span class="'+(Math.abs(grad)>10?'bad':'g')+'">'+grad.toFixed(3)+'</span>'+
+   '<br>loss = '+loss(w).toFixed(3)+' &nbsp; iter '+iter+(msg?('<br>'+msg):'');
+}
+function drawCurve(){
+  const cv=$('c'),ctx=cv.getContext('2d'),W=340,H=240,M=28;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='#dde5f2';ctx.fillStyle='#5a6b86';ctx.font='10px monospace';
+  const mx=Math.max(5,...lossHist), n=Math.max(10,lossHist.length);
+  for(let k=0;k<=4;k++){const y=H-M-(H-2*M)*k/4;ctx.beginPath();ctx.moveTo(M,y);ctx.lineTo(W-8,y);ctx.stroke();ctx.fillText((mx*k/4).toFixed(1),2,y+3);}
+  if(lossHist.length>1){
+    ctx.strokeStyle=$('skip').checked?'#d6455c':'#16a3a3';ctx.lineWidth=2;ctx.beginPath();
+    lossHist.forEach((l,i)=>{const x=M+(W-M-10)*i/(n-1), y=H-M-(H-2*M)*Math.min(l,mx)/mx; i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+    ctx.stroke();
+  }
+}
+function step(){
+  stage=(stage+1)%5;
+  const skip=$('skip').checked;
+  let msg='';
+  if(stage===0){msg='forward: predictions computed from current w';}
+  else if(stage===1){lossHist.push(Math.min(loss(w),1e6));iter++;msg='loss measured: '+loss(w).toFixed(3);drawCurve();}
+  else if(stage===2){grad+=dldw(w);msg='grad <b>+=</b> '+dldw(w).toFixed(3)+' &nbsp;(note: += , it ACCUMULATES)';}
+  else if(stage===3){w-=LR*grad;msg='w &larr; w &minus; '+LR+' &times; '+grad.toFixed(3);if(Math.abs(w)>1e4){msg+=' &nbsp;<span class="bad">DIVERGED &#128165;</span>';stop();}}
+  else if(stage===4){if(skip){msg='<span class="bad">SKIPPED! grad keeps its old value\u2026</span>';}else{grad=0;msg='grad reset to 0 \u2014 clean slate for the next batch';}}
+  paintStages();stateRO(msg);
+}
+function stop(){if(timer){clearInterval(timer);timer=null;$('auto').textContent='Auto-run';}}
+function reset(){stop();stage=-1;w=3.0;grad=0;lossHist=[];iter=0;paintStages();stateRO('');drawCurve();}
+$('step').onclick=step;
+$('reset').onclick=reset;
+$('skip').onchange=()=>{paintStages();drawCurve();};
+$('auto').onclick=()=>{ if(timer){stop();} else {timer=setInterval(step,420);$('auto').textContent='Pause';} };
+reset();
+</script></body></html>

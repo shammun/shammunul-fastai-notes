@@ -1,0 +1,80 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Argmax &amp; accuracy</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#d6455c;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .ctrl{display:flex;align-items:center;gap:10px;justify-content:center;margin:4px 0 12px;font-size:13px;flex-wrap:wrap}
+  .ctrl input{width:240px;accent-color:var(--in)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;max-width:700px;margin:0 auto}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:0 6px 16px rgba(123,92,214,.08)}
+  .bars{display:flex;align-items:flex-end;gap:2px;height:64px;margin-bottom:5px}
+  .b{flex:1;background:#dbe4f3;border-radius:2px 2px 0 0;position:relative;min-height:2px;transition:height .3s}
+  .b.max{background:var(--ac)}
+  .b.true{outline:2px solid var(--in);outline-offset:-1px}
+  .lab{font-family:monospace;font-size:11px;text-align:center;line-height:1.6}
+  .res{font-size:15px;font-weight:800;text-align:center}
+  .ok{color:var(--out)}.no{color:var(--bad)}
+  .readout{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-family:monospace;font-size:13px;margin:12px auto 0;max-width:560px;line-height:1.9;text-align:center;box-shadow:0 6px 16px rgba(123,92,214,.08)}
+  button{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:8px;max-width:640px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .legend{display:flex;gap:16px;justify-content:center;font-size:11px;color:var(--soft);margin-bottom:8px;flex-wrap:wrap}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:4px}
+</style></head><body>
+<h1>From 10 logits to one answer: argmax &rarr; compare &rarr; mean</h1>
+<p class="sub">8 samples from a batch. Each mini-chart shows the model's 10 logits; the <b>tallest bar wins</b> (argmax). Slide the model from untrained to well-trained.</p>
+
+<div class="ctrl">model skill: <input type="range" id="skill" min="0" max="1" step="0.05" value="0.2"><span style="font-family:monospace;font-weight:800;color:var(--in)" id="skv">untrained</span> <button id="newb">New batch &#127922;</button></div>
+<div class="legend">
+  <span><span class="sw" style="background:#7b5cd6"></span>argmax (predicted class)</span>
+  <span><span class="sw" style="background:#fff;outline:2px solid #f6921e;outline-offset:-1px"></span>true class</span>
+</div>
+
+<div class="grid" id="grid"></div>
+<div class="readout" id="ro"></div>
+<p class="note">This is exactly <span style="font-family:monospace">(out.argmax(dim=1) == yb).float().mean()</span>: a True/False per sample, converted to 1.0/0.0, then averaged. At skill 0 you hover near 10% &mdash; random guessing over 10 classes &mdash; which is why an untrained model starts there.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+let logits=[], truth=[];
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function newBatch(){
+  truth=[];logits=[];
+  for(let s=0;s<8;s++){
+    truth.push(Math.floor(Math.random()*10));
+    logits.push(Array.from({length:10},()=>gauss()));
+  }
+  render();
+}
+function render(){
+  const skill=parseFloat($('skill').value);
+  $('skv').textContent= skill<0.15?'untrained':skill<0.5?'learning\u2026':skill<0.85?'decent':'well-trained';
+  const g=$('grid');g.innerHTML='';
+  let correct=0;
+  for(let s=0;s<8;s++){
+    const z=logits[s].map((v,c)=> v + (c===truth[s]? skill*4.5 : 0));
+    const mx=Math.max(...z), mn=Math.min(...z), am=z.indexOf(mx);
+    const ok=(am===truth[s]); if(ok)correct++;
+    const card=document.createElement('div');card.className='card';
+    let bars='<div class="bars">';
+    for(let c=0;c<10;c++){
+      const h=Math.max(3,(z[c]-mn)/(mx-mn+1e-9)*60);
+      bars+='<div class="b'+(c===am?' max':'')+(c===truth[s]?' true':'')+'" style="height:'+h+'px"></div>';
+    }
+    bars+='</div>';
+    card.innerHTML=bars+'<div class="lab">pred <b style="color:#7b5cd6">'+am+'</b> &nbsp;true <b style="color:#f6921e">'+truth[s]+'</b></div>'+
+      '<div class="res '+(ok?'ok':'no')+'">'+(ok?'\u2713 1.0':'\u2717 0.0')+'</div>';
+    g.appendChild(card);
+  }
+  $('ro').innerHTML='matches = ['+Array.from({length:8},(_,s)=>{
+      const z=logits[s].map((v,c)=> v + (c===truth[s]? skill*4.5 : 0));
+      return z.indexOf(Math.max(...z))===truth[s]?'1':'0';}).join(', ')+']'+
+    '<br>accuracy = mean = <b style="color:#16a3a3;font-size:16px">'+correct+'/8 = '+(correct/8*100).toFixed(1)+'%</b>';
+}
+$('skill').oninput=render;
+$('newb').onclick=newBatch;
+newBatch();
+</script></body></html>

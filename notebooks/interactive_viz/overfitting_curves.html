@@ -1,0 +1,87 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overfitting</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#d6455c;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);max-width:620px;margin:0 auto}
+  canvas{display:block;background:#fbfdff;border-radius:8px;border:1px solid var(--line);width:100%;height:auto}
+  .ctr{display:flex;gap:18px;align-items:center;justify-content:center;margin-top:10px;font-size:13px;flex-wrap:wrap}
+  .ctr input{width:170px;accent-color:var(--in)}
+  .v{font-family:monospace;font-weight:800;color:var(--in)}
+  .readout{background:#f4f7fd;border-radius:8px;padding:8px 12px;font-family:monospace;font-size:12.5px;margin-top:10px;line-height:1.8;text-align:center}
+  .verdict{font-weight:800;text-align:center;margin-top:6px;font-size:13.5px}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:8px;max-width:640px;margin-left:auto;margin-right:auto;line-height:1.5}
+</style></head><body>
+<h1>Why you must watch the validation set</h1>
+<p class="sub">Drag <b>epochs trained</b>. Training loss (orange) always falls &mdash; the model can memorize. Validation loss (teal) tells the truth about <i>new</i> data.</p>
+
+<div class="card">
+  <canvas id="c" width="580" height="300"></canvas>
+  <div class="ctr">
+    <label>epochs trained <input type="range" id="ep" min="1" max="60" step="1" value="8"><span class="v" id="epv">8</span></label>
+    <label>model capacity <input type="range" id="cap" min="0" max="1" step="0.05" value="0.5"><span class="v" id="capv">med</span></label>
+  </div>
+  <div class="readout" id="ro"></div>
+  <div class="verdict" id="vd"></div>
+</div>
+
+<p class="note">The gap between the curves is the <b>generalization gap</b>. The teal curve's lowest point is where <b>early stopping</b> would halt training. Bigger capacity learns faster but overfits sooner and harder &mdash; the cure is more data, regularization, or stopping in time. This is exactly why <span style="font-family:monospace">fit()</span> evaluates on <span style="font-family:monospace">valid_dl</span> after every epoch.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('c'),ctx=cv.getContext('2d');
+const W=580,H=300,M={l:52,r:14,t:16,b:32},EMAX=60;
+function trainLoss(e,cap){return 0.12 + 2.18*Math.exp(-e*(0.10+0.16*cap));}
+function valLoss(e,cap){const base=0.30+2.00*Math.exp(-e*(0.085+0.13*cap));const over=(0.010+0.030*cap)*Math.max(0,e-(26-16*cap));return base+over*over*1.4+0.05;}
+const X=e=>M.l+(e-1)/(EMAX-1)*(W-M.l-M.r), Y=l=>H-M.b-Math.min(l,2.6)/2.6*(H-M.t-M.b);
+function bestEpoch(cap){let be=1,bl=1e9;for(let e=1;e<=EMAX;e++){const v=valLoss(e,cap);if(v<bl){bl=v;be=e;}}return [be,bl];}
+function render(){
+  const ep=parseInt($('ep').value), cap=parseFloat($('cap').value);
+  $('epv').textContent=ep;
+  $('capv').textContent=cap<0.3?'small':cap<0.7?'med':'LARGE';
+  const [be,bl]=bestEpoch(cap);
+  ctx.clearRect(0,0,W,H);
+  // overfit shading
+  ctx.fillStyle='rgba(214,69,92,0.07)';
+  ctx.fillRect(X(be),M.t,W-M.r-X(be),H-M.t-M.b);
+  ctx.strokeStyle='#dde5f2';ctx.fillStyle='#5a6b86';ctx.font='10.5px monospace';ctx.lineWidth=1;
+  for(let l=0;l<=2.5;l+=0.5){ctx.beginPath();ctx.moveTo(M.l,Y(l));ctx.lineTo(W-M.r,Y(l));ctx.stroke();ctx.fillText(l.toFixed(1),M.l-24,Y(l)+3);}
+  for(let e=10;e<=60;e+=10){ctx.beginPath();ctx.moveTo(X(e),M.t);ctx.lineTo(X(e),H-M.b);ctx.stroke();ctx.fillText(e,X(e)-6,H-M.b+15);}
+  ctx.fillText('epoch',W/2-14,H-4);
+  ctx.save();ctx.translate(11,H/2+38);ctx.rotate(-Math.PI/2);ctx.fillText('loss (cross-entropy)',0,0);ctx.restore();
+  ctx.fillStyle='#c46a7e';ctx.fillText('overfitting zone \u2192',X(be)+6,M.t+12);
+  // curves up to ep
+  function curve(fn,color){
+    ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.beginPath();
+    for(let e=1;e<=ep;e+=0.5){const y=Y(fn(e,cap));e===1?ctx.moveTo(X(e),y):ctx.lineTo(X(e),y);}
+    ctx.stroke();
+    // ghost remainder
+    ctx.strokeStyle=color+'44';ctx.setLineDash([3,4]);ctx.beginPath();
+    for(let e=ep;e<=EMAX;e+=0.5){const y=Y(fn(e,cap));e===ep?ctx.moveTo(X(e),y):ctx.lineTo(X(e),y);}
+    ctx.stroke();ctx.setLineDash([]);
+  }
+  curve(trainLoss,'#f6921e');curve(valLoss,'#16a3a3');
+  // best epoch marker
+  ctx.strokeStyle='#7b5cd6';ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(X(be),M.t);ctx.lineTo(X(be),H-M.b);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#7b5cd6';ctx.fillText('early-stop here ('+be+')',Math.min(X(be)+4,W-130),H-M.b-8);
+  // current markers
+  [[trainLoss,'#f6921e'],[valLoss,'#16a3a3']].forEach(([fn,col])=>{
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(X(ep),Y(fn(ep,cap)),5,0,7);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(X(ep),Y(fn(ep,cap)),5,0,7);ctx.stroke();
+  });
+  // legend
+  ctx.fillStyle='#f6921e';ctx.fillRect(W-150,M.t+4,16,4);ctx.fillStyle='#25324a';ctx.fillText('train loss',W-128,M.t+10);
+  ctx.fillStyle='#16a3a3';ctx.fillRect(W-150,M.t+20,16,4);ctx.fillStyle='#25324a';ctx.fillText('valid loss',W-128,M.t+26);
+  const tl=trainLoss(ep,cap), vl=valLoss(ep,cap), gap=vl-tl;
+  $('ro').innerHTML='epoch '+ep+': &nbsp;train = <b style="color:#f6921e">'+tl.toFixed(3)+'</b> &nbsp; valid = <b style="color:#16a3a3">'+vl.toFixed(3)+'</b> &nbsp; gap = <b style="color:'+(gap>0.5?'#d6455c':'#5a6b86')+'">'+gap.toFixed(3)+'</b>';
+  const vd=$('vd');
+  if(ep<be-4){vd.textContent='\uD83C\uDF31 Underfit \u2014 both curves still falling, keep training';vd.style.color='#5a6b86';}
+  else if(ep<=be+3){vd.textContent='\uD83C\uDFAF Sweet spot \u2014 validation loss near its minimum';vd.style.color='#16a3a3';}
+  else{vd.textContent='\u26A0\uFE0F Overfitting \u2014 train keeps improving but validation is getting WORSE';vd.style.color='#d6455c';}
+}
+$('ep').oninput=render;$('cap').oninput=render;render();
+</script></body></html>
