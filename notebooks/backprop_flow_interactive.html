@@ -627,17 +627,21 @@ render();
        to fit exactly — no inner scrollbars, at any width or step. */
 (function(){
   var grid = document.querySelector('.grid');
+  var wrap = document.querySelector('.wrap');
   function relayout(){
     if (grid) grid.classList.toggle('is-narrow', window.innerWidth < 980);
   }
   function postH(){
-    var h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+    // Measure the actual CONTENT (.wrap) height, NOT documentElement.scrollHeight:
+    // the latter is bounded below by the iframe's own height, which causes both
+    // leftover empty space (iframe taller than content) and resize feedback loops.
+    var h = wrap ? Math.ceil(wrap.getBoundingClientRect().height) + 90 : document.body.offsetHeight;
     if (window.parent !== window) window.parent.postMessage({ type:'bpflow-height', height:h }, '*');
   }
   function update(){ relayout(); postH(); }
   window.addEventListener('load', update);
   window.addEventListener('resize', update);
-  if (window.ResizeObserver) new ResizeObserver(postH).observe(document.body); // per-step height changes
+  if (window.ResizeObserver) new ResizeObserver(postH).observe(wrap || document.body); // per-step height changes
   relayout();
   setTimeout(update, 200); setTimeout(update, 800);
 })();

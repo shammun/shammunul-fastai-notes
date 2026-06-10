@@ -11688,9 +11688,10 @@ $$<div class="highlight"><pre><span></span><span class="n">inp</span><span class
   function fitDirect(){
     try {
       var d = f.contentDocument;
-      if (d && d.body) {
-        var h = Math.max(d.documentElement.scrollHeight, d.body.scrollHeight);
-        if (h > 200) { f.style.height = (h + 4) + "px"; return true; }
+      var w = d && d.querySelector(".wrap");
+      if (w) {  // measure CONTENT height, not scrollHeight (which is bounded by the iframe)
+        var h = Math.ceil(w.getBoundingClientRect().height) + 90;
+        if (h > 200) { f.style.height = h + "px"; return true; }
       }
     } catch (e) {}
     return false;
