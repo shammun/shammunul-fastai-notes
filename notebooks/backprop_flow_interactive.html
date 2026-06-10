@@ -613,5 +613,20 @@ document.addEventListener('keydown', e=>{
 render();
 })();
 </script>
+
+<script>
+/* Broadcast our content height to the embedding page so the iframe can be
+   sized to fit exactly — no inner scrollbars, at any width or step. */
+(function(){
+  function postH(){
+    var h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+    if (window.parent !== window) window.parent.postMessage({ type:'bpflow-height', height:h }, '*');
+  }
+  window.addEventListener('load', postH);
+  window.addEventListener('resize', postH);
+  if (window.ResizeObserver) new ResizeObserver(postH).observe(document.body); // catches per-step height changes
+  setTimeout(postH, 200); setTimeout(postH, 800);
+})();
+</script>
 </body>
 </html>
