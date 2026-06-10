@@ -26,6 +26,7 @@
     background:var(--bg);color:var(--ink);
     font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
     padding:26px 18px 60px;
+    overflow-x:hidden;            /* never scroll sideways when embedded narrow */
   }
   .wrap{max-width:1180px;margin:0 auto}
 
@@ -69,7 +70,11 @@
 
   /* layout */
   .grid{display:grid;grid-template-columns:430px 1fr;gap:22px;align-items:start}
+  .grid > *{min-width:0}        /* let columns shrink instead of forcing overflow */
   @media(max-width:980px){.grid{grid-template-columns:1fr}}
+  /* JS sets .grid.is-narrow based on the iframe's OWN width (CSS media queries are
+     unreliable inside cross-origin iframes); this is the bullet-proof reflow. */
+  .grid.is-narrow{grid-template-columns:1fr}
 
   /* ===== pipeline ===== */
   .pipeline{display:flex;flex-direction:column;align-items:stretch;gap:0}
@@ -615,17 +620,26 @@ render();
 </script>
 
 <script>
-/* Broadcast our content height to the embedding page so the iframe can be
-   sized to fit exactly — no inner scrollbars, at any width or step. */
+/* (1) Reflow to a single column whenever WE are narrow, driven by our own
+       window.innerWidth — CSS media queries don't reliably reflect the box
+       width inside an embedded (cross-origin) iframe, so we do it in JS.
+   (2) Broadcast our content height so the embedding page can size the iframe
+       to fit exactly — no inner scrollbars, at any width or step. */
 (function(){
+  var grid = document.querySelector('.grid');
+  function relayout(){
+    if (grid) grid.classList.toggle('is-narrow', window.innerWidth < 980);
+  }
   function postH(){
     var h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
     if (window.parent !== window) window.parent.postMessage({ type:'bpflow-height', height:h }, '*');
   }
-  window.addEventListener('load', postH);
-  window.addEventListener('resize', postH);
-  if (window.ResizeObserver) new ResizeObserver(postH).observe(document.body); // catches per-step height changes
-  setTimeout(postH, 200); setTimeout(postH, 800);
+  function update(){ relayout(); postH(); }
+  window.addEventListener('load', update);
+  window.addEventListener('resize', update);
+  if (window.ResizeObserver) new ResizeObserver(postH).observe(document.body); // per-step height changes
+  relayout();
+  setTimeout(update, 200); setTimeout(update, 800);
 })();
 </script>
 </body>
