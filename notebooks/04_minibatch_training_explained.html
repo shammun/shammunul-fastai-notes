@@ -9042,7 +9042,7 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"  - Takes raw logits (model output) directly"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"  - Combines log_softmax + nll_loss efficiently"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">"  - More numerically stable"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"  - Standard practice in PyTorch</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"  - Standard practice in PyTorch"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -9932,22 +9932,23 @@ $$L = -\log(p_{\text{correct class}})$$</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">relu</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">()</span>            <span class="c1"># Activation (no parameters)</span>
 
     <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="s2">"""Forward pass - standard method name in PyTorch.""        return self.l2(self.relu(self.l1(x)))</span>
+<span class="w">        </span><span class="sd">"""Forward pass - standard method name in PyTorch."""</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">l2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">l1</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
 
-<span class="s2"># Create model</span>
-<span class="s2">model = MLP(m, nh, 10)</span>
+<span class="c1"># Create model</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">MLP</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">nh</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
 
-<span class="s2">print("MLP model created:")</span>
-<span class="s2">print(model)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"MLP model created:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
 
-<span class="s2">print("</span><span class="se">\n</span><span class="s2">" + "="*50)</span>
-<span class="s2">print("Child modules (automatically tracked!):")</span>
-<span class="s2">for name, module in model.named_children():</span>
-<span class="s2">    print(f"  </span><span class="si">{name}</span><span class="s2">: </span><span class="si">{module}</span><span class="s2">")</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">"</span> <span class="o">+</span> <span class="s2">"="</span><span class="o">*</span><span class="mi">50</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Child modules (automatically tracked!):"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_children</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
-<span class="s2">print("</span><span class="se">\n</span><span class="s2">Parameters (automatically found!):")</span>
-<span class="s2">for param in model.parameters():</span>
-<span class="s2">    print(f"  Shape: </span><span class="si">{param.shape}</span><span class="s2">, requires_grad: </span><span class="si">{param.requires_grad}</span><span class="s2">")</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Parameters (automatically found!):"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Shape: </span><span class="si">{</span><span class="n">param</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">, requires_grad: </span><span class="si">{</span><span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -9977,29 +9978,30 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 <span class="c1"># ============================================================================</span>
 
 <span class="k">def</span> <span class="nf">fit</span><span class="p">():</span>
-    <span class="s2">"""Train the model using model.parameters() to find weights.""    for epoch in range(epochs):</span>
-<span class="s2">        for i in range(0, n, bs):</span>
-<span class="s2">            s = slice(i, min(n, i+bs))</span>
-<span class="s2">            xb, yb = x_train[s], y_train[s]</span>
-<span class="s2">            preds = model(xb)</span>
-<span class="s2">            loss = loss_func(preds, yb)</span>
-<span class="s2">            loss.backward()</span>
+<span class="w">    </span><span class="sd">"""Train the model using model.parameters() to find weights."""</span>
+    <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">epochs</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">bs</span><span class="p">):</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">i</span><span class="o">+</span><span class="n">bs</span><span class="p">))</span>
+            <span class="n">xb</span><span class="p">,</span> <span class="n">yb</span> <span class="o">=</span> <span class="n">x_train</span><span class="p">[</span><span class="n">s</span><span class="p">],</span> <span class="n">y_train</span><span class="p">[</span><span class="n">s</span><span class="p">]</span>
+            <span class="n">preds</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">xb</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_func</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">yb</span><span class="p">)</span>
+            <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
 
-<span class="s2">            # SIMPLIFIED: Loop through ALL parameters automatically!</span>
-<span class="s2">            with torch.no_grad():</span>
-<span class="s2">                for p in model.parameters():</span>
-<span class="s2">                    p -= p.grad * lr  # Update parameter</span>
+            <span class="c1"># SIMPLIFIED: Loop through ALL parameters automatically!</span>
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+                    <span class="n">p</span> <span class="o">-=</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="o">*</span> <span class="n">lr</span>  <span class="c1"># Update parameter</span>
 
-<span class="s2">                # Zero ALL gradients at once</span>
-<span class="s2">                model.zero_grad()</span>
+                <span class="c1"># Zero ALL gradients at once</span>
+                <span class="n">model</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
 
-<span class="s2">        report(loss, preds, yb)</span>
+        <span class="n">report</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">preds</span><span class="p">,</span> <span class="n">yb</span><span class="p">)</span>
 
-<span class="s2"># Train!</span>
-<span class="s2">print("Training with model.parameters()...")</span>
-<span class="s2">print("Format: loss, accuracy")</span>
-<span class="s2">fit()</span>
-<span class="s2">print("</span><span class="se">\n</span><span class="s2">Much cleaner than manually finding weights!")</span>
+<span class="c1"># Train!</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Training with model.parameters()..."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Format: loss, accuracy"</span><span class="p">)</span>
+<span class="n">fit</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Much cleaner than manually finding weights!"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -10030,17 +10032,19 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 <span class="c1"># This shows the magic behind PyTorch's parameter tracking</span>
 
 <span class="k">class</span> <span class="nc">MyModule</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Simplified version showing how nn.Module tracks submodules.""    def __init__(self, n_in, nh, n_out):</span>
-<span class="sd">        # Dictionary to store child modules</span>
-<span class="sd">        self._modules = {}</span>
+<span class="w">    </span><span class="sd">"""Simplified version showing how nn.Module tracks submodules."""</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_in</span><span class="p">,</span> <span class="n">nh</span><span class="p">,</span> <span class="n">n_out</span><span class="p">):</span>
+        <span class="c1"># Dictionary to store child modules</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span> <span class="o">=</span> <span class="p">{}</span>
 
-<span class="sd">        # When we assign attributes, __setattr__ is called</span>
-<span class="sd">        # which adds them to _modules</span>
-<span class="sd">        self.l1 = nn.Linear(n_in, nh)</span>
-<span class="sd">        self.l2 = nn.Linear(nh, n_out)</span>
+        <span class="c1"># When we assign attributes, __setattr__ is called</span>
+        <span class="c1"># which adds them to _modules</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">n_in</span><span class="p">,</span> <span class="n">nh</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">l2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">nh</span><span class="p">,</span> <span class="n">n_out</span><span class="p">)</span>
 
-<span class="sd">    def __setattr__(self, k, v):</span>
-<span class="sd">        """</span><span class="n">Called</span> <span class="n">whenever</span> <span class="n">an</span> <span class="n">attribute</span> <span class="ow">is</span> <span class="n">assigned</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">foo</span> <span class="o">=</span> <span class="n">bar</span><span class="p">)</span><span class="o">.</span><span class="s2">""</span>        <span class="c1"># If not a private attribute (starting with _), register it</span>
+    <span class="k">def</span> <span class="fm">__setattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Called whenever an attribute is assigned (self.foo = bar)."""</span>
+        <span class="c1"># If not a private attribute (starting with _), register it</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"_"</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
         <span class="c1"># Actually set the attribute</span>
@@ -10050,15 +10054,16 @@ $$L = -\log(p_{\text{correct class}})$$</p>
         <span class="k">return</span> <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_modules</span><span class="si">}</span><span class="s1">'</span>
 
     <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">"""Yield all parameters from all registered modules.""        for module in self._modules.values():</span>
-<span class="s2">            yield from module.parameters()</span>
+<span class="w">        </span><span class="sd">"""Yield all parameters from all registered modules."""</span>
+        <span class="k">for</span> <span class="n">module</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="k">yield from</span> <span class="n">module</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
 
-<span class="s2"># Test it</span>
-<span class="s2">mdl = MyModule(m, nh, 10)</span>
-<span class="s2">print("Registered modules:", mdl)</span>
-<span class="s2">print("</span><span class="se">\n</span><span class="s2">Parameters found:")</span>
-<span class="s2">for p in mdl.parameters():</span>
-<span class="s2">    print(f"  </span><span class="si">{p.shape}</span><span class="s2">")</span>
+<span class="c1"># Test it</span>
+<span class="n">mdl</span> <span class="o">=</span> <span class="n">MyModule</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">nh</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Registered modules:"</span><span class="p">,</span> <span class="n">mdl</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Parameters found:"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">mdl</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  </span><span class="si">{</span><span class="n">p</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -10219,12 +10224,14 @@ $$L = -\log(p_{\text{correct class}})$$</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">lr</span> <span class="o">=</span> <span class="n">lr</span>
 
     <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">"""Update all parameters using gradient descent.""        with torch.no_grad():</span>
-<span class="sd">            for p in self.params:</span>
-<span class="sd">                p -= p.grad * self.lr  # p = p - lr * gradient</span>
+<span class="w">        </span><span class="sd">"""Update all parameters using gradient descent."""</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
+                <span class="n">p</span> <span class="o">-=</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">lr</span>  <span class="c1"># p = p - lr * gradient</span>
 
-<span class="sd">    def zero_grad(self):</span>
-<span class="sd">        """</span><span class="n">Zero</span> <span class="nb">all</span> <span class="n">gradients</span><span class="o">.</span><span class="s2">""</span>        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">zero_grad</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Zero all gradients."""</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
             <span class="n">p</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">"Optimizer class defined!"</span><span class="p">)</span>
@@ -10310,21 +10317,22 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 <span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">optim</span>  <span class="c1"># PyTorch's optimization module</span>
 
 <span class="k">def</span> <span class="nf">get_model</span><span class="p">():</span>
-    <span class="s2">"""Helper function to create a fresh model and optimizer.""    model = nn.Sequential(nn.Linear(m, nh), nn.ReLU(), nn.Linear(nh, 10))</span>
-<span class="s2">    # optim.SGD is PyTorch's Stochastic Gradient Descent</span>
-<span class="s2">    # It has additional features like momentum, weight_decay, etc.</span>
-<span class="s2">    opt = optim.SGD(model.parameters(), lr=lr)</span>
-<span class="s2">    return model, opt</span>
+<span class="w">    </span><span class="sd">"""Helper function to create a fresh model and optimizer."""</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">nh</span><span class="p">),</span> <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">nh</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+    <span class="c1"># optim.SGD is PyTorch's Stochastic Gradient Descent</span>
+    <span class="c1"># It has additional features like momentum, weight_decay, etc.</span>
+    <span class="n">opt</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">lr</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">model</span><span class="p">,</span> <span class="n">opt</span>
 
-<span class="s2"># Create model and optimizer</span>
-<span class="s2">model, opt = get_model()</span>
+<span class="c1"># Create model and optimizer</span>
+<span class="n">model</span><span class="p">,</span> <span class="n">opt</span> <span class="o">=</span> <span class="n">get_model</span><span class="p">()</span>
 
-<span class="s2">print("Using torch.optim.SGD:")</span>
-<span class="s2">print(f"  Learning rate: </span><span class="si">{lr}</span><span class="s2">")</span>
-<span class="s2">print(f"  Parameters being optimized: {len(list(model.parameters()))}")</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Using torch.optim.SGD:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Learning rate: </span><span class="si">{</span><span class="n">lr</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Parameters being optimized: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()))</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
-<span class="s2"># Check initial loss</span>
-<span class="s2">print(f"</span><span class="se">\n</span><span class="s2">Initial loss: {loss_func(model(xb), yb):.4f}")</span>
+<span class="c1"># Check initial loss</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Initial loss: </span><span class="si">{</span><span class="n">loss_func</span><span class="p">(</span><span class="n">model</span><span class="p">(</span><span class="n">xb</span><span class="p">),</span><span class="w"> </span><span class="n">yb</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -10439,11 +10447,13 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 <span class="sd">    it's in memory, on disk, in a database, etc.</span>
 <span class="sd">    """</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">"""Store the data tensors.""        self.x = x  # Input data (e.g., images)</span>
-<span class="sd">        self.y = y  # Target labels</span>
+<span class="w">        </span><span class="sd">"""Store the data tensors."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>  <span class="c1"># Input data (e.g., images)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">y</span>  <span class="c1"># Target labels</span>
 
-<span class="sd">    def __len__(self):</span>
-<span class="sd">        """</span><span class="n">Return</span> <span class="n">the</span> <span class="n">number</span> <span class="n">of</span> <span class="n">samples</span><span class="o">.</span><span class="s2">""</span>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Return the number of samples."""</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""</span>
@@ -10668,22 +10678,23 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 <span class="n">model</span><span class="p">,</span> <span class="n">opt</span> <span class="o">=</span> <span class="n">get_model</span><span class="p">()</span>
 
 <span class="k">def</span> <span class="nf">fit</span><span class="p">():</span>
-    <span class="s2">"""Training loop using DataLoader - the cleanest version yet!""    for epoch in range(epochs):</span>
-<span class="s2">        # This is SO much cleaner!</span>
-<span class="s2">        for xb, yb in train_dl:</span>
-<span class="s2">            preds = model(xb)</span>
-<span class="s2">            loss = loss_func(preds, yb)</span>
-<span class="s2">            loss.backward()</span>
-<span class="s2">            opt.step()</span>
-<span class="s2">            opt.zero_grad()</span>
-<span class="s2">        report(loss, preds, yb)</span>
+<span class="w">    </span><span class="sd">"""Training loop using DataLoader - the cleanest version yet!"""</span>
+    <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">epochs</span><span class="p">):</span>
+        <span class="c1"># This is SO much cleaner!</span>
+        <span class="k">for</span> <span class="n">xb</span><span class="p">,</span> <span class="n">yb</span> <span class="ow">in</span> <span class="n">train_dl</span><span class="p">:</span>
+            <span class="n">preds</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">xb</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_func</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">yb</span><span class="p">)</span>
+            <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+            <span class="n">opt</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+            <span class="n">opt</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+        <span class="n">report</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">preds</span><span class="p">,</span> <span class="n">yb</span><span class="p">)</span>
 
-<span class="s2">print("Training with DataLoader...")</span>
-<span class="s2">print("Format: loss, accuracy")</span>
-<span class="s2">fit()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Training with DataLoader..."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Format: loss, accuracy"</span><span class="p">)</span>
+<span class="n">fit</span><span class="p">()</span>
 
-<span class="s2"># Check performance</span>
-<span class="s2">print(f"</span><span class="se">\n</span><span class="s2">Final: loss={loss_func(model(xb), yb):.4f}, accuracy={accuracy(model(xb), yb):.2%}")</span>
+<span class="c1"># Check performance</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Final: loss=</span><span class="si">{</span><span class="n">loss_func</span><span class="p">(</span><span class="n">model</span><span class="p">(</span><span class="n">xb</span><span class="p">),</span><span class="w"> </span><span class="n">yb</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, accuracy=</span><span class="si">{</span><span class="n">accuracy</span><span class="p">(</span><span class="n">model</span><span class="p">(</span><span class="n">xb</span><span class="p">),</span><span class="w"> </span><span class="n">yb</span><span class="p">)</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -10736,22 +10747,23 @@ $$L = -\log(p_{\text{correct class}})$$</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">shuffle</span> <span class="o">=</span> <span class="n">shuffle</span>
 
     <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">"""Yield indices in order (or shuffled order).""        res = list(range(self.n))  # [0, 1, 2, ..., n-1]</span>
-<span class="s2">        if self.shuffle:</span>
-<span class="s2">            random.shuffle(res)    # Randomize in-place</span>
-<span class="s2">        return iter(res)</span>
+<span class="w">        </span><span class="sd">"""Yield indices in order (or shuffled order)."""</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">))</span>  <span class="c1"># [0, 1, 2, ..., n-1]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">shuffle</span><span class="p">:</span>
+            <span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>    <span class="c1"># Randomize in-place</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
 
-<span class="s2"># Test samplers</span>
-<span class="s2">print("Testing Samplers:")</span>
+<span class="c1"># Test samplers</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Testing Samplers:"</span><span class="p">)</span>
 
-<span class="s2"># Sequential sampler (no shuffle)</span>
-<span class="s2">ss = Sampler(train_ds, shuffle=False)</span>
-<span class="s2">print(f"</span><span class="se">\n</span><span class="s2">Sequential (first 10 indices): {list(ss)[:10]}")</span>
+<span class="c1"># Sequential sampler (no shuffle)</span>
+<span class="n">ss</span> <span class="o">=</span> <span class="n">Sampler</span><span class="p">(</span><span class="n">train_ds</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Sequential (first 10 indices): </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">ss</span><span class="p">)[:</span><span class="mi">10</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
-<span class="s2"># Random sampler</span>
-<span class="s2">rs = Sampler(train_ds, shuffle=True)</span>
-<span class="s2">print(f"Random (first 10 indices): {list(rs)[:10]}")</span>
-<span class="s2">print(f"Random again (different!): {list(Sampler(train_ds, shuffle=True))[:10]}")</span>
+<span class="c1"># Random sampler</span>
+<span class="n">rs</span> <span class="o">=</span> <span class="n">Sampler</span><span class="p">(</span><span class="n">train_ds</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Random (first 10 indices): </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">rs</span><span class="p">)[:</span><span class="mi">10</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Random again (different!): </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">Sampler</span><span class="p">(</span><span class="n">train_ds</span><span class="p">,</span><span class="w"> </span><span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">))[:</span><span class="mi">10</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -10785,18 +10797,19 @@ $$L = -\log(p_{\text{correct class}})$$</p>
         <span class="n">fc</span><span class="o">.</span><span class="n">store_attr</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">"""Yield batches of indices.""        # fc.chunked groups items into chunks of size bs</span>
-<span class="s2">        yield from fc.chunked(iter(self.sampler), self.bs, drop_last=self.drop_last)</span>
+<span class="w">        </span><span class="sd">"""Yield batches of indices."""</span>
+        <span class="c1"># fc.chunked groups items into chunks of size bs</span>
+        <span class="k">yield from</span> <span class="n">fc</span><span class="o">.</span><span class="n">chunked</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sampler</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">bs</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">drop_last</span><span class="p">)</span>
 
-<span class="s2"># Test batch sampler</span>
-<span class="s2">ss = Sampler(train_ds, shuffle=True)</span>
-<span class="s2">bs_sampler = BatchSampler(ss, bs=4)</span>
+<span class="c1"># Test batch sampler</span>
+<span class="n">ss</span> <span class="o">=</span> <span class="n">Sampler</span><span class="p">(</span><span class="n">train_ds</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">bs_sampler</span> <span class="o">=</span> <span class="n">BatchSampler</span><span class="p">(</span><span class="n">ss</span><span class="p">,</span> <span class="n">bs</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
 
-<span class="s2"># Get first few batches of indices</span>
-<span class="s2">from itertools import islice</span>
-<span class="s2">print("Batch Sampler (first 5 batches of 4 indices each):")</span>
-<span class="s2">for i, batch in enumerate(islice(bs_sampler, 5)):</span>
-<span class="s2">    print(f"  Batch </span><span class="si">{i}</span><span class="s2">: </span><span class="si">{batch}</span><span class="s2">")</span>
+<span class="c1"># Get first few batches of indices</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">islice</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Batch Sampler (first 5 batches of 4 indices each):"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">batch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">islice</span><span class="p">(</span><span class="n">bs_sampler</span><span class="p">,</span> <span class="mi">5</span><span class="p">)):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Batch </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">batch</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -10873,29 +10886,30 @@ $$L = -\log(p_{\text{correct class}})$$</p>
         <span class="n">fc</span><span class="o">.</span><span class="n">store_attr</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="s2">"""Yield collated batches.""        # For each batch of indices from the batch sampler</span>
-<span class="s2">        for b in self.batchs:</span>
-<span class="s2">            # Get samples from dataset and collate them</span>
-<span class="s2">            yield self.collate_fn(self.ds[i] for i in b)</span>
+<span class="w">        </span><span class="sd">"""Yield collated batches."""</span>
+        <span class="c1"># For each batch of indices from the batch sampler</span>
+        <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">batchs</span><span class="p">:</span>
+            <span class="c1"># Get samples from dataset and collate them</span>
+            <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">collate_fn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">b</span><span class="p">)</span>
 
-<span class="s2"># Create samplers and dataloaders</span>
-<span class="s2">train_samp = BatchSampler(Sampler(train_ds, shuffle=True), bs)</span>
-<span class="s2">valid_samp = BatchSampler(Sampler(valid_ds, shuffle=False), bs)</span>
+<span class="c1"># Create samplers and dataloaders</span>
+<span class="n">train_samp</span> <span class="o">=</span> <span class="n">BatchSampler</span><span class="p">(</span><span class="n">Sampler</span><span class="p">(</span><span class="n">train_ds</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">bs</span><span class="p">)</span>
+<span class="n">valid_samp</span> <span class="o">=</span> <span class="n">BatchSampler</span><span class="p">(</span><span class="n">Sampler</span><span class="p">(</span><span class="n">valid_ds</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="n">bs</span><span class="p">)</span>
 
-<span class="s2">train_dl = DataLoader(train_ds, batchs=train_samp)</span>
-<span class="s2">valid_dl = DataLoader(valid_ds, batchs=valid_samp)</span>
+<span class="n">train_dl</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">train_ds</span><span class="p">,</span> <span class="n">batchs</span><span class="o">=</span><span class="n">train_samp</span><span class="p">)</span>
+<span class="n">valid_dl</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">valid_ds</span><span class="p">,</span> <span class="n">batchs</span><span class="o">=</span><span class="n">valid_samp</span><span class="p">)</span>
 
-<span class="s2">print("DataLoaders with shuffling created!")</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"DataLoaders with shuffling created!"</span><span class="p">)</span>
 
-<span class="s2"># Test</span>
-<span class="s2">xb, yb = next(iter(train_dl))</span>
-<span class="s2">print(f"</span><span class="se">\n</span><span class="s2">Training batch: xb shape </span><span class="si">{xb.shape}</span><span class="s2">, yb shape </span><span class="si">{yb.shape}</span><span class="s2">")</span>
+<span class="c1"># Test</span>
+<span class="n">xb</span><span class="p">,</span> <span class="n">yb</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">train_dl</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Training batch: xb shape </span><span class="si">{</span><span class="n">xb</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">, yb shape </span><span class="si">{</span><span class="n">yb</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
-<span class="s2"># Train</span>
-<span class="s2">model, opt = get_model()</span>
-<span class="s2">print("</span><span class="se">\n</span><span class="s2">Training with shuffled DataLoader...")</span>
-<span class="s2">print("Format: loss, accuracy")</span>
-<span class="s2">fit()</span>
+<span class="c1"># Train</span>
+<span class="n">model</span><span class="p">,</span> <span class="n">opt</span> <span class="o">=</span> <span class="n">get_model</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Training with shuffled DataLoader..."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Format: loss, accuracy"</span><span class="p">)</span>
+<span class="n">fit</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
