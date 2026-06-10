@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backprop Relay — how self.out.g appears</title>
+<style>
+  :root{
+    --bg:#EDF2FB;            /* blue-tinted background */
+    --card:#FFFFFF;
+    --ink:#1F2A44;
+    --muted:#64748B;
+    --purple:#6C5CE7;        /* actions */
+    --purple-soft:#EFEBFF;
+    --teal:#0E9C8F;          /* outputs / WRITES */
+    --teal-soft:#E0F5F2;
+    --orange:#E8821F;        /* inputs / READS */
+    --orange-soft:#FDEEDC;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:26px 18px 60px;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+
+  header h1{font-size:26px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:760px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  /* controls */
+  .controls{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:14px 18px;margin:20px 0 22px;position:sticky;top:10px;z-index:50;
+  }
+  button{
+    font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;
+    padding:10px 20px;transition:transform .12s,box-shadow .12s;
+  }
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #next{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35)}
+  #next:hover{transform:translateY(-1px)}
+  #prev{background:var(--purple-soft);color:var(--purple)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:10px 8px}
+  .phase{
+    margin-left:auto;font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;
+    padding:6px 14px;border-radius:999px;
+  }
+  .phase.idle{background:#E9EEF8;color:var(--muted)}
+  .phase.forward{background:var(--teal-soft);color:var(--teal)}
+  .phase.backward{background:var(--orange-soft);color:var(--orange)}
+  .phase.done{background:var(--purple-soft);color:var(--purple)}
+  .dots{display:flex;gap:6px}
+  .dots i{width:9px;height:9px;border-radius:50%;background:#D7DEF0;transition:background .2s,transform .2s}
+  .dots i.on{background:var(--purple);transform:scale(1.25)}
+  .stepnum{color:var(--muted);font-size:13px;font-weight:700;min-width:86px}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:0 0 18px;color:var(--muted);font-size:13px;font-weight:600}
+  .legend .key{display:inline-flex;align-items:center;gap:7px}
+  .legend .sw{width:13px;height:13px;border-radius:4px}
+  .sw.t{background:var(--teal)} .sw.o{background:var(--orange)} .sw.p{background:var(--purple)}
+
+  /* layout */
+  .grid{display:grid;grid-template-columns:430px 1fr;gap:22px;align-items:start}
+  @media(max-width:980px){.grid{grid-template-columns:1fr}}
+
+  /* ===== pipeline ===== */
+  .pipeline{display:flex;flex-direction:column;align-items:stretch;gap:0}
+
+  .tensor{
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-sm);
+    padding:10px 14px 12px;border:2px solid transparent;opacity:.32;
+    transition:opacity .3s,border-color .25s,box-shadow .25s;
+  }
+  .tensor.exists{opacity:1}
+  .tensor .tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:7px;min-height:22px}
+  .tag{font-family:var(--mono);font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px;opacity:.35;transition:opacity .3s}
+  .tag.show{opacity:1}
+  .tag.out{background:var(--teal-soft);color:var(--teal)}
+  .tag.in{background:var(--orange-soft);color:var(--orange)}
+  .same{
+    font-size:10.5px;font-weight:800;color:var(--purple);background:var(--purple-soft);
+    border:1.5px dashed var(--purple);border-radius:999px;padding:1px 8px;letter-spacing:.02em;
+    opacity:.3;transition:opacity .3s,transform .3s;
+  }
+  .same.show{opacity:1}
+  .tensor.pulse-same .same{animation:samepulse 1.1s ease 2}
+  @keyframes samepulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18);box-shadow:0 0 0 6px rgba(108,92,231,.15)}}
+  .trow{display:flex;align-items:baseline;gap:10px}
+  .tname{font-family:var(--mono);font-weight:800;font-size:17px}
+  .tshape{font-family:var(--mono);color:var(--muted);font-size:12px}
+  .gchip{
+    margin-left:auto;font-family:var(--mono);font-size:12px;font-weight:800;
+    padding:3px 10px;border-radius:8px;background:#EFF3FB;color:#9AA6BF;transition:all .25s;
+  }
+  .gchip.has{background:var(--teal-soft);color:var(--teal)}
+  .tensor.writing{border-color:var(--teal);box-shadow:0 0 0 5px rgba(14,156,143,.14),var(--shadow-sm)}
+  .tensor.writing .gchip{animation:gflash .9s ease 2}
+  @keyframes gflash{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+  .tensor.reading{border-color:var(--orange)}
+  .tensor.reading .gchip{box-shadow:0 0 0 3px rgba(232,130,31,.30)}
+
+  .layer{
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    margin:0 26px;padding:11px 16px;border:2px solid transparent;
+    transition:border-color .25s,box-shadow .25s;position:relative;
+  }
+  .layer.active{border-color:var(--purple);box-shadow:0 0 0 5px rgba(108,92,231,.13),var(--shadow)}
+  .layer .lhead{display:flex;align-items:baseline;gap:10px}
+  .lname{font-weight:800;font-size:15px}
+  .lformula{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  .pgrad{
+    display:none;margin-top:7px;font-family:var(--mono);font-size:11.5px;font-weight:800;
+    color:var(--teal);background:var(--teal-soft);border-radius:8px;padding:3px 9px;width:fit-content;
+  }
+  .layer.haspg .pgrad{display:block}
+
+  .arrow{height:26px;display:flex;align-items:center;justify-content:center;color:#B9C3DC;font-size:15px;transition:color .25s}
+  .pipeline.fwd .arrow::after{content:"▼"}
+  .pipeline.bwd .arrow::after{content:"▲";color:var(--orange)}
+  .pipeline.idle .arrow::after{content:"▼"}
+  .pipeline.fwd .arrow{color:var(--teal)}
+
+  /* ===== right column ===== */
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px}
+  .panel + .panel{margin-top:18px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  .steptitle{font-size:19px;font-weight:800;letter-spacing:-.01em;margin-bottom:8px}
+  .explain{color:#33415C}
+  .explain p{margin:0 0 9px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain .w{color:var(--teal);font-weight:800}
+  .explain .r{color:var(--orange);font-weight:800}
+  .explain .s{color:var(--purple);font-weight:800}
+  .math{
+    font-family:var(--mono);font-size:14px;background:#F6F8FE;border-left:4px solid var(--purple);
+    border-radius:10px;padding:10px 14px;margin:10px 0 4px;color:var(--ink);overflow-x:auto;white-space:pre;
+  }
+  .keybox{
+    margin-top:10px;background:var(--purple-soft);border-radius:12px;padding:10px 14px;
+    color:#4636C9;font-weight:600;font-size:14px;
+  }
+
+  pre.code{
+    font-family:var(--mono);font-size:13px;line-height:1.62;background:#F6F8FE;
+    border-radius:12px;padding:12px 0;overflow-x:auto;
+  }
+  .cl{padding:0 16px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:4px solid var(--purple);padding-left:12px;font-weight:700}
+  .cl.cm{color:#8A94AC}
+
+  footer{margin-top:26px;color:var(--muted);font-size:13px;text-align:center}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>The Backprop Relay <span class="hl">— where does <code style="font-family:var(--mono)">self.out.g</code> come from?</span></h1>
+  <p class="sub">Every tensor between two layers is <b>one shared object wearing two name tags</b>: it is the
+  <b style="color:var(--teal)">output</b> of the layer above and the <b style="color:var(--orange)">input</b> of the layer below.
+  Step through <code>loss = model(x_train, y_train)</code> and <code>model.backward()</code> and watch each layer
+  <span style="color:var(--teal);font-weight:700">write</span> a gradient that its neighbor then
+  <span style="color:var(--orange);font-weight:700">reads</span>.</p>
+</header>
+
+<div class="controls">
+  <button id="prev">← Back</button>
+  <button id="next">Next step →</button>
+  <span class="stepnum" id="stepnum">Step 0 / 10</span>
+  <div class="dots" id="dots"></div>
+  <span class="phase idle" id="phase">Not started</span>
+  <button id="reset">Reset</button>
+</div>
+
+<div class="legend">
+  <span class="key"><span class="sw t"></span> writes <code style="font-family:var(--mono)">.g</code> (this layer's output of backward)</span>
+  <span class="key"><span class="sw o"></span> reads <code style="font-family:var(--mono)">.g</code> (already written by the next layer)</span>
+  <span class="key"><span class="sw p"></span> currently running / same-object link</span>
+</div>
+
+<div class="grid">
+
+  <!-- ================= PIPELINE ================= -->
+  <div class="pipeline idle" id="pipeline" aria-label="network pipeline">
+
+    <div class="tensor exists" id="t-x">
+      <div class="tags">
+        <span class="tag out show">your data</span>
+        <span class="tag in" id="tagin-x">lin1.args[0]</span>
+      </div>
+      <div class="trow"><span class="tname">x</span><span class="tshape">(n, 784)</span><span class="gchip" id="g-x">.g —</span></div>
+    </div>
+    <div class="arrow"></div>
+
+    <div class="layer" id="l-lin1">
+      <div class="lhead"><span class="lname">Lin1</span><span class="lformula">out = inp @ w1 + b1</span></div>
+      <div class="pgrad">w1.g ✓ &nbsp; b1.g ✓ &nbsp;→ kept for the optimizer</div>
+    </div>
+    <div class="arrow"></div>
+
+    <div class="tensor" id="t-a1">
+      <div class="tags">
+        <span class="tag out" id="tagout-a1">lin1.out</span>
+        <span class="same" id="same-a1">≡ same object</span>
+        <span class="tag in" id="tagin-a1">relu.args[0]</span>
+      </div>
+      <div class="trow"><span class="tname">a1</span><span class="tshape">(n, 50)</span><span class="gchip" id="g-a1">.g —</span></div>
+    </div>
+    <div class="arrow"></div>
+
+    <div class="layer" id="l-relu">
+      <div class="lhead"><span class="lname">ReLU</span><span class="lformula">out = inp.clamp_min(0.)</span></div>
+      <div class="pgrad"></div>
+    </div>
+    <div class="arrow"></div>
+
+    <div class="tensor" id="t-r1">
+      <div class="tags">
+        <span class="tag out" id="tagout-r1">relu.out</span>
+        <span class="same" id="same-r1">≡ same object</span>
+        <span class="tag in" id="tagin-r1">lin2.args[0]</span>
+      </div>
+      <div class="trow"><span class="tname">r1</span><span class="tshape">(n, 50)</span><span class="gchip" id="g-r1">.g —</span></div>
+    </div>
+    <div class="arrow"></div>
+
+    <div class="layer" id="l-lin2">
+      <div class="lhead"><span class="lname">Lin2</span><span class="lformula">out = inp @ w2 + b2</span></div>
+      <div class="pgrad">w2.g ✓ &nbsp; b2.g ✓ &nbsp;→ kept for the optimizer</div>
+    </div>
+    <div class="arrow"></div>
+
+    <div class="tensor" id="t-a2">
+      <div class="tags">
+        <span class="tag out" id="tagout-a2">lin2.out</span>
+        <span class="same" id="same-a2">≡ same object</span>
+        <span class="tag in" id="tagin-a2">mse.args[0]</span>
+      </div>
+      <div class="trow"><span class="tname">a2</span><span class="tshape">(n, 1)</span><span class="gchip" id="g-a2">.g —</span></div>
+    </div>
+    <div class="arrow"></div>
+
+    <div class="layer" id="l-mse">
+      <div class="lhead"><span class="lname">Mse</span><span class="lformula">out = ((inp.squeeze()−targ)²).mean()</span></div>
+      <div class="pgrad"></div>
+    </div>
+    <div class="arrow"></div>
+
+    <div class="tensor" id="t-loss">
+      <div class="tags"><span class="tag out" id="tagout-loss">mse.out</span></div>
+      <div class="trow"><span class="tname">loss</span><span class="tshape">scalar</span><span class="gchip" id="g-loss" style="visibility:hidden">.g</span></div>
+    </div>
+
+  </div>
+
+  <!-- ================= RIGHT ================= -->
+  <div>
+    <div class="panel">
+      <h2>What is happening</h2>
+      <div class="steptitle" id="title"></div>
+      <div class="explain" id="explain"></div>
+    </div>
+    <div class="panel">
+      <h2>The exact code running now</h2>
+      <pre class="code" id="code"></pre>
+    </div>
+  </div>
+</div>
+
+<footer>Use ← / → arrow keys to step. Built to accompany the fast.ai “backprop from scratch” notebook.</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- step definitions ---------------- */
+/* effects (cumulative): create:'a1' | writeG:'a2' | paramG:'lin2' | tag:'tagin-a1'
+   transient (current step only): active:'lin1' | read:'a2' | write:'r1' | same:'a1' | dir:'fwd'|'bwd' */
+
+const steps = [
+{
+  phase:'idle', dir:'idle',
+  title:'Before anything runs',
+  explain:`<p>Only your data <code>x</code> and the weights exist. <b>No tensor has a <code>.g</code> yet.</b>
+  Greyed-out boxes haven't been created; greyed-out name tags haven't been attached.</p>
+  <p>We are about to run two lines — first the <span class="w">forward pass</span>, then the <span class="r">backward pass</span>.</p>`,
+  code:[
+    ['model = Model(w1, b1, w2, b2)'],
+    ['# self.layers = [Lin(w1,b1), Relu(), Lin(w2,b2)]','cm'],
+    [''],
+    ['loss = model(x_train, y_train)   # ← step 1–4 (forward)','hl'],
+    ['model.backward()                 # ← step 5–9 (backward)','hl'],
+  ],
+  fx:[]
+},
+{
+  phase:'forward', dir:'fwd',
+  title:'Forward ①  —  Lin1 runs, and records everything',
+  explain:`<p>Inside <code>Model.__call__</code> the loop runs <code>x = l(x)</code> with <code>l = lin1</code>.
+  Calling a layer triggers the inherited <code>Module.__call__</code>, which is a <b>tape recorder</b>:</p>
+  <p>① it <span class="s">saves the input</span> → <code>lin1.args = (x,)</code> &nbsp;
+  ② it computes and <span class="s">saves the output</span> → <code>lin1.out = a1</code> &nbsp;
+  ③ it returns <code>a1</code>, and <code>x = l(x)</code> <b>re-binds the name <code>x</code> to <code>a1</code></b>.</p>
+  <div class="math">a1 = x @ w1 + b1        # (n,784) @ (784,50) + (50,) → (n,50)</div>`,
+  code:[
+    ['# Model.__call__:','cm'],
+    ['for l in self.layers:'],
+    ['    x = l(x)              # 1st turn: l is Lin1','hl'],
+    [''],
+    ['# this triggers Module.__call__:','cm'],
+    ['def __call__(self, *args):'],
+    ['    self.args = args             # SAVE input  → (x,)','hl'],
+    ['    self.out  = self.forward(*args)  # SAVE output → a1','hl'],
+    ['    return self.out          # a1 flows onward'],
+  ],
+  fx:[{create:'a1'},{tag:'tagin-x'},{tag:'tagout-a1'},{active:'lin1'}]
+},
+{
+  phase:'forward', dir:'fwd',
+  title:'Forward ②  —  ReLU saves THE SAME object Lin1 produced',
+  explain:`<p>Second loop turn: <code>x</code> is now <code>a1</code>, so <code>relu(a1)</code> runs.
+  ReLU saves its input: <code>relu.args = (a1,)</code>.</p>
+  <p><span class="s">This is the key moment.</span> <code>relu.args[0]</code> and <code>lin1.out</code> are
+  <b>not copies — they are one object</b> (watch the <span class="s">≡ same object</span> badge on the <code>a1</code> box).
+  You can verify: <code>lin1.out is relu.args[0]</code> → <code>True</code>.</p>
+  <div class="math">r1 = a1.clamp_min(0.)   # negatives → 0</div>`,
+  code:[
+    ['for l in self.layers:'],
+    ['    x = l(x)              # 2nd turn: l is Relu, x IS a1','hl'],
+    [''],
+    ['def __call__(self, *args):'],
+    ['    self.args = args      # relu saves (a1,) ← SAME object as lin1.out','hl'],
+    ['    self.out  = self.forward(*args)   # → r1'],
+    ['    return self.out'],
+  ],
+  fx:[{create:'r1'},{tag:'tagin-a1'},{tag:'tagout-r1'},{active:'relu'},{same:'a1'}]
+},
+{
+  phase:'forward', dir:'fwd',
+  title:'Forward ③  —  Lin2, same recording ritual',
+  explain:`<p>Third turn: <code>lin2(r1)</code>. Again the tape recorder runs:
+  <code>lin2.args = (r1,)</code> — the <b>same object</b> as <code>relu.out</code> — and <code>lin2.out = a2</code>.</p>
+  <div class="math">a2 = r1 @ w2 + b2       # (n,50) @ (50,1) + (1,) → (n,1)</div>
+  <p>The loop is finished; <code>x</code> now means <code>a2</code>, the model's raw prediction.</p>`,
+  code:[
+    ['for l in self.layers:'],
+    ['    x = l(x)              # 3rd turn: l is Lin2, x IS r1','hl'],
+    [''],
+    ['def __call__(self, *args):'],
+    ['    self.args = args      # lin2 saves (r1,) ← SAME object as relu.out','hl'],
+    ['    self.out  = self.forward(*args)   # → a2'],
+    ['    return self.out'],
+  ],
+  fx:[{create:'a2'},{tag:'tagin-r1'},{tag:'tagout-a2'},{active:'lin2'},{same:'r1'}]
+},
+{
+  phase:'forward', dir:'fwd',
+  title:'Forward ④  —  Mse closes the forward pass',
+  explain:`<p>After the loop, <code>Model.__call__</code> returns <code>self.loss(x, targ)</code> — and <code>x</code> is <code>a2</code>.
+  Mse records <code>mse.args = (a2, targ)</code> (where <code>a2</code> <b>is</b> <code>lin2.out</code>) and outputs one number:</p>
+  <div class="math">loss = ((a2.squeeze() − targ)²).mean()
+     = (1/n) Σᵢ (pᵢ − yᵢ)²</div>
+  <p><b>Forward done.</b> Notice: still <b>not a single <code>.g</code> exists anywhere</b>. The forward pass only computes
+  values and memorizes tensors. The memorized tensors are what makes backward possible.</p>`,
+  code:[
+    ['# end of Model.__call__:','cm'],
+    ['return self.loss(x, targ)   # x IS a2','hl'],
+    [''],
+    ['def __call__(self, *args):'],
+    ['    self.args = args      # mse saves (a2, targ) ← a2 IS lin2.out','hl'],
+    ['    self.out  = self.forward(*args)   # → loss (scalar)'],
+    ['    return self.out'],
+  ],
+  fx:[{create:'loss'},{tag:'tagin-a2'},{tag:'tagout-loss'},{active:'mse'},{same:'a2'}]
+},
+{
+  phase:'backward', dir:'bwd',
+  title:'Backward begins — backward() takes NO arguments. Why?',
+  explain:`<p><code>model.backward()</code> first runs <code>self.loss.backward()</code>.
+  That hits <code>Module.backward</code>, whose single line answers a big question:</p>
+  <div class="math">self.bwd(self.out, *self.args)</div>
+  <p>It <b>replays the tape</b>: the tensors saved during forward are fed straight into <code>bwd()</code>.
+  For Mse that means <code>mse.bwd(loss, a2, targ)</code> — so inside <code>bwd(self, out, inp, targ)</code>,
+  the name <code>inp</code> <b>is the very object <code>a2</code></b> from the forward pass.</p>`,
+  code:[
+    ['# Model.backward:','cm'],
+    ['def backward(self):'],
+    ['    self.loss.backward()             # ← runs FIRST','hl'],
+    ['    for l in reversed(self.layers):  # then [Lin2, Relu, Lin1]'],
+    ['        l.backward()'],
+    [''],
+    ['# Module.backward — replay the tape:','cm'],
+    ['def backward(self):'],
+    ['    self.bwd(self.out, *self.args)   # mse.bwd(loss, a2, targ)','hl'],
+  ],
+  fx:[{active:'mse'}]
+},
+{
+  phase:'backward', dir:'bwd',
+  title:'Mse WRITES a2.g — and lin2.out.g springs into existence',
+  explain:`<p>Mse is the start of the chain, so it has nothing to read. It <span class="w">writes</span> the very first gradient onto its saved input <code>a2</code>:</p>
+  <div class="math">∂L/∂a2ᵢ = 2(a2ᵢ − yᵢ)/n      ← from L = (1/n)Σ(a2ᵢ−yᵢ)²</div>
+  <p><span class="s">Now the magic:</span> because <code>a2</code> <b>is also</b> <code>lin2.out</code> (one object, two tags),
+  this single write means <b><code>lin2.out.g</code> now exists</b> — even though Lin2 has done nothing yet.
+  A neighbor filled in its mailbox.</p>`,
+  code:[
+    ['class Mse(Module):'],
+    ['    def bwd(self, out, inp, targ):   # inp IS a2'],
+    ['        inp.g = 2*(inp.squeeze()-targ).unsqueeze(-1) \\','hl'],
+    ['                / targ.shape[0]','hl'],
+    [''],
+    ['# inp.g  ≡  a2.g  ≡  lin2.out.g     ← SAME object!','cm'],
+  ],
+  fx:[{writeG:'a2'},{write:'a2'},{active:'mse'},{same:'a2'}]
+},
+{
+  phase:'backward', dir:'bwd',
+  title:'Lin2 READS a2.g (already there!), WRITES r1.g + w2.g + b2.g',
+  explain:`<p>The reversed loop starts: first <code>l = lin2</code>, so <code>lin2.bwd(out=a2, inp=r1)</code> runs.
+  The mysterious <code>self.out.g</code> is just <code>a2.g</code> — <span class="r">read</span> straight off the tensor Mse wrote one step ago.</p>
+  <div class="math">r1.g  = a2.g @ W2ᵀ      ∂L/∂X = G Wᵀ   → pass backward
+w2.g  = r1ᵀ @ a2.g      ∂L/∂W = Xᵀ G   → keep for optimizer
+b2.g  = a2.g.sum(0)     ∂L/∂b = Σᵢ Gᵢ   → keep for optimizer</div>
+  <p>And the relay repeats: <code>r1</code> <b>is also</b> <code>relu.out</code>, so <b><code>relu.out.g</code> now exists</b>.</p>`,
+  code:[
+    ['for l in reversed(self.layers):   # [Lin2, Relu, Lin1]'],
+    ['    l.backward()                  # 1st: lin2.bwd(a2, r1)','hl'],
+    [''],
+    ['class Lin(Module):'],
+    ['    def bwd(self, out, inp):          # out IS a2, inp IS r1'],
+    ['        inp.g    = self.out.g @ self.w.t()  # READS a2.g ✓','hl'],
+    ['        self.w.g = inp.t() @ self.out.g','hl'],
+    ['        self.b.g = self.out.g.sum(0)','hl'],
+  ],
+  fx:[{read:'a2'},{writeG:'r1'},{write:'r1'},{paramG:'lin2'},{active:'lin2'},{same:'r1'}]
+},
+{
+  phase:'backward', dir:'bwd',
+  title:'ReLU READS r1.g, WRITES a1.g (a gate, not a multiply)',
+  explain:`<p>Next: <code>relu.bwd(out=r1, inp=a1)</code>. Its <code>self.out.g</code> is <code>r1.g</code> — Lin2 left it there one step ago.</p>
+  <div class="math">∂r/∂a = 1 if a &gt; 0, else 0
+a1.g  = r1.g ⊙ 𝟙[a1 &gt; 0]    # gradient passes where input was positive</div>
+  <p>ReLU's backward is a <b>gate</b>: gradients flow through positive entries and are zeroed elsewhere.
+  And again — <code>a1</code> <b>is</b> <code>lin1.out</code>, so <b><code>lin1.out.g</code> now exists</b>, ready for Lin1's turn.</p>`,
+  code:[
+    ['for l in reversed(self.layers):'],
+    ['    l.backward()                  # 2nd: relu.bwd(r1, a1)','hl'],
+    [''],
+    ['class Relu(Module):'],
+    ['    def bwd(self, out, inp):          # out IS r1, inp IS a1'],
+    ['        inp.g = (inp > 0).float() * self.out.g  # READS r1.g ✓','hl'],
+  ],
+  fx:[{read:'r1'},{writeG:'a1'},{write:'a1'},{active:'relu'},{same:'a1'}]
+},
+{
+  phase:'backward', dir:'bwd',
+  title:'Lin1 READS a1.g, WRITES x.g + w1.g + b1.g — chain complete',
+  explain:`<p>Last: <code>lin1.bwd(out=a1, inp=x)</code>. Its <code>self.out.g</code> is <code>a1.g</code>, written by ReLU one step ago.
+  Same three formulas as Lin2, applied at this layer:</p>
+  <div class="math">x.g   = a1.g @ W1ᵀ
+w1.g  = xᵀ @ a1.g
+b1.g  = a1.g.sum(0)</div>
+  <p>Every single <span class="r">read</span> in the whole backward pass was <span class="w">written</span> exactly one step earlier.
+  Nothing was ever missing — because <code>reversed(self.layers)</code> guarantees each mailbox is filled before its owner opens it.</p>`,
+  code:[
+    ['for l in reversed(self.layers):'],
+    ['    l.backward()                  # 3rd: lin1.bwd(a1, x)','hl'],
+    [''],
+    ['class Lin(Module):'],
+    ['    def bwd(self, out, inp):          # out IS a1, inp IS x'],
+    ['        inp.g    = self.out.g @ self.w.t()  # READS a1.g ✓','hl'],
+    ['        self.w.g = inp.t() @ self.out.g','hl'],
+    ['        self.b.g = self.out.g.sum(0)','hl'],
+  ],
+  fx:[{read:'a1'},{writeG:'x'},{write:'x'},{paramG:'lin1'},{active:'lin1'}]
+},
+{
+  phase:'done', dir:'bwd',
+  title:'Done — every parameter gradient is filled in',
+  explain:`<p>Look down the pipeline: every <code>.g</code> chip is lit. The four gradients the optimizer actually needs —
+  <code>w1.g, b1.g, w2.g, b2.g</code> — are sitting on the layers, ready for the SGD update.</p>
+  <div class="keybox">The one-sentence summary: each layer's <code>bwd()</code> <span style="color:var(--orange)">reads self.out.g</span>
+  (a gift the <i>next</i> layer already left on their <i>shared</i> tensor) and
+  <span style="color:var(--teal)">writes inp.g</span> (the gift it leaves for the <i>previous</i> layer).
+  <code>self.out.g</code> is never your own layer's job.</div>
+  <p style="margin-top:10px">Press <b>Reset</b> and step through again — this time predict each read/write before clicking.</p>`,
+  code:[
+    ['# the whole training step:','cm'],
+    ['loss = model(x_train, y_train)   # forward  (steps 1–4)'],
+    ['model.backward()                 # backward (steps 5–9)'],
+    [''],
+    ['with torch.no_grad():'],
+    ['    w1 -= lr * w1.g;  b1 -= lr * b1.g','hl'],
+    ['    w2 -= lr * w2.g;  b2 -= lr * b2.g','hl'],
+  ],
+  fx:[]
+}
+];
+
+/* ---------------- rendering ---------------- */
+const $ = id => document.getElementById(id);
+const tensors = ['x','a1','r1','a2','loss'];
+const layers  = ['lin1','relu','lin2','mse'];
+let cur = 0;
+
+const dotsEl = $('dots');
+steps.forEach(()=>{ const i=document.createElement('i'); dotsEl.appendChild(i); });
+
+function render(){
+  const s = steps[cur];
+
+  /* cumulative state: replay fx of steps 0..cur */
+  const created = new Set(['x']);
+  const hasG = new Set();
+  const pg = new Set();
+  const tagsOn = new Set(['tagout-loss']); // default off until reached
+  tagsOn.delete('tagout-loss');
+  for(let i=0;i<=cur;i++){
+    for(const f of steps[i].fx){
+      if(f.create) created.add(f.create);
+      if(f.writeG) hasG.add(f.writeG);
+      if(f.paramG) pg.add(f.paramG);
+      if(f.tag) tagsOn.add(f.tag);
+    }
+  }
+  /* transient state from current step */
+  const reading = new Set(), writing = new Set(), sameP = new Set();
+  let activeL = null;
+  for(const f of s.fx){
+    if(f.read) reading.add(f.read);
+    if(f.write) writing.add(f.write);
+    if(f.same) sameP.add(f.same);
+    if(f.active) activeL = f.active;
+  }
+
+  /* tensors */
+  for(const t of tensors){
+    const el = $('t-'+t);
+    el.classList.toggle('exists', created.has(t));
+    el.classList.toggle('reading', reading.has(t));
+    el.classList.toggle('writing', writing.has(t));
+    el.classList.remove('pulse-same');
+    if(sameP.has(t)){ void el.offsetWidth; el.classList.add('pulse-same'); }
+    const g = $('g-'+t);
+    if(g && t!=='loss'){
+      g.classList.toggle('has', hasG.has(t));
+      g.textContent = hasG.has(t) ? '.g ✓' : '.g —';
+    }
+    const sm = $('same-'+t);
+    if(sm) sm.classList.toggle('show', tagsOn.has('tagin-'+t) && tagsOn.has('tagout-'+t));
+  }
+  /* name tags */
+  document.querySelectorAll('.tag').forEach(tg=>{
+    if(tg.id) tg.classList.toggle('show', tagsOn.has(tg.id));
+  });
+  /* layers */
+  for(const l of layers){
+    const el = $('l-'+l);
+    el.classList.toggle('active', activeL===l);
+    el.classList.toggle('haspg', pg.has(l));
+  }
+
+  /* pipeline direction */
+  const pl = $('pipeline');
+  pl.classList.remove('idle','fwd','bwd');
+  pl.classList.add(s.dir==='fwd'?'fwd':(s.dir==='bwd'?'bwd':'idle'));
+
+  /* controls */
+  $('stepnum').textContent = `Step ${cur} / ${steps.length-1}`;
+  const ph = $('phase');
+  ph.className = 'phase '+s.phase;
+  ph.textContent = s.phase==='idle' ? 'Not started'
+                 : s.phase==='forward' ? '▼ Forward pass'
+                 : s.phase==='backward' ? '▲ Backward pass' : '✓ Complete';
+  [...dotsEl.children].forEach((d,i)=>d.classList.toggle('on', i===cur));
+  $('prev').disabled = cur===0;
+  $('prev').style.opacity = cur===0 ? .45 : 1;
+  $('next').textContent = cur===steps.length-1 ? 'Finished ✓' : 'Next step →';
+  $('next').disabled = cur===steps.length-1;
+  $('next').style.opacity = cur===steps.length-1 ? .55 : 1;
+
+  /* panels */
+  $('title').textContent = s.title;
+  $('explain').innerHTML = s.explain;
+  const codeEl = $('code');
+  codeEl.innerHTML = '';
+  for(const line of s.code){
+    const d = document.createElement('div');
+    d.className = 'cl' + (line[1] ? ' '+line[1] : '');
+    d.textContent = line[0] === '' ? '\u00A0' : line[0];
+    codeEl.appendChild(d);
+  }
+}
+
+$('next').addEventListener('click', ()=>{ if(cur<steps.length-1){cur++; render();} });
+$('prev').addEventListener('click', ()=>{ if(cur>0){cur--; render();} });
+$('reset').addEventListener('click', ()=>{ cur=0; render(); });
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight'){ if(cur<steps.length-1){cur++; render();} }
+  if(e.key==='ArrowLeft'){ if(cur>0){cur--; render();} }
+});
+
+render();
+})();
+</script>
+</body>
+</html>
