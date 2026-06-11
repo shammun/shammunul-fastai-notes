@@ -245,4 +245,23 @@ Pick an attribute, then step through the walk &mdash; or <b>click any box in the
   buildSteps();render();
 })();
 </script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}            /* was min-height:100vh -> fit content */
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+/* Fit the iframe to our content + use full width: report content height to the
+   embedding page (which sizes the iframe) and collapse multi-column when narrow. */
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
 </body></html>
