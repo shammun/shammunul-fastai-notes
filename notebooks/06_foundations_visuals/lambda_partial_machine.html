@@ -1,0 +1,222 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Argument-Filling Machine</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{min-height:100vh;background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:18px 16px 28px}
+  h1{font-size:20px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:13px;margin:0 0 14px;max-width:780px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .wrap{max-width:1060px;margin:0 auto}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 8px 22px rgba(123,92,214,.10)}
+  .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:12px;flex-wrap:wrap}
+  .tab{font:inherit;font-size:13px;font-weight:600;padding:8px 16px;border-radius:999px;border:2px solid var(--line);background:#fff;cursor:pointer;color:var(--soft)}
+  .tab[aria-selected="true"]{border-color:var(--ac);color:var(--ac);background:#f4efff}
+  button:focus-visible,input:focus-visible{outline:3px solid #c9b8ff;outline-offset:2px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:880px){.cols{grid-template-columns:1fr}}
+  pre.code{background:#27304a;color:#e8edf9;border-radius:10px;padding:10px 12px;font-family:Consolas,Menlo,monospace;
+    font-size:12.5px;line-height:1.7;overflow-x:auto;margin:0}
+  .kw{color:#8ab8ff}.st{color:#ffd58a}.cm{color:#8b97b8}.fn{color:#9fe8e3}
+  .pill-in{background:rgba(246,146,30,.28);border-radius:4px;padding:0 3px}
+  .pill-pre{background:rgba(123,92,214,.4);border-radius:4px;padding:0 3px}
+  .legend{display:flex;gap:14px;justify-content:center;font-size:12px;color:var(--soft);margin-top:8px;flex-wrap:wrap}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+  /* machine */
+  .machine{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .mrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center}
+  .box{border:2px solid var(--line);border-radius:12px;background:#fbfdff;padding:8px 12px;text-align:center;min-width:170px;transition:all .25s}
+  .box .lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+  .box .body{font-family:Consolas,monospace;font-size:13px;margin-top:2px}
+  .box.loop{border-color:#f0d9bd} .box.wrapb{border-color:#d9ccf5;background:#fbf9ff} .box.target{border-color:#bfe5e2;background:#fafdfd}
+  .box.loop.on{border-color:var(--in);background:#fff7ec;box-shadow:0 6px 16px rgba(246,146,30,.25)}
+  .box.wrapb.on{border-color:var(--ac);background:#f4efff;box-shadow:0 6px 16px rgba(123,92,214,.25)}
+  .box.target.on{border-color:var(--out);background:#e9f9f7;box-shadow:0 6px 16px rgba(22,163,163,.25)}
+  .slot{display:inline-block;min-width:86px;border:2px dashed #cfd9ec;border-radius:8px;padding:2px 8px;margin:2px;background:#fff;transition:all .25s}
+  .slot.f-in{border-style:solid;border-color:var(--in);background:#fff3e2;color:#9a5b00;font-weight:700}
+  .slot.f-pre{border-style:solid;border-color:var(--ac);background:#efe8ff;color:#4d3aa3;font-weight:700}
+  .arrow{font-size:20px;color:#aab8d4}
+  .chip{display:inline-block;font-family:Consolas,monospace;font-size:12.5px;font-weight:700;border-radius:999px;padding:3px 12px;margin:1px}
+  .chip.i{background:#fff3e2;color:#9a5b00;border:2px solid var(--in)}
+  .chip.p{background:#efe8ff;color:#4d3aa3;border:2px solid var(--ac)}
+  /* transport + explain */
+  .transport{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fbfdff;border:1px solid var(--line);border-radius:10px;padding:7px 9px;margin:10px 0}
+  .tbtn{font:inherit;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid #cfd9ec;background:#fff;color:var(--ink);cursor:pointer}
+  .tbtn:hover{background:#f1f5fc}.tbtn:disabled{opacity:.4;cursor:default}
+  .tbtn.play{background:var(--ac);border-color:var(--ac);color:#fff;min-width:74px}.tbtn.play:hover{background:#6a4cc7}
+  .scrub{flex:1;min-width:100px;accent-color:var(--ac)}
+  .steplbl{font-size:11.5px;color:var(--soft);font-family:Consolas,monospace;white-space:nowrap}
+  .speedwrap{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--soft)}
+  .speedwrap input{width:74px;accent-color:var(--ac)}
+  .speedwrap b{font-size:11.5px;font-family:Consolas,monospace;color:var(--ink);width:30px}
+  .explain{background:#f4efff;border:1px solid #ded2ff;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.55;min-height:60px;margin:10px 0 0}
+  .explain b{color:var(--ac)} .explain code{background:#fff;border-radius:4px;padding:0 4px}
+  .epchips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:8px 0 0}
+  .epc{font:inherit;font-family:Consolas,monospace;font-size:12px;font-weight:700;padding:4px 11px;border-radius:999px;
+    border:2px solid var(--line);background:#fbfdff;cursor:pointer;color:var(--soft)}
+  .epc:hover{border-color:var(--ac);color:var(--ac)}
+  .epc.cur{border-color:var(--in);background:#fff7ec;color:#9a5b00}
+  .epc.done{border-color:var(--out);color:#0d7d7d}
+  .controls{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:10px 0 0}
+  input[type=text]{font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid #cfd9ec;width:130px}
+  .console{background:#101728;color:#cfe6d8;border-radius:10px;min-height:100px;max-height:140px;overflow-y:auto;
+    font-family:Consolas,monospace;font-size:12.5px;padding:8px 10px;line-height:1.65;margin-top:10px}
+  .console .sys{color:#7e8db0}
+  .keyidea{margin:14px auto 0;max-width:1060px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13px;line-height:1.6;box-shadow:0 8px 22px rgba(123,92,214,.08)}
+  .keyidea b{color:var(--ac)}
+</style></head><body>
+<h1>The Argument-Filling Machine</h1>
+<p class="sub"><b>The problem:</b> the loop calls <code>cb(i)</code> with <b>one</b> argument, but <code>show_progress(exclamation, epoch)</code> needs <b>two</b>.
+All three tabs build the same <i>wrapper</i> that already contains the exclamation, so only <code>epoch</code> is left to fill.</p>
+
+<div class="wrap card">
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-m="lambda">1&nbsp;&middot;&nbsp;lambda</button>
+    <button class="tab" role="tab" aria-selected="false" data-m="closure">2&nbsp;&middot;&nbsp;closure</button>
+    <button class="tab" role="tab" aria-selected="false" data-m="partial">3&nbsp;&middot;&nbsp;partial</button>
+  </div>
+
+  <div class="cols">
+    <div>
+      <pre class="code" id="codeBox"></pre>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--in)"></span>from the loop &mdash; changes every epoch</span>
+        <span><span class="dot" style="background:var(--ac)"></span>baked in once &mdash; never changes</span>
+      </div>
+      <div class="controls">
+        <label for="excl" style="font-size:13px">exclamation:</label>
+        <input type="text" id="excl" value="OK I guess" maxlength="18">
+      </div>
+      <div class="explain" id="explain"></div>
+    </div>
+    <div>
+      <div class="machine">
+        <div class="box loop" id="boxLoop"><div class="lbl">the loop says</div><div class="body">cb(<span class="chip i" id="iChip">i = ?</span>)</div></div>
+        <div class="arrow">&darr;</div>
+        <div class="box wrapb" id="boxWrap"><div class="lbl" id="wrapLbl">the wrapper</div>
+          <div class="body">holds <span class="chip p" id="preChip">"OK I guess"</span><br><span style="font-size:11px;color:var(--soft)" id="wrapNote"></span></div></div>
+        <div class="arrow">&darr;</div>
+        <div class="box target" id="boxTarget"><div class="lbl">finally calls</div>
+          <div class="body">show_progress(<span class="slot" id="slotEx">exclamation</span>, <span class="slot" id="slotEp">epoch</span>)</div></div>
+      </div>
+      <div class="epchips" id="epchips"></div>
+      <div class="transport">
+        <button class="tbtn" id="prevB">&#9198; Prev</button>
+        <button class="tbtn play" id="playB">&#9654; Play</button>
+        <button class="tbtn" id="nextB">Next &#9197;</button>
+        <button class="tbtn" id="rstB">&#8634; Reset</button>
+        <input type="range" class="scrub" id="scrub" min="0" max="0" value="0" aria-label="scrub through steps">
+        <span class="steplbl" id="stepLbl"></span>
+        <span class="speedwrap">&#128034;<input type="range" id="speed" min="0.5" max="3" step="0.25" value="1" aria-label="speed">&#128007;<b id="spdLbl">1.0&times;</b></span>
+      </div>
+      <div class="console" id="out"></div>
+    </div>
+  </div>
+</div>
+
+<div class="keyidea"><b>Same machine, three ways to build it.</b> A <b>lambda</b> writes the wrapper inline; a <b>closure</b> is a factory whose inner function <i>remembers</i> the exclamation; <b>partial</b> asks Python to build the wrapper for you. In all three, the purple value is baked in <b>once (step 1!)</b>, and the orange <code>i</code> flows through on <b>every epoch</b> &mdash; which is exactly why <code>cb(i)</code> with one argument is enough. Click the epoch pills to jump anywhere.</div>
+
+<script>
+(function(){
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var N=5,BASE=1250;
+  var mode='lambda';
+  var codeBox=document.getElementById('codeBox'),excl=document.getElementById('excl'),
+      out=document.getElementById('out'),iChip=document.getElementById('iChip'),
+      preChip=document.getElementById('preChip'),slotEx=document.getElementById('slotEx'),
+      slotEp=document.getElementById('slotEp'),wrapNote=document.getElementById('wrapNote'),
+      wrapLbl=document.getElementById('wrapLbl'),explain=document.getElementById('explain'),
+      epchips=document.getElementById('epchips'),scrub=document.getElementById('scrub'),
+      stepLbl=document.getElementById('stepLbl'),playB=document.getElementById('playB'),
+      speed=document.getElementById('speed'),spdLbl=document.getElementById('spdLbl');
+  var boxes={loop:document.getElementById('boxLoop'),wrap:document.getElementById('boxWrap'),target:document.getElementById('boxTarget')};
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+  function E(){return (excl.value||'OK I guess');}
+  var CODE={
+    lambda:function(e){return '<span class="cm"># wrap show_progress in a lambda that fills the 1st arg</span>\n'+
+      'slow_calculation(\n    <span class="kw">lambda</span> <span class="pill-in">o</span>: <span class="fn">show_progress</span>(<span class="pill-pre"><span class="st">"'+esc(e)+'"</span></span>, <span class="pill-in">o</span>)\n)';},
+    closure:function(e){return '<span class="kw">def</span> <span class="fn">make_show_progress</span>(<span class="pill-pre">exclamation</span>):\n'+
+      '    <span class="kw">def</span> <span class="fn">_inner</span>(<span class="pill-in">epoch</span>):  <span class="cm"># remembers exclamation!</span>\n'+
+      '        <span class="fn">print</span>(<span class="st">f"</span>{<span class="pill-pre">exclamation</span>}<span class="st">! We\'ve finished epoch </span>{<span class="pill-in">epoch</span>}<span class="st">!"</span>)\n'+
+      '    <span class="kw">return</span> _inner\n\nslow_calculation(make_show_progress(<span class="pill-pre"><span class="st">"'+esc(e)+'"</span></span>))';},
+    partial:function(e){return '<span class="kw">from</span> functools <span class="kw">import</span> partial\n\n'+
+      '<span class="cm"># partial pre-fills the FIRST argument(s)</span>\nslow_calculation(\n    partial(<span class="fn">show_progress</span>, <span class="pill-pre"><span class="st">"'+esc(e)+'"</span></span>)\n)';}
+  };
+  var NOTE={lambda:'made by: lambda o: show_progress("EX", o)',
+            closure:'made by: make_show_progress("EX") \u2192 returns _inner',
+            partial:'made by: partial(show_progress, "EX")'};
+  var LBL={lambda:'the wrapper (a lambda)',closure:'the wrapper (_inner, a closure)',partial:'the wrapper (a partial object)'};
+  var BUILD={lambda:'Python reads the <code>lambda</code> expression and creates a tiny anonymous function. The string is captured inside it right now.',
+             closure:'<code>make_show_progress("EX")</code> runs <i>once</i>. The inner function <code>_inner</code> is created and <b>closes over</b> the exclamation variable &mdash; it will remember it forever. The factory returns <code>_inner</code>.',
+             partial:'<code>partial(show_progress, "EX")</code> builds a new callable object that stores show_progress <i>plus</i> the pre-filled first argument.'};
+
+  var steps=[],idx=0,epJump=[],playing=false,timer=null;
+  function buildSteps(){
+    var e=E();steps=[];epJump=[];var logs=[];
+    function snap(o){o.logs=logs.slice();steps.push(o);}
+    snap({on:'wrap',i:null,slotE:null,slotI:null,ep:-1,
+      explain:'<b>Step 1 &middot; build the wrapper (happens ONCE, before any epoch).</b> '+BUILD[mode].replace('EX',esc(e))+' The purple chip is now locked in.'});
+    for(var i=0;i<N;i++){
+      epJump[i]=steps.length;
+      snap({on:'loop',i:i,slotE:null,slotI:null,ep:i,
+        explain:'<b>Epoch '+i+' &middot; the loop calls back.</b> <code>slow_calculation</code> finished an epoch and calls <code>cb('+i+')</code> &mdash; it sends exactly <b>one orange argument</b> and knows nothing about exclamations.'});
+      snap({on:'wrap',i:i,slotE:e,slotI:i,ep:i,
+        explain:'<b>Epoch '+i+' &middot; the wrapper fills both slots.</b> It already holds <span style="color:#4d3aa3;font-weight:700">"'+esc(e)+'"</span> (purple, baked in at step 1) and it just received <span style="color:#9a5b00;font-weight:700">'+i+'</span> (orange). Now it can call the 2-argument function.'});
+      logs.push(esc(e)+"! We've finished epoch "+i+"!");
+      snap({on:'target',i:i,slotE:e,slotI:i,ep:i,
+        explain:'<b>Epoch '+i+' &middot; show_progress runs.</b> <code>show_progress("'+esc(e)+'", '+i+')</code> prints its message. Next epoch, only the <b>orange</b> value will change.'});
+    }
+    snap({on:null,i:null,slotE:null,slotI:null,ep:N,
+      explain:'<b>Done.</b> 5 epochs, 5 messages &mdash; and the purple exclamation was created exactly <b>once</b>. That is the whole trick behind lambdas, closures and <code>partial</code>: pre-fill what is fixed, let the loop supply what varies.'});
+    scrub.max=steps.length-1;
+  }
+  function render(){
+    var s=steps[idx];
+    Object.keys(boxes).forEach(function(k){boxes[k].classList.toggle('on',s.on===k);});
+    iChip.textContent='i = '+(s.i===null?'?':s.i);
+    preChip.textContent='"'+E()+'"';
+    wrapNote.textContent=NOTE[mode].replace('EX',E());wrapLbl.textContent=LBL[mode];
+    if(s.slotE===null){slotEx.className='slot';slotEx.textContent='exclamation';}
+    else{slotEx.className='slot f-pre';slotEx.textContent='"'+s.slotE+'"';}
+    if(s.slotI===null){slotEp.className='slot';slotEp.textContent='epoch';}
+    else{slotEp.className='slot f-in';slotEp.textContent=s.slotI;}
+    explain.innerHTML=s.explain;
+    epchips.innerHTML='';
+    var bld=document.createElement('button');bld.className='epc'+(idx===0?' cur':'');bld.textContent='build';
+    bld.title='Jump to wrapper creation';bld.onclick=function(){stopPlay();idx=0;render();};epchips.appendChild(bld);
+    for(var k=0;k<N;k++){
+      var c=document.createElement('button');c.className='epc'+(s.ep===k?' cur':(s.ep>k?' done':''));
+      c.textContent='epoch '+k;c.title='Jump to epoch '+k;
+      (function(k){c.onclick=function(){stopPlay();idx=epJump[k];render();};})(k);
+      epchips.appendChild(c);
+    }
+    out.innerHTML='';
+    if(!s.logs.length)out.innerHTML='<span class="sys"># printed output appears here&hellip;</span>';
+    s.logs.forEach(function(L){var d=document.createElement('div');d.textContent=L;out.appendChild(d);});
+    out.scrollTop=out.scrollHeight;
+    scrub.value=idx;stepLbl.textContent='step '+(idx+1)+'/'+steps.length;
+    document.getElementById('prevB').disabled=(idx===0);
+    document.getElementById('nextB').disabled=(idx===steps.length-1);
+  }
+  function stopPlay(){playing=false;clearTimeout(timer);playB.innerHTML='&#9654; Play';}
+  function startPlay(){
+    if(idx>=steps.length-1)idx=0;
+    playing=true;playB.innerHTML='&#10074;&#10074; Pause';
+    (function tick(){render();
+      if(idx<steps.length-1&&playing){timer=setTimeout(function(){idx++;tick();},(reduce?250:BASE)/parseFloat(speed.value));}
+      else stopPlay();})();
+  }
+  playB.onclick=function(){playing?stopPlay():startPlay();};
+  document.getElementById('prevB').onclick=function(){stopPlay();if(idx>0){idx--;render();}};
+  document.getElementById('nextB').onclick=function(){stopPlay();if(idx<steps.length-1){idx++;render();}};
+  document.getElementById('rstB').onclick=function(){stopPlay();idx=0;render();};
+  scrub.addEventListener('input',function(){stopPlay();idx=+scrub.value;render();});
+  speed.addEventListener('input',function(){spdLbl.textContent=parseFloat(speed.value).toFixed(1)+'\u00D7';});
+  document.querySelectorAll('.tab').forEach(function(t){t.addEventListener('click',function(){
+    mode=t.dataset.m;document.querySelectorAll('.tab').forEach(function(x){x.setAttribute('aria-selected',x===t);});
+    codeBox.innerHTML=CODE[mode](E());stopPlay();buildSteps();idx=0;render();});});
+  excl.addEventListener('input',function(){var keep=idx;codeBox.innerHTML=CODE[mode](E());stopPlay();buildSteps();idx=Math.min(keep,steps.length-1);render();});
+  codeBox.innerHTML=CODE[mode](E());buildSteps();render();
+})();
+</script>
+</body></html>

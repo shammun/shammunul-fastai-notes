@@ -2,9 +2,9 @@
 
 <html lang="en">
 <head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
-<title>06_foundations_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>_tmp06</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
 td.linenos .normal { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
@@ -7512,18 +7512,20 @@ a.anchor-link {
 <body class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
 <div class="ce-container">
 <header class="ce-breadcrumb">
-  <a href="../index.html">&larr; All notes</a>
+  <a href="../index.html">← All notes</a>
   <span class="ce-source">Source: <code>06_foundations_explained.ipynb</code></span>
 </header>
 <div class="ce-actions">
   <span class="ce-actions-label">Get the notebook</span>
   <a class="ce-action-btn" href="06_foundations_explained.ipynb" download>
-    <span class="ce-action-icon">&darr;</span> Download .ipynb
+    <span class="ce-action-icon">↓</span> Download .ipynb
   </a>
   <a class="ce-action-btn ce-action-colab" href="https://colab.research.google.com/github/shammun/shammunul-fastai-notes/blob/main/notebooks/06_foundations_explained_colab.ipynb" target="_blank" rel="noopener">
-    <span class="ce-action-icon">&#9654;</span> Open in Colab
+    <span class="ce-action-icon">▶</span> Open in Colab
   </a>
 </div>
+<main>
+
 <main>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -7548,6 +7550,99 @@ a.anchor-link {
 <li>Build flexible, reusable code</li>
 </ul>
 <hr/>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%8E%9B%EF%B8%8F-Interactive-visualizations-in-this-notebook">🎛️ Interactive visualizations in this notebook<a class="anchor-link" href="#%F0%9F%8E%9B%EF%B8%8F-Interactive-visualizations-in-this-notebook">¶</a></h2><p>This notebook is paired with <strong>7 interactive visualizations</strong> (plain HTML/JS &mdash; no internet or extra installs needed) that appear inline at the right moments. They all share the same control scheme:</p>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>⏮ Prev / Next ⏭</strong></td>
+<td>move one micro-step backward / forward</td>
+</tr>
+<tr>
+<td><strong>▶ Play / ⏸ Pause</strong></td>
+<td>run the whole animation automatically</td>
+</tr>
+<tr>
+<td><strong>🐢 ── 🐇 speed slider</strong></td>
+<td>slow it down to read, or speed it up to review</td>
+</tr>
+<tr>
+<td><strong>scrubber</strong></td>
+<td>drag to any step, like a video timeline</td>
+</tr>
+<tr>
+<td><strong>click a stage</strong></td>
+<td>epochs, timeline nodes, pipeline boxes, bars, flowchart boxes are <em>clickable</em> &mdash; jump straight to that moment</td>
+</tr>
+<tr>
+<td><strong>purple panel</strong></td>
+<td>a plain-English narration of exactly what the current step is doing</td>
+</tr>
+</tbody>
+</table>
+<p>Whenever you jump or step, the <strong>corresponding line of code is highlighted</strong>, so the animation and the code never drift apart.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>File</th>
+<th>Concept</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>callback_playground.html</code></td>
+<td>what a callback <em>is</em> (GUI + training loop)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>lambda_partial_machine.html</code></td>
+<td>lambdas, closures and <code>partial</code> as argument-filling machines</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>args_kwargs_sorter.html</code></td>
+<td><code>*args</code> / <code>**kwargs</code> packing and unpacking</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>callback_hooks_timeline.html</code></td>
+<td>multi-hook callbacks, <code>hasattr</code> gates, early stopping</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>state_modifying_calculator.html</code></td>
+<td>callbacks that <em>modify</em> the calculation's state</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>dunder_dispatch.html</code></td>
+<td><code>__dunder__</code> methods &mdash; how <code>a + b</code> becomes your code</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>getattr_lookup_flow.html</code></td>
+<td><code>__getattr__</code> and the attribute lookup walk</td>
+</tr>
+</tbody>
+</table>
+<p>Keep the folder <code>06_foundations_visuals/</code> next to this notebook.</p>
 </div>
 </div>
 </div>
@@ -8122,6 +8217,60 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-Callback-Playground">🎮 Interactive: the Callback Playground<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-Callback-Playground">¶</a></h3><p>Two sides of the same idea, side by side:</p>
+<ul>
+<li><strong>Left &mdash; the GUI analogy.</strong> A button can't know what should happen when it's clicked; <em>you</em> hand it a function. Flip the <em>register</em> switch and click the button: with no callback, clicks do nothing; with one, each click travels down the wire into <code>f</code> and prints <code>hi</code>.</li>
+<li><strong>Right &mdash; <code>slow_calculation</code>.</strong> The exact code from above, executed one micro-step at a time. Choose <code>cb = None</code>, <code>show_progress</code>, or a <code>lambda</code> and watch how the <em>same loop</em> is silent or chatty depending only on what you passed in.</li>
+</ul>
+<p><strong>Controls:</strong> ⏮ / ⏭ step one micro-step at a time · ▶ Play auto-runs it (🐢&ndash;🐇 slider sets the speed) · drag the <strong>scrubber</strong> to any step · and <strong>click the highlighted stages</strong> to jump straight there &mdash; the matching <strong>code line lights up</strong> and the purple panel explains that exact moment in plain English.</p>
+<p>Try this: play the <code>None</code> run, then <strong>click epoch 3</strong> in the <code>show_progress</code> run and compare what the <code>if cb:</code> line does in each.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># 📊 Interactive visualization &mdash; run this cell to display it inline.</span>
+<span class="c1"># The HTML file lives in the folder `06_foundations_visuals/`, which must sit</span>
+<span class="c1"># next to this notebook. If your editor blocks the iframe (e.g. some VS Code</span>
+<span class="c1"># setups), just open the HTML file directly in your browser instead.</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">&lt;iframe src="06_foundations_visuals/callback_playground.html"</span>
+<span class="s2">        style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;</span>
+<span class="s2">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"</span>
+<span class="s2">        loading="lazy"&gt;&lt;/iframe&gt;</span>
+<span class="s2">"""</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe loading="lazy" src="06_foundations_visuals/callback_playground.html" style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"></iframe>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="1.3-Lambdas-and-Partials">1.3 Lambdas and Partials<a class="anchor-link" href="#1.3-Lambdas-and-Partials">¶</a></h2><p>Sometimes we want a simple callback but don't want to define a whole function for it. Python provides two ways to create "lightweight" functions:</p>
 <ol>
@@ -8524,27 +8673,55 @@ show_progress receives:  exclamation="OK I guess", epoch=o
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Callback flow on a training loop</h3>
-  <p class="ce-interactive-hint">A miniature training loop with hookable events. Pick which callbacks are attached, then click <strong>Run</strong> to step through. Each event fires its registered callbacks in order. <strong>This is exactly the pattern fastai's Learner uses</strong> &mdash; the actual implementation is in notebook 09.</p>
-  <div class="cb-widget">
-    <div class="cb-row">
-      <strong>Active callbacks (toggle):</strong>
-      <span><label><input type="checkbox" data-cb="log" checked> log</label></span>
-      <span><label><input type="checkbox" data-cb="timer"> timer</label></span>
-      <span><label><input type="checkbox" data-cb="early_stop"> early_stop</label></span>
-      <span><label><input type="checkbox" data-cb="lr_anneal"> lr_anneal</label></span>
-    </div>
-    <div class="cb-canvas" id="cb-canvas"></div>
-    <div class="ms-controls">
-      <button id="cb-step" class="ms-btn">Step</button>
-      <button id="cb-auto" class="ms-btn">Auto-run</button>
-      <button id="cb-reset" class="ms-btn ms-secondary">Reset</button>
-    </div>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    Each event ("before_epoch", "after_batch" &hellip;) calls every registered callback that has that method. The training loop only knows about events; the <em>behavior</em> at each event is decided by which callbacks are attached. That's how you add logging, early stopping, mixed precision, or LR schedules without touching the core loop.
-  </p>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-Argument-Filling-Machine">🎮 Interactive: the Argument-Filling Machine<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-Argument-Filling-Machine">¶</a></h3><p><code>show_progress(exclamation, epoch)</code> takes <strong>two</strong> arguments, but the loop only ever calls <code>cb(i)</code> with <strong>one</strong>. All three tabs &mdash; <strong>lambda</strong>, <strong>closure</strong>, <strong>partial</strong> &mdash; build the same <em>wrapper machine</em> that already contains the exclamation.</p>
+<p>Notice <strong>step 1</strong> especially: the wrapper is built <strong>once</strong>, <em>before any epoch runs</em> &mdash; the purple value is baked in at that moment and never changes. From then on, each epoch only supplies the orange <code>i</code>. Type your own exclamation and switch tabs: the machine in the middle stays identical.</p>
+<p><strong>Controls:</strong> ⏮ / ⏭ step one micro-step at a time · ▶ Play auto-runs it (🐢&ndash;🐇 slider sets the speed) · drag the <strong>scrubber</strong> to any step · and <strong>click the highlighted stages</strong> to jump straight there &mdash; the matching <strong>code line lights up</strong> and the purple panel explains that exact moment in plain English. The <code>build</code> pill jumps to the wrapper's creation; the <code>epoch n</code> pills jump into the loop.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># 📊 Interactive visualization &mdash; run this cell to display it inline.</span>
+<span class="c1"># The HTML file lives in the folder `06_foundations_visuals/`, which must sit</span>
+<span class="c1"># next to this notebook. If your editor blocks the iframe (e.g. some VS Code</span>
+<span class="c1"># setups), just open the HTML file directly in your browser instead.</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">&lt;iframe src="06_foundations_visuals/lambda_partial_machine.html"</span>
+<span class="s2">        style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;</span>
+<span class="s2">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"</span>
+<span class="s2">        loading="lazy"&gt;&lt;/iframe&gt;</span>
+<span class="s2">"""</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe loading="lazy" src="06_foundations_visuals/lambda_partial_machine.html" style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"></iframe>
+</div>
+</div>
+</div>
+</div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -8553,7 +8730,6 @@ show_progress receives:  exclamation="OK I guess", epoch=o
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-
 <h2 id="1.4-Callbacks-as-Callable-Classes">1.4 Callbacks as Callable Classes<a class="anchor-link" href="#1.4-Callbacks-as-Callable-Classes">¶</a></h2><p>So far, our callbacks have been functions. But Python allows us to make <strong>objects</strong> that can be called like functions. These are called "callable" objects.</p>
 <p><strong>Why use a class instead of a function?</strong></p>
 <ul>
@@ -8905,6 +9081,58 @@ show_progress receives:  exclamation="OK I guess", epoch=o
 <li>Future compatibility - you can add new parameters without breaking old callbacks</li>
 </ol>
 <hr/>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-*args-/-**kwargs-Sorter">🎮 Interactive: the <code>*args</code> / <code>**kwargs</code> Sorter<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-*args-/-**kwargs-Sorter">¶</a></h3><ul>
+<li><strong>Card A &mdash; packing (in a <code>def</code>).</strong> Build any call to <code>f(*a, **b)</code> with the chip builder, then step through Python sorting the arguments <strong>one at a time</strong>: each step states the rule it applied (<em>no <code>name=</code> &rarr; tuple; <code>name=value</code> &rarr; dict</em>). Click any <strong>chip</strong> or <strong>step pill</strong> to jump to the exact moment that argument is sorted (✕ removes a chip).</li>
+<li><strong>Card B &mdash; unpacking (in a call).</strong> The same stars in reverse: <code>g(*args, **kwargs)</code> spreads containers into named slots. <strong>Click a parameter slot</strong> (<code>a</code>, <code>b</code>, <code>c</code>) to jump to the moment it gets filled.</li>
+</ul>
+<p><strong>Controls:</strong> ⏮ / ⏭ step one micro-step at a time · ▶ Play auto-runs it (🐢&ndash;🐇 slider sets the speed) · drag the <strong>scrubber</strong> to any step · and <strong>click the highlighted stages</strong> to jump straight there &mdash; the matching <strong>code line lights up</strong> and the purple panel explains that exact moment in plain English. The 🐢&ndash;🐇 slider at the top controls both cards.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># 📊 Interactive visualization &mdash; run this cell to display it inline.</span>
+<span class="c1"># The HTML file lives in the folder `06_foundations_visuals/`, which must sit</span>
+<span class="c1"># next to this notebook. If your editor blocks the iframe (e.g. some VS Code</span>
+<span class="c1"># setups), just open the HTML file directly in your browser instead.</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">&lt;iframe src="06_foundations_visuals/args_kwargs_sorter.html"</span>
+<span class="s2">        style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;</span>
+<span class="s2">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"</span>
+<span class="s2">        loading="lazy"&gt;&lt;/iframe&gt;</span>
+<span class="s2">"""</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe loading="lazy" src="06_foundations_visuals/args_kwargs_sorter.html" style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"></iframe>
+</div>
 </div>
 </div>
 </div>
@@ -9323,6 +9551,57 @@ show_progress receives:  exclamation="OK I guess", epoch=o
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Hooks,-hasattr-Gates-&amp;-Early-Stopping">🎮 Interactive: Hooks, <code>hasattr</code> Gates &amp; Early Stopping<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Hooks,-hasattr-Gates-&amp;-Early-Stopping">¶</a></h3><p>Each epoch flows through three nodes &mdash; <code>before_calc</code> &rarr; <code>res += i*i</code> &rarr; <code>after_calc</code> &mdash; and each hook sits behind a <strong>gate</strong>: <code>if cb and hasattr(cb, '...')</code>. Both code panels are shown (the loop <em>and</em> your callback) and the active lines light up in each as you step.</p>
+<p><strong>Every node, gate and epoch label is clickable</strong> &mdash; jump to the before-gate of epoch 2, or straight to the moment <code>after_calc</code> returns <code>True</code>. Clicking a grayed-out epoch after an early stop explains <em>why it never ran</em>.</p>
+<p><strong>Controls:</strong> ⏮ / ⏭ step one micro-step at a time · ▶ Play auto-runs it (🐢&ndash;🐇 slider sets the speed) · drag the <strong>scrubber</strong> to any step · and <strong>click the highlighted stages</strong> to jump straight there &mdash; the matching <strong>code line lights up</strong> and the purple panel explains that exact moment in plain English.</p>
+<p>Predict first: <code>res</code> goes 0, 1, 5, 14, 30 &mdash; with the early-stop rule <code>val &gt; 10</code>, which epoch is the last to run? Untick <code>before_calc</code> afterwards: nothing crashes. Why?</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># 📊 Interactive visualization &mdash; run this cell to display it inline.</span>
+<span class="c1"># The HTML file lives in the folder `06_foundations_visuals/`, which must sit</span>
+<span class="c1"># next to this notebook. If your editor blocks the iframe (e.g. some VS Code</span>
+<span class="c1"># setups), just open the HTML file directly in your browser instead.</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">&lt;iframe src="06_foundations_visuals/callback_hooks_timeline.html"</span>
+<span class="s2">        style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;</span>
+<span class="s2">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"</span>
+<span class="s2">        loading="lazy"&gt;&lt;/iframe&gt;</span>
+<span class="s2">"""</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe loading="lazy" src="06_foundations_visuals/callback_hooks_timeline.html" style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"></iframe>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="A-More-Sophisticated-Callback-System">A More Sophisticated Callback System<a class="anchor-link" href="#A-More-Sophisticated-Callback-System">¶</a></h3><p>Now let's build a proper calculator class where callbacks can even <strong>modify the state</strong>.</p>
 </div>
 </div>
@@ -9589,13 +9868,55 @@ show_progress receives:  exclamation="OK I guess", epoch=o
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Which dunder fires when?</h3>
-  <p class="ce-interactive-hint">Python's operator and syntax magic all routes through dunder methods. Pick an expression and see which method gets called &mdash; this is the mental model you need to understand how PyTorch's <code>tensor1 + tensor2</code>, <code>model(x)</code>, <code>len(dataset)</code>, etc. actually dispatch.</p>
-  <div class="dun-widget">
-    <div class="dun-buttons" id="dun-buttons"></div>
-    <div class="dun-display" id="dun-display"></div>
-  </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-a-Callback-That-Changes-the-Calculation">🎮 Interactive: a Callback That <em>Changes</em> the Calculation<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-a-Callback-That-Changes-the-Calculation">¶</a></h3><p><code>SlowCalculator</code> passes <strong>itself</strong> (<code>self</code>) to its callback, so <code>ModifyingCallback</code> can <em>read and write</em> <code>calc.res</code>. Each epoch has three micro-steps: the loop <strong>writes</strong> (orange bar), the callback <strong>reads &amp; prints</strong>, then the callback <strong>decides</strong> &mdash; double it (<code>res &lt; 3</code>), stop everything (<code>res &gt; 10</code>), or leave it (purple bar).</p>
+<p><strong>Click any epoch's bars</strong> to jump straight to it. When the purple bar is taller than the orange one, you're literally seeing shared state being mutated from outside the loop &mdash; the same mechanism behind fastai's LR schedulers and early stopping.</p>
+<p><strong>Controls:</strong> ⏮ / ⏭ step one micro-step at a time · ▶ Play auto-runs it (🐢&ndash;🐇 slider sets the speed) · drag the <strong>scrubber</strong> to any step · and <strong>click the highlighted stages</strong> to jump straight there &mdash; the matching <strong>code line lights up</strong> and the purple panel explains that exact moment in plain English. Toggle the callback off, replay, and compare final results (15 vs 30).</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># 📊 Interactive visualization &mdash; run this cell to display it inline.</span>
+<span class="c1"># The HTML file lives in the folder `06_foundations_visuals/`, which must sit</span>
+<span class="c1"># next to this notebook. If your editor blocks the iframe (e.g. some VS Code</span>
+<span class="c1"># setups), just open the HTML file directly in your browser instead.</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">&lt;iframe src="06_foundations_visuals/state_modifying_calculator.html"</span>
+<span class="s2">        style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;</span>
+<span class="s2">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"</span>
+<span class="s2">        loading="lazy"&gt;&lt;/iframe&gt;</span>
+<span class="s2">"""</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe loading="lazy" src="06_foundations_visuals/state_modifying_calculator.html" style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"></iframe>
+</div>
+</div>
+</div>
+</div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9604,7 +9925,6 @@ show_progress receives:  exclamation="OK I guess", epoch=o
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-
 <h1 id="Part-2:-__dunder__-Methods-(Magic-Methods)">Part 2: <code>__dunder__</code> Methods (Magic Methods)<a class="anchor-link" href="#Part-2:-__dunder__-Methods-(Magic-Methods)">¶</a></h1><hr/>
 <h2 id="What-are-Dunder-Methods?">What are Dunder Methods?<a class="anchor-link" href="#What-are-Dunder-Methods?">¶</a></h2><p>In Python, methods with names that start and end with double underscores (like <code>__init__</code>, <code>__add__</code>, <code>__call__</code>) are called "dunder" methods (short for "double underscore"). They're also called:</p>
 <ul>
@@ -9842,6 +10162,58 @@ show_progress receives:  exclamation="OK I guess", epoch=o
 </table>
 <p>For more, see the <a href="https://docs.python.org/3/reference/datamodel.html">Python Data Model documentation</a>.</p>
 <hr/>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Dunder-Dispatch">🎮 Interactive: Dunder Dispatch<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Dunder-Dispatch">¶</a></h3><ul>
+<li><strong>Card A &mdash; the translation dictionary.</strong> Click any expression (<code>a + b</code>, <code>len(a)</code>, <code>a[3]</code>, <code>a(5)</code>, &hellip;) to see the <code>__dunder__</code> call Python actually makes, plus why it matters for PyTorch/fastai.</li>
+<li><strong>Card B &mdash; one <code>a + b</code>, frame by frame.</strong> A six-stage pipeline: <em>you write <code>a + b</code> &rarr; Python rewrites it to <code>a.__add__(b)</code> &rarr; the body computes &rarr; a </em><em>new</em>* SloppyAdder is born via <code>__init__</code> &rarr; Jupyter calls <code>__repr__</code> &rarr; you see the number.* <strong>Click any stage to jump to it</strong> &mdash; its code line lights up on the left. Drag the <code>a.o</code> / <code>b.o</code> sliders and every stage recomputes live.</li>
+</ul>
+<p><strong>Controls:</strong> ⏮ / ⏭ step one micro-step at a time · ▶ Play auto-runs it (🐢&ndash;🐇 slider sets the speed) · drag the <strong>scrubber</strong> to any step · and <strong>click the highlighted stages</strong> to jump straight there &mdash; the matching <strong>code line lights up</strong> and the purple panel explains that exact moment in plain English.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># 📊 Interactive visualization &mdash; run this cell to display it inline.</span>
+<span class="c1"># The HTML file lives in the folder `06_foundations_visuals/`, which must sit</span>
+<span class="c1"># next to this notebook. If your editor blocks the iframe (e.g. some VS Code</span>
+<span class="c1"># setups), just open the HTML file directly in your browser instead.</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">&lt;iframe src="06_foundations_visuals/dunder_dispatch.html"</span>
+<span class="s2">        style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;</span>
+<span class="s2">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"</span>
+<span class="s2">        loading="lazy"&gt;&lt;/iframe&gt;</span>
+<span class="s2">"""</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe loading="lazy" src="06_foundations_visuals/dunder_dispatch.html" style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"></iframe>
+</div>
 </div>
 </div>
 </div>
@@ -10143,6 +10515,56 @@ show_progress receives:  exclamation="OK I guess", epoch=o
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-__getattr__-Lookup-Walk">🎮 Interactive: the <code>__getattr__</code> Lookup Walk<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-__getattr__-Lookup-Walk">¶</a></h3><p>When you write <code>b.something</code>, Python walks a fixed path: <strong>instance <code>__dict__</code> &rarr; class attributes &rarr; only then <code>__getattr__</code></strong>. Pick an attribute (<code>b.a</code>, <code>b.foo</code>, <code>b._secret</code>, or type your own) and step through the walk.</p>
+<p><strong>Every flowchart box is clickable</strong> &mdash; jump to any checkpoint, and the matching line of <code>B</code>'s code lights up. For <code>b.a</code> the lower boxes appear dashed: click one and it explains that the walk <em>stopped early</em> because lookup ends at the first hit. For <code>b._secret</code>, watch the underscore guard <code>raise</code> &mdash; exactly the failure your fastai <code>__getattr__</code> delegation must preserve.</p>
+<p><strong>Controls:</strong> ⏮ / ⏭ step one micro-step at a time · ▶ Play auto-runs it (🐢&ndash;🐇 slider sets the speed) · drag the <strong>scrubber</strong> to any step · and <strong>click the highlighted stages</strong> to jump straight there &mdash; the matching <strong>code line lights up</strong> and the purple panel explains that exact moment in plain English.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># 📊 Interactive visualization &mdash; run this cell to display it inline.</span>
+<span class="c1"># The HTML file lives in the folder `06_foundations_visuals/`, which must sit</span>
+<span class="c1"># next to this notebook. If your editor blocks the iframe (e.g. some VS Code</span>
+<span class="c1"># setups), just open the HTML file directly in your browser instead.</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s2">"""</span>
+<span class="s2">&lt;iframe src="06_foundations_visuals/getattr_lookup_flow.html"</span>
+<span class="s2">        style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;</span>
+<span class="s2">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"</span>
+<span class="s2">        loading="lazy"&gt;&lt;/iframe&gt;</span>
+<span class="s2">"""</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
+<iframe loading="lazy" src="06_foundations_visuals/getattr_lookup_flow.html" style="width:100%; height:100vh; min-height:640px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12); background:#eef3fb;"></iframe>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h1 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h1><hr/>
 <h2 id="Key-Concepts-Learned">Key Concepts Learned<a class="anchor-link" href="#Key-Concepts-Learned">¶</a></h2><h3 id="Callbacks">Callbacks<a class="anchor-link" href="#Callbacks">¶</a></h3><ul>
@@ -10230,203 +10652,6 @@ show_progress receives:  exclamation="OK I guess", epoch=o
 </div>
 </div>
 </div>
-<style>
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 70px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactive .ms-btn.ms-secondary { background: transparent; color: var(--ce-purple, #6c5ce7); border: 1px solid var(--ce-purple, #6c5ce7); box-shadow: none; }
-
-/* Callback widget */
-.cb-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.cb-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; font-size: 0.9em; }
-.cb-row label { cursor: pointer; }
-.cb-canvas { background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; min-height: 280px; font-family: var(--ce-font-mono, monospace); font-size: 0.86em; }
-.cb-event { padding: 4px 8px; margin: 2px 0; border-radius: 4px; transition: background 0.2s; }
-.cb-event.active { background: rgba(79, 70, 229, 0.18); color: #1a1f36; font-weight: 600; }
-.cb-event.done { color: #9ca3af; }
-.cb-callbacks { padding-left: 20px; color: var(--ce-purple-dark, #4f3dd0); font-size: 0.92em; }
-.cb-callbacks .fired { color: #0f766e; font-weight: 600; }
-
-/* Dunder widget */
-.dun-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.dun-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 14px; }
-.dun-buttons button {
-  padding: 8px 10px; border: 1px solid #d1d5db; background: white;
-  border-radius: 6px; cursor: pointer;
-  font-family: var(--ce-font-mono, monospace); font-size: 0.86em;
-  transition: all 0.15s; touch-action: manipulation;
-}
-.dun-buttons button:hover { border-color: var(--ce-purple, #6c5ce7); background: rgba(108, 92, 231, 0.05); }
-.dun-buttons button.active { background: var(--ce-purple, #6c5ce7); color: white; border-color: var(--ce-purple, #6c5ce7); }
-.dun-display { padding: 16px; background: white; border-radius: 6px; border: 1px solid #e5e7eb; font-size: 0.95em; }
-.dun-display .dun-call { font-family: var(--ce-font-mono, monospace); color: var(--ce-purple-dark, #4f3dd0); font-weight: 600; }
-.dun-display .dun-arrow { color: var(--ce-text-muted, #697386); margin: 0 8px; }
-.dun-display .dun-method { font-family: var(--ce-font-mono, monospace); color: #0f766e; font-weight: 600; }
-.dun-display .dun-explain { margin-top: 10px; font-size: 0.88em; color: var(--ce-text-soft, #3c4257); }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-// ============================================================================
-// Interactive 1: Callback flow
-// ============================================================================
-(function callbackFlow() {
-  var canvas = document.getElementById('cb-canvas');
-  if (!canvas) return;
-
-  var CALLBACKS = {
-    log:        { before_epoch: "print(f'epoch {i}')", after_batch: "log.append(loss)", after_epoch: "print(f'  avg loss: {mean:.3f}')" },
-    timer:      { before_epoch: "self.t0 = time.time()", after_epoch: "print(f'  took {dt:.2f}s')" },
-    early_stop: { after_epoch: "if loss > 5: raise CancelFitException" },
-    lr_anneal:  { before_batch: "self.opt.lr = cos_anneal(step)" },
-  };
-
-  var EVENTS = [
-    { name: 'before_fit',   indent: 0 },
-    { name: 'before_epoch', indent: 1, repeat: 2 },
-    { name: 'before_batch', indent: 2, repeat: 3 },
-    { name: 'forward + loss', indent: 2, base: true },
-    { name: 'backward + step', indent: 2, base: true },
-    { name: 'after_batch',  indent: 2 },
-    { name: 'after_epoch',  indent: 1 },
-    { name: 'after_fit',    indent: 0 },
-  ];
-
-  var sequence = [];
-  function buildSequence() {
-    sequence = [];
-    sequence.push({ event: 'before_fit', i: 0 });
-    for (var ep = 0; ep < 2; ep++) {
-      sequence.push({ event: 'before_epoch', i: ep });
-      for (var b = 0; b < 3; b++) {
-        sequence.push({ event: 'before_batch', i: b });
-        sequence.push({ event: 'forward + loss', i: b, base: true });
-        sequence.push({ event: 'backward + step', i: b, base: true });
-        sequence.push({ event: 'after_batch', i: b });
-      }
-      sequence.push({ event: 'after_epoch', i: ep });
-    }
-    sequence.push({ event: 'after_fit', i: 0 });
-  }
-  buildSequence();
-
-  var pos = 0;
-  var timer = null;
-
-  function activeCbs() {
-    var act = {};
-    document.querySelectorAll('[data-cb]').forEach(function(cb) {
-      act[cb.dataset.cb] = cb.checked;
-    });
-    return act;
-  }
-
-  function render() {
-    var act = activeCbs();
-    var html = '';
-    for (var i = 0; i < sequence.length; i++) {
-      var s = sequence[i];
-      var indent = (s.base ? 6 : 0) + (s.event.startsWith('before_batch') || s.event.startsWith('after_batch') || s.base ? 8 : (s.event.startsWith('before_epoch') || s.event.startsWith('after_epoch') ? 4 : 0));
-      var cls = i < pos ? 'done' : (i === pos - 1 ? 'active' : '');
-      var prefix = s.event.startsWith('forward') || s.event.startsWith('backward') ? '> ' : '> event: ';
-      html += '<div class="cb-event ' + cls + '" style="padding-left:' + (indent * 4) + 'px;">' + prefix + s.event + '</div>';
-      if (i < pos && !s.base) {
-        var fired = [];
-        Object.keys(CALLBACKS).forEach(function(name) {
-          if (act[name] && CALLBACKS[name][s.event]) {
-            fired.push('<div class="cb-callbacks ' + (i === pos - 1 ? 'fired' : '') + '" style="padding-left:' + ((indent * 4) + 24) + 'px;">' + name + '.' + s.event + '() &mdash; ' + CALLBACKS[name][s.event] + '</div>');
-          }
-        });
-        html += fired.join('');
-      }
-    }
-    canvas.innerHTML = html;
-  }
-
-  function step() {
-    if (pos < sequence.length) {
-      pos++;
-      render();
-      return true;
-    }
-    return false;
-  }
-
-  document.getElementById('cb-step').addEventListener('click', step);
-  document.getElementById('cb-reset').addEventListener('click', function() {
-    pos = 0;
-    clearInterval(timer); timer = null;
-    document.getElementById('cb-auto').textContent = 'Auto-run';
-    render();
-  });
-  document.getElementById('cb-auto').addEventListener('click', function() {
-    if (timer) { clearInterval(timer); timer = null; document.getElementById('cb-auto').textContent = 'Auto-run'; return; }
-    document.getElementById('cb-auto').textContent = 'Stop';
-    timer = setInterval(function() {
-      if (!step()) { clearInterval(timer); timer = null; document.getElementById('cb-auto').textContent = 'Auto-run'; }
-    }, 350);
-  });
-  document.querySelectorAll('[data-cb]').forEach(function(cb) {
-    cb.addEventListener('change', render);
-  });
-
-  render();
-})();
-
-// ============================================================================
-// Interactive 2: Dunder method tracer
-// ============================================================================
-(function dunderTrace() {
-  var btns = document.getElementById('dun-buttons');
-  if (!btns) return;
-  var disp = document.getElementById('dun-display');
-
-  var EXAMPLES = [
-    { expr: 'a + b',         method: '__add__',     why: 'Binary plus. PyTorch tensors override this to do elementwise addition.' },
-    { expr: 'a * b',         method: '__mul__',     why: 'Binary times. For ndarrays/tensors, elementwise multiply.' },
-    { expr: 'a @ b',         method: '__matmul__',  why: 'The matrix-multiply operator (Python 3.5+). Tensors override for matmul.' },
-    { expr: 'a == b',        method: '__eq__',      why: 'Equality. Returns boolean tensor for ndarrays.' },
-    { expr: 'len(x)',        method: '__len__',     why: 'len() looks for __len__. Datasets and DataLoaders implement this.' },
-    { expr: 'x[i]',          method: '__getitem__', why: 'Bracket-access. The basis of Dataset[i] giving you the i-th sample.' },
-    { expr: 'x[i] = v',      method: '__setitem__', why: 'Assignment via brackets.' },
-    { expr: 'iter(x)',       method: '__iter__',    why: 'Used by for-loops and the *unpacking. DataLoader implements __iter__ to yield batches.' },
-    { expr: 'model(input)',  method: '__call__',    why: 'Making an object callable. nn.Module.__call__ runs forward() plus hooks &mdash; this is why model(x), not model.forward(x).' },
-    { expr: 'repr(x)',       method: '__repr__',    why: 'Programmer-facing string. The default when you type x in the REPL.' },
-    { expr: 'str(x)',        method: '__str__',     why: 'User-facing string. Falls back to __repr__ if not defined.' },
-    { expr: 'x.attr',        method: '__getattr__', why: 'ONLY called when attribute is missing. fastai uses this for delegation.' },
-    { expr: 'with x: ...',   method: '__enter__ / __exit__', why: 'Context manager protocol. torch.no_grad() is the famous example.' },
-  ];
-
-  EXAMPLES.forEach(function(ex, idx) {
-    var b = document.createElement('button');
-    b.textContent = ex.expr;
-    b.dataset.idx = idx;
-    btns.appendChild(b);
-  });
-
-  function show(idx) {
-    var ex = EXAMPLES[idx];
-    disp.innerHTML = '<span class="dun-call">' + ex.expr + '</span>' +
-                     '<span class="dun-arrow">&rarr; calls &rarr;</span>' +
-                     '<span class="dun-method">' + ex.method + '</span>' +
-                     '<div class="dun-explain">' + ex.why + '</div>';
-    Array.prototype.forEach.call(btns.children, function(b, i) {
-      b.classList.toggle('active', i === idx);
-    });
-  }
-
-  btns.addEventListener('click', function(e) {
-    if (e.target.tagName === 'BUTTON') show(parseInt(e.target.dataset.idx));
-  });
-  show(0);
-})();
-
-})();
-</script>
 </main>
 </div>
 </body>

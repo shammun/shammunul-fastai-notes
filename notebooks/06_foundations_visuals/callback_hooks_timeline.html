@@ -1,0 +1,266 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Callback Hooks Timeline</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#d6455c;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{min-height:100vh;background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:18px 16px 28px}
+  h1{font-size:20px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:13px;margin:0 0 14px;max-width:800px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .grid{display:grid;grid-template-columns:370px 1fr;gap:16px;max-width:1240px;margin:0 auto}
+  @media(max-width:960px){.grid{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 8px 22px rgba(123,92,214,.10)}
+  .card h2{font-size:14px;margin:0 0 8px}
+  .codecap{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--soft);margin:0 0 3px}
+  pre.code{background:#27304a;color:#e8edf9;border-radius:10px;padding:8px 10px;font-family:Consolas,Menlo,monospace;
+    font-size:11.5px;line-height:1.6;overflow-x:auto;margin:0 0 10px}
+  pre.code .ln{display:block;border-radius:5px;padding:0 5px;transition:background .15s}
+  pre.code .ln.hot{background:#7b5cd6;color:#fff} pre.code .ln.hot2{background:#f6921e;color:#1d2333}
+  pre.code .ln.hot3{background:#d6455c;color:#fff}
+  .kw{color:#8ab8ff}.st{color:#ffd58a}.cm{color:#8b97b8}.fn{color:#9fe8e3}
+  pre.code .dim{opacity:.32}
+  .opt{display:flex;align-items:flex-start;gap:8px;font-size:13px;margin:7px 0;line-height:1.45}
+  .opt code{background:#f1f5fc;border-radius:5px;padding:0 4px}
+  button:focus-visible,input:focus-visible{outline:3px solid #c9b8ff;outline-offset:2px}
+  /* timeline */
+  .lane{display:flex;flex-direction:column;gap:8px}
+  .erow{display:grid;grid-template-columns:54px 1fr 1fr 1fr;gap:8px;align-items:stretch;opacity:.5;transition:opacity .2s}
+  .erow.active{opacity:1}
+  .erow.passed{opacity:.85}
+  .erow.skiprow{opacity:.25;filter:grayscale(1)}
+  .elab{display:flex;align-items:center;justify-content:center;font-weight:700;font-family:Consolas,monospace;
+    border-radius:10px;background:#fbfdff;border:2px solid var(--line);font-size:13px;cursor:pointer}
+  .elab:hover{border-color:var(--ac);color:var(--ac)}
+  .erow.active .elab{border-color:var(--in);background:#fff7ec}
+  .node{border:2px solid var(--line);border-radius:10px;padding:6px 8px;background:#fbfdff;font-size:11.5px;text-align:center;
+    transition:all .2s;position:relative;cursor:pointer}
+  .node:hover{border-color:var(--ac)}
+  .node .h{font-family:Consolas,monospace;font-weight:700;font-size:11.5px}
+  .node .s{color:var(--soft)}
+  .node.fireB{border-color:var(--ac);background:#f4efff}
+  .node.fireC{border-color:var(--in);background:#fff7ec}
+  .node.fireA{border-color:var(--out);background:#f0fbfa}
+  .node.cur{box-shadow:0 5px 14px rgba(37,50,74,.25);transform:translateY(-2px)}
+  .node.skipped{border-style:dashed;color:#9aa7c4;background:#f6f8fd}
+  .node.stop{border-color:var(--bad)!important;background:#fdeef1!important}
+  .gate{position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-size:9.5px;font-weight:700;
+    padding:1px 7px;border-radius:999px;background:#e9edf7;color:#7384a6;white-space:nowrap}
+  .gate.pass{background:#d9f4ee;color:#0d7d7d}.gate.fail{background:#fde3e8;color:#b23a4e}
+  .banner{display:none;margin-top:10px;background:#fdeef1;border:2px solid var(--bad);color:#9d2c40;border-radius:10px;
+    padding:7px 12px;font-size:13px;font-weight:600;text-align:center}
+  .banner.show{display:block}
+  .console{background:#101728;color:#cfe6d8;border-radius:10px;min-height:96px;max-height:130px;overflow-y:auto;
+    font-family:Consolas,monospace;font-size:12.5px;padding:8px 10px;line-height:1.6;margin-top:10px}
+  .console .sys{color:#7e8db0}.console .b4{color:#c9b8ff}.console .af{color:#9fe8e3}.console .stp{color:#ff9eb0}
+  /* transport + explain */
+  .transport{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fbfdff;border:1px solid var(--line);border-radius:10px;padding:7px 9px;margin:10px 0 0}
+  .tbtn{font:inherit;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid #cfd9ec;background:#fff;color:var(--ink);cursor:pointer}
+  .tbtn:hover{background:#f1f5fc}.tbtn:disabled{opacity:.4;cursor:default}
+  .tbtn.play{background:var(--ac);border-color:var(--ac);color:#fff;min-width:74px}.tbtn.play:hover{background:#6a4cc7}
+  .scrub{flex:1;min-width:100px;accent-color:var(--ac)}
+  .steplbl{font-size:11.5px;color:var(--soft);font-family:Consolas,monospace;white-space:nowrap}
+  .speedwrap{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--soft)}
+  .speedwrap input{width:74px;accent-color:var(--ac)}
+  .speedwrap b{font-size:11.5px;font-family:Consolas,monospace;color:var(--ink);width:30px}
+  .explain{background:#f4efff;border:1px solid #ded2ff;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.55;min-height:60px;margin:0 0 10px}
+  .explain b{color:var(--ac)} .explain code{background:#fff;border-radius:4px;padding:0 4px}
+  .hint{font-size:12px;color:var(--soft);margin-top:8px;line-height:1.55}.hint b{color:var(--ac)}
+</style></head><body>
+<h1>Hooks, <code>hasattr</code> Gates &amp; Early Stopping</h1>
+<p class="sub">The loop offers two hook points per epoch; whether each fires depends on its <b>gate</b>: <code>if cb and hasattr(cb, '&hellip;')</code>.
+If <code>after_calc</code> returns <code>True</code>, the loop stops. <b>Click any node, gate or epoch label</b> to jump to that exact moment.</p>
+
+<div class="grid">
+  <div class="card">
+    <h2>The two pieces of code</h2>
+    <div class="codecap">the loop (never changes)</div>
+    <pre class="code" id="loopCode"><span class="ln" data-l="0"><span class="kw">def</span> <span class="fn">slow_calculation</span>(cb=<span class="kw">None</span>):</span><span class="ln" data-l="1">    res = 0</span><span class="ln" data-l="2">    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(5):</span><span class="ln" data-l="3">        <span class="kw">if</span> cb <span class="kw">and</span> <span class="fn">hasattr</span>(cb,<span class="st">'before_calc'</span>):</span><span class="ln" data-l="4">            cb.before_calc(i)</span><span class="ln" data-l="5">        res += i*i; sleep(1)</span><span class="ln" data-l="6">        <span class="kw">if</span> cb <span class="kw">and</span> <span class="fn">hasattr</span>(cb,<span class="st">'after_calc'</span>):</span><span class="ln" data-l="7">            <span class="kw">if</span> cb.after_calc(i, res):</span><span class="ln" data-l="8">                <span class="fn">print</span>(<span class="st">"stopping early"</span>); <span class="kw">break</span></span><span class="ln" data-l="9">    <span class="kw">return</span> res</span></pre>
+    <div class="codecap">your callback (you choose its methods)</div>
+    <pre class="code" id="cbCode"></pre>
+    <label class="opt"><input type="checkbox" id="optB" checked> <span>implement <code>before_calc(epoch)</code></span></label>
+    <label class="opt"><input type="checkbox" id="optA" checked> <span>implement <code>after_calc(epoch, val)</code></span></label>
+    <label class="opt" id="optStopWrap"><input type="checkbox" id="optStop" checked> <span>in <code>after_calc</code>: <code>if val &gt; 10: return True</code></span></label>
+    <p class="hint"><b>Predict first:</b> res goes 0, 1, 5, 14, 30. With early stop on, which epoch is the last to run? Step through and check. Then untick <code>before_calc</code> &mdash; nothing crashes, because <code>hasattr</code> quietly closes that gate.</p>
+  </div>
+
+  <div class="card">
+    <h2>The loop, epoch by epoch</h2>
+    <div class="explain" id="explain"></div>
+    <div class="lane" id="lane"></div>
+    <div class="banner" id="banner">&#9888; after_calc returned True &rarr; "stopping early" &rarr; break</div>
+    <div class="transport">
+      <button class="tbtn" id="prevB">&#9198; Prev</button>
+      <button class="tbtn play" id="playB">&#9654; Play</button>
+      <button class="tbtn" id="nextB">Next &#9197;</button>
+      <button class="tbtn" id="rstB">&#8634; Reset</button>
+      <input type="range" class="scrub" id="scrub" min="0" max="0" value="0" aria-label="scrub through steps">
+      <span class="steplbl" id="stepLbl"></span>
+      <span class="speedwrap">&#128034;<input type="range" id="speed" min="0.5" max="3" step="0.25" value="1" aria-label="speed">&#128007;<b id="spdLbl">1.0&times;</b></span>
+    </div>
+    <div class="console" id="log"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var SQ=[0,1,4,9,16],N=5,BASE=1350;
+  var lane=document.getElementById('lane'),logEl=document.getElementById('log'),banner=document.getElementById('banner'),
+      optB=document.getElementById('optB'),optA=document.getElementById('optA'),optStop=document.getElementById('optStop'),
+      cbCode=document.getElementById('cbCode'),loopCode=document.getElementById('loopCode'),
+      explain=document.getElementById('explain'),scrub=document.getElementById('scrub'),
+      stepLbl=document.getElementById('stepLbl'),playB=document.getElementById('playB'),
+      speed=document.getElementById('speed'),spdLbl=document.getElementById('spdLbl');
+  var steps=[],idx=0,jump=[],playing=false,timer=null;
+
+  function renderCbCode(){
+    var hasB=optB.checked,hasA=optA.checked,hasS=optStop.checked&&hasA;
+    document.getElementById('optStopWrap').style.opacity=hasA?1:.4;optStop.disabled=!hasA;
+    var s='<span class="ln" data-c="h"><span class="kw">class</span> <span class="fn">MyCallback</span>():</span>';
+    s+= hasB? '<span class="ln" data-c="b1">    <span class="kw">def</span> <span class="fn">before_calc</span>(self, epoch, **kw):</span><span class="ln" data-c="b2">        <span class="fn">print</span>(<span class="st">f"About to start: </span>{epoch}<span class="st">"</span>)</span>'
+            : '<span class="ln dim" data-c="b0">    <span class="cm"># (no before_calc method)</span></span>';
+    if(hasA){
+      s+='<span class="ln" data-c="a1">    <span class="kw">def</span> <span class="fn">after_calc</span>(self, epoch, val, **kw):</span><span class="ln" data-c="a2">        <span class="fn">print</span>(<span class="st">f"After </span>{epoch}<span class="st">: </span>{val}<span class="st">"</span>)</span>';
+      s+= hasS? '<span class="ln" data-c="a3">        <span class="kw">if</span> val &gt; 10: <span class="kw">return</span> <span class="kw">True</span></span>'
+              : '<span class="ln dim" data-c="a0">        <span class="cm"># (never asks to stop)</span></span>';
+    } else s+='<span class="ln dim" data-c="a0">    <span class="cm"># (no after_calc method)</span></span>';
+    cbCode.innerHTML=s;
+  }
+  function buildSteps(){
+    var hasB=optB.checked,hasA=optA.checked,hasS=optStop.checked&&hasA;
+    steps=[];jump=[];for(var k=0;k<N;k++)jump.push({});
+    var res=0,logs=[],stoppedAt=null;
+    var eps=[];for(var k=0;k<N;k++)eps.push({gb:'?',b:'idle',calc:false,cs:'res = ?',ga:'?',a:'idle',as:'\u2014',stopBadge:false});
+    function snap(o){o.res=res;o.logs=logs.slice();o.stoppedAt=stoppedAt;
+      o.eps=JSON.parse(JSON.stringify(eps));steps.push(o);}
+    snap({ep:-1,hlL:[0,1],hlC:['h'],hlCls:'hot',
+      explain:'<b>Start.</b> We call <code>slow_calculation(MyCallback())</code>. The callback object goes in as <code>cb</code>; <code>res = 0</code>. Five epochs ahead &mdash; each one will pass through two gates.'});
+    for(var i=0;i<N;i++){
+      // before gate
+      jump[i].b=steps.length;
+      if(hasB){eps[i].gb='pass';eps[i].b='fire';logs.push({c:'b4',h:'About to start: '+i});
+        snap({ep:i,hlL:[3,4],hlC:['b1','b2'],hlCls:'hot',
+          explain:'<b>Epoch '+i+' &middot; before-gate.</b> <code>hasattr(cb, \'before_calc\')</code> is <b>True</b> &rarr; gate open &rarr; <code>cb.before_calc('+i+')</code> runs and prints. Hooks fire <i>only</i> if the method exists.'});}
+      else{eps[i].gb='fail';eps[i].b='skip';
+        snap({ep:i,hlL:[3],hlC:[],hlCls:'hot',
+          explain:'<b>Epoch '+i+' &middot; before-gate.</b> <code>hasattr(cb, \'before_calc\')</code> is <b>False</b> &rarr; gate closed &rarr; the hook is <b>skipped</b>, and nothing crashes. That is the whole point of the check.'});}
+      // calc
+      jump[i].c=steps.length;
+      res+=SQ[i];eps[i].calc=true;eps[i].cs='res = '+res;
+      snap({ep:i,hlL:[5],hlC:[],hlCls:'hot2',
+        explain:'<b>Epoch '+i+' &middot; the real work.</b> <code>res += '+i+'\u00B2</code> &rarr; res = <b>'+res+'</b>. (sleep(1) stands in for a second of slow computation.)'});
+      // after gate
+      jump[i].a=steps.length;
+      if(hasA){
+        eps[i].ga='pass';eps[i].a='fire';logs.push({c:'af',h:'After '+i+': '+res});
+        var willStop = hasS && res>10;
+        eps[i].as = willStop?'returns True!':(hasS?'returns None':'prints');
+        snap({ep:i,hlL:[6,7],hlC:['a1','a2'],hlCls:'hot',
+          explain:'<b>Epoch '+i+' &middot; after-gate.</b> <code>hasattr(cb, \'after_calc\')</code> is <b>True</b> &rarr; <code>cb.after_calc('+i+', '+res+')</code> runs, prints, and its <i>return value</i> is checked by the loop.'});
+        if(hasS){
+          if(willStop){
+            eps[i].stopBadge=true;stoppedAt=i;logs.push({c:'stp',h:'stopping early'});
+            snap({ep:i,hlL:[8],hlC:['a3'],hlCls:'hot3',
+              explain:'<b>Epoch '+i+' &middot; the decision.</b> val = '+res+' &gt; 10, so <code>after_calc</code> returns <b>True</b>. Back in the loop, <code>if cb.after_calc(...)</code> is True &rarr; print "stopping early" and <code>break</code>. Epochs '+(i+1)+'&ndash;4 will <b>never run</b>.'});
+            break;
+          } else {
+            snap({ep:i,hlL:[7],hlC:['a3'],hlCls:'hot',
+              explain:'<b>Epoch '+i+' &middot; the decision.</b> val = '+res+' \u2264 10, so <code>after_calc</code> falls off the end and returns <b>None</b> (falsy) &rarr; the loop keeps going.'});
+          }
+        }
+      } else {
+        eps[i].ga='fail';eps[i].a='skip';eps[i].as='skipped';
+        snap({ep:i,hlL:[6],hlC:[],hlCls:'hot',
+          explain:'<b>Epoch '+i+' &middot; after-gate.</b> No <code>after_calc</code> method &rarr; gate closed &rarr; skipped. With no return value to check, early stopping is impossible too.'});
+      }
+    }
+    if(stoppedAt===null){
+      logs.push({c:'sys',h:'return res \u2192 '+res});
+      snap({ep:N,hlL:[9],hlC:[],hlCls:'hot',
+        explain:'<b>Finished.</b> All 5 epochs ran; <code>return res</code> gives <b>'+res+'</b>.'});
+    } else {
+      snap({ep:N,hlL:[9],hlC:[],hlCls:'hot',
+        explain:'<b>Aftermath.</b> The loop broke after epoch '+stoppedAt+'; final <code>res = '+res+'</code> instead of 30. One tiny <code>return True</code> in a callback cancelled the whole run &mdash; without touching the loop\u2019s code.'});
+    }
+    scrub.max=steps.length-1;
+  }
+  function render(){
+    var s=steps[idx];
+    loopCode.querySelectorAll('.ln').forEach(function(l){l.classList.remove('hot','hot2','hot3');});
+    s.hlL.forEach(function(n){loopCode.querySelector('[data-l="'+n+'"]').classList.add(s.hlCls);});
+    cbCode.querySelectorAll('.ln').forEach(function(l){l.classList.remove('hot','hot2','hot3');});
+    s.hlC.forEach(function(c){var el=cbCode.querySelector('[data-c="'+c+'"]');if(el)el.classList.add(s.hlCls==='hot2'?'hot':s.hlCls);});
+    explain.innerHTML=s.explain;
+    lane.innerHTML='';
+    for(var k=0;k<N;k++){
+      var e=s.eps[k];
+      var row=document.createElement('div');
+      row.className='erow'+(s.ep===k?' active':(e.calc?' passed':''));
+      if(s.stoppedAt!==null&&k>s.stoppedAt)row.className='erow skiprow';
+      var lab=document.createElement('div');lab.className='elab';lab.textContent='i='+k;lab.title='Jump to epoch '+k+' calculation';
+      (function(k){lab.onclick=function(){jumpTo(jump[k].c,k);};})(k);
+      row.appendChild(lab);
+      var nb=document.createElement('div');
+      nb.className='node'+(e.b==='fire'?' fireB':e.b==='skip'?' skipped':'');
+      if(s.ep===k&&s.hlC.indexOf('b1')>=0)nb.classList.add('cur');
+      nb.title='Jump to the before-gate of epoch '+k;
+      nb.innerHTML='<span class="gate '+(e.gb==='pass'?'pass':e.gb==='fail'?'fail':'')+'">'+
+        (e.gb==='?'?'hasattr before_calc?':e.gb==='pass'?'gate open \u2713':'gate closed \u2715')+'</span>'+
+        '<div class="h">before_calc('+k+')</div><div class="s">'+(e.b==='fire'?'prints':e.b==='skip'?'skipped':'\u2014')+'</div>';
+      (function(k){nb.onclick=function(){jumpTo(jump[k].b,k);};})(k);
+      row.appendChild(nb);
+      var nc=document.createElement('div');
+      nc.className='node'+(e.calc?' fireC':'');
+      if(s.ep===k&&s.hlL.indexOf(5)>=0&&s.hlL.length===1)nc.classList.add('cur');
+      nc.title='Jump to the calculation of epoch '+k;
+      nc.innerHTML='<div class="h">res += '+k+'\u00B2</div><div class="s">'+e.cs+'</div>';
+      (function(k){nc.onclick=function(){jumpTo(jump[k].c,k);};})(k);
+      row.appendChild(nc);
+      var na=document.createElement('div');
+      na.className='node'+(e.a==='fire'?' fireA':e.a==='skip'?' skipped':'')+(e.stopBadge?' stop':'');
+      if(s.ep===k&&(s.hlC.indexOf('a1')>=0||s.hlC.indexOf('a3')>=0))na.classList.add('cur');
+      na.title='Jump to the after-gate of epoch '+k;
+      na.innerHTML='<span class="gate '+(e.ga==='pass'?'pass':e.ga==='fail'?'fail':'')+'">'+
+        (e.ga==='?'?'hasattr after_calc?':e.ga==='pass'?'gate open \u2713':'gate closed \u2715')+'</span>'+
+        '<div class="h">after_calc('+k+', res)</div><div class="s">'+e.as+'</div>';
+      (function(k){na.onclick=function(){jumpTo(jump[k].a,k);};})(k);
+      row.appendChild(na);
+      lane.appendChild(row);
+    }
+    banner.classList.toggle('show',s.stoppedAt!==null&&idx>=steps.length-2&&s.eps[s.stoppedAt]&&s.eps[s.stoppedAt].stopBadge);
+    // simpler: show banner whenever current snapshot has a stop badge recorded
+    banner.classList.toggle('show',s.eps.some(function(e){return e.stopBadge;}));
+    logEl.innerHTML='';
+    if(!s.logs.length)logEl.innerHTML='<span class="sys"># output appears as you step&hellip;</span>';
+    s.logs.forEach(function(L){var d=document.createElement('div');if(L.c)d.className=L.c;d.innerHTML=L.h;logEl.appendChild(d);});
+    logEl.scrollTop=logEl.scrollHeight;
+    scrub.value=idx;stepLbl.textContent='step '+(idx+1)+'/'+steps.length;
+    document.getElementById('prevB').disabled=(idx===0);
+    document.getElementById('nextB').disabled=(idx===steps.length-1);
+  }
+  function jumpTo(target,k){
+    stopPlay();
+    if(target===undefined){ idx=steps.length-1; render();
+      explain.innerHTML='<b>Epoch '+k+' never ran.</b> The loop broke before reaching it &mdash; that is what early stopping means. Scrub back to see the epoch where <code>after_calc</code> returned True.';
+      return;}
+    idx=target;render();
+  }
+  function stopPlay(){playing=false;clearTimeout(timer);playB.innerHTML='&#9654; Play';}
+  function startPlay(){
+    if(idx>=steps.length-1)idx=0;
+    playing=true;playB.innerHTML='&#10074;&#10074; Pause';
+    (function tick(){render();
+      if(idx<steps.length-1&&playing){timer=setTimeout(function(){idx++;tick();},(reduce?260:BASE)/parseFloat(speed.value));}
+      else stopPlay();})();
+  }
+  playB.onclick=function(){playing?stopPlay():startPlay();};
+  document.getElementById('prevB').onclick=function(){stopPlay();if(idx>0){idx--;render();}};
+  document.getElementById('nextB').onclick=function(){stopPlay();if(idx<steps.length-1){idx++;render();}};
+  document.getElementById('rstB').onclick=function(){stopPlay();idx=0;render();};
+  scrub.addEventListener('input',function(){stopPlay();idx=+scrub.value;render();});
+  speed.addEventListener('input',function(){spdLbl.textContent=parseFloat(speed.value).toFixed(1)+'\u00D7';});
+  [optB,optA,optStop].forEach(function(o){o.addEventListener('change',function(){stopPlay();renderCbCode();buildSteps();idx=0;render();});});
+  renderCbCode();buildSteps();render();
+})();
+</script>
+</body></html>

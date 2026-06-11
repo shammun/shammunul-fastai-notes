@@ -1,0 +1,223 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>State-Modifying Callback</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#d6455c;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{min-height:100vh;background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:18px 16px 28px}
+  h1{font-size:20px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:13px;margin:0 0 14px;max-width:800px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .grid{display:grid;grid-template-columns:400px 1fr;gap:16px;max-width:1240px;margin:0 auto}
+  @media(max-width:980px){.grid{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 8px 22px rgba(123,92,214,.10)}
+  .card h2{font-size:14px;margin:0 0 8px}
+  pre.code{background:#27304a;color:#e8edf9;border-radius:10px;padding:9px 11px;font-family:Consolas,Menlo,monospace;
+    font-size:11.8px;line-height:1.62;overflow-x:auto;margin:0 0 10px}
+  pre.code .ln{display:block;border-radius:5px;padding:0 5px;transition:background .15s}
+  pre.code .ln.hot{background:#7b5cd6;color:#fff} pre.code .ln.hot2{background:#f6921e;color:#1d2333}
+  pre.code .ln.hot3{background:#d6455c;color:#fff}
+  .kw{color:#8ab8ff}.st{color:#ffd58a}.cm{color:#8b97b8}.fn{color:#9fe8e3}
+  .toggle{display:flex;align-items:center;gap:8px;font-size:13px;margin:6px 0 10px}
+  button:focus-visible,input:focus-visible{outline:3px solid #c9b8ff;outline-offset:2px}
+  .compare{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .cmp{flex:1;min-width:170px;border:2px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px;background:#fbfdff}
+  .cmp b{font-family:Consolas,monospace;font-size:16px}
+  .cmp.on{border-color:var(--ac)} .cmp.off{border-color:var(--in)}
+  .hint{font-size:12px;color:var(--soft);margin-top:8px;line-height:1.55}.hint b{color:var(--ac)}
+  /* shared-state visual */
+  .statebox{border:3px solid var(--out);border-radius:14px;background:#f4fbfa;padding:8px 14px;text-align:center;margin:0 0 10px;position:relative}
+  .statebox .lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0d7d7d}
+  .statebox .v{font-family:Consolas,monospace;font-size:28px;font-weight:700}
+  .hands{display:flex;justify-content:space-around;font-size:11px;color:var(--soft);margin-top:2px}
+  .hands b{color:var(--ac)}
+  /* chart */
+  .chart{display:flex;align-items:flex-end;gap:14px;height:200px;padding:8px 6px 0;border-bottom:2px solid var(--line);justify-content:center}
+  .bgroup{display:flex;flex-direction:column;align-items:center;width:76px;cursor:pointer;border-radius:8px}
+  .bgroup:hover{background:#f6f9ff}
+  .bgroup.cur{background:#fff7ec}
+  .bars{display:flex;align-items:flex-end;gap:4px;height:166px}
+  .bar{width:26px;border-radius:6px 6px 0 0;transition:height .3s;position:relative;background:#edf1f9}
+  .bar.calcOn{background:linear-gradient(#ffd9a8,var(--in))}
+  .bar.cbkOn{background:linear-gradient(#cdbcf7,var(--ac))}
+  .bar .bv{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-family:Consolas,monospace;font-size:11px;font-weight:700}
+  .bx{font-size:11px;color:var(--soft);margin:4px 0 2px;font-family:Consolas,monospace}
+  .jt{font-size:9px;color:#9aa7c4;margin-bottom:3px}
+  .legend{display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--soft);margin:8px 0 4px;flex-wrap:wrap}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+  .badge{position:absolute;top:-34px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;border-radius:999px;padding:1px 7px;white-space:nowrap}
+  .badge.dbl{background:#efe8ff;color:#4d3aa3;border:1px solid var(--ac)}
+  .badge.stop{background:#fdeef1;color:#9d2c40;border:1px solid var(--bad)}
+  .console{background:#101728;color:#cfe6d8;border-radius:10px;min-height:92px;max-height:128px;overflow-y:auto;
+    font-family:Consolas,monospace;font-size:12.5px;padding:8px 10px;line-height:1.6;margin-top:10px}
+  .console .sys{color:#7e8db0}.console .mod{color:#c9b8ff}.console .stp{color:#ff9eb0}
+  /* transport + explain */
+  .transport{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fbfdff;border:1px solid var(--line);border-radius:10px;padding:7px 9px;margin:10px 0 0}
+  .tbtn{font:inherit;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid #cfd9ec;background:#fff;color:var(--ink);cursor:pointer}
+  .tbtn:hover{background:#f1f5fc}.tbtn:disabled{opacity:.4;cursor:default}
+  .tbtn.play{background:var(--ac);border-color:var(--ac);color:#fff;min-width:74px}.tbtn.play:hover{background:#6a4cc7}
+  .scrub{flex:1;min-width:100px;accent-color:var(--ac)}
+  .steplbl{font-size:11.5px;color:var(--soft);font-family:Consolas,monospace;white-space:nowrap}
+  .speedwrap{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--soft)}
+  .speedwrap input{width:74px;accent-color:var(--ac)}
+  .speedwrap b{font-size:11.5px;font-family:Consolas,monospace;color:var(--ink);width:30px}
+  .explain{background:#f4efff;border:1px solid #ded2ff;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.55;min-height:58px;margin:0 0 10px}
+  .explain b{color:var(--ac)} .explain code{background:#fff;border-radius:4px;padding:0 4px}
+</style></head><body>
+<h1>A Callback That <i>Changes</i> the Calculation</h1>
+<p class="sub">Because <code>SlowCalculator</code> passes <b>itself</b> (<code>self</code>) to its callbacks, the callback can read <i>and write</i> <code>calc.res</code>.
+Step through &mdash; or <b>click any epoch's bars</b> to jump straight to it.</p>
+
+<div class="grid">
+  <div class="card">
+    <h2>The code (what runs each epoch)</h2>
+    <pre class="code" id="code"><span class="ln" data-l="0"><span class="cm"># inside SlowCalculator.calc():</span></span><span class="ln" data-l="1"><span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(5):</span><span class="ln" data-l="2">    self.res += i*i</span><span class="ln" data-l="3">    <span class="kw">if</span> self.callback(<span class="st">'after_calc'</span>, i):</span><span class="ln" data-l="4">        <span class="fn">print</span>(<span class="st">"stopping early"</span>); <span class="kw">break</span></span><span class="ln" data-l="5"></span><span class="ln" data-l="6"><span class="cm"># inside ModifyingCallback:</span></span><span class="ln" data-l="7"><span class="kw">def</span> <span class="fn">after_calc</span>(self, calc, epoch):</span><span class="ln" data-l="8">    <span class="fn">print</span>(<span class="st">f"After </span>{epoch}<span class="st">: </span>{calc.res}<span class="st">"</span>)</span><span class="ln" data-l="9">    <span class="kw">if</span> calc.res &gt; 10: <span class="kw">return</span> <span class="kw">True</span>  <span class="cm"># stop!</span></span><span class="ln" data-l="10">    <span class="kw">if</span> calc.res &lt; 3:  calc.res *= 2  <span class="cm"># modify!</span></span></pre>
+    <label class="toggle"><input type="checkbox" id="cbOn" checked> attach <code>ModifyingCallback()</code></label>
+    <div class="compare">
+      <div class="cmp off">Without callback:<br>res = 0, 1, 5, 14, 30 &rarr; <b>30</b><br><span style="color:var(--soft)">all 5 epochs run</span></div>
+      <div class="cmp on">With ModifyingCallback:<br>final res = <b id="cmpRes">?</b><br><span style="color:var(--soft)" id="cmpNote">step to the end to find out</span></div>
+    </div>
+    <p class="hint"><b>Why this matters:</b> this is exactly how fastai callbacks implement LR schedulers, gradient clipping and early stopping &mdash; by reaching into the trainer's state from outside, <b>without editing the training loop</b>. Toggle the callback off and replay to feel the difference.</p>
+  </div>
+
+  <div class="card">
+    <h2>Shared state: <code>calc.res</code></h2>
+    <div class="statebox">
+      <div class="lbl">one object, two writers</div>
+      <div class="v" id="resV">0</div>
+      <div class="hands"><span>&#9999; the loop adds <code>i*i</code></span><span><b>&#9999; the callback may double it / stop it</b></span></div>
+    </div>
+    <div class="explain" id="explain"></div>
+    <div class="chart" id="chart"></div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--in)"></span>res after <code>self.res += i*i</code></span>
+      <span><span class="sw" style="background:var(--ac)"></span>res after the callback touched it</span>
+    </div>
+    <div class="transport">
+      <button class="tbtn" id="prevB">&#9198; Prev</button>
+      <button class="tbtn play" id="playB">&#9654; Play</button>
+      <button class="tbtn" id="nextB">Next &#9197;</button>
+      <button class="tbtn" id="rstB">&#8634; Reset</button>
+      <input type="range" class="scrub" id="scrub" min="0" max="0" value="0" aria-label="scrub through steps">
+      <span class="steplbl" id="stepLbl"></span>
+      <span class="speedwrap">&#128034;<input type="range" id="speed" min="0.5" max="3" step="0.25" value="1" aria-label="speed">&#128007;<b id="spdLbl">1.0&times;</b></span>
+    </div>
+    <div class="console" id="log"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var SQ=[0,1,4,9,16],N=5,MAX=32,BASE=1350;
+  var chart=document.getElementById('chart'),logEl=document.getElementById('log'),resV=document.getElementById('resV'),
+      cbOn=document.getElementById('cbOn'),code=document.getElementById('code'),explain=document.getElementById('explain'),
+      scrub=document.getElementById('scrub'),stepLbl=document.getElementById('stepLbl'),
+      playB=document.getElementById('playB'),speed=document.getElementById('speed'),spdLbl=document.getElementById('spdLbl');
+  var steps=[],idx=0,jump=[],playing=false,timer=null;
+
+  function buildSteps(){
+    var useCb=cbOn.checked;steps=[];jump=[];
+    var res=0,logs=[],stoppedAt=null;
+    var bc=[null,null,null,null,null],bk=[null,null,null,null,null],bd=[null,null,null,null,null];
+    function snap(o){o.res=res;o.logs=logs.slice();o.bc=bc.slice();o.bk=bk.slice();o.bd=bd.slice();
+      o.stoppedAt=stoppedAt;steps.push(o);}
+    snap({ep:-1,hl:[[1,'hot']],final:null,
+      explain:'<b>Start.</b> <code>calculator = SlowCalculator('+(useCb?'ModifyingCallback()':'')+')</code> &mdash; <code>self.res = 0</code>. '+(useCb?'The callback object is stored inside; it will get a chance to act after every epoch.':'No callback attached: the loop will just add squares.')});
+    for(var i=0;i<N&&stoppedAt===null;i++){
+      jump.push(steps.length);
+      res+=SQ[i];bc[i]=res;
+      snap({ep:i,hl:[[2,'hot2']],final:null,
+        explain:'<b>Epoch '+i+' &middot; the loop writes.</b> <code>self.res += '+i+'\u00B2</code> ('+SQ[i]+') &rarr; res = <b>'+res+'</b>. Orange bar = the loop\u2019s contribution.'});
+      if(!useCb){bk[i]=res;continue;}
+      logs.push({c:'',h:'After '+i+': '+res});
+      snap({ep:i,hl:[[3,'hot'],[8,'hot']],final:null,
+        explain:'<b>Epoch '+i+' &middot; the callback reads.</b> The loop calls <code>after_calc(calc, '+i+')</code>, handing over the <i>whole calculator object</i>. The callback peeks at <code>calc.res</code> ('+res+') and prints it.'});
+      if(res>10){
+        bd[i]='stop';bk[i]=res;stoppedAt=i;logs.push({c:'stp',h:'stopping early'});
+        snap({ep:i,hl:[[9,'hot3'],[4,'hot3']],final:res,
+          explain:'<b>Epoch '+i+' &middot; the callback cancels.</b> '+res+' &gt; 10 &rarr; <code>return True</code> &rarr; the loop\u2019s <code>if</code> sees True &rarr; "stopping early" + <code>break</code>. Epochs '+(i+1)+'&ndash;4 never happen.'});
+      } else if(res<3){
+        var old=res;res*=2;bd[i]='dbl';bk[i]=res;
+        logs.push({c:'mod',h:'callback: '+old+' < 3 \u2192 calc.res = '+old+'\u00D72 = '+res});
+        snap({ep:i,hl:[[10,'hot']],final:null,
+          explain:'<b>Epoch '+i+' &middot; the callback WRITES.</b> '+old+' &lt; 3 &rarr; <code>calc.res = calc.res * 2</code> &rarr; res becomes <b>'+res+'</b>. Purple bar taller than orange = the callback changed the shared state. The loop will continue from this <i>modified</i> value!'});
+      } else {
+        bk[i]=res;
+        snap({ep:i,hl:[[9,'hot'],[10,'hot']],final:null,
+          explain:'<b>Epoch '+i+' &middot; the callback leaves it.</b> 3 \u2264 '+res+' \u2264 10: neither condition triggers &rarr; res stays '+res+'. Purple bar equals orange bar.'});
+      }
+    }
+    if(stoppedAt===null){
+      snap({ep:N,hl:[[1,'hot']],final:res,
+        explain:'<b>Finished.</b> All 5 epochs ran; final <code>calc.res = '+res+'</code>. No callback touched the state \u2014 this is the plain 0+1+4+9+16 path.'});
+    } else {
+      snap({ep:N,hl:[[4,'hot3']],final:res,
+        explain:'<b>Aftermath.</b> Final <code>calc.res = '+res+'</code> after stopping at epoch '+stoppedAt+' &mdash; versus <b>30</b> from the untouched run. Two tiny <code>if</code>s in a callback reshaped the whole computation.'});
+    }
+    scrub.max=steps.length-1;
+  }
+  function build(){
+    chart.innerHTML='';
+    for(var k=0;k<N;k++){
+      var g=document.createElement('div');g.className='bgroup';g.id='g'+k;g.title='Jump to epoch '+k;
+      g.innerHTML='<div class="bars">'+
+        '<div class="bar" id="bc'+k+'" style="height:3px"><span class="bv" id="vc'+k+'"></span></div>'+
+        '<div class="bar" id="bk'+k+'" style="height:3px"><span class="bv" id="vk'+k+'"></span><span class="badge" id="bd'+k+'" style="display:none"></span></div>'+
+        '</div><div class="bx">i='+k+'</div><div class="jt">click to jump</div>';
+      (function(k){g.onclick=function(){stopPlay();if(jump[k]!==undefined){idx=jump[k];render();}
+        else{idx=steps.length-1;render();
+          explain.innerHTML='<b>Epoch '+k+' never ran</b> &mdash; the callback stopped the loop before reaching it. Scrub back to the red step to see why.';}};})(k);
+      chart.appendChild(g);
+    }
+  }
+  function setBar(id,vid,val,cls){
+    var b=document.getElementById(id);
+    if(val===null){b.style.height='3px';b.className='bar';document.getElementById(vid).textContent='';return;}
+    b.style.height=Math.max(3,val/MAX*156)+'px';b.className='bar '+cls;
+    document.getElementById(vid).textContent=val;
+  }
+  function render(){
+    var s=steps[idx];
+    code.querySelectorAll('.ln').forEach(function(l){l.classList.remove('hot','hot2','hot3');});
+    s.hl.forEach(function(h){code.querySelector('[data-l="'+h[0]+'"]').classList.add(h[1]);});
+    resV.textContent=s.res;explain.innerHTML=s.explain;
+    for(var k=0;k<N;k++){
+      setBar('bc'+k,'vc'+k,s.bc[k],'calcOn');
+      setBar('bk'+k,'vk'+k,s.bk[k],'cbkOn');
+      var bd=document.getElementById('bd'+k);
+      if(s.bd[k]){bd.style.display='block';
+        if(s.bd[k]==='dbl'){bd.textContent='< 3 \u2192 \u00D72';bd.className='badge dbl';}
+        else{bd.textContent='> 10 \u2192 stop';bd.className='badge stop';}}
+      else bd.style.display='none';
+      document.getElementById('g'+k).classList.toggle('cur',s.ep===k);
+    }
+    document.getElementById('cmpRes').textContent = s.final===null ? '?' : s.final;
+    document.getElementById('cmpNote').textContent = s.final===null ? 'step to the end to find out'
+      : (s.stoppedAt!==null?('stopped after epoch '+s.stoppedAt+' of 5'):'all 5 epochs ran');
+    logEl.innerHTML='';
+    if(!s.logs.length)logEl.innerHTML='<span class="sys"># printed output appears as you step&hellip;</span>';
+    s.logs.forEach(function(L){var d=document.createElement('div');if(L.c)d.className=L.c;d.innerHTML=L.h;logEl.appendChild(d);});
+    logEl.scrollTop=logEl.scrollHeight;
+    scrub.value=idx;stepLbl.textContent='step '+(idx+1)+'/'+steps.length;
+    document.getElementById('prevB').disabled=(idx===0);
+    document.getElementById('nextB').disabled=(idx===steps.length-1);
+  }
+  function stopPlay(){playing=false;clearTimeout(timer);playB.innerHTML='&#9654; Play';}
+  function startPlay(){
+    if(idx>=steps.length-1)idx=0;
+    playing=true;playB.innerHTML='&#10074;&#10074; Pause';
+    (function tick(){render();
+      if(idx<steps.length-1&&playing){timer=setTimeout(function(){idx++;tick();},(reduce?260:BASE)/parseFloat(speed.value));}
+      else stopPlay();})();
+  }
+  playB.onclick=function(){playing?stopPlay():startPlay();};
+  document.getElementById('prevB').onclick=function(){stopPlay();if(idx>0){idx--;render();}};
+  document.getElementById('nextB').onclick=function(){stopPlay();if(idx<steps.length-1){idx++;render();}};
+  document.getElementById('rstB').onclick=function(){stopPlay();idx=0;render();};
+  scrub.addEventListener('input',function(){stopPlay();idx=+scrub.value;render();});
+  speed.addEventListener('input',function(){spdLbl.textContent=parseFloat(speed.value).toFixed(1)+'\u00D7';});
+  cbOn.addEventListener('change',function(){stopPlay();buildSteps();idx=0;render();});
+  build();buildSteps();render();
+})();
+</script>
+</body></html>

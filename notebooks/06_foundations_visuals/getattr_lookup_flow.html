@@ -1,0 +1,248 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>__getattr__ Lookup Flow</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#d6455c;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{min-height:100vh;background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:18px 16px 28px}
+  h1{font-size:20px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:13px;margin:0 0 14px;max-width:800px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .grid{display:grid;grid-template-columns:400px 1fr;gap:16px;max-width:1200px;margin:0 auto}
+  @media(max-width:960px){.grid{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 8px 22px rgba(123,92,214,.10)}
+  .card h2{font-size:14px;margin:0 0 8px}
+  pre.code{background:#27304a;color:#e8edf9;border-radius:10px;padding:10px 12px;font-family:Consolas,Menlo,monospace;
+    font-size:12.5px;line-height:1.7;overflow-x:auto;margin:0 0 10px}
+  pre.code .ln{display:block;border-radius:5px;padding:0 5px;transition:background .15s}
+  pre.code .ln.hot{background:#7b5cd6;color:#fff} pre.code .ln.hotbad{background:#d6455c;color:#fff}
+  .kw{color:#8ab8ff}.st{color:#ffd58a}.cm{color:#8b97b8}.fn{color:#9fe8e3}
+  .tryrow{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+  .tryrow .lab{font-size:13px;color:var(--soft)}
+  .chip{font:inherit;font-family:Consolas,monospace;font-size:13px;font-weight:700;padding:5px 13px;border-radius:999px;
+    border:2px solid var(--line);background:#fbfdff;cursor:pointer;color:var(--ink)}
+  .chip:hover{border-color:var(--ac)} .chip.sel{border-color:var(--ac);background:#f4efff;color:#4d3aa3}
+  button:focus-visible,input:focus-visible{outline:3px solid #c9b8ff;outline-offset:2px}
+  input[type=text]{font-family:Consolas,monospace;font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid #cfd9ec;width:140px}
+  .hint{font-size:12px;color:var(--soft);margin-top:8px;line-height:1.55}.hint b{color:var(--ac)}
+  /* flow */
+  .flow{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .fnode{width:100%;max-width:430px;border:2px solid var(--line);border-radius:12px;background:#fbfdff;
+    padding:8px 12px;transition:all .25s;position:relative;cursor:pointer}
+  .fnode:hover{border-color:var(--ac)}
+  .fnode .t{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--soft)}
+  .fnode .b{font-family:Consolas,monospace;font-size:13px;margin-top:2px;min-height:18px}
+  .fnode .verdict{position:absolute;right:10px;top:8px;font-size:10.5px;font-weight:700;border-radius:999px;padding:2px 9px;display:none}
+  .fnode.checking{border-color:var(--in);background:#fff7ec;box-shadow:0 6px 16px rgba(246,146,30,.25)}
+  .fnode.miss{border-color:#cfd9ec;background:#f6f8fd;opacity:.85}
+  .fnode.miss .verdict{display:inline-block;background:#fde3e8;color:#b23a4e}
+  .fnode.hit{border-color:var(--out);background:#f0fbfa}
+  .fnode.hit .verdict{display:inline-block;background:#d9f4ee;color:#0d7d7d}
+  .fnode.unreached{opacity:.42;border-style:dashed;cursor:help}
+  .fdown{font-size:17px;color:#aab8d4;line-height:1}
+  .result{width:100%;max-width:430px;border-radius:12px;padding:10px 12px;text-align:center;font-family:Consolas,monospace;
+    font-size:14px;font-weight:700;border:2px solid var(--line);background:#fbfdff;color:var(--soft);transition:all .25s;cursor:pointer}
+  .result.ok{border-color:var(--out);background:#e9f9f7;color:#0d7d7d}
+  .result.err{border-color:var(--bad);background:#fdeef1;color:#9d2c40}
+  /* transport + explain */
+  .transport{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fbfdff;border:1px solid var(--line);border-radius:10px;padding:7px 9px;margin:10px 0 0}
+  .tbtn{font:inherit;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid #cfd9ec;background:#fff;color:var(--ink);cursor:pointer}
+  .tbtn:hover{background:#f1f5fc}.tbtn:disabled{opacity:.4;cursor:default}
+  .tbtn.play{background:var(--ac);border-color:var(--ac);color:#fff;min-width:74px}.tbtn.play:hover{background:#6a4cc7}
+  .scrub{flex:1;min-width:90px;accent-color:var(--ac)}
+  .steplbl{font-size:11.5px;color:var(--soft);font-family:Consolas,monospace;white-space:nowrap}
+  .speedwrap{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--soft)}
+  .speedwrap input{width:74px;accent-color:var(--ac)}
+  .speedwrap b{font-size:11.5px;font-family:Consolas,monospace;color:var(--ink);width:30px}
+  .explain{background:#f4efff;border:1px solid #ded2ff;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.55;min-height:58px;margin:10px 0 0}
+  .explain b{color:var(--ac)} .explain code{background:#fff;border-radius:4px;padding:0 4px}
+</style></head><body>
+<h1><code>__getattr__</code>: The Attribute Lookup Safety Net</h1>
+<p class="sub">When you write <code>b.something</code>, Python walks a fixed lookup path. <code>__getattr__</code> is called <b>only when every normal step fails</b>.
+Pick an attribute, then step through the walk &mdash; or <b>click any box in the flowchart</b> to jump to that moment.</p>
+
+<div class="grid">
+  <div class="card">
+    <h2>The class</h2>
+    <pre class="code"><span class="ln" data-l="0"><span class="kw">class</span> <span class="fn">B</span>:</span><span class="ln" data-l="1">    a, b = 1, 2          <span class="cm"># real (class) attributes</span></span><span class="ln" data-l="2">    <span class="kw">def</span> <span class="fn">__getattr__</span>(self, k):</span><span class="ln" data-l="3">        <span class="kw">if</span> k[0] == <span class="st">'_'</span>:</span><span class="ln" data-l="4">            <span class="kw">raise</span> AttributeError(k)</span><span class="ln" data-l="5">        <span class="kw">return</span> <span class="st">f'Hello from </span>{k}<span class="st">'</span></span></pre>
+    <div class="tryrow">
+      <span class="lab">Try:</span>
+      <button class="chip sel" data-n="a">b.a</button>
+      <button class="chip" data-n="b">b.b</button>
+      <button class="chip" data-n="foo">b.foo</button>
+      <button class="chip" data-n="deep_learning">b.deep_learning</button>
+      <button class="chip" data-n="_secret">b._secret</button>
+    </div>
+    <div class="tryrow">
+      <span class="lab">or type any name:</span>
+      <input type="text" id="custom" placeholder="e.g. fastai" maxlength="22">
+    </div>
+    <p class="hint"><b>Why this matters:</b> <code>__getattr__</code> is how libraries make attributes appear out of thin air &mdash; fastai delegates <code>self.learn.model</code> through it, pandas resolves <code>df.colname</code>, PyTorch finds submodules. The <b>underscore guard</b> keeps Python's internal <code>_</code>/<code>__</code> probes from getting fake answers.</p>
+  </div>
+
+  <div class="card">
+    <h2>The lookup walk for <code id="walkName">b.a</code></h2>
+    <div class="flow">
+      <div class="fnode" id="n0" title="Jump to: check the instance __dict__">
+        <span class="verdict" id="v0"></span>
+        <div class="t">step 1 &middot; instance <code>__dict__</code></div>
+        <div class="b" id="b0">{ } &mdash; this object stores nothing of its own</div>
+      </div>
+      <div class="fdown">&darr;</div>
+      <div class="fnode" id="n1" title="Jump to: check the class attributes">
+        <span class="verdict" id="v1"></span>
+        <div class="t">step 2 &middot; class attributes (and parents)</div>
+        <div class="b">{ a: 1, b: 2, __getattr__: &lt;function&gt; }</div>
+      </div>
+      <div class="fdown">&darr;</div>
+      <div class="fnode" id="n2" title="Jump to: the fallback __getattr__ is called">
+        <span class="verdict" id="v2"></span>
+        <div class="t">step 3 &middot; everything failed &rarr; call <code>__getattr__(self, k)</code></div>
+        <div class="b" id="b2">the safety net &mdash; only reached on a total miss</div>
+      </div>
+      <div class="fdown">&darr;</div>
+      <div class="fnode" id="n3" title="Jump to: the underscore guard">
+        <span class="verdict" id="v3"></span>
+        <div class="t">step 4 &middot; guard: does the name start with "_" ?</div>
+        <div class="b" id="b3">k[0] == '_' &rarr; raise; otherwise return a greeting</div>
+      </div>
+      <div class="fdown">&darr;</div>
+      <div class="result" id="resBox" title="Jump to: the final result">result appears here</div>
+    </div>
+    <div class="explain" id="explain"></div>
+    <div class="transport">
+      <button class="tbtn" id="prevB">&#9198; Prev</button>
+      <button class="tbtn play" id="playB">&#9654; Play</button>
+      <button class="tbtn" id="nextB">Next &#9197;</button>
+      <button class="tbtn" id="rstB">&#8634; Reset</button>
+      <input type="range" class="scrub" id="scrub" min="0" max="0" value="0" aria-label="scrub through steps">
+      <span class="steplbl" id="stepLbl"></span>
+      <span class="speedwrap">&#128034;<input type="range" id="speed" min="0.5" max="3" step="0.25" value="1" aria-label="speed">&#128007;<b id="spdLbl">1.0&times;</b></span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var BASE=1450,CLASS_ATTRS={a:1,b:2};
+  var name='a',steps=[],idx=0,playing=false,timer=null,phaseOf={};
+  var explain=document.getElementById('explain'),scrub=document.getElementById('scrub'),
+      stepLbl=document.getElementById('stepLbl'),playB=document.getElementById('playB'),
+      speed=document.getElementById('speed'),spdLbl=document.getElementById('spdLbl'),
+      code=document.querySelector('pre.code'),resBox=document.getElementById('resBox');
+  var nodes=[document.getElementById('n0'),document.getElementById('n1'),
+             document.getElementById('n2'),document.getElementById('n3')];
+  var verds=[document.getElementById('v0'),document.getElementById('v1'),
+             document.getElementById('v2'),document.getElementById('v3')];
+
+  function buildSteps(){
+    steps=[];phaseOf={};
+    var inClass=CLASS_ATTRS.hasOwnProperty(name);
+    var underscore=name.charAt(0)==='_';
+    function S(o){steps.push(o);}
+    phaseOf.s0=steps.length;
+    S({ph:'s0',n:[ 'checking',null,null,null ],v:[null,null,null,null],res:null,hl:[],
+      explain:'<b>Step 1 &middot; the instance itself.</b> Python first looks in <code>b.__dict__</code> &mdash; values stored on this particular object (e.g. by <code>self.x = ...</code>). Our object stored nothing, so this is a guaranteed <b>miss</b>.'});
+    phaseOf.s1=steps.length;
+    if(inClass){
+      S({ph:'s1',n:['miss','checking',null,null],v:['miss',null,null,null],res:null,hl:[1],
+        explain:'<b>Step 2 &middot; the class.</b> Instance dict missed, so Python climbs to <code>B</code> (then any parent classes). It scans the class namespace for <code>'+name+'</code>\u2026'});
+      phaseOf.done=steps.length;
+      S({ph:'done',n:['miss','hit',null,null],v:['miss','hit',null,null],res:{ok:true,txt:'b.'+name+'  \u2192  '+CLASS_ATTRS[name]},hl:[1],
+        explain:'<b>Found!</b> <code>'+name+' = '+CLASS_ATTRS[name]+'</code> lives right in the class body. The walk <b>stops here</b> &mdash; <code>__getattr__</code> is never called for names that exist. (The dashed boxes below were never reached; click one to see why.)'});
+    } else {
+      S({ph:'s1',n:['miss','checking',null,null],v:['miss',null,null,null],res:null,hl:[1],
+        explain:'<b>Step 2 &middot; the class.</b> Instance dict missed; now Python scans class <code>B</code> and its parents for <code>'+name+'</code>\u2026 only <code>a</code>, <code>b</code> and <code>__getattr__</code> are there.'});
+      phaseOf.s2=steps.length;
+      S({ph:'s2',n:['miss','miss','checking',null],v:['miss','miss',null,null],res:null,hl:[2],
+        explain:'<b>Step 3 &middot; the safety net.</b> Every normal lookup failed &mdash; <i>this</i> is the one situation where Python calls <code>__getattr__(self, \''+name+'\')</code>. If we hadn\u2019t defined it, you\u2019d get an AttributeError right now.'});
+      phaseOf.s3=steps.length;
+      if(underscore){
+        S({ph:'s3',n:['miss','miss','hit','checking'],v:['miss','miss','hit',null],res:null,hl:[3],
+          explain:'<b>Step 4 &middot; the guard.</b> <code>k[0] == \'_\'</code> &mdash; "'+name+'" starts with an underscore. Names like this are usually Python\u2019s own machinery probing the object, and faking an answer for them causes chaos\u2026'});
+        phaseOf.done=steps.length;
+        S({ph:'done',n:['miss','miss','hit','miss'],v:['miss','miss','hit','raise'],res:{ok:false,txt:'AttributeError: '+name},hl:[4],
+          explain:'<b>Raised.</b> The guard re-raises <code>AttributeError</code>, exactly what Python expects for a truly missing attribute. Polite fallbacks always exclude <code>_</code>-names.'});
+      } else {
+        S({ph:'s3',n:['miss','miss','hit','checking'],v:['miss','miss','hit',null],res:null,hl:[3],
+          explain:'<b>Step 4 &middot; the guard.</b> <code>k[0] == \'_\'</code>? "'+name+'" starts with "'+name.charAt(0)+'" &mdash; not an underscore, so the guard lets it through.'});
+        phaseOf.done=steps.length;
+        S({ph:'done',n:['miss','miss','hit','hit'],v:['miss','miss','hit','pass'],res:{ok:true,txt:"b."+name+"  \u2192  'Hello from "+name+"'"},hl:[5],
+          explain:'<b>Conjured.</b> <code>__getattr__</code> returns <code>\'Hello from '+name+'\'</code> &mdash; an attribute that exists nowhere, manufactured on demand. This is the mechanism behind fastai\u2019s delegation and pandas\u2019 <code>df.colname</code>.'});
+      }
+    }
+    scrub.max=steps.length-1;
+  }
+  function render(){
+    var s=steps[idx];
+    document.getElementById('walkName').textContent='b.'+name;
+    document.getElementById('b2').textContent="__getattr__(self, '"+name+"') \u2014 the safety net";
+    nodes.forEach(function(nd,i){
+      var st=s.n[i];
+      nd.className='fnode'+(st==='checking'?' checking':st==='miss'?' miss':st==='hit'?' hit':'');
+      if(st===null && s.ph==='done' && phaseOf['s'+i]===undefined) nd.className='fnode unreached';
+      var v=s.v[i];var ve=verds[i];
+      if(v==null){ve.style.display='none';}
+      else{ve.style.display='inline-block';
+        ve.textContent = v==='miss'?'not here \u2715' : v==='hit'?'\u2713' : v==='raise'?'raise!' : 'passes \u2713';
+        ve.className='verdict';
+        if(v==='miss'||v==='raise'){nd.classList.add(v==='raise'?'miss':'miss');}
+      }
+    });
+    // fix verdict colors via classes already on node; style verdict per value:
+    verds.forEach(function(ve,i){var v=s.v[i];if(v==null)return;
+      ve.style.background = (v==='miss'||v==='raise')?'#fde3e8':'#d9f4ee';
+      ve.style.color = (v==='miss'||v==='raise')?'#b23a4e':'#0d7d7d';});
+    if(s.res){resBox.className='result '+(s.res.ok?'ok':'err');resBox.textContent=s.res.txt;}
+    else{resBox.className='result';resBox.textContent='result appears here';}
+    code.querySelectorAll('.ln').forEach(function(l){l.classList.remove('hot','hotbad');});
+    s.hl.forEach(function(n){code.querySelector('[data-l="'+n+'"]').classList.add(n===4?'hotbad':'hot');});
+    explain.innerHTML=s.explain;
+    scrub.value=idx;stepLbl.textContent='step '+(idx+1)+'/'+steps.length;
+    document.getElementById('prevB').disabled=(idx===0);
+    document.getElementById('nextB').disabled=(idx===steps.length-1);
+  }
+  function jumpPhase(ph,nodeIdx){
+    stopPlay();
+    if(phaseOf[ph]!==undefined){idx=phaseOf[ph];render();return;}
+    idx=steps.length-1;render();
+    explain.innerHTML='<b>This box was never reached for <code>b.'+name+'</code>.</b> The name was found at an earlier step, and attribute lookup stops at the <i>first</i> hit &mdash; <code>__getattr__</code> is strictly a last resort. Try <code>b.foo</code> to see the walk go all the way down.';
+  }
+  nodes[0].onclick=function(){jumpPhase('s0',0);};
+  nodes[1].onclick=function(){jumpPhase('s1',1);};
+  nodes[2].onclick=function(){jumpPhase('s2',2);};
+  nodes[3].onclick=function(){jumpPhase('s3',3);};
+  resBox.onclick=function(){jumpPhase('done');};
+  function stopPlay(){playing=false;clearTimeout(timer);playB.innerHTML='&#9654; Play';}
+  function startPlay(){
+    if(idx>=steps.length-1)idx=0;
+    playing=true;playB.innerHTML='&#10074;&#10074; Pause';
+    (function tick(){render();
+      if(idx<steps.length-1&&playing){timer=setTimeout(function(){idx++;tick();},(reduce?280:BASE)/parseFloat(speed.value));}
+      else stopPlay();})();
+  }
+  playB.onclick=function(){playing?stopPlay():startPlay();};
+  document.getElementById('prevB').onclick=function(){stopPlay();if(idx>0){idx--;render();}};
+  document.getElementById('nextB').onclick=function(){stopPlay();if(idx<steps.length-1){idx++;render();}};
+  document.getElementById('rstB').onclick=function(){stopPlay();idx=0;render();};
+  scrub.addEventListener('input',function(){stopPlay();idx=+scrub.value;render();});
+  speed.addEventListener('input',function(){spdLbl.textContent=parseFloat(speed.value).toFixed(1)+'\u00D7';});
+  document.querySelectorAll('.chip[data-n]').forEach(function(c){
+    c.addEventListener('click',function(){
+      document.querySelectorAll('.chip').forEach(function(n){n.classList.remove('sel');});
+      c.classList.add('sel');name=c.dataset.n;
+      document.getElementById('custom').value='';
+      stopPlay();buildSteps();idx=0;render();
+    });
+  });
+  document.getElementById('custom').addEventListener('input',function(){
+    var v=this.value.trim();
+    if(!v)return;
+    if(!/^[A-Za-z_]\w*$/.test(v)){return;}
+    document.querySelectorAll('.chip').forEach(function(n){n.classList.remove('sel');});
+    name=v;stopPlay();buildSteps();idx=0;render();
+  });
+  buildSteps();render();
+})();
+</script>
+</body></html>

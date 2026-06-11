@@ -1,0 +1,217 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Callback Playground</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#d6455c;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{min-height:100vh;background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:18px 16px 28px}
+  h1{font-size:20px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:13px;margin:0 0 16px}
+  .grid{display:grid;grid-template-columns:1fr 1.45fr;gap:16px;max-width:1220px;margin:0 auto}
+  @media(max-width:940px){.grid{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 8px 22px rgba(123,92,214,.10)}
+  .card h2{font-size:14px;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+  .card .note{color:var(--soft);font-size:12px;margin:0 0 10px;line-height:1.5}
+  .tag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+  .tag.try{background:#fff3e2;color:#b06400}.tag.watch{background:#e3f7f6;color:#0d7d7d}
+  /* GUI demo */
+  .stage{background:#fbfdff;border:1px dashed var(--line);border-radius:10px;padding:14px;text-align:center}
+  .uibtn{font:inherit;font-weight:600;font-size:14px;padding:10px 22px;border-radius:10px;border:1px solid #cfd9ec;
+    background:linear-gradient(#ffffff,#eef3fb);color:var(--ink);cursor:pointer;box-shadow:0 2px 0 #d8e1f1}
+  .uibtn:active{transform:translateY(1px)}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #c9b8ff;outline-offset:2px}
+  .switch{display:flex;align-items:center;justify-content:center;gap:8px;margin:12px 0 4px;font-size:13px}
+  .wirewrap{height:46px;position:relative;margin:4px 0}
+  svg.wire{width:100%;height:100%;display:block}
+  .fnbox{display:inline-block;background:#f4efff;border:2px solid var(--ac);color:#4d3aa3;border-radius:10px;
+    padding:6px 14px;font-family:Consolas,monospace;font-size:13px;font-weight:600}
+  .pulse{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--in);box-shadow:0 0 10px rgba(246,146,30,.8);left:0;top:0;opacity:0;pointer-events:none}
+  /* code panel */
+  pre.code{background:#27304a;color:#e8edf9;border-radius:10px;padding:10px 12px;font-family:Consolas,Menlo,monospace;
+    font-size:12.5px;line-height:1.65;overflow-x:auto;margin:0 0 10px}
+  pre.code .ln{display:block;border-radius:6px;padding:0 6px;transition:background .15s}
+  pre.code .ln.hot{background:#7b5cd6;color:#fff}
+  pre.code .ln.hot2{background:#f6921e;color:#1d2333}
+  .kw{color:#8ab8ff}.st{color:#ffd58a}.cm{color:#8b97b8}.fn{color:#9fe8e3}
+  /* transport bar */
+  .transport{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fbfdff;border:1px solid var(--line);border-radius:10px;padding:7px 9px;margin:10px 0}
+  .tbtn{font:inherit;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid #cfd9ec;background:#fff;color:var(--ink);cursor:pointer}
+  .tbtn:hover{background:#f1f5fc}.tbtn:disabled{opacity:.4;cursor:default}
+  .tbtn.play{background:var(--ac);border-color:var(--ac);color:#fff;min-width:74px}
+  .tbtn.play:hover{background:#6a4cc7}
+  .scrub{flex:1;min-width:110px;accent-color:var(--ac)}
+  .steplbl{font-size:11.5px;color:var(--soft);font-family:Consolas,monospace;white-space:nowrap}
+  .speedwrap{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--soft)}
+  .speedwrap input{width:74px;accent-color:var(--ac)}
+  .speedwrap b{font-size:11.5px;font-family:Consolas,monospace;color:var(--ink);width:30px}
+  /* explanation panel */
+  .explain{background:#f4efff;border:1px solid #ded2ff;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.55;min-height:56px;margin:0 0 10px}
+  .explain b{color:var(--ac)} .explain code{background:#fff;border-radius:4px;padding:0 4px}
+  /* epochs */
+  .epochs{display:flex;gap:8px;justify-content:center;margin:2px 0 8px;flex-wrap:wrap}
+  .ep{width:76px;border:2px solid var(--line);border-radius:10px;padding:5px 4px;text-align:center;background:#fbfdff;
+    transition:all .2s;cursor:pointer}
+  .ep:hover{border-color:var(--ac)}
+  .ep .t{font-size:11px;color:var(--soft)}.ep .v{font-family:Consolas,monospace;font-size:13px;font-weight:700}
+  .ep .j{font-size:9px;color:#9aa7c4}
+  .ep.now{border-color:var(--in);background:#fff7ec;transform:translateY(-3px);box-shadow:0 6px 14px rgba(246,146,30,.25)}
+  .ep.done{border-color:var(--out);background:#f0fbfa}
+  .resline{text-align:center;font-size:13px;margin:0 0 8px}
+  .resline b{font-family:Consolas,monospace;color:var(--out);font-size:15px}
+  .console{background:#101728;color:#cfe6d8;border-radius:10px;min-height:96px;max-height:140px;overflow-y:auto;
+    font-family:Consolas,monospace;font-size:12.5px;padding:8px 10px;line-height:1.6}
+  .console .sys{color:#7e8db0}.console .cb{color:#ffd58a}.console .silent{color:#5c6a8c;font-style:italic}
+  .controls{display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+  select{padding:6px 8px;border-radius:8px;border:1px solid #cfd9ec;background:#fff;color:var(--ink);font:inherit;font-size:13px}
+  .hint{font-size:12px;color:var(--soft);margin:8px 0 0;line-height:1.5}.hint b{color:var(--ac)}
+</style></head><body>
+<h1>Callback Playground</h1>
+<p class="sub">A callback is a function you hand to other code, so that code can <i>call you back</i> when something happens.</p>
+
+<div class="grid">
+  <div class="card">
+    <h2>1 &middot; The GUI analogy <span class="tag try">click freely</span></h2>
+    <p class="note">A button doesn't know what should happen when it's clicked &mdash; <b>you</b> tell it by registering a callback. Flip the switch, then click the button and watch the signal travel down the wire.</p>
+    <div class="stage">
+      <button class="uibtn" id="guiBtn">Click me</button>
+      <div class="wirewrap">
+        <svg class="wire" viewBox="0 0 300 46" preserveAspectRatio="none">
+          <path id="wirePath" d="M150 4 C150 20 150 26 150 42" fill="none" stroke="#dde5f2" stroke-width="3" stroke-dasharray="6 5"/>
+        </svg>
+        <div class="pulse" id="guiPulse"></div>
+      </div>
+      <div class="fnbox" id="fnbox">def f(o): print('hi')</div>
+      <div class="switch">
+        <input type="checkbox" id="reg"> <label for="reg">register the callback &mdash; <code>w.on_click(f)</code></label>
+      </div>
+    </div>
+    <div class="console" id="guiLog" style="margin-top:10px"><span class="sys"># click log appears here&hellip;</span></div>
+    <p class="hint">Unchecked: clicking does <b>nothing</b> &mdash; no callback is registered. Checked: every click travels down the wire into <code>f</code>, which prints <code>hi</code>. <b>You wrote f; the button decides when to run it.</b> That division of labor <i>is</i> the callback idea.</p>
+  </div>
+
+  <div class="card">
+    <h2>2 &middot; <code>slow_calculation</code> with a callback <span class="tag watch">step &middot; play &middot; jump</span></h2>
+    <div class="controls">
+      <label for="cbSel" style="font-size:13px">cb =</label>
+      <select id="cbSel">
+        <option value="none">None&nbsp; (no callback)</option>
+        <option value="show" selected>show_progress</option>
+        <option value="lambda">lambda o: print(f"epoch {o} done!")</option>
+      </select>
+    </div>
+    <pre class="code" id="codePanel"><span class="ln" data-l="0"><span class="kw">def</span> <span class="fn">slow_calculation</span>(cb=<span class="kw">None</span>):</span><span class="ln" data-l="1">    res = 0</span><span class="ln" data-l="2">    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(5):</span><span class="ln" data-l="3">        res += i*i</span><span class="ln" data-l="4">        sleep(1)</span><span class="ln" data-l="5">        <span class="kw">if</span> cb:            <span class="cm"># was a callback provided?</span></span><span class="ln" data-l="6">            cb(i)          <span class="cm"># yes -&gt; call it back!</span></span><span class="ln" data-l="7">    <span class="kw">return</span> res</span></pre>
+    <div class="explain" id="explain"></div>
+    <div class="transport">
+      <button class="tbtn" id="prevB" title="Previous step">&#9198; Prev</button>
+      <button class="tbtn play" id="playB">&#9654; Play</button>
+      <button class="tbtn" id="nextB" title="Next step">Next &#9197;</button>
+      <button class="tbtn" id="rstB" title="Back to start">&#8634; Reset</button>
+      <input type="range" class="scrub" id="scrub" min="0" max="0" value="0" aria-label="scrub through steps">
+      <span class="steplbl" id="stepLbl"></span>
+      <span class="speedwrap">&#128034;<input type="range" id="speed" min="0.5" max="3" step="0.25" value="1" aria-label="speed">&#128007;<b id="spdLbl">1.0&times;</b></span>
+    </div>
+    <div class="epochs" id="epochs"></div>
+    <div class="resline">res = <b id="resVal">0</b></div>
+    <div class="console" id="loopLog"></div>
+    <p class="hint"><b>Finer control:</b> drag the scrubber to any step, or <b>click an epoch box</b> to jump straight to it &mdash; the code line and explanation follow you. Switch <code>cb</code> above and replay to compare a silent run with a chatty one.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* ============ GUI demo (direct manipulation) ============ */
+  var guiBtn=document.getElementById('guiBtn'),reg=document.getElementById('reg'),
+      guiLog=document.getElementById('guiLog'),pulse=document.getElementById('guiPulse'),
+      wire=document.getElementById('wirePath'),fnbox=document.getElementById('fnbox'),clicks=0;
+  function glog(html,cls){var d=document.createElement('div');if(cls)d.className=cls;d.innerHTML=html;
+    if(guiLog.firstChild&&guiLog.firstChild.className==='sys')guiLog.innerHTML='';
+    guiLog.appendChild(d);guiLog.scrollTop=guiLog.scrollHeight;}
+  guiBtn.addEventListener('click',function(){
+    clicks++;
+    if(!reg.checked){glog('click #'+clicks+' &rarr; no callback registered &rarr; <i>(nothing happens)</i>','silent');return;}
+    wire.setAttribute('stroke','#f6921e');
+    function fire(){fnbox.style.boxShadow='0 0 0 4px rgba(123,92,214,.25)';
+      setTimeout(function(){fnbox.style.boxShadow='';wire.setAttribute('stroke','#dde5f2');},350);
+      glog('click #'+clicks+' &rarr; button calls <span style="color:#c9b8ff">f(o)</span> &rarr; <span class="cb">hi</span>');}
+    if(reduce){fire();return;}
+    var wrap=pulse.parentElement,r=wrap.getBoundingClientRect(),t0=null;pulse.style.opacity=1;
+    (function anim(ts){if(!t0)t0=ts||performance.now();var now=ts||performance.now(),p=Math.min(1,(now-t0)/420);
+      pulse.style.left=(r.width/2-7)+'px';pulse.style.top=(p*(r.height-14))+'px';
+      if(p<1)requestAnimationFrame(anim);else{pulse.style.opacity=0;fire();}})(performance.now());
+  });
+
+  /* ============ Step-timeline loop demo ============ */
+  var SQ=[0,1,4,9,16],N=5;
+  var code=document.getElementById('codePanel'),explain=document.getElementById('explain'),
+      epochsEl=document.getElementById('epochs'),resVal=document.getElementById('resVal'),
+      loopLog=document.getElementById('loopLog'),cbSel=document.getElementById('cbSel'),
+      scrub=document.getElementById('scrub'),stepLbl=document.getElementById('stepLbl'),
+      playB=document.getElementById('playB'),speed=document.getElementById('speed'),spdLbl=document.getElementById('spdLbl');
+  var steps=[],idx=0,epJump=[],playing=false,timer=null,BASE=1300;
+
+  function modeName(m){return m==='none'?'None':(m==='show'?'show_progress':'a lambda');}
+  function buildSteps(){
+    var mode=cbSel.value;steps=[];epJump=[];
+    var res=0,logs=[],eps=['todo','todo','todo','todo','todo'];
+    function snap(line,hl,explainHtml){steps.push({line:line,hl:hl,explain:explainHtml,res:res,logs:logs.slice(),eps:eps.slice()});}
+    snap(0,'hot','<b>Start.</b> We call <code>slow_calculation(cb='+modeName(mode)+')</code>. Inside, <code>res = 0</code> and a 5-epoch loop is about to begin.');
+    for(var i=0;i<N;i++){
+      eps[i]='now';res+=SQ[i];
+      epJump[i]=steps.length;
+      snap(3,'hot','<b>Epoch '+i+' &middot; do the work.</b> The loop adds i&sup2; = '+SQ[i]+', so <code>res</code> becomes <b>'+res+'</b>. Then <code>sleep(1)</code> pretends this took a second of real work.');
+      if(mode==='none'){
+        logs.push({c:'silent',h:'epoch '+i+': res = '+res+' &rarr; cb is None &rarr; <i>silence</i>'});
+        snap(5,'hot','<b>Epoch '+i+' &middot; the check.</b> <code>if cb:</code> &mdash; cb is <b>None</b>, which counts as False, so the callback line is <b>skipped</b>. Nothing is printed. Imagine hours of training with zero feedback!');
+      }else{
+        snap(5,'hot','<b>Epoch '+i+' &middot; the check.</b> <code>if cb:</code> &mdash; cb is a real function, which counts as True. Python is about to <i>call us back</i>.');
+        var msg = mode==='show' ? "Awesome! We've finished epoch "+i+"!" : "epoch "+i+" done!";
+        logs.push({c:'',h:'cb('+i+') &rarr; <span class="cb">'+msg+'</span>'});
+        snap(6,'hot2','<b>Epoch '+i+' &middot; the callback fires.</b> <code>cb('+i+')</code> runs '+modeName(mode)+' with the epoch number, which prints a progress message. The loop itself never changed &mdash; only what we passed in.');
+      }
+      eps[i]='done';
+    }
+    logs.push({c:'sys',h:'return res  &rarr; <span style="color:#9fe8e3">'+res+'</span>'});
+    snap(7,'hot','<b>Finished.</b> All 5 epochs ran; the function returns <code>res = '+res+'</code>. '+(mode==='none'?'It worked, but silently &mdash; that\u2019s the problem callbacks solve.':'Same answer as the silent version, but now we could <i>watch</i> it happen.'));
+    scrub.max=steps.length-1;
+  }
+  function render(){
+    var s=steps[idx];
+    code.querySelectorAll('.ln').forEach(function(l){l.classList.remove('hot','hot2');});
+    code.querySelector('[data-l="'+s.line+'"]').classList.add(s.hl);
+    explain.innerHTML=s.explain;
+    resVal.textContent=s.res;
+    epochsEl.innerHTML='';
+    for(var k=0;k<N;k++){
+      var d=document.createElement('div');d.className='ep '+(s.eps[k]==='todo'?'':s.eps[k]);
+      d.title='Jump to epoch '+k;d.innerHTML='<div class="t">i = '+k+'</div><div class="v">+'+SQ[k]+'</div><div class="j">click to jump</div>';
+      (function(k){d.onclick=function(){stopPlay();idx=epJump[k];render();};})(k);
+      epochsEl.appendChild(d);
+    }
+    loopLog.innerHTML='';
+    if(!s.logs.length)loopLog.innerHTML='<span class="sys"># output appears here as you step&hellip;</span>';
+    s.logs.forEach(function(L){var d=document.createElement('div');if(L.c)d.className=L.c;d.innerHTML=L.h;loopLog.appendChild(d);});
+    loopLog.scrollTop=loopLog.scrollHeight;
+    scrub.value=idx;stepLbl.textContent='step '+(idx+1)+'/'+steps.length;
+    document.getElementById('prevB').disabled=(idx===0);
+    document.getElementById('nextB').disabled=(idx===steps.length-1);
+  }
+  function stopPlay(){playing=false;clearTimeout(timer);playB.innerHTML='&#9654; Play';}
+  function startPlay(){
+    if(idx>=steps.length-1)idx=0;
+    playing=true;playB.innerHTML='&#10074;&#10074; Pause';
+    (function tick(){render();
+      if(idx<steps.length-1&&playing){timer=setTimeout(function(){idx++;tick();},(reduce?250:BASE)/parseFloat(speed.value));}
+      else stopPlay();})();
+  }
+  playB.onclick=function(){playing?stopPlay():startPlay();};
+  document.getElementById('prevB').onclick=function(){stopPlay();if(idx>0){idx--;render();}};
+  document.getElementById('nextB').onclick=function(){stopPlay();if(idx<steps.length-1){idx++;render();}};
+  document.getElementById('rstB').onclick=function(){stopPlay();idx=0;render();};
+  scrub.addEventListener('input',function(){stopPlay();idx=+scrub.value;render();});
+  speed.addEventListener('input',function(){spdLbl.textContent=parseFloat(speed.value).toFixed(1)+'\u00D7';});
+  cbSel.addEventListener('change',function(){stopPlay();buildSteps();idx=0;render();});
+  buildSteps();render();
+})();
+</script>
+</body></html>

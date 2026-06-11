@@ -1,0 +1,297 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>*args and **kwargs Sorter</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#d6455c;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{min-height:100vh;background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:18px 16px 28px}
+  h1{font-size:20px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:13px;margin:0 0 10px;max-width:760px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .gspeed{display:flex;justify-content:center;align-items:center;gap:6px;font-size:13px;color:var(--soft);margin:0 0 14px}
+  .gspeed input{width:110px;accent-color:var(--ac)}
+  .gspeed b{font-family:Consolas,monospace;font-size:12px;color:var(--ink)}
+  .wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 8px 22px rgba(123,92,214,.10)}
+  .card h2{font-size:14px;margin:0 0 4px}
+  .card .note{color:var(--soft);font-size:12px;margin:0 0 10px;line-height:1.5}
+  pre.code{background:#27304a;color:#e8edf9;border-radius:10px;padding:8px 12px;font-family:Consolas,Menlo,monospace;
+    font-size:13px;line-height:1.6;overflow-x:auto;margin:0 0 10px}
+  .kw{color:#8ab8ff}.st{color:#ffd58a}.cm{color:#8b97b8}.fn{color:#9fe8e3}
+  .builder{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .builder input{font:inherit;font-size:13px;padding:6px 8px;border-radius:8px;border:1px solid #cfd9ec;width:92px}
+  .btn{font:inherit;font-size:13px;font-weight:600;padding:7px 13px;border-radius:9px;border:1px solid transparent;cursor:pointer}
+  .btn.add-p{background:#fff3e2;color:#9a5b00;border-color:var(--in)}
+  .btn.add-k{background:#e3f7f6;color:#0d7d7d;border-color:var(--out)}
+  .btn.reset{background:#fff;border-color:#cfd9ec;color:var(--soft)}
+  .btn:disabled{opacity:.45;cursor:default}
+  button:focus-visible,input:focus-visible{outline:3px solid #c9b8ff;outline-offset:2px}
+  .callline{font-family:Consolas,monospace;font-size:15px;background:#fbfdff;border:1px dashed var(--line);
+    border-radius:10px;padding:10px;text-align:center;min-height:46px}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-family:Consolas,monospace;font-size:12.5px;font-weight:700;
+    border-radius:999px;padding:3px 9px 3px 11px;margin:2px;border:2px solid;cursor:pointer;transition:all .2s}
+  .chip.p{background:#fff3e2;color:#9a5b00;border-color:var(--in)}
+  .chip.k{background:#e3f7f6;color:#0d7d7d;border-color:var(--out)}
+  .chip.used{opacity:.32}
+  .chip.active{transform:translateY(-3px);box-shadow:0 6px 12px rgba(37,50,74,.22)}
+  .chip .x{font-weight:700;opacity:.55;padding:0 2px;border-radius:50%}
+  .chip .x:hover{opacity:1;color:var(--bad)}
+  .pills{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 0;align-items:center}
+  .pills .plab{font-size:11px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .pill{font:inherit;font-family:Consolas,monospace;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;
+    border:2px solid var(--line);background:#fbfdff;cursor:pointer;color:var(--soft)}
+  .pill:hover{border-color:var(--ac);color:var(--ac)}
+  .pill.cur{border-color:var(--in);background:#fff7ec;color:#9a5b00}
+  .pill.done{border-color:var(--out);color:#0d7d7d}
+  .bins{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  @media(max-width:760px){.bins{grid-template-columns:1fr}}
+  .bin{border:2px solid;border-radius:12px;padding:10px;min-height:84px;background:#fbfdff}
+  .bin.args{border-color:var(--in)} .bin.kwargs{border-color:var(--out)}
+  .bin .lbl{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
+  .bin.args .lbl{color:#b06400}.bin.kwargs .lbl{color:#0d7d7d}
+  .bin .val{font-family:Consolas,monospace;font-size:14px;min-height:24px}
+  .resline{font-family:Consolas,monospace;font-size:13px;background:#101728;color:#cfe6d8;border-radius:10px;padding:8px 12px;margin-top:10px;min-height:36px}
+  .resline .sys{color:#7e8db0}
+  /* transport + explain */
+  .transport{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fbfdff;border:1px solid var(--line);border-radius:10px;padding:7px 9px;margin:10px 0 0}
+  .tbtn{font:inherit;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid #cfd9ec;background:#fff;color:var(--ink);cursor:pointer}
+  .tbtn:hover{background:#f1f5fc}.tbtn:disabled{opacity:.4;cursor:default}
+  .tbtn.play{background:var(--ac);border-color:var(--ac);color:#fff;min-width:74px}.tbtn.play:hover{background:#6a4cc7}
+  .scrub{flex:1;min-width:100px;accent-color:var(--ac)}
+  .steplbl{font-size:11.5px;color:var(--soft);font-family:Consolas,monospace;white-space:nowrap}
+  .explain{background:#f4efff;border:1px solid #ded2ff;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.55;min-height:54px;margin-top:10px}
+  .explain b{color:var(--ac)} .explain code{background:#fff;border-radius:4px;padding:0 4px}
+  /* unpack */
+  .slots{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+  .pslot{border:2px dashed #cfd9ec;border-radius:10px;padding:6px 14px;text-align:center;min-width:96px;background:#fff;transition:all .25s;cursor:pointer}
+  .pslot:hover{border-color:var(--ac)}
+  .pslot .nm{font-family:Consolas,monospace;font-weight:700;font-size:13px}
+  .pslot .v{font-family:Consolas,monospace;font-size:13px;color:var(--soft);min-height:20px}
+  .pslot .j{font-size:9px;color:#9aa7c4}
+  .pslot.fill-p{border-style:solid;border-color:var(--in);background:#fff7ec}.pslot.fill-p .v{color:#9a5b00;font-weight:700}
+  .pslot.fill-k{border-style:solid;border-color:var(--out);background:#f0fbfa}.pslot.fill-k .v{color:#0d7d7d;font-weight:700}
+  .srcrow{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;font-family:Consolas,monospace;font-size:13.5px;margin-bottom:4px}
+  .srcrow .grp{background:#fbfdff;border:1px solid var(--line);border-radius:10px;padding:6px 12px}
+  .srcrow .schip{display:inline-block;font-weight:700;border-radius:999px;padding:2px 10px;margin:1px;border:2px solid;transition:opacity .2s}
+  .srcrow .schip.p{background:#fff3e2;color:#9a5b00;border-color:var(--in)}
+  .srcrow .schip.k{background:#e3f7f6;color:#0d7d7d;border-color:var(--out)}
+  .srcrow .schip.used{opacity:.3}
+  .mnemonic{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13px;line-height:1.6;box-shadow:0 8px 22px rgba(123,92,214,.08)}
+  .mnemonic b{color:var(--ac)}
+</style></head><body>
+<h1><code>*args</code> &amp; <code>**kwargs</code> &mdash; the Argument Sorter</h1>
+<p class="sub">One star collects <b>positional</b> arguments into a <b>tuple</b>; two stars collect <b>keyword</b> arguments into a <b>dict</b>.
+Build a call, then step through Python sorting every argument &mdash; one at a time.</p>
+<div class="gspeed">&#128034;<input type="range" id="gspeed" min="0.5" max="3" step="0.25" value="1" aria-label="animation speed">&#128007; animation speed <b id="gspdLbl">1.0&times;</b></div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>A &middot; Packing &mdash; when <i>defining</i> a function</h2>
+    <pre class="code"><span class="kw">def</span> <span class="fn">f</span>(*a, **b): <span class="fn">print</span>(<span class="st">f"args: </span>{a}<span class="st">; kwargs: </span>{b}<span class="st">"</span>)</pre>
+    <div class="builder">
+      <input id="posIn" placeholder="e.g. 3 or 'a'" aria-label="positional value">
+      <button class="btn add-p" id="addPos">+ positional</button>
+      <input id="keyIn" placeholder="name" style="width:80px" aria-label="keyword name">
+      <input id="valIn" placeholder="value" aria-label="keyword value">
+      <button class="btn add-k" id="addKw">+ keyword</button>
+      <span style="flex:1"></span>
+      <button class="btn reset" id="resetA">Clear args</button>
+    </div>
+    <div class="callline" id="callLine"></div>
+    <div class="pills" id="pillsA"></div>
+    <div class="bins">
+      <div class="bin args"><div class="lbl">*a &rarr; tuple of positionals</div><div class="val" id="binArgs">( )</div></div>
+      <div class="bin kwargs"><div class="lbl">**b &rarr; dict of keywords</div><div class="val" id="binKw">{ }</div></div>
+    </div>
+    <div class="explain" id="explainA"></div>
+    <div class="transport">
+      <button class="tbtn" id="prevA">&#9198; Prev</button>
+      <button class="tbtn play" id="playA">&#9654; Play</button>
+      <button class="tbtn" id="nextA">Next &#9197;</button>
+      <button class="tbtn" id="rstA">&#8634; Restart</button>
+      <input type="range" class="scrub" id="scrubA" min="0" max="0" value="0" aria-label="scrub packing steps">
+      <span class="steplbl" id="lblA"></span>
+    </div>
+    <div class="resline" id="outA"></div>
+  </div>
+
+  <div class="card">
+    <h2>B &middot; Unpacking &mdash; when <i>calling</i> a function (the same stars, in reverse)</h2>
+    <p class="note">Here <code>g</code> has <b>named</b> parameters. The stars now <i>spread out</i> a stored tuple/dict so each value lands in its matching slot. <b>Click a parameter slot</b> to jump to the moment it gets filled.</p>
+    <pre class="code"><span class="kw">def</span> <span class="fn">g</span>(a, b, c=0): <span class="fn">print</span>(a, b, c)
+
+args = [1, 2]
+kwargs = {<span class="st">'c'</span>: 3}
+<span class="fn">g</span>(*args, **kwargs)   <span class="cm"># same as g(1, 2, c=3)</span></pre>
+    <div class="srcrow">
+      <div class="grp">*args &rarr; <span class="schip p" id="u0">1</span><span class="schip p" id="u1">2</span></div>
+      <div class="grp">**kwargs &rarr; <span class="schip k" id="u2">c=3</span></div>
+    </div>
+    <div class="slots">
+      <div class="pslot" id="sA" title="jump to: a gets filled"><div class="nm">a</div><div class="v">&mdash;</div><div class="j">click to jump</div></div>
+      <div class="pslot" id="sB" title="jump to: b gets filled"><div class="nm">b</div><div class="v">&mdash;</div><div class="j">click to jump</div></div>
+      <div class="pslot" id="sC" title="jump to: c gets filled"><div class="nm">c = 0</div><div class="v">&mdash;</div><div class="j">click to jump</div></div>
+    </div>
+    <div class="explain" id="explainB"></div>
+    <div class="transport">
+      <button class="tbtn" id="prevB">&#9198; Prev</button>
+      <button class="tbtn play" id="playB">&#9654; Play</button>
+      <button class="tbtn" id="nextB">Next &#9197;</button>
+      <button class="tbtn" id="rstB">&#8634; Restart</button>
+      <input type="range" class="scrub" id="scrubB" min="0" max="4" value="0" aria-label="scrub unpacking steps">
+      <span class="steplbl" id="lblB"></span>
+    </div>
+    <div class="resline" id="outB"></div>
+  </div>
+
+  <div class="mnemonic"><b>Mnemonic:</b> count the stars. <b>*</b> = one row of values (a tuple/list) &middot; <b>**</b> = two-part pairs, <code>name=value</code> (a dict). In a <code>def</code> they <b>catch</b> (many &rarr; one container); in a call they <b>throw</b> (one container &rarr; many slots). That pass-through trick is exactly how <code>cb(*args, **kwargs)</code> forwards <i>everything</i> in fastai callbacks.</div>
+</div>
+
+<script>
+(function(){
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var BASE=1350,gspeed=document.getElementById('gspeed'),gspdLbl=document.getElementById('gspdLbl');
+  gspeed.addEventListener('input',function(){gspdLbl.textContent=parseFloat(gspeed.value).toFixed(1)+'\u00D7';});
+  function spd(){return (reduce?260:BASE)/parseFloat(gspeed.value);}
+  function fmt(v){if(v==='')return"''";if(!isNaN(Number(v)))return v;
+    if(/^['"].*['"]$/.test(v))return v.replace(/"/g,"'");return "'"+v+"'";}
+
+  /* ================= A: PACKING ================= */
+  var pos=[],kws=[];
+  var callLine=document.getElementById('callLine'),binArgs=document.getElementById('binArgs'),
+      binKw=document.getElementById('binKw'),outA=document.getElementById('outA'),
+      explainA=document.getElementById('explainA'),pillsA=document.getElementById('pillsA'),
+      scrubA=document.getElementById('scrubA'),lblA=document.getElementById('lblA'),
+      playA=document.getElementById('playA');
+  var stepsA=[],idxA=0,playingA=false,timerA=null;
+
+  function buildStepsA(){
+    stepsA=[];
+    var items=[];
+    pos.forEach(function(v,i){items.push({kind:'p',label:fmt(v),i:i});});
+    kws.forEach(function(kv,i){items.push({kind:'k',label:kv[0]+'='+fmt(kv[1]),kv:kv,i:i});});
+    var gotP=[],gotK=[];
+    function tuple(){return gotP.length?('('+gotP.join(', ')+(gotP.length===1?',':'')+')'):'()';}
+    function dict(){return gotK.length?('{'+gotK.map(function(kv){return "'"+kv[0]+"': "+fmt(kv[1]);}).join(', ')+'}'):'{}';}
+    stepsA.push({tuple:'( )',dict:'{ }',usedUpto:-1,active:-1,out:null,pill:'read',
+      explain: items.length?'<b>Python reads the call left to right.</b> For each argument it asks one question: <i>is it written as <code>name=value</code>?</i> No &rarr; orange tuple. Yes &rarr; teal dict. Press Next to sort the first one.':'<b>No arguments yet.</b> Add some positionals / keywords above, then step through the sort.'});
+    items.forEach(function(it,n){
+      if(it.kind==='p'){gotP.push(it.label);
+        stepsA.push({tuple:tuple(),dict:dict(),usedUpto:n,active:n,out:null,pill:n,
+          explain:'<b>Sorting <code>'+it.label+'</code>:</b> there is no <code>name=</code> in front of it, so it is <b>positional</b> &rarr; appended to the tuple <code>a</code>, keeping its order ('+gotP.length+(gotP.length===1?'st':gotP.length===2?'nd':gotP.length===3?'rd':'th')+' slot).'});}
+      else{gotK.push(it.kv);
+        stepsA.push({tuple:tuple(),dict:dict(),usedUpto:n,active:n,out:null,pill:n,
+          explain:'<b>Sorting <code>'+it.label+'</code>:</b> it is written as <code>name=value</code>, so it is a <b>keyword</b> argument &rarr; stored in the dict <code>b</code> under the key <code>\''+it.kv[0]+'\'</code>.'});}
+    });
+    if(items.length){
+      stepsA.push({tuple:tuple(),dict:dict(),usedUpto:items.length-1,active:-1,
+        out:'args: '+tuple()+'; kwargs: '+dict(),pill:'print',
+        explain:'<b>All sorted &mdash; now the body runs.</b> Inside <code>f</code>, the name <code>a</code> is this tuple and <code>b</code> is this dict. The <code>print</code> shows both. Note the containers, not loose values: that is what "packing" means.'});
+    }
+    scrubA.max=stepsA.length-1;
+    return items;
+  }
+  var itemsA=[];
+  function renderCallLine(){
+    callLine.innerHTML='f(&nbsp;';
+    var s=stepsA[idxA]||{usedUpto:-1,active:-1};
+    itemsA.forEach(function(it,n){
+      var c=document.createElement('span');
+      c.className='chip '+(it.kind==='p'?'p':'k')+(n<=s.usedUpto&&n!==s.active?' used':'')+(n===s.active?' active':'');
+      c.title='click chip to jump to its sorting step';
+      var t=document.createElement('span');t.textContent=it.label;c.appendChild(t);
+      var x=document.createElement('span');x.className='x';x.textContent='\u00D7';x.title='remove this argument';
+      x.onclick=function(ev){ev.stopPropagation();
+        if(it.kind==='p')pos.splice(it.i,1);else kws.splice(it.i,1);rebuildA(0);};
+      c.appendChild(x);
+      c.onclick=function(){stopA();idxA=n+1;renderA();};
+      callLine.appendChild(c);
+      if(n<itemsA.length-1)callLine.appendChild(document.createTextNode(', '));
+    });
+    callLine.appendChild(document.createTextNode(' )'));
+  }
+  function renderA(){
+    var s=stepsA[idxA];
+    renderCallLine();
+    binArgs.textContent=s.tuple;binKw.textContent=s.dict;
+    explainA.innerHTML=s.explain;
+    outA.innerHTML=s.out?s.out:'<span class="sys"># printed output appears at the last step&hellip;</span>';
+    pillsA.innerHTML='<span class="plab">steps:</span>';
+    var labels=[{p:'read',t:'read call'}].concat(itemsA.map(function(it,n){return {p:n,t:'sort '+it.label};}));
+    if(itemsA.length)labels.push({p:'print',t:'run body'});
+    labels.forEach(function(L,k){
+      var b=document.createElement('button');b.className='pill'+(idxA===k?' cur':(idxA>k?' done':''));
+      b.textContent=L.t;b.title='jump to this step';
+      b.onclick=function(){stopA();idxA=k;renderA();};
+      pillsA.appendChild(b);
+    });
+    scrubA.value=idxA;lblA.textContent='step '+(idxA+1)+'/'+stepsA.length;
+    document.getElementById('prevA').disabled=(idxA===0);
+    document.getElementById('nextA').disabled=(idxA===stepsA.length-1);
+  }
+  function rebuildA(toIdx){stopA();itemsA=buildStepsA();idxA=Math.min(toIdx===undefined?0:toIdx,stepsA.length-1);renderA();}
+  function stopA(){playingA=false;clearTimeout(timerA);playA.innerHTML='&#9654; Play';}
+  playA.onclick=function(){
+    if(playingA){stopA();return;}
+    if(idxA>=stepsA.length-1)idxA=0;
+    playingA=true;playA.innerHTML='&#10074;&#10074; Pause';
+    (function tick(){renderA();
+      if(idxA<stepsA.length-1&&playingA){timerA=setTimeout(function(){idxA++;tick();},spd());}else stopA();})();
+  };
+  document.getElementById('prevA').onclick=function(){stopA();if(idxA>0){idxA--;renderA();}};
+  document.getElementById('nextA').onclick=function(){stopA();if(idxA<stepsA.length-1){idxA++;renderA();}};
+  document.getElementById('rstA').onclick=function(){stopA();idxA=0;renderA();};
+  scrubA.addEventListener('input',function(){stopA();idxA=+scrubA.value;renderA();});
+  document.getElementById('addPos').onclick=function(){var v=document.getElementById('posIn').value.trim();
+    if(v==='')return;pos.push(v);document.getElementById('posIn').value='';rebuildA(0);};
+  document.getElementById('addKw').onclick=function(){var k=document.getElementById('keyIn').value.trim(),
+    v=document.getElementById('valIn').value.trim();if(!k||v==='')return;
+    if(!/^[A-Za-z_]\w*$/.test(k)){alert('Keyword names must look like Python identifiers, e.g. thing1');return;}
+    kws.push([k,v]);document.getElementById('keyIn').value='';document.getElementById('valIn').value='';rebuildA(0);};
+  document.getElementById('resetA').onclick=function(){pos=[];kws=[];rebuildA(0);};
+  pos=['3',"'a'"];kws=[['thing1','hello']];rebuildA(0);
+
+  /* ================= B: UNPACKING ================= */
+  var stepsB=[
+    {fills:[],used:[],out:null,explain:'<b>Python sees <code>g(*args, **kwargs)</code>.</b> Before running <code>g</code>, it must spread the containers out: list items become positional arguments (in order), dict pairs become keyword arguments.'},
+    {fills:['p',null,null],used:[0],out:null,explain:'<b><code>*args</code> spreads, item 1:</b> the first element of <code>args</code> (the value <code>1</code>) lands in the first parameter slot, <code>a</code>.'},
+    {fills:['p','p',null],used:[0,1],out:null,explain:'<b><code>*args</code> spreads, item 2:</b> the second element (<code>2</code>) lands in the next free slot, <code>b</code>. Order in the list = order of the slots.'},
+    {fills:['p','p','k'],used:[0,1,2],out:null,explain:'<b><code>**kwargs</code> spreads:</b> the pair <code>\'c\': 3</code> finds the parameter <i>named</i> <code>c</code> and fills it &mdash; overriding its default <code>c=0</code>. Keywords match by <b>name</b>, not position.'},
+    {fills:['p','p','k'],used:[0,1,2],out:'1 2 3',explain:'<b>All slots full &mdash; the body runs.</b> <code>print(a, b, c)</code> &rarr; <code>1 2 3</code>. The call behaved exactly like writing <code>g(1, 2, c=3)</code> by hand.'}
+  ];
+  var idxB=0,playingB=false,timerB=null;
+  var slotEls=[document.getElementById('sA'),document.getElementById('sB'),document.getElementById('sC')],
+      slotVals=['1','2','3'],srcEls=[document.getElementById('u0'),document.getElementById('u1'),document.getElementById('u2')],
+      explainB=document.getElementById('explainB'),outB=document.getElementById('outB'),
+      scrubB=document.getElementById('scrubB'),lblB=document.getElementById('lblB'),playBb=document.getElementById('playB');
+  function renderB(){
+    var s=stepsB[idxB];
+    slotEls.forEach(function(el,n){
+      var f=s.fills[n];el.className='pslot'+(f==='p'?' fill-p':f==='k'?' fill-k':'');
+      el.querySelector('.v').textContent=f?slotVals[n]:'\u2014';
+    });
+    srcEls.forEach(function(el,n){el.classList.toggle('used',s.used.indexOf(n)>=0);});
+    explainB.innerHTML=s.explain;
+    outB.innerHTML=s.out?s.out:'<span class="sys"># printed output appears at the last step&hellip;</span>';
+    scrubB.value=idxB;lblB.textContent='step '+(idxB+1)+'/'+stepsB.length;
+    document.getElementById('prevB').disabled=(idxB===0);
+    document.getElementById('nextB').disabled=(idxB===stepsB.length-1);
+  }
+  function stopB(){playingB=false;clearTimeout(timerB);playBb.innerHTML='&#9654; Play';}
+  playBb.onclick=function(){
+    if(playingB){stopB();return;}
+    if(idxB>=stepsB.length-1)idxB=0;
+    playingB=true;playBb.innerHTML='&#10074;&#10074; Pause';
+    (function tick(){renderB();
+      if(idxB<stepsB.length-1&&playingB){timerB=setTimeout(function(){idxB++;tick();},spd());}else stopB();})();
+  };
+  document.getElementById('prevB').onclick=function(){stopB();if(idxB>0){idxB--;renderB();}};
+  document.getElementById('nextB').onclick=function(){stopB();if(idxB<stepsB.length-1){idxB++;renderB();}};
+  document.getElementById('rstB').onclick=function(){stopB();idxB=0;renderB();};
+  scrubB.addEventListener('input',function(){stopB();idxB=+scrubB.value;renderB();});
+  slotEls.forEach(function(el,n){el.onclick=function(){stopB();idxB=n+1;renderB();};});
+  srcEls.forEach(function(el,n){el.style.cursor='pointer';el.title='jump to when this value moves';
+    el.onclick=function(){stopB();idxB=n+1;renderB();};});
+  renderB();
+})();
+</script>
+</body></html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dunder Dispatch</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#d6455c;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{min-height:100vh;background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:18px 16px 28px}
+  h1{font-size:20px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:13px;margin:0 0 14px;max-width:780px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .wrap{max-width:1150px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 8px 22px rgba(123,92,214,.10)}
+  .card h2{font-size:14px;margin:0 0 6px}
+  .card .note{color:var(--soft);font-size:12px;margin:0 0 10px;line-height:1.5}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-bottom:12px}
+  .chip{font:inherit;font-family:Consolas,monospace;font-size:13px;font-weight:700;padding:6px 13px;border-radius:999px;
+    border:2px solid var(--line);background:#fbfdff;cursor:pointer;color:var(--ink)}
+  .chip:hover{border-color:var(--ac)}
+  .chip.sel{border-color:var(--ac);background:#f4efff;color:#4d3aa3}
+  button:focus-visible,input:focus-visible{outline:3px solid #c9b8ff;outline-offset:2px}
+  .translate{display:grid;grid-template-columns:1fr 56px 1fr;align-items:center;gap:8px;max-width:660px;margin:0 auto}
+  .tbox{border:2px solid;border-radius:12px;padding:10px;text-align:center;font-family:Consolas,monospace;font-size:16px;font-weight:700}
+  .tbox .cap{font-family:"Segoe UI",sans-serif;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px}
+  .tbox.you{border-color:var(--in);background:#fff7ec;color:#9a5b00}.tbox.you .cap{color:#b06400}
+  .tbox.py{border-color:var(--ac);background:#f4efff;color:#4d3aa3}.tbox.py .cap{color:#7b5cd6}
+  .tarrow{text-align:center;font-size:24px;color:#aab8d4}
+  .twhy{max-width:660px;margin:10px auto 0;font-size:12.5px;color:var(--soft);text-align:center;line-height:1.55;min-height:38px}
+  .twhy b{color:var(--ac)}
+  /* sloppy adder */
+  .cols{display:grid;grid-template-columns:1fr 1.25fr;gap:14px}
+  @media(max-width:920px){.cols{grid-template-columns:1fr}}
+  pre.code{background:#27304a;color:#e8edf9;border-radius:10px;padding:10px 12px;font-family:Consolas,Menlo,monospace;
+    font-size:12.5px;line-height:1.7;overflow-x:auto;margin:0 0 10px}
+  pre.code .ln{display:block;border-radius:5px;padding:0 5px;transition:background .15s}
+  pre.code .ln.hot{background:#7b5cd6;color:#fff}
+  .kw{color:#8ab8ff}.st{color:#ffd58a}.cm{color:#8b97b8}.fn{color:#9fe8e3}
+  .sliders{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+  .srow{display:flex;align-items:center;gap:10px;font-family:Consolas,monospace;font-size:13px}
+  .srow input{flex:1;accent-color:var(--ac)}
+  .srow .v{width:88px;font-weight:700}
+  .pipe{display:flex;flex-direction:column;gap:6px}
+  .stage{display:flex;gap:10px;align-items:center;border:2px solid var(--line);border-radius:11px;background:#fbfdff;
+    padding:7px 11px;cursor:pointer;transition:all .2s}
+  .stage:hover{border-color:var(--ac)}
+  .stage.cur{border-color:var(--in);background:#fff7ec;box-shadow:0 5px 14px rgba(246,146,30,.22);transform:translateX(4px)}
+  .stage.done{border-color:var(--out);background:#f7fcfb}
+  .stage .n{width:22px;height:22px;border-radius:50%;background:#e9edf7;color:#7384a6;display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;flex:none}
+  .stage.cur .n{background:var(--in);color:#fff}.stage.done .n{background:var(--out);color:#fff}
+  .stage .t{font-size:11px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.03em;width:118px;flex:none}
+  .stage .d{font-family:Consolas,monospace;font-size:13px;font-weight:700;flex:1;min-width:0;overflow-wrap:anywhere}
+  /* transport + explain */
+  .transport{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:#fbfdff;border:1px solid var(--line);border-radius:10px;padding:7px 9px;margin:10px 0 0}
+  .tbtn{font:inherit;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:8px;border:1px solid #cfd9ec;background:#fff;color:var(--ink);cursor:pointer}
+  .tbtn:hover{background:#f1f5fc}.tbtn:disabled{opacity:.4;cursor:default}
+  .tbtn.play{background:var(--ac);border-color:var(--ac);color:#fff;min-width:74px}.tbtn.play:hover{background:#6a4cc7}
+  .steplbl{font-size:11.5px;color:var(--soft);font-family:Consolas,monospace;white-space:nowrap}
+  .speedwrap{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--soft)}
+  .speedwrap input{width:74px;accent-color:var(--ac)}
+  .speedwrap b{font-size:11.5px;font-family:Consolas,monospace;color:var(--ink);width:30px}
+  .explain{background:#f4efff;border:1px solid #ded2ff;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.55;min-height:58px;margin:10px 0 0}
+  .explain b{color:var(--ac)} .explain code{background:#fff;border-radius:4px;padding:0 4px}
+  .keyidea{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:13px;line-height:1.6;box-shadow:0 8px 22px rgba(123,92,214,.08)}
+  .keyidea b{color:var(--ac)}
+</style></head><body>
+<h1>Dunder Methods: How Python Translates Syntax Into <i>Your</i> Code</h1>
+<p class="sub">Operators and built-ins aren't magic &mdash; each one is rewritten into a <code>__dunder__</code> method call on your object.
+First explore the dictionary of translations, then <b>step through one full evaluation</b> of <code>a + b</code>.</p>
+
+<div class="wrap">
+  <div class="card">
+    <h2>A &middot; The translation dictionary <span style="font-weight:400;color:var(--soft);font-size:12px">&mdash; click any expression</span></h2>
+    <div class="chips" id="chips"></div>
+    <div class="translate">
+      <div class="tbox you"><div class="cap">you write</div><div id="youW">a + b</div></div>
+      <div class="tarrow">&rarr;</div>
+      <div class="tbox py"><div class="cap">python actually calls</div><div id="pyC">a.__add__(b)</div></div>
+    </div>
+    <div class="twhy" id="why"></div>
+  </div>
+
+  <div class="card">
+    <h2>B &middot; One <code>a + b</code>, frame by frame <span style="font-weight:400;color:var(--soft);font-size:12px">&mdash; click any stage to jump; the code line lights up</span></h2>
+    <div class="cols">
+      <div>
+        <pre class="code"><span class="ln" data-l="cls"><span class="kw">class</span> <span class="fn">SloppyAdder</span>():</span><span class="ln" data-l="init">    <span class="kw">def</span> <span class="fn">__init__</span>(self, o): self.o = o</span><span class="ln" data-l="add">    <span class="kw">def</span> <span class="fn">__add__</span>(self, b):</span><span class="ln" data-l="add2">        <span class="kw">return</span> SloppyAdder(self.o + b.o + 0.01)</span><span class="ln" data-l="repr">    <span class="kw">def</span> <span class="fn">__repr__</span>(self): <span class="kw">return</span> <span class="fn">str</span>(self.o)</span><span class="ln" data-l="mk">
+a = SloppyAdder(<span id="codeA">3</span>); b = SloppyAdder(<span id="codeB">2</span>)</span><span class="ln" data-l="expr">a + b</span></pre>
+        <div class="sliders">
+          <div class="srow">a.o = <input type="range" id="av" min="0" max="10" step="1" value="3" aria-label="value of a"><span class="v" id="avl">3</span></div>
+          <div class="srow">b.o = <input type="range" id="bv" min="0" max="10" step="1" value="2" aria-label="value of b"><span class="v" id="bvl">2</span></div>
+        </div>
+        <div class="explain" id="explain"></div>
+      </div>
+      <div>
+        <div class="pipe" id="pipe"></div>
+        <div class="transport">
+          <button class="tbtn" id="prevB">&#9198; Prev</button>
+          <button class="tbtn play" id="playB">&#9654; Play</button>
+          <button class="tbtn" id="nextB">Next &#9197;</button>
+          <button class="tbtn" id="rstB">&#8634; Reset</button>
+          <span class="steplbl" id="stepLbl"></span>
+          <span class="speedwrap">&#128034;<input type="range" id="speed" min="0.5" max="3" step="0.25" value="1" aria-label="speed">&#128007;<b id="spdLbl">1.0&times;</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="keyidea"><b>The big realization:</b> <code>a + b</code> looked like ordinary arithmetic, but every frame above ran <i>code you wrote</i>: <code>__add__</code> decided what + means, <code>__init__</code> built the result, <code>__repr__</code> decided what you see. PyTorch's <code>Module.__call__</code>, NumPy broadcasting, f-strings &mdash; all the same trick: <b>syntax dispatches to dunders</b>.</div>
+</div>
+
+<script>
+(function(){
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* ===== Card A: translation chips ===== */
+  var EXPR=[
+    {e:'a + b',d:'a.__add__(b)',w:'The <b>left</b> operand\u2019s <code>__add__</code> is tried first; the right operand arrives as the argument.'},
+    {e:'a - b',d:'a.__sub__(b)',w:'Every arithmetic operator has its own dunder: <code>__sub__</code>, <code>__mul__</code>, <code>__truediv__</code>, <code>__pow__</code>\u2026'},
+    {e:'a @ b',d:'a.__matmul__(b)',w:'Yes, even matrix multiplication! PyTorch tensors implement <code>__matmul__</code> \u2014 that\u2019s why <code>x @ w</code> works.'},
+    {e:'a == b',d:'a.__eq__(b)',w:'Comparisons too: <code>__eq__</code>, <code>__lt__</code>, <code>__gt__</code>\u2026 This is how DataFrames return a whole column of booleans from one ==.'},
+    {e:'len(a)',d:'a.__len__()',w:'Built-in functions delegate to dunders: <code>len</code> just calls <code>__len__</code>. Your Dataset\u2019s <code>__len__</code> is what the DataLoader asks.'},
+    {e:'repr(a)',d:'a.__repr__()',w:'Jupyter calls <code>__repr__</code> to display the value of the last expression in a cell.'},
+    {e:'a[3]',d:'a.__getitem__(3)',w:'Square brackets = <code>__getitem__</code>. Implement it and your object becomes indexable \u2014 the heart of every PyTorch Dataset.'},
+    {e:'a(5)',d:'a.__call__(5)',w:'Parentheses on an <i>object</i> = <code>__call__</code>. This is why a PyTorch model can be used like a function: <code>model(x)</code>.'},
+    {e:'A(3)',d:'A.__init__(self, 3)',w:'Even construction is a dunder: after the object is allocated, <code>__init__</code> initializes it.'}
+  ];
+  var chips=document.getElementById('chips'),youW=document.getElementById('youW'),
+      pyC=document.getElementById('pyC'),why=document.getElementById('why');
+  EXPR.forEach(function(x,i){
+    var c=document.createElement('button');c.className='chip'+(i===0?' sel':'');c.textContent=x.e;
+    c.onclick=function(){document.querySelectorAll('.chip').forEach(function(n){n.classList.remove('sel');});
+      c.classList.add('sel');youW.textContent=x.e;pyC.textContent=x.d;why.innerHTML=x.w;};
+    chips.appendChild(c);
+  });
+  why.innerHTML=EXPR[0].w;
+
+  /* ===== Card B: evaluation pipeline ===== */
+  var av=document.getElementById('av'),bv=document.getElementById('bv'),
+      avl=document.getElementById('avl'),bvl=document.getElementById('bvl'),
+      pipe=document.getElementById('pipe'),explain=document.getElementById('explain'),
+      stepLbl=document.getElementById('stepLbl'),playB=document.getElementById('playB'),
+      speed=document.getElementById('speed'),spdLbl=document.getElementById('spdLbl'),
+      codePanel=document.querySelector('#explain').closest('.cols').querySelector('pre.code');
+  var idx=0,playing=false,timer=null,BASE=1500;
+  function stages(){
+    var A=+av.value,B=+bv.value,S=(A+B+0.01).toFixed(2);
+    return [
+      {t:'1 \u00b7 you write',d:'a + b',line:'expr',
+       ex:'<b>Stage 1.</b> The cell ends with <code>a + b</code>. Both are SloppyAdder objects (a.o = '+A+', b.o = '+B+') \u2014 Python has no built-in idea what + means for them, so it must ask the objects themselves.'},
+      {t:'2 \u00b7 python rewrites',d:'a.__add__(b)',line:'add',
+       ex:'<b>Stage 2.</b> Python mechanically rewrites the + into a method call on the <b>left</b> operand: <code>a.__add__(b)</code>. Inside, <code>self</code> is <code>a</code> and the parameter <code>b</code> is the right operand.'},
+      {t:'3 \u00b7 the body runs',d:'self.o + b.o + 0.01  \u2192  '+A+' + '+B+' + 0.01',line:'add2',
+       ex:'<b>Stage 3.</b> Now it\u2019s ordinary arithmetic on plain numbers: '+A+' + '+B+' + 0.01 = <b>'+S+'</b>. The sneaky +0.01 is OUR definition of addition \u2014 nothing stops a dunder from being weird.'},
+      {t:'4 \u00b7 a new object',d:'SloppyAdder('+S+')',line:'init',
+       ex:'<b>Stage 4.</b> <code>__add__</code> returns a <b>new</b> SloppyAdder; <code>__init__</code> stores '+S+' in its <code>self.o</code>. Note: <code>a</code> and <code>b</code> are untouched \u2014 + produced a fresh object, like numbers do.'},
+      {t:'5 \u00b7 jupyter asks',d:'result.__repr__()',line:'repr',
+       ex:'<b>Stage 5.</b> The expression\u2019s value must be shown. Jupyter calls the result\u2019s <code>__repr__</code>, which we defined as <code>str(self.o)</code> \u2014 another dunder, another piece of our code running invisibly.'},
+      {t:'6 \u00b7 you see',d:S,line:'repr',
+       ex:'<b>Stage 6.</b> The string "'+S+'" appears under the cell. It <i>looks</i> like the interpreter just added two numbers \u2014 but stages 2\u20135 were all routed through methods we wrote. Drag the sliders and replay!'}
+    ];
+  }
+  var ST=stages();
+  function buildPipe(){
+    pipe.innerHTML='';
+    ST.forEach(function(s,i){
+      var d=document.createElement('div');d.className='stage';d.id='st'+i;d.title='Jump to stage '+(i+1);
+      d.innerHTML='<div class="n">'+(i+1)+'</div><div class="t">'+s.t+'</div><div class="d">'+s.d+'</div>';
+      d.onclick=function(){stopPlay();idx=i;render();};
+      pipe.appendChild(d);
+    });
+  }
+  function render(){
+    ST=stages();
+    ST.forEach(function(s,i){
+      var el=document.getElementById('st'+i);
+      el.querySelector('.d').textContent=s.d;
+      el.className='stage'+(i===idx?' cur':(i<idx?' done':''));
+    });
+    codePanel.querySelectorAll('.ln').forEach(function(l){l.classList.remove('hot');});
+    codePanel.querySelector('[data-l="'+ST[idx].line+'"]').classList.add('hot');
+    explain.innerHTML=ST[idx].ex;
+    stepLbl.textContent='stage '+(idx+1)+'/'+ST.length;
+    document.getElementById('prevB').disabled=(idx===0);
+    document.getElementById('nextB').disabled=(idx===ST.length-1);
+  }
+  function stopPlay(){playing=false;clearTimeout(timer);playB.innerHTML='&#9654; Play';}
+  function startPlay(){
+    if(idx>=ST.length-1)idx=0;
+    playing=true;playB.innerHTML='&#10074;&#10074; Pause';
+    (function tick(){render();
+      if(idx<ST.length-1&&playing){timer=setTimeout(function(){idx++;tick();},(reduce?300:BASE)/parseFloat(speed.value));}
+      else stopPlay();})();
+  }
+  playB.onclick=function(){playing?stopPlay():startPlay();};
+  document.getElementById('prevB').onclick=function(){stopPlay();if(idx>0){idx--;render();}};
+  document.getElementById('nextB').onclick=function(){stopPlay();if(idx<ST.length-1){idx++;render();}};
+  document.getElementById('rstB').onclick=function(){stopPlay();idx=0;render();};
+  speed.addEventListener('input',function(){spdLbl.textContent=parseFloat(speed.value).toFixed(1)+'\u00D7';});
+  function syncSliders(){avl.textContent=av.value;bvl.textContent=bv.value;
+    document.getElementById('codeA').textContent=av.value;document.getElementById('codeB').textContent=bv.value;render();}
+  av.addEventListener('input',syncSliders);bv.addEventListener('input',syncSliders);
+  buildPipe();render();
+})();
+</script>
+</body></html>
