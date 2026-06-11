@@ -2,9 +2,9 @@
 
 <html lang="en">
 <head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
-<title>07_convolutions_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>_tmp07</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
 td.linenos .normal { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
@@ -7512,20 +7512,22 @@ a.anchor-link {
 <body class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
 <div class="ce-container">
 <header class="ce-breadcrumb">
-  <a href="../index.html">&larr; All notes</a>
+  <a href="../index.html">← All notes</a>
   <span class="ce-source">Source: <code>07_convolutions_explained.ipynb</code></span>
 </header>
 <div class="ce-actions">
   <span class="ce-actions-label">Get the notebook</span>
   <a class="ce-action-btn" href="07_convolutions_explained.ipynb" download>
-    <span class="ce-action-icon">&darr;</span> Download .ipynb
+    <span class="ce-action-icon">↓</span> Download .ipynb
   </a>
   <a class="ce-action-btn ce-action-colab" href="https://colab.research.google.com/github/shammun/shammunul-fastai-notes/blob/main/notebooks/07_convolutions_explained_colab.ipynb" target="_blank" rel="noopener">
-    <span class="ce-action-icon">&#9654;</span> Open in Colab
+    <span class="ce-action-icon">▶</span> Open in Colab
   </a>
 </div>
 <main>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+
+<main>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9eed28ce">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7561,7 +7563,7 @@ a.anchor-link {
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f91888bb">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7572,7 +7574,7 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=0f448759">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7610,7 +7612,7 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=083297a8">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7625,7 +7627,7 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=6a47f9c1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7645,7 +7647,7 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=b8ce3407">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7653,8 +7655,7 @@ a.anchor-link {
 <div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-python"><pre><span></span><span class="err">```</span><span class="n">python</span>
-<span class="c1"># =====================================================</span>
+<div class="highlight hl-python"><pre><span></span><span class="c1"># =====================================================</span>
 <span class="c1"># HELPER FUNCTION: Display Images</span>
 <span class="c1"># =====================================================</span>
 
@@ -7739,27 +7740,28 @@ a.anchor-link {
     
     <span class="c1"># Return the figure and all the subplot areas</span>
     <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span>
-<span class="err">```</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=db958ae5">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Function-1:-show_image-%E2%80%94-Display-a-Single-Image">Function 1: <code>show_image</code> &mdash; Display a Single Image<a class="anchor-link" href="#Function-1:-show_image-%E2%80%94-Display-a-Single-Image">¶</a></h2><h3 id="The-Comment-Header">The Comment Header<a class="anchor-link" href="#The-Comment-Header">¶</a></h3><div class="highlight"><pre><span></span><span class="c1"># =====================================================</span>
-<span class="c1"># HELPER FUNCTION: Display Images</span>
-<span class="c1"># =====================================================</span>
-</pre></div>
+<h2 id="Function-1:-show_image-%E2%80%94-Display-a-Single-Image">Function 1: <code>show_image</code> &mdash; Display a Single Image<a class="anchor-link" href="#Function-1:-show_image-%E2%80%94-Display-a-Single-Image">¶</a></h2><h3 id="The-Comment-Header">The Comment Header<a class="anchor-link" href="#The-Comment-Header">¶</a></h3><pre><code># =====================================================
+# HELPER FUNCTION: Display Images
+# =====================================================
+
+</code></pre>
 <p>These are just <strong>decorative comments</strong>. They do nothing in the code. They are there to visually separate this section and tell the reader "this section is about helper functions for displaying images."</p>
 <hr/>
-<h3 id="Function-Definition">Function Definition<a class="anchor-link" href="#Function-Definition">¶</a></h3><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">show_image</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">noframe</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</pre></div>
+<h3 id="Function-Definition">Function Definition<a class="anchor-link" href="#Function-Definition">¶</a></h3><pre><code>def show_image(im, ax=None, figsize=(3,3), title=None, noframe=True, cmap=None):
+
+</code></pre>
 <p>This line <strong>defines a function</strong> called <code>show_image</code>. Let's break down each <strong>parameter</strong> (input):</p>
 <table>
 <thead>
@@ -7803,9 +7805,10 @@ a.anchor-link {
 </tbody>
 </table>
 <hr/>
-<h3 id="Creating-a-New-Figure-(If-Needed)">Creating a New Figure (If Needed)<a class="anchor-link" href="#Creating-a-New-Figure-(If-Needed)">¶</a></h3><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
-</pre></div>
+<h3 id="Creating-a-New-Figure-(If-Needed)">Creating a New Figure (If Needed)<a class="anchor-link" href="#Creating-a-New-Figure-(If-Needed)">¶</a></h3><pre><code>if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+
+</code></pre>
 <p><strong>Logic:</strong> If the caller did NOT provide an existing axes object (i.e., <code>ax</code> is <code>None</code>), we need to create one from scratch.</p>
 <ul>
 <li><code>plt.subplots(figsize=figsize)</code> creates a new figure and a single axes (subplot) inside it.</li>
@@ -7815,44 +7818,50 @@ a.anchor-link {
 </ul>
 <p><strong>Why this matters:</strong> This makes the function flexible. You can use it standalone (it creates its own figure) OR embed it inside a grid of subplots (by passing an existing <code>ax</code>).</p>
 <hr/>
-<h3 id="Converting-a-PyTorch-Tensor-to-NumPy">Converting a PyTorch Tensor to NumPy<a class="anchor-link" href="#Converting-a-PyTorch-Tensor-to-NumPy">¶</a></h3><div class="highlight"><pre><span></span><span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="s1">'cpu'</span><span class="p">):</span>
-        <span class="n">im</span> <span class="o">=</span> <span class="n">im</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
-</pre></div>
+<h3 id="Converting-a-PyTorch-Tensor-to-NumPy">Converting a PyTorch Tensor to NumPy<a class="anchor-link" href="#Converting-a-PyTorch-Tensor-to-NumPy">¶</a></h3><pre><code>if hasattr(im, 'cpu'):
+        im = im.detach().cpu()
+
+</code></pre>
 <p><strong>Logic:</strong> This checks if the image (<code>im</code>) has a <code>.cpu()</code> method. If it does, it's very likely a <strong>PyTorch tensor</strong>.</p>
 <ul>
-<li><code>hasattr(im, 'cpu')</code> &rarr; returns <code>True</code> if <code>im</code> has an attribute or method called <code>cpu</code>. This is a safe way to check without crashing.</li>
-<li><code>im.detach()</code> &rarr; Detaches the tensor from PyTorch's <strong>computation graph</strong>. In deep learning, tensors track operations for backpropagation (gradient calculation). We don't need gradients for displaying an image, so we detach it.</li>
-<li><code>.cpu()</code> &rarr; Moves the tensor from the <strong>GPU</strong> (if it was there) to the <strong>CPU</strong>. Matplotlib cannot display GPU tensors directly.</li>
+<li><p><code>hasattr(im, 'cpu')</code> &rarr; returns <code>True</code> if <code>im</code> has an attribute or method called <code>cpu</code>. This is a safe way to check without crashing.</p>
+</li>
+<li><p><code>im.detach()</code> &rarr; Detaches the tensor from PyTorch's <strong>computation graph</strong>. In deep learning, tensors track operations for backpropagation (gradient calculation). We don't need gradients for displaying an image, so we detach it.</p>
+</li>
+<li><p><code>.cpu()</code> &rarr; Moves the tensor from the <strong>GPU</strong> (if it was there) to the <strong>CPU</strong>. Matplotlib cannot display GPU tensors directly.</p>
+<p>if hasattr(im, 'numpy'):
+          im = im.numpy()</p>
+</li>
 </ul>
-<div class="highlight"><pre><span></span><span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="s1">'numpy'</span><span class="p">):</span>
-        <span class="n">im</span> <span class="o">=</span> <span class="n">im</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-</pre></div>
 <p><strong>Logic:</strong> This checks if <code>im</code> has a <code>.numpy()</code> method. After the previous step, it's now a CPU tensor.</p>
 <ul>
 <li><code>im.numpy()</code> &rarr; Converts the PyTorch tensor into a <strong>NumPy array</strong>, which matplotlib can understand and display.</li>
 </ul>
 <p><strong>Why two separate checks?</strong> Because the image might already be a NumPy array (not a tensor), in which case both checks would be <code>False</code> and the image passes through unchanged. This makes the function work with <strong>both</strong> tensors and NumPy arrays.</p>
 <hr/>
-<h3 id="Displaying-the-Image">Displaying the Image<a class="anchor-link" href="#Displaying-the-Image">¶</a></h3><div class="highlight"><pre><span></span><span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">)</span>
-</pre></div>
+<h3 id="Displaying-the-Image">Displaying the Image<a class="anchor-link" href="#Displaying-the-Image">¶</a></h3><pre><code>ax.imshow(im, cmap=cmap)
+
+</code></pre>
 <ul>
 <li><code>ax.imshow()</code> is matplotlib's function to <strong>display an image</strong> on an axes.</li>
 <li><code>im</code> is the image data (now guaranteed to be a NumPy array or already compatible).</li>
 <li><code>cmap=cmap</code> passes the colormap. If <code>cmap</code> is <code>None</code>, matplotlib uses its default (which is <code>'viridis'</code> for single-channel images or normal RGB for 3-channel images).</li>
 </ul>
 <hr/>
-<h3 id="Setting-the-Title">Setting the Title<a class="anchor-link" href="#Setting-the-Title">¶</a></h3><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
-</pre></div>
+<h3 id="Setting-the-Title">Setting the Title<a class="anchor-link" href="#Setting-the-Title">¶</a></h3><pre><code>if title is not None:
+        ax.set_title(title)
+
+</code></pre>
 <p><strong>Logic:</strong> If the user provided a title string, display it above the image.</p>
 <ul>
 <li><code>ax.set_title(title)</code> sets the title text on the axes.</li>
 <li>If <code>title</code> is <code>None</code> (the default), this block is skipped entirely, and no title is shown.</li>
 </ul>
 <hr/>
-<h3 id="Removing-the-Frame">Removing the Frame<a class="anchor-link" href="#Removing-the-Frame">¶</a></h3><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">noframe</span><span class="p">:</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">'off'</span><span class="p">)</span>
-</pre></div>
+<h3 id="Removing-the-Frame">Removing the Frame<a class="anchor-link" href="#Removing-the-Frame">¶</a></h3><pre><code>if noframe:
+        ax.axis('off')
+
+</code></pre>
 <p><strong>Logic:</strong> If <code>noframe</code> is <code>True</code> (which it is by default), hide all axis decorations.</p>
 <ul>
 <li><code>ax.axis('off')</code> removes the x-axis, y-axis, tick marks, tick labels, and the border around the image.</li>
@@ -7860,16 +7869,18 @@ a.anchor-link {
 <li>If you set <code>noframe=False</code> when calling the function, the axis frame and tick marks will be visible (useful for debugging pixel coordinates).</li>
 </ul>
 <hr/>
-<h3 id="Returning-the-Axes">Returning the Axes<a class="anchor-link" href="#Returning-the-Axes">¶</a></h3><div class="highlight"><pre><span></span><span class="k">return</span> <span class="n">ax</span>
-</pre></div>
+<h3 id="Returning-the-Axes">Returning the Axes<a class="anchor-link" href="#Returning-the-Axes">¶</a></h3><pre><code>return ax
+
+</code></pre>
 <p>The function returns the <code>ax</code> object. This is useful because:</p>
 <ol>
 <li>If the function created a new axes, the caller can use it to add more things (like annotations).</li>
 <li>If an existing axes was passed in, returning it maintains a consistent interface.</li>
 </ol>
 <hr/>
-<h2 id="Function-2:-show_images-%E2%80%94-Display-Multiple-Images-in-a-Grid">Function 2: <code>show_images</code> &mdash; Display Multiple Images in a Grid<a class="anchor-link" href="#Function-2:-show_images-%E2%80%94-Display-Multiple-Images-in-a-Grid">¶</a></h2><h3 id="Function-Definition">Function Definition<a class="anchor-link" href="#Function-Definition">¶</a></h3><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">show_images</span><span class="p">(</span><span class="n">ims</span><span class="p">,</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">titles</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</pre></div>
+<h2 id="Function-2:-show_images-%E2%80%94-Display-Multiple-Images-in-a-Grid">Function 2: <code>show_images</code> &mdash; Display Multiple Images in a Grid<a class="anchor-link" href="#Function-2:-show_images-%E2%80%94-Display-Multiple-Images-in-a-Grid">¶</a></h2><h3 id="Function-Definition">Function Definition<a class="anchor-link" href="#Function-Definition">¶</a></h3><pre><code>def show_images(ims, nrows=1, ncols=None, figsize=None, titles=None):
+
+</code></pre>
 <p>This defines a function to display <strong>multiple images</strong> arranged in a grid layout.</p>
 <table>
 <thead>
@@ -7908,9 +7919,10 @@ a.anchor-link {
 </tbody>
 </table>
 <hr/>
-<h3 id="Auto-Calculating-the-Number-of-Columns">Auto-Calculating the Number of Columns<a class="anchor-link" href="#Auto-Calculating-the-Number-of-Columns">¶</a></h3><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">ncols</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">ncols</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ims</span><span class="p">)</span> <span class="o">//</span> <span class="n">nrows</span>
-</pre></div>
+<h3 id="Auto-Calculating-the-Number-of-Columns">Auto-Calculating the Number of Columns<a class="anchor-link" href="#Auto-Calculating-the-Number-of-Columns">¶</a></h3><pre><code>if ncols is None:
+        ncols = len(ims) // nrows
+
+</code></pre>
 <p><strong>Logic:</strong> If the user didn't specify how many columns they want, calculate it automatically.</p>
 <ul>
 <li><code>len(ims)</code> &rarr; the total number of images.</li>
@@ -7920,9 +7932,10 @@ a.anchor-link {
 </ul>
 <p><strong>Note:</strong> This uses integer division (<code>//</code>), so if the images don't divide evenly (e.g., 7 images, 2 rows &rarr; <code>7 // 2 = 3</code> columns = 6 slots), the last image won't be displayed. This is a simple approach that works well for evenly divisible cases.</p>
 <hr/>
-<h3 id="Auto-Calculating-the-Figure-Size">Auto-Calculating the Figure Size<a class="anchor-link" href="#Auto-Calculating-the-Figure-Size">¶</a></h3><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">figsize</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="n">ncols</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span> <span class="n">nrows</span> <span class="o">*</span> <span class="mi">3</span><span class="p">)</span>
-</pre></div>
+<h3 id="Auto-Calculating-the-Figure-Size">Auto-Calculating the Figure Size<a class="anchor-link" href="#Auto-Calculating-the-Figure-Size">¶</a></h3><pre><code>if figsize is None:
+        figsize = (ncols * 3, nrows * 3)
+
+</code></pre>
 <p><strong>Logic:</strong> If no figure size was provided, calculate a reasonable default.</p>
 <ul>
 <li>Each image gets a 3&times;3 inch space.</li>
@@ -7931,8 +7944,9 @@ a.anchor-link {
 <li><strong>Example:</strong> 2 rows, 3 columns &rarr; figure is 9 inches wide &times; 6 inches tall.</li>
 </ul>
 <hr/>
-<h3 id="Creating-the-Grid-of-Subplots">Creating the Grid of Subplots<a class="anchor-link" href="#Creating-the-Grid-of-Subplots">¶</a></h3><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
-</pre></div>
+<h3 id="Creating-the-Grid-of-Subplots">Creating the Grid of Subplots<a class="anchor-link" href="#Creating-the-Grid-of-Subplots">¶</a></h3><pre><code>fig, axs = plt.subplots(nrows, ncols, figsize=figsize)
+
+</code></pre>
 <ul>
 <li><code>plt.subplots(nrows, ncols, ...)</code> creates a figure with a <strong>grid</strong> of axes (subplots).</li>
 <li><code>fig</code> &rarr; the overall figure object.</li>
@@ -7944,8 +7958,9 @@ a.anchor-link {
 </li>
 </ul>
 <hr/>
-<h3 id="Flattening-the-Axes-Array">Flattening the Axes Array<a class="anchor-link" href="#Flattening-the-Axes-Array">¶</a></h3><div class="highlight"><pre><span></span><span class="n">axs</span> <span class="o">=</span> <span class="n">axs</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">axs</span><span class="p">,</span> <span class="s1">'flatten'</span><span class="p">)</span> <span class="k">else</span> <span class="p">[</span><span class="n">axs</span><span class="p">]</span>
-</pre></div>
+<h3 id="Flattening-the-Axes-Array">Flattening the Axes Array<a class="anchor-link" href="#Flattening-the-Axes-Array">¶</a></h3><pre><code>axs = axs.flatten() if hasattr(axs, 'flatten') else [axs]
+
+</code></pre>
 <p><strong>Logic:</strong> We need <code>axs</code> to be a <strong>flat, 1D list</strong> so we can loop through it easily.</p>
 <ul>
 <li><code>hasattr(axs, 'flatten')</code> &rarr; checks if <code>axs</code> is a NumPy array (which has a <code>.flatten()</code> method). This is true when there are multiple subplots.</li>
@@ -7954,10 +7969,11 @@ a.anchor-link {
 </ul>
 <p><strong>Why this is needed:</strong> Without this, the <code>zip(ims, axs)</code> loop below would break when there's a 2D array or a single axes object.</p>
 <hr/>
-<h3 id="Looping-Through-Images-and-Displaying-Each-One">Looping Through Images and Displaying Each One<a class="anchor-link" href="#Looping-Through-Images-and-Displaying-Each-One">¶</a></h3><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">ax</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">ims</span><span class="p">,</span> <span class="n">axs</span><span class="p">)):</span>
-        <span class="n">title</span> <span class="o">=</span> <span class="n">titles</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">if</span> <span class="n">titles</span> <span class="k">else</span> <span class="kc">None</span>
-        <span class="n">show_image</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">)</span>
-</pre></div>
+<h3 id="Looping-Through-Images-and-Displaying-Each-One">Looping Through Images and Displaying Each One<a class="anchor-link" href="#Looping-Through-Images-and-Displaying-Each-One">¶</a></h3><pre><code>for i, (im, ax) in enumerate(zip(ims, axs)):
+        title = titles[i] if titles else None
+        show_image(im, ax=ax, title=title)
+
+</code></pre>
 <p>Let's break this down piece by piece:</p>
 <p><strong><code>zip(ims, axs)</code></strong> &rarr; Pairs up each image with its corresponding axes.</p>
 <ul>
@@ -7985,15 +8001,17 @@ a.anchor-link {
 <li><code>title=title</code> &rarr; the title for this image (or <code>None</code>)</li>
 </ul>
 <hr/>
-<h3 id="Tightening-the-Layout">Tightening the Layout<a class="anchor-link" href="#Tightening-the-Layout">¶</a></h3><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-</pre></div>
+<h3 id="Tightening-the-Layout">Tightening the Layout<a class="anchor-link" href="#Tightening-the-Layout">¶</a></h3><pre><code>plt.tight_layout()
+
+</code></pre>
 <ul>
 <li><code>plt.tight_layout()</code> automatically adjusts the spacing between subplots so they don't overlap.</li>
 <li>Without this, titles might overlap with adjacent images, or there might be too much/too little space between images.</li>
 </ul>
 <hr/>
-<h3 id="Returning-the-Figure-and-Axes">Returning the Figure and Axes<a class="anchor-link" href="#Returning-the-Figure-and-Axes">¶</a></h3><div class="highlight"><pre><span></span><span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">axs</span>
-</pre></div>
+<h3 id="Returning-the-Figure-and-Axes">Returning the Figure and Axes<a class="anchor-link" href="#Returning-the-Figure-and-Axes">¶</a></h3><pre><code>return fig, axs
+
+</code></pre>
 <p>Returns both:</p>
 <ul>
 <li><code>fig</code> &rarr; the figure object (useful for saving the figure with <code>fig.savefig('output.png')</code>)</li>
@@ -8015,30 +8033,33 @@ a.anchor-link {
     │               └── Removes frame (if noframe=True)
     │
     └── Adjusts layout and returns fig, axs
+
 </code></pre>
 <hr/>
-<h2 id="Quick-Usage-Examples">Quick Usage Examples<a class="anchor-link" href="#Quick-Usage-Examples">¶</a></h2><h3 id="Display-a-Single-Image">Display a Single Image<a class="anchor-link" href="#Display-a-Single-Image">¶</a></h3><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<h2 id="Quick-Usage-Examples">Quick Usage Examples<a class="anchor-link" href="#Quick-Usage-Examples">¶</a></h2><h3 id="Display-a-Single-Image">Display a Single Image<a class="anchor-link" href="#Display-a-Single-Image">¶</a></h3><pre><code>import matplotlib.pyplot as plt
 
-<span class="c1"># If `image` is a PyTorch tensor or NumPy array:</span>
-<span class="n">show_image</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"My Cat Photo"</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-<h3 id="Display-Multiple-Images-in-a-Row">Display Multiple Images in a Row<a class="anchor-link" href="#Display-Multiple-Images-in-a-Row">¶</a></h3><div class="highlight"><pre><span></span><span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">img1</span><span class="p">,</span> <span class="n">img2</span><span class="p">,</span> <span class="n">img3</span><span class="p">,</span> <span class="n">img4</span><span class="p">]</span>
-<span class="n">titles</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"Original"</span><span class="p">,</span> <span class="s2">"Noisy"</span><span class="p">,</span> <span class="s2">"Denoised"</span><span class="p">,</span> <span class="s2">"Ground Truth"</span><span class="p">]</span>
+# If `image` is a PyTorch tensor or NumPy array:
+show_image(image, title="My Cat Photo")
+plt.show()
 
-<span class="n">show_images</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">titles</span><span class="o">=</span><span class="n">titles</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
-<h3 id="Display-in-a-2%C3%973-Grid">Display in a 2&times;3 Grid<a class="anchor-link" href="#Display-in-a-2%C3%973-Grid">¶</a></h3><div class="highlight"><pre><span></span><span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">img1</span><span class="p">,</span> <span class="n">img2</span><span class="p">,</span> <span class="n">img3</span><span class="p">,</span> <span class="n">img4</span><span class="p">,</span> <span class="n">img5</span><span class="p">,</span> <span class="n">img6</span><span class="p">]</span>
+</code></pre>
+<h3 id="Display-Multiple-Images-in-a-Row">Display Multiple Images in a Row<a class="anchor-link" href="#Display-Multiple-Images-in-a-Row">¶</a></h3><pre><code>images = [img1, img2, img3, img4]
+titles = ["Original", "Noisy", "Denoised", "Ground Truth"]
 
-<span class="n">show_images</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">nrows</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># ncols auto-calculated as 3</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
-</pre></div>
+show_images(images, nrows=1, titles=titles)
+plt.show()
+
+</code></pre>
+<h3 id="Display-in-a-2%C3%973-Grid">Display in a 2&times;3 Grid<a class="anchor-link" href="#Display-in-a-2%C3%973-Grid">¶</a></h3><pre><code>images = [img1, img2, img3, img4, img5, img6]
+
+show_images(images, nrows=2)  # ncols auto-calculated as 3
+plt.show()
+</code></pre>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=967459a5">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8053,7 +8074,7 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=90e919eb">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8093,7 +8114,7 @@ a.anchor-link {
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d92bb584">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8107,7 +8128,7 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ae4f0e43">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8135,7 +8156,7 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ed1fd193">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8150,7 +8171,7 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=d22eea54">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8177,7 +8198,58 @@ a.anchor-link {
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7e9be56f">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%9B%A0%EF%B8%8F-Interactive-visualizations-%E2%80%94-one-time-setup">🛠️ Interactive visualizations &mdash; one-time setup<a class="anchor-link" href="#%F0%9F%9B%A0%EF%B8%8F-Interactive-visualizations-%E2%80%94-one-time-setup">¶</a></h2><p>The cells marked <strong>🎮 Interactive</strong> below embed standalone HTML/JS visualizations
+(stored in the <code>interactive_viz/</code> folder next to this notebook) at <strong>full width and
+~full viewport height</strong>. Run the next cell once, then run any 🎮 cell.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=aa649e39">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE VISUALIZATIONS -- setup (run this cell ONCE).</span>
+<span class="c1"># Each "🎮 Interactive" cell below loads a standalone HTML file from the</span>
+<span class="c1"># published copy on GitHub Pages, in an isolated &lt;iframe&gt; (its CSS/JS can't leak</span>
+<span class="c1"># into the notebook). It is shown FULL WIDTH and auto-fits its content height.</span>
+<span class="c1"># No local files needed -- the visualizations are read from GitHub.</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+
+<span class="k">def</span> <span class="nf">show_viz</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"600px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Embed an interactive visualization full width; it auto-fits its height.</span>
+<span class="sd">    `path` may be a bare 'interactive_viz/&lt;file&gt;.html' (resolved to the GitHub</span>
+<span class="sd">    Pages copy) or a full https URL."""</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="s2">"https://shammun.github.io/shammunul-fastai-notes/notebooks/"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"http"</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">path</span>
+    <span class="k">return</span> <span class="n">HTML</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'&lt;iframe src="</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">" loading="lazy" allowfullscreen '</span>
+        <span class="sa">f</span><span class="s1">'style="width:100%;height:</span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s1">;border:1px solid #dde5f2;border-radius:12px;'</span>
+        <span class="sa">f</span><span class="s1">'box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"&gt;&lt;/iframe&gt;'</span>
+        <span class="s1">'&lt;script&gt;addEventListener("message",function(e){'</span>
+        <span class="s1">'if(e.data&amp;&amp;e.data.type==="ce-frame-height"&amp;&amp;e.data.height&gt;50){'</span>
+        <span class="s1">'var fs=document.querySelectorAll("iframe");for(var i=0;i&lt;fs.length;i++){'</span>
+        <span class="s1">'if(fs[i].contentWindow===e.source){fs[i].style.height=e.data.height+"px";break;}}}});&lt;/script&gt;'</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c65fbb73">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8202,6 +8274,7 @@ a.anchor-link {
 ├───┼───┼───┤               └───┴───┘
 │ 7 │ 8 │ 9 │
 └───┴───┴───┘
+
 </code></pre>
 <p><strong>Step 1:</strong> Position kernel at top-left</p>
 <pre><code>┌───┬───┐───┐
@@ -8209,6 +8282,7 @@ a.anchor-link {
 ├───┼───┤───┤
 │ 4 │ 5 │ 6 │
 └───┴───┴───┘
+
 </code></pre>
 <p><strong>Step 2:</strong> Slide kernel right</p>
 <pre><code>┌───┬───┬───┐
@@ -8216,6 +8290,7 @@ a.anchor-link {
 ├───┼───┼───┤
 │ 4 │ 5 │ 6 │
 └───┴───┴───┘
+
 </code></pre>
 <p><strong>Steps 3-4:</strong> Slide down, repeat...</p>
 <p><strong>Result (2&times;2):</strong></p>
@@ -8224,28 +8299,69 @@ a.anchor-link {
 ├───┼───┤
 │12 │14 │
 └───┴───┘
+
 </code></pre>
 <hr/>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a09a6537">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="The-Convolution-Formula">The Convolution Formula<a class="anchor-link" href="#The-Convolution-Formula">¶</a></h3><p>For a 3&times;3 kernel, if we label the input pixels:</p>
-$$\begin{matrix} a_1 &amp; a_2 &amp; a_3 \\ a_4 &amp; a_5 &amp; a_6 \\ a_7 &amp; a_8 &amp; a_9 \end{matrix}$$<p>And the kernel weights:</p>
-$$\begin{matrix} k_1 &amp; k_2 &amp; k_3 \\ k_4 &amp; k_5 &amp; k_6 \\ k_7 &amp; k_8 &amp; k_9 \end{matrix}$$<p>The output is:</p>
+$$\begin{matrix} a_1 &amp; a_2 &amp; a_3 \ a_4 &amp; a_5 &amp; a_6 \ a_7 &amp; a_8 &amp; a_9 \end{matrix}$$<p>And the kernel weights:</p>
+$$\begin{matrix} k_1 &amp; k_2 &amp; k_3 \ k_4 &amp; k_5 &amp; k_6 \ k_7 &amp; k_8 &amp; k_9 \end{matrix}$$<p>The output is:</p>
 $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k_9$$<p>This is just <strong>element-wise multiplication followed by summation</strong> - also known as a <strong>dot product</strong>!</p>
 <hr/>
 </div>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=57f5315d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-slide-a-kernel-over-a-digit-%E2%80%94-the-formula,-alive">🎮 Interactive: slide a kernel over a digit &mdash; the formula, alive<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-slide-a-kernel-over-a-digit-%E2%80%94-the-formula,-alive">¶</a></h3><p>The formula above is just three moves repeated everywhere. In this playground a 3&times;3 kernel slides over a 9&times;9 "7":</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Click the stage chips &mdash; <strong>① place window &rarr; ② multiply &rarr; ③ sum &amp; write</strong> &mdash; each one highlights the matching line of code.</li>
+<li><strong>Click any output pixel</strong> to jump the kernel straight to that position.</li>
+<li>Switch kernels (top edge / left edge / diagonal / blur / sharpen) or pick <strong>custom</strong> and edit any weight.</li>
+<li>Use ▶ Play with the speed slider, or step one move at a time.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=6da718d2">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/conv_kernel_slide.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/conv_kernel_slide.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"700px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/conv_kernel_slide.html" style="display:block;width:100%;max-width:100%;height:700px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2a39e2bb">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8265,7 +8381,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=f0bd71a0">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8302,7 +8418,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a57139b1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8354,7 +8470,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=28c6c88e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8371,7 +8487,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8cc55732">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8382,7 +8498,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=f21c77c8">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8408,7 +8524,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2d836ee2">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8424,7 +8540,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=811c6502">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8456,7 +8572,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=be9c7fc0">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8467,7 +8583,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=77151954">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8498,7 +8614,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ab91b70a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8509,7 +8625,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=1bdf4185">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8551,7 +8667,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=817bb0d7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8569,7 +8685,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=366aded7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8586,7 +8702,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=106e1868">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8614,7 +8730,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=51d2a2ae">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8648,7 +8764,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=57df5c41">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8675,7 +8791,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=27b02ab3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8692,7 +8808,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=597fd29a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8727,7 +8843,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=cff65265">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8743,7 +8859,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=14b19021">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8776,7 +8892,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=185a09dc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8793,7 +8909,46 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4f15d514">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-edge-detection-lab-%E2%80%94-see-why-the-kernel-fires">🎮 Interactive: edge-detection lab &mdash; see <em>why</em> the kernel fires<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-edge-detection-lab-%E2%80%94-see-why-the-kernel-fires">¶</a></h3><p>You just saw top-edge and left-edge maps of the "3". This lab shows the <strong>term-by-term arithmetic</strong> behind each verdict:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Walk the scenario chips: <strong>uniform region &rarr; top edge &rarr; bottom edge &rarr; vertical edge</strong> &mdash; watch which terms cancel and which survive.</li>
+<li>Open <strong>⑤ draw your own</strong>: paint any shape on the 16&times;16 canvas (Box / Seven presets too) and watch the edge map update <strong>live</strong> (teal = positive, red = negative).</li>
+<li>Switch kernels &mdash; including a custom editable one &mdash; and repaint.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=69a3f355">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/edge_kernel_lab.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/edge_kernel_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/edge_kernel_lab.html" style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=68b54fe9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8817,7 +8972,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=e7acf30f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8832,7 +8987,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=402279e3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8865,7 +9020,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=7d94e1e3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8899,7 +9054,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=585e6729">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8920,7 +9075,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=0d5f5669">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8948,7 +9103,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=f01696d6">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8972,7 +9127,46 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e8b7ffed">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-im2col-/-unfold-%E2%80%94-convolution-as-ONE-matrix-multiply">🎮 Interactive: im2col / <code>unfold</code> &mdash; convolution as ONE matrix multiply<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-im2col-/-unfold-%E2%80%94-convolution-as-ONE-matrix-multiply">¶</a></h3><p>This is the exact trick the cells above performed: sliding windows become <strong>columns of a matrix</strong>, the kernel becomes a <strong>row</strong>, and convolution collapses into a single matmul.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Step the stages: <strong>① <code>F.unfold</code> (patches fly into columns) &rarr; ② <code>kernel.view(1, 9)</code> &rarr; ③ matmul &rarr; ④ reshape to 4&times;4</strong>.</li>
+<li><strong>Click any column</strong> of the patch matrix &mdash; it highlights the source window in the input <em>and</em> its output pixel.</li>
+<li>Click any output pixel to trace it back the other way.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=4bf7881f">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/im2col_unfold.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/im2col_unfold.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"700px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/im2col_unfold.html" style="display:block;width:100%;max-width:100%;height:700px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4fef5dfd">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8984,7 +9178,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ee866eb9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9021,7 +9215,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=fd6d391a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9032,7 +9226,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=cc325d57">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9070,7 +9264,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7b87d9e0">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9082,7 +9276,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5d9cc28a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9093,7 +9287,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=56ba603a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9132,7 +9326,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=31313c04">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9165,7 +9359,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=f5ffc780">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9189,7 +9383,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=b4eedf84">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9223,7 +9417,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=021c2cb3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9241,7 +9435,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8a3b049c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9273,6 +9467,7 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
                        ├───┼───┼───┼───┼───┤
                        │ 0 │ 0 │ 0 │ 0 │ 0 │
                        └───┴───┴───┴───┴───┘
+
 </code></pre>
 <p><strong>Magic formula for same-size output:</strong></p>
 <ul>
@@ -9304,42 +9499,19 @@ Position 1:    Position 2:    Position 3:    Position 4:
                               └───┴───┴───┘  └───┴───┴───┘
 
 Output is 2x2 (roughly half in each dimension)
+
 </code></pre>
 <hr/>
 </div>
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Output size calculator</h3>
-  <p class="ce-interactive-hint">The formula <code>(H + 2p &minus; k) / s + 1</code> determines the output side. Drag the sliders to build intuition: kernel size shrinks output, padding grows it, stride compresses it.</p>
-  <div class="os-widget">
-    <div class="ms-controls">
-      <label>Input H: <span id="os-h-val" class="ms-val">28</span></label>
-      <input id="os-h" type="range" min="4" max="64" step="1" value="28">
-    </div>
-    <div class="ms-controls">
-      <label>Kernel k: <span id="os-k-val" class="ms-val">3</span></label>
-      <input id="os-k" type="range" min="1" max="9" step="1" value="3">
-    </div>
-    <div class="ms-controls">
-      <label>Stride s: <span id="os-s-val" class="ms-val">1</span></label>
-      <input id="os-s" type="range" min="1" max="4" step="1" value="1">
-    </div>
-    <div class="ms-controls">
-      <label>Pad p: <span id="os-p-val" class="ms-val">0</span></label>
-      <input id="os-p" type="range" min="0" max="4" step="1" value="0">
-    </div>
-    <div class="os-result" id="os-result"></div>
-  </div>
-</div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=92f33d04">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-
 <h2 id="Output-Size-Formula">Output Size Formula<a class="anchor-link" href="#Output-Size-Formula">¶</a></h2><p>For input size <code>n</code>, kernel size <code>k</code>, padding <code>p</code>, and stride <code>s</code>:</p>
 $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Common cases:</strong></p>
 <table>
@@ -9401,7 +9573,47 @@ $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Comm
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4a41c6a6">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-stride-&amp;-padding-playground-%E2%80%94-the-output-size-formula,-live">🎮 Interactive: stride &amp; padding playground &mdash; the output-size formula, live<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-stride-&amp;-padding-playground-%E2%80%94-the-output-size-formula,-live">¶</a></h3><p>Don't memorize $\lfloor (n + 2p - k)/s \rfloor + 1$ &mdash; <em>drive</em> it:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Drag the <strong>n / k / p / s</strong> sliders and watch the formula recompute with your numbers plugged in.</li>
+<li>Try the preset chips: <strong>valid</strong> (p=0, s=1), <strong>same</strong> (p=k//2), <strong>halve</strong> (s=2) and the 5&times;5 kernel case.</li>
+<li>Watch for the ⚠️ badge when the floor <strong>drops leftover pixels</strong> &mdash; now you know where "off-by-one" output sizes come from.</li>
+<li>Click any output cell to see exactly which input window produced it (padding cells are striped).</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=e88f4003">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/stride_padding_playground.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/stride_padding_playground.html"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/stride_padding_playground.html" style="display:block;width:100%;max-width:100%;height:600px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=fe09be1a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9421,7 +9633,7 @@ $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Comm
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=1c435b22">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9447,7 +9659,7 @@ $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Comm
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=05b3b2cd">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9466,7 +9678,7 @@ $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Comm
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e5d0a9b5">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9476,7 +9688,7 @@ $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Comm
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=be6c5924">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9506,7 +9718,7 @@ $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Comm
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=a64b2d36">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9524,7 +9736,7 @@ $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Comm
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ae8939b4">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9541,7 +9753,7 @@ $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Comm
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=d9e2118d">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9586,7 +9798,7 @@ $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Comm
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b65127d6">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9602,7 +9814,7 @@ $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Comm
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=478f2d72">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9638,33 +9850,35 @@ $$\text{output size} = \lfloor \frac{n + 2p - k}{s} \rfloor + 1$$<p><strong>Comm
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=0864a45b">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h4 id="How-Does-Each-conv-Layer-Halve-the-Feature-Map-in-simple_cnn?">How Does Each <code>conv</code> Layer Halve the Feature Map in <code>simple_cnn</code>?<a class="anchor-link" href="#How-Does-Each-conv-Layer-Halve-the-Feature-Map-in-simple_cnn?">¶</a></h4><h4 id="The-Question">The Question<a class="anchor-link" href="#The-Question">¶</a></h4><p>In the following CNN, each layer halves the spatial dimensions: 28&rarr;14&rarr;7&rarr;4&rarr;2&rarr;1. How does this halving happen at every layer? Is there a hidden MaxPool somewhere?</p>
-<div class="highlight"><pre><span></span><span class="n">simple_cnn</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
-    <span class="n">conv</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>              <span class="c1"># 28x28 -&gt; 14x14,  4 channels</span>
-    <span class="n">conv</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span>              <span class="c1"># 14x14 -&gt; 7x7,    8 channels</span>
-    <span class="n">conv</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span>             <span class="c1"># 7x7   -&gt; 4x4,   16 channels</span>
-    <span class="n">conv</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span>            <span class="c1"># 4x4   -&gt; 2x2,   16 channels</span>
-    <span class="n">conv</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="c1"># 2x2   -&gt; 1x1,   10 channels</span>
-    <span class="n">nn</span><span class="o">.</span><span class="n">Flatten</span><span class="p">(),</span>            <span class="c1"># (batch, 10, 1, 1) -&gt; (batch, 10)</span>
-<span class="p">)</span>
-</pre></div>
+<pre><code>simple_cnn = nn.Sequential(
+    conv(1, 4),              # 28x28 -&gt; 14x14,  4 channels
+    conv(4, 8),              # 14x14 -&gt; 7x7,    8 channels
+    conv(8, 16),             # 7x7   -&gt; 4x4,   16 channels
+    conv(16, 16),            # 4x4   -&gt; 2x2,   16 channels
+    conv(16, 10, act=False), # 2x2   -&gt; 1x1,   10 channels
+    nn.Flatten(),            # (batch, 10, 1, 1) -&gt; (batch, 10)
+)
+
+</code></pre>
 <h4 id="The-Answer:-It's-All-stride=2-%E2%80%94-No-MaxPool">The Answer: It's All <code>stride=2</code> &mdash; No MaxPool<a class="anchor-link" href="#The-Answer:-It's-All-stride=2-%E2%80%94-No-MaxPool">¶</a></h4><p>There is <strong>no pooling layer</strong> anywhere in this network. The halving at every layer comes from <code>stride=2</code>, which is baked into the <code>conv</code> helper function as a <strong>default parameter</strong>:</p>
-<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">conv</span><span class="p">(</span><span class="n">ni</span><span class="p">,</span> <span class="n">nf</span><span class="p">,</span> <span class="n">ks</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-    <span class="n">res</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">ni</span><span class="p">,</span> <span class="n">nf</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">ks</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="n">ks</span><span class="o">//</span><span class="mi">2</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">act</span><span class="p">:</span>
-        <span class="n">res</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">())</span>
-    <span class="k">return</span> <span class="n">res</span>
-</pre></div>
+<pre><code>def conv(ni, nf, ks=3, stride=2, act=True):
+    res = nn.Conv2d(ni, nf, stride=stride, kernel_size=ks, padding=ks//2)
+    if act:
+        res = nn.Sequential(res, nn.ReLU())
+    return res
+
+</code></pre>
 <p>So every call like <code>conv(1, 4)</code> or <code>conv(4, 8)</code> &mdash; where <code>stride</code> is not explicitly passed &mdash; automatically uses <code>stride=2</code>. This means the convolution kernel <strong>jumps 2 pixels at a time</strong> instead of 1, cutting the output size in half in each spatial dimension.</p>
 <p>The other crucial default is <code>padding=ks//2 = 1</code>, which pads the input with a 1-pixel border of zeros. This ensures the halving works out cleanly without losing edge pixels.</p>
 <h4 id="Layer-by-Layer-Walkthrough">Layer-by-Layer Walkthrough<a class="anchor-link" href="#Layer-by-Layer-Walkthrough">¶</a></h4><p>The output size formula is:</p>
-$$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \text{kernel\_size}}{\text{stride}} \right\rfloor + 1$$<p>With our defaults (<code>ks=3</code>, <code>padding=1</code>, <code>stride=2</code>), let's trace each layer:</p>
+$$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \text{kernel\size}}{\text{stride}} \right\rfloor + 1$$<p>With our defaults (<code>ks=3</code>, <code>padding=1</code>, <code>stride=2</code>), let's trace each layer:</p>
 <h4 id="Layer-1:-conv(1,-4)-%E2%80%94-28%C3%9728-%E2%86%92-14%C3%9714">Layer 1: <code>conv(1, 4)</code> &mdash; 28&times;28 &rarr; 14&times;14<a class="anchor-link" href="#Layer-1:-conv(1,-4)-%E2%80%94-28%C3%9728-%E2%86%92-14%C3%9714">¶</a></h4>$$\left\lfloor \frac{28 + 2(1) - 3}{2} \right\rfloor + 1 = \left\lfloor \frac{27}{2} \right\rfloor + 1 = 13 + 1 = \mathbf{14}$$<p>The single grayscale channel (1) is expanded into 4 feature maps, each 14&times;14.</p>
 <h4 id="Layer-2:-conv(4,-8)-%E2%80%94-14%C3%9714-%E2%86%92-7%C3%977">Layer 2: <code>conv(4, 8)</code> &mdash; 14&times;14 &rarr; 7&times;7<a class="anchor-link" href="#Layer-2:-conv(4,-8)-%E2%80%94-14%C3%9714-%E2%86%92-7%C3%977">¶</a></h4>$$\left\lfloor \frac{14 + 2(1) - 3}{2} \right\rfloor + 1 = \left\lfloor \frac{13}{2} \right\rfloor + 1 = 6 + 1 = \mathbf{7}$$<p>The 4 channels become 8, and each feature map shrinks from 14&times;14 to 7&times;7.</p>
 <h4 id="Layer-3:-conv(8,-16)-%E2%80%94-7%C3%977-%E2%86%92-4%C3%974">Layer 3: <code>conv(8, 16)</code> &mdash; 7&times;7 &rarr; 4&times;4<a class="anchor-link" href="#Layer-3:-conv(8,-16)-%E2%80%94-7%C3%977-%E2%86%92-4%C3%974">¶</a></h4>$$\left\lfloor \frac{7 + 2(1) - 3}{2} \right\rfloor + 1 = \left\lfloor \frac{6}{2} \right\rfloor + 1 = 3 + 1 = \mathbf{4}$$<p>8 channels become 16. Note that 7/2 = 3.5, but the floor operation rounds down, giving us 4&times;4.</p>
@@ -9733,7 +9947,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=1310471b">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9752,7 +9966,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=80730166">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9818,7 +10032,46 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9bd814f7">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-inside-simple_cnn-%E2%80%94-28%C3%9728-pixels-%E2%86%92-10-numbers">🎮 Interactive: inside <code>simple_cnn</code> &mdash; 28&times;28 pixels &rarr; 10 numbers<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-inside-simple_cnn-%E2%80%94-28%C3%9728-pixels-%E2%86%92-10-numbers">¶</a></h3><p>The shape table above, as a clickable machine:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li><strong>Click any volume</strong> (or its chip) to see that layer's code line, its shape math (28&rarr;14&rarr;7&rarr;4&rarr;2&rarr;1), its parameter count, and <em>why it's there</em>.</li>
+<li>▶ Play the forward pass to watch the image shrink while channels grow.</li>
+<li>Click the <strong>parameter bar</strong> at the bottom &mdash; see where the 30,154 parameters actually live (hint: mostly the deep layers).</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=2d673d39">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/cnn_architecture_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/cnn_architecture_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"710px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/cnn_architecture_explorer.html" style="display:block;width:100%;max-width:100%;height:710px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=eba77b78">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9828,7 +10081,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=afb95aac">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9851,7 +10104,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=1484baea">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9879,7 +10132,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=5b32a11d">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9915,7 +10168,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=22d07885">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9931,7 +10184,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=4f4114ca">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9974,7 +10227,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=5ecc3686">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10029,7 +10282,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=97baf94e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10063,7 +10316,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=2da4fff6">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10089,7 +10342,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1cd83d0a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10101,7 +10354,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2dcd3416">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10114,7 +10367,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cb9b5b30">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10124,7 +10377,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=c1b3c238">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10138,7 +10391,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=2504c794">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10152,7 +10405,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=d9d5247c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10186,7 +10439,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e5986bd1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10213,7 +10466,46 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=696b4c63">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-receptive-field-explorer-%E2%80%94-what-one-deep-neuron-%22sees%22">🎮 Interactive: receptive field explorer &mdash; what one deep neuron "sees"<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-receptive-field-explorer-%E2%80%94-what-one-deep-neuron-%22sees%22">¶</a></h3><p>A 3&times;3 kernel sounds tiny &mdash; yet deep layers recognise whole digits. Here's why:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li><strong>Click any neuron in any layer</strong> and watch its <strong>cone of influence</strong> descend to the input pixels.</li>
+<li>Change <strong>kernel size</strong> (3/5/7) and <strong>stride</strong> (1/2): with stride 2 the receptive field roughly <strong>doubles per layer</strong> (geometric); with stride 1 it grows by only k−1 per layer (linear).</li>
+<li>Follow the live RF table &mdash; <code>r ← r + (k−1)·j</code>, <code>j ← j·s</code> &mdash; the same numbers, computed before your eyes.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=e73a96cd">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/receptive_field_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/receptive_field_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"620px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/receptive_field_explorer.html" style="display:block;width:100%;max-width:100%;height:620px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a39617f9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10228,6 +10520,7 @@ $$\text{output} = \left\lfloor \frac{\text{input} + 2 \times \text{padding} - \t
 <li>We apply each channel's kernel to its channel</li>
 <li>We sum all the results to get one output value</li>
 </ol>
+<p> </p>
 <pre><code>RGB Image (3 channels):     3-channel kernel:        Output (1 value):
 
 Red   ──────► [kernel_R] ─┐                        
@@ -10235,6 +10528,7 @@ Red   ──────► [kernel_R] ─┐
 Green ──────► [kernel_G] ─┤                        
                           │                        
 Blue  ──────► [kernel_B] ─┘                        
+
 </code></pre>
 <p>So a Conv2d layer going from 3 input channels to 16 output channels would have:</p>
 <ul>
@@ -10245,7 +10539,7 @@ Blue  ──────► [kernel_B] ─┘
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=9b077bcc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10282,7 +10576,7 @@ Blue  ──────► [kernel_B] ─┘
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=aef1d03e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10307,7 +10601,7 @@ Blue  ──────► [kernel_B] ─┘
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=9168dade">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10339,7 +10633,7 @@ Blue  ──────► [kernel_B] ─┘
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cd2c263c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10357,47 +10651,50 @@ Blue  ──────► [kernel_B] ─┘
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: 2D convolution, sliding window</h3>
-  <p class="ce-interactive-hint">The kernel slides over the input one position at a time. Each output cell is a dot product of the kernel with the overlapping input window. Adjust stride and padding sliders to see how the output shape changes. <strong>This is what every conv layer in a CNN is doing &mdash; just with learned kernel weights.</strong></p>
-  <div class="cv-widget" id="cv-widget">
-    <div id="cv-grids"></div>
-    <div class="ms-controls">
-      <button id="cv-step" class="ms-btn">Step</button>
-      <button id="cv-auto" class="ms-btn">Auto-play</button>
-      <button id="cv-reset" class="ms-btn ms-secondary">Reset</button>
-    </div>
-    <div class="ms-controls">
-      <label>Stride: <span id="cv-stride-val" class="ms-val">1</span></label>
-      <input id="cv-stride" type="range" min="1" max="3" step="1" value="1">
-      <label>Padding: <span id="cv-pad-val" class="ms-val">0</span></label>
-      <input id="cv-pad" type="range" min="0" max="2" step="1" value="0">
-    </div>
-    <div class="cv-formula" id="cv-formula"></div>
-  </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=059abfc3">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Pick a kernel, see what it detects</h3>
-  <p class="ce-interactive-hint">Click a preset kernel and watch it run over the input image. Edge detectors highlight boundaries; blur kernels smooth; sharpen kernels amplify high frequencies. <strong>A trained CNN learns thousands of these from scratch &mdash; in the early layers they end up looking very much like the hand-crafted classics below.</strong></p>
-  <div class="kf-widget">
-    <div class="kf-presets" id="kf-presets"></div>
-    <div class="kf-canvases">
-      <div>
-        <div class="kf-label">Input</div>
-        <canvas id="kf-input" width="120" height="120" style="image-rendering:pixelated; background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
-      </div>
-      <div class="kf-kernel-box">
-        <div class="kf-label">Kernel</div>
-        <div class="kf-kernel" id="kf-kernel"></div>
-      </div>
-      <div>
-        <div class="kf-label">Output</div>
-        <canvas id="kf-output" width="120" height="120" style="image-rendering:pixelated; background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
-      </div>
-    </div>
-  </div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive-(3D):-RGB-convolution-%E2%80%94-the-kernel-is-a-3%C3%973%C3%973-cube">🎮 Interactive (3D): RGB convolution &mdash; the kernel is a 3&times;3&times;<strong>3</strong> cube<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-(3D):-RGB-convolution-%E2%80%94-the-kernel-is-a-3%C3%973%C3%973-cube">¶</a></h3><p>The three numbered steps above, in 3D. One filter spans <strong>all channels at once</strong>: 27 input numbers &rarr; 27 weights &rarr; <strong>one</strong> output number.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li><strong>Drag to rotate, scroll to zoom</strong> the scene (R / G / B planes on the left, output map on the right).</li>
+<li>Step the stages: <strong>① place the 3&times;3&times;3 window &rarr; ② multiply &amp; sum each channel &rarr; ③ add the three sums &rarr; one number</strong> &mdash; the per-channel sum strip shows the actual arithmetic.</li>
+<li>Switch filter-1's kernel (blur / red-pass / vertical edge) and stack <strong>1&ndash;3 filters</strong> to see multi-channel output.</li>
+</ul>
+<blockquote>
+<p>⚠️ This one loads three.js from a CDN, so it needs an internet connection (the arithmetic strip works offline).</p>
+</blockquote>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=3aa5f18c">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/rgb_conv3d.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># NOTE: needs internet access (loads three.js from cdnjs).</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/rgb_conv3d.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"660px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/rgb_conv3d.html" style="display:block;width:100%;max-width:100%;height:660px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=11c24dbb">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10405,13 +10702,11 @@ Blue  ──────► [kernel_B] ─┘
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h1 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h1><hr/>
-<h2 id="Key-Concepts-Learned">Key Concepts Learned<a class="anchor-link" href="#Key-Concepts-Learned">¶</a></h2>
-<h3 id="Convolution-Operation">Convolution Operation<a class="anchor-link" href="#Convolution-Operation">¶</a></h3><ul>
+<h2 id="Key-Concepts-Learned">Key Concepts Learned<a class="anchor-link" href="#Key-Concepts-Learned">¶</a></h2><h3 id="Convolution-Operation">Convolution Operation<a class="anchor-link" href="#Convolution-Operation">¶</a></h3><ul>
 <li><strong>What</strong>: Sliding a kernel over an image, computing dot products</li>
 <li><strong>Formula</strong>: Element-wise multiply, then sum</li>
 <li><strong>Purpose</strong>: Extract local features (edges, textures, patterns)</li>
 </ul>
-
 <h3 id="Kernels-(Filters)">Kernels (Filters)<a class="anchor-link" href="#Kernels-(Filters)">¶</a></h3><ul>
 <li>Small matrices (typically 3&times;3 or 5&times;5)</li>
 <li>Different kernels detect different features</li>
@@ -10458,385 +10753,16 @@ Blue  ──────► [kernel_B] ─┘
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-python"><pre><span></span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<style>
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--ce-purple, #6c5ce7); height: 6px; touch-action: manipulation; }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 50px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactive .ms-btn.ms-secondary { background: transparent; color: var(--ce-purple, #6c5ce7); border: 1px solid var(--ce-purple, #6c5ce7); box-shadow: none; }
-
-/* Conv widget */
-.cv-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.cv-widget #cv-grids { display: flex; gap: 18px; align-items: center; justify-content: center; flex-wrap: wrap; }
-.cv-widget table { border-collapse: collapse; background: white; }
-.cv-widget td { width: 32px; height: 32px; text-align: center; font-family: var(--ce-font-mono, monospace); font-size: 0.78em; border: 1px solid #d1d5db; transition: background 0.2s; }
-.cv-widget td.cv-pad { background: #f3f4f6; color: #9ca3af; }
-.cv-widget td.cv-win { background: rgba(79, 70, 229, 0.18); }
-.cv-widget td.cv-out-cur { background: rgba(245, 158, 11, 0.25); border: 2px solid #f59e0b; font-weight: 700; }
-.cv-widget td.cv-out-done { background: rgba(15, 185, 177, 0.12); color: #0f766e; font-weight: 600; }
-.cv-widget .cv-grid-label { font-family: var(--ce-font-heading, serif); text-align: center; font-weight: 600; color: var(--ce-purple-dark, #4f3dd0); margin-bottom: 6px; font-size: 0.92em; }
-.cv-widget .cv-sym { font-size: 1.6em; color: var(--ce-text-muted, #697386); padding: 0 4px; }
-.cv-widget .cv-formula { margin-top: 14px; padding: 10px; background: white; border: 1px solid #e5e7eb; border-radius: 6px; font-family: var(--ce-font-mono, monospace); font-size: 0.88em; color: var(--ce-text-soft, #3c4257); text-align: center; min-height: 1.4em; }
-
-/* Kernel filter widget */
-.kf-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.kf-presets { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-.kf-presets button { padding: 7px 14px; border: 1px solid #d1d5db; background: white; border-radius: 6px; cursor: pointer; font-family: var(--ce-font-body, sans-serif); font-size: 0.85em; touch-action: manipulation; }
-.kf-presets button:hover { border-color: var(--ce-purple, #6c5ce7); background: rgba(108, 92, 231, 0.05); }
-.kf-presets button.active { background: var(--ce-purple, #6c5ce7); color: white; border-color: var(--ce-purple, #6c5ce7); }
-.kf-canvases { display: flex; gap: 18px; align-items: center; justify-content: center; flex-wrap: wrap; }
-.kf-label { font-family: var(--ce-font-heading, serif); text-align: center; font-weight: 600; color: var(--ce-purple-dark, #4f3dd0); margin-bottom: 6px; font-size: 0.9em; }
-.kf-kernel { display: grid; grid-template-columns: repeat(3, 36px); grid-template-rows: repeat(3, 36px); gap: 2px; background: #d1d5db; padding: 2px; border-radius: 4px; }
-.kf-kernel .kf-cell { background: white; display: flex; align-items: center; justify-content: center; font-family: var(--ce-font-mono, monospace); font-size: 0.78em; }
-.kf-kernel-box { text-align: center; }
-
-/* Output size widget */
-.os-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.os-result { margin-top: 18px; padding: 14px; background: white; border-radius: 6px; border: 1px solid #e5e7eb; text-align: center; font-family: var(--ce-font-mono, monospace); }
-.os-result .os-formula { font-size: 1em; color: var(--ce-text-soft, #3c4257); margin-bottom: 6px; }
-.os-result .os-answer { font-size: 1.4em; color: var(--ce-purple-dark, #4f3dd0); font-weight: 700; }
-.os-result.os-err { background: #fef2f2; }
-.os-result.os-err .os-answer { color: #b91c1c; }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-// ============================================================================
-// Interactive 1: 2D convolution sliding window
-// ============================================================================
-(function convStep() {
-  var widget = document.getElementById('cv-widget');
-  if (!widget) return;
-  var grids = document.getElementById('cv-grids');
-  var formula = document.getElementById('cv-formula');
-
-  var INPUT = [
-    [1, 2, 3, 1, 0],
-    [2, 1, 0, 1, 2],
-    [0, 1, 2, 1, 0],
-    [1, 2, 1, 0, 1],
-    [2, 0, 1, 2, 1],
-  ];
-  var KERNEL = [
-    [1, 0, -1],
-    [1, 0, -1],
-    [1, 0, -1],
-  ];
-
-  var stride = 1, pad = 0;
-  var pos = 0;
-  var output = [];
-  var positions = [];
-  var autoTimer = null;
-
-  function buildPositions() {
-    var Hin = INPUT.length, Win = INPUT[0].length;
-    var H = Hin + 2 * pad, W = Win + 2 * pad;
-    var k = KERNEL.length;
-    var Hout = Math.floor((H - k) / stride) + 1;
-    var Wout = Math.floor((W - k) / stride) + 1;
-    positions = [];
-    output = [];
-    for (var i = 0; i < Hout; i++) {
-      output.push(new Array(Wout).fill(null));
-      for (var j = 0; j < Wout; j++) {
-        positions.push({ oi: i, oj: j, i0: i * stride, j0: j * stride });
-      }
-    }
-    return { H: H, W: W, Hout: Hout, Wout: Wout, k: k };
-  }
-
-  function paddedInput(H, W) {
-    var grid = [];
-    for (var i = 0; i < H; i++) {
-      var row = [];
-      for (var j = 0; j < W; j++) {
-        var ii = i - pad, jj = j - pad;
-        if (ii >= 0 && ii < INPUT.length && jj >= 0 && jj < INPUT[0].length) {
-          row.push({ v: INPUT[ii][jj], pad: false });
-        } else {
-          row.push({ v: 0, pad: true });
-        }
-      }
-      grid.push(row);
-    }
-    return grid;
-  }
-
-  function render() {
-    var info = buildPositions.lastInfo;
-    if (!info) return;
-    var H = info.H, W = info.W, k = info.k;
-    var inputGrid = paddedInput(H, W);
-
-    var html = '';
-    // Input grid
-    html += '<div><div class="cv-grid-label">Input (' + (H - 2*pad) + '&times;' + (W - 2*pad) + ', pad ' + pad + ')</div><table>';
-    var cur = pos < positions.length ? positions[pos] : null;
-    for (var i = 0; i < H; i++) {
-      html += '<tr>';
-      for (var j = 0; j < W; j++) {
-        var cls = inputGrid[i][j].pad ? 'cv-pad' : '';
-        if (cur && i >= cur.i0 && i < cur.i0 + k && j >= cur.j0 && j < cur.j0 + k) {
-          cls += ' cv-win';
-        }
-        html += '<td class="' + cls + '">' + inputGrid[i][j].v + '</td>';
-      }
-      html += '</tr>';
-    }
-    html += '</table></div>';
-    // Star
-    html += '<span class="cv-sym">&lowast;</span>';
-    // Kernel
-    html += '<div><div class="cv-grid-label">Kernel (3&times;3)</div><table>';
-    for (var i = 0; i < KERNEL.length; i++) {
-      html += '<tr>';
-      for (var j = 0; j < KERNEL[i].length; j++) {
-        html += '<td>' + KERNEL[i][j] + '</td>';
-      }
-      html += '</tr>';
-    }
-    html += '</table></div>';
-    // Equals
-    html += '<span class="cv-sym">=</span>';
-    // Output
-    html += '<div><div class="cv-grid-label">Output (' + info.Hout + '&times;' + info.Wout + ')</div><table>';
-    for (var i = 0; i < info.Hout; i++) {
-      html += '<tr>';
-      for (var j = 0; j < info.Wout; j++) {
-        var cls = '';
-        if (output[i][j] !== null) cls = 'cv-out-done';
-        if (cur && cur.oi === i && cur.oj === j) cls = 'cv-out-cur';
-        html += '<td class="' + cls + '">' + (output[i][j] === null ? '?' : output[i][j]) + '</td>';
-      }
-      html += '</tr>';
-    }
-    html += '</table></div>';
-
-    grids.innerHTML = html;
-
-    if (cur) {
-      var terms = [];
-      for (var ki = 0; ki < k; ki++) {
-        for (var kj = 0; kj < k; kj++) {
-          var inputVal = inputGrid[cur.i0 + ki][cur.j0 + kj].v;
-          var kVal = KERNEL[ki][kj];
-          terms.push('(' + inputVal + ')(' + kVal + ')');
-        }
-      }
-      formula.innerHTML = 'output[' + cur.oi + ',' + cur.oj + '] = ' + terms.join(' + ');
-    } else {
-      formula.innerHTML = '<strong>Done.</strong> Computed ' + positions.length + ' output values via ' + positions.length + ' dot products.';
-    }
-  }
-
-  function step() {
-    if (pos >= positions.length) return false;
-    var cur = positions[pos];
-    var info = buildPositions.lastInfo;
-    var k = info.k;
-    var inputGrid = paddedInput(info.H, info.W);
-    var sum = 0;
-    for (var ki = 0; ki < k; ki++) {
-      for (var kj = 0; kj < k; kj++) {
-        sum += inputGrid[cur.i0 + ki][cur.j0 + kj].v * KERNEL[ki][kj];
-      }
-    }
-    output[cur.oi][cur.oj] = sum;
-    pos++;
-    render();
-    return true;
-  }
-
-  function reset() {
-    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
-    buildPositions.lastInfo = buildPositions();
-    pos = 0;
-    document.getElementById('cv-auto').textContent = 'Auto-play';
-    render();
-  }
-
-  document.getElementById('cv-step').addEventListener('click', step);
-  document.getElementById('cv-auto').addEventListener('click', function() {
-    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; document.getElementById('cv-auto').textContent = 'Auto-play'; return; }
-    document.getElementById('cv-auto').textContent = 'Stop';
-    autoTimer = setInterval(function() {
-      if (!step()) { clearInterval(autoTimer); autoTimer = null; document.getElementById('cv-auto').textContent = 'Auto-play'; }
-    }, 350);
-  });
-  document.getElementById('cv-reset').addEventListener('click', reset);
-  document.getElementById('cv-stride').addEventListener('input', function(e) {
-    stride = parseInt(e.target.value);
-    document.getElementById('cv-stride-val').textContent = stride;
-    reset();
-  });
-  document.getElementById('cv-pad').addEventListener('input', function(e) {
-    pad = parseInt(e.target.value);
-    document.getElementById('cv-pad-val').textContent = pad;
-    reset();
-  });
-
-  reset();
-})();
-
-// ============================================================================
-// Interactive 2: Kernel filter explorer
-// ============================================================================
-(function kernelFilter() {
-  var presetsEl = document.getElementById('kf-presets');
-  if (!presetsEl) return;
-  var kernelEl = document.getElementById('kf-kernel');
-  var inputCv = document.getElementById('kf-input');
-  var outputCv = document.getElementById('kf-output');
-
-  var PRESETS = [
-    { name: 'Identity',        k: [[0,0,0],[0,1,0],[0,0,0]] },
-    { name: 'Edge (Sobel-X)',  k: [[-1,0,1],[-2,0,2],[-1,0,1]] },
-    { name: 'Edge (Sobel-Y)',  k: [[-1,-2,-1],[0,0,0],[1,2,1]] },
-    { name: 'Blur (3x3)',      k: [[1/9,1/9,1/9],[1/9,1/9,1/9],[1/9,1/9,1/9]] },
-    { name: 'Sharpen',         k: [[0,-1,0],[-1,5,-1],[0,-1,0]] },
-    { name: 'Emboss',          k: [[-2,-1,0],[-1,1,1],[0,1,2]] },
-  ];
-
-  // Build a small test image: an oblique stripe + a square
-  var IN_SZ = 24;
-  var img = [];
-  for (var i = 0; i < IN_SZ; i++) {
-    var row = [];
-    for (var j = 0; j < IN_SZ; j++) {
-      var v = 0.15;
-      if ((i + j) >= 16 && (i + j) <= 20) v = 0.85;
-      if (i >= 4 && i < 10 && j >= 14 && j < 20) v = 0.7;
-      row.push(v);
-    }
-    img.push(row);
-  }
-
-  function drawImg(canvas, mat) {
-    var ctx = canvas.getContext('2d');
-    var W = canvas.width, H = canvas.height;
-    var cellW = W / mat[0].length, cellH = H / mat.length;
-    var mn = Infinity, mx = -Infinity;
-    for (var i = 0; i < mat.length; i++) for (var j = 0; j < mat[0].length; j++) {
-      if (mat[i][j] < mn) mn = mat[i][j];
-      if (mat[i][j] > mx) mx = mat[i][j];
-    }
-    var range = mx - mn || 1;
-    for (var i = 0; i < mat.length; i++) {
-      for (var j = 0; j < mat[0].length; j++) {
-        var n = (mat[i][j] - mn) / range;
-        var g = Math.round(n * 255);
-        ctx.fillStyle = 'rgb(' + g + ',' + g + ',' + g + ')';
-        ctx.fillRect(j * cellW, i * cellH, Math.ceil(cellW), Math.ceil(cellH));
-      }
-    }
-  }
-
-  function convolve(mat, k) {
-    var H = mat.length, W = mat[0].length, ks = k.length, p = Math.floor(ks / 2);
-    var out = [];
-    for (var i = 0; i < H; i++) {
-      var row = [];
-      for (var j = 0; j < W; j++) {
-        var s = 0;
-        for (var ki = 0; ki < ks; ki++) {
-          for (var kj = 0; kj < ks; kj++) {
-            var ii = i + ki - p, jj = j + kj - p;
-            var v = (ii >= 0 && ii < H && jj >= 0 && jj < W) ? mat[ii][jj] : 0;
-            s += v * k[ki][kj];
-          }
-        }
-        row.push(s);
-      }
-      out.push(row);
-    }
-    return out;
-  }
-
-  function renderKernel(k) {
-    var html = '';
-    for (var i = 0; i < 3; i++) {
-      for (var j = 0; j < 3; j++) {
-        var v = k[i][j];
-        var s = typeof v === 'number' ? (Math.abs(v) > 0.99 ? v.toFixed(0) : v.toFixed(2)) : '?';
-        html += '<div class="kf-cell">' + s + '</div>';
-      }
-    }
-    kernelEl.innerHTML = html;
-  }
-
-  PRESETS.forEach(function(p, i) {
-    var b = document.createElement('button');
-    b.textContent = p.name; b.dataset.idx = i;
-    presetsEl.appendChild(b);
-  });
-
-  function apply(idx) {
-    var p = PRESETS[idx];
-    Array.prototype.forEach.call(presetsEl.children, function(b, i) {
-      b.classList.toggle('active', i === idx);
-    });
-    renderKernel(p.k);
-    drawImg(inputCv, img);
-    drawImg(outputCv, convolve(img, p.k));
-  }
-
-  presetsEl.addEventListener('click', function(e) {
-    if (e.target.tagName === 'BUTTON') apply(parseInt(e.target.dataset.idx));
-  });
-  apply(1); // start with edge-X
-})();
-
-// ============================================================================
-// Interactive 3: Output size calculator
-// ============================================================================
-(function outputSize() {
-  var resultEl = document.getElementById('os-result');
-  if (!resultEl) return;
-
-  function calc() {
-    var H = parseInt(document.getElementById('os-h').value);
-    var k = parseInt(document.getElementById('os-k').value);
-    var s = parseInt(document.getElementById('os-s').value);
-    var p = parseInt(document.getElementById('os-p').value);
-    document.getElementById('os-h-val').textContent = H;
-    document.getElementById('os-k-val').textContent = k;
-    document.getElementById('os-s-val').textContent = s;
-    document.getElementById('os-p-val').textContent = p;
-    var numerator = H + 2 * p - k;
-    var ok = numerator >= 0;
-    var out = ok ? Math.floor(numerator / s) + 1 : 'invalid';
-    var html = '<div class="os-formula">(' + H + ' + 2&middot;' + p + ' &minus; ' + k + ') / ' + s + ' + 1 = (' + numerator + ') / ' + s + ' + 1</div>';
-    html += '<div class="os-answer">Output: ' + out + (ok ? ' &times; ' + out : '') + '</div>';
-    resultEl.innerHTML = html;
-    resultEl.classList.toggle('os-err', !ok);
-  }
-
-  ['h', 'k', 's', 'p'].forEach(function(id) {
-    document.getElementById('os-' + id).addEventListener('input', calc);
-  });
-  calc();
-})();
-
+<script id="ce-fullbleed-resize">
+(function(){
+  function fit(f){ try{var d=f.contentDocument; if(d&&d.body){var h=Math.ceil(Math.max(d.body.scrollHeight,d.body.offsetHeight)); if(h>50){f.style.height=h+"px";return true;}}}catch(e){} return false; }
+  function all(){ document.querySelectorAll(".ce-fullbleed iframe").forEach(fit); }
+  addEventListener("message",function(e){ if(!e.data||e.data.type!=="ce-frame-height"||!(e.data.height>50))return;
+    var ifr=document.querySelectorAll(".ce-fullbleed iframe");
+    for(var i=0;i<ifr.length;i++){ if(ifr[i].contentWindow===e.source){ ifr[i].style.height=e.data.height+"px"; break; } } });
+  document.querySelectorAll(".ce-fullbleed iframe").forEach(function(f){ f.addEventListener("load",function(){fit(f);setTimeout(function(){fit(f);},400);setTimeout(function(){fit(f);},1200);}); });
+  addEventListener("resize",all); setInterval(all,1500); all();
 })();
 </script>
 </main>

@@ -1,0 +1,262 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convolution as One Big Matrix Multiplication (im2col)</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 13px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 6px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .grid{display:grid;gap:2px;}
+  .cell{display:flex;align-items:center;justify-content:center;font-family:"SF Mono",Consolas,monospace;font-size:10.5px;border-radius:4px;border:1px solid #eef2f8;background:#fbfdff;}
+  .ig .cell{width:32px;height:32px;}
+  .ig .cell.win{outline:3px solid var(--in);outline-offset:-2px;z-index:2;}
+  /* the big patches matrix: 9 rows x 16 cols */
+  .mat .cell{width:26px;height:22px;font-size:9.5px;cursor:pointer;}
+  .mat .cell.colhl{background:rgba(246,146,30,.18);border-color:var(--in);}
+  .mat .cell.empty{color:#d4dcea;}
+  .kv .cell{width:26px;height:22px;font-size:9.5px;font-weight:700;}
+  .og .cell{width:32px;height:32px;cursor:pointer;color:#b9c4d8;}
+  .og .cell.done{font-weight:700;color:#fff;}
+  .og .cell.cur{outline:3px solid var(--ac);outline-offset:-2px;}
+  .dotline{font-family:monospace;font-size:12px;background:#f4f7fd;border-radius:8px;padding:6px 10px;margin-top:7px;max-width:420px;line-height:1.6;overflow-x:auto;}
+  /* bottom strip: controls aggregated bottom-LEFT, full code panel to the RIGHT */
+  .bottom{display:flex;gap:14px;align-items:stretch;width:100%;max-width:1100px;margin:10px auto 0;}
+  .ctrcol{flex:0 0 290px;display:flex;flex-direction:column;gap:8px;justify-content:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .btnrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--soft);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:7px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:104px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 13px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;margin:0;overflow-x:auto;white-space:pre;flex:1;min-width:0;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .flyer{position:fixed;display:grid;grid-template-columns:repeat(3,26px);gap:2px;z-index:50;pointer-events:none;transition:transform .55s cubic-bezier(.5,.1,.3,1),opacity .55s;}
+  .flyer .cell{width:26px;height:22px;font-size:9.5px;background:#fff7ec;border-color:var(--in);}
+  .legend{font-size:10.5px;color:var(--soft);line-height:1.5;text-align:left;}
+  @media (max-width:900px){.mat .cell,.kv .cell{width:19px;height:18px;font-size:8px;}.ig .cell,.og .cell{width:26px;height:26px;}.bottom{flex-wrap:wrap;}.ctrcol{flex:1 1 100%;}}
+</style></head><body>
+<h1>Convolution = one big matrix multiplication (im2col / unfold)</h1>
+<p class="sub">Nested Python loops are slow. The trick: <b>① rip the image into all its 3×3 patches</b>, <b>② lay each patch out as a column</b> of a matrix, <b>③ flatten the kernel into a row</b> and do <b>one matmul</b>, <b>④ reshape</b> the result back into the output image. Click any pipeline stage, click a matrix <b>column</b> to trace patch ↔ output, or press Play.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① unfold → patches</button>
+  <button class="chip" data-s="1">② kernel.view(1, 9)</button>
+  <button class="chip" data-s="2">③ one matmul</button>
+  <button class="chip" data-s="3">④ reshape to map</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" style="color:var(--in)">Input (6×6)<small>each 3×3 window is one patch</small></div>
+    <div class="grid ig" id="ig" style="grid-template-columns:repeat(6,32px)"></div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">Patch matrix — <span style="font-family:monospace">F.unfold</span> output<small>9 rows (pixels of a patch) × 16 columns (one per patch) · click a column!</small></div>
+    <div style="display:flex;gap:6px;align-items:flex-start">
+      <div style="display:grid;grid-template-rows:repeat(9,24px);gap:2px;align-items:center;font-family:monospace;font-size:9px;color:var(--soft)">
+        <div>p₀</div><div>p₁</div><div>p₂</div><div>p₃</div><div>p₄</div><div>p₅</div><div>p₆</div><div>p₇</div><div>p₈</div>
+      </div>
+      <div class="grid mat" id="mat" style="grid-template-columns:repeat(16,26px)"></div>
+    </div>
+    <div style="margin-top:8px">
+      <div class="cap" style="color:var(--ac);margin-bottom:4px">kernel flattened — <span style="font-family:monospace">k.view(1, 9)</span></div>
+      <div class="grid kv" id="kv" style="grid-template-columns:repeat(9,26px);justify-content:center"></div>
+    </div>
+    <div class="dotline" id="dotline" style="display:none"></div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--out)">Output (4×4)<small>click a cell to trace it back</small></div>
+    <div class="grid og" id="og" style="grid-template-columns:repeat(4,32px)"></div>
+  </div>
+</div>
+
+<div class="bottom">
+  <div class="ctrcol">
+    <div class="btnrow">
+      <button class="stepb" id="back">⏮ Step</button>
+      <button class="play" id="play">▶ Play</button>
+      <button class="stepb" id="fwd">Step ⏭</button>
+    </div>
+    <div class="btnrow">
+      <button class="reset" id="reset">↺ Reset</button>
+      &nbsp;speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+    </div>
+    <div class="legend">Why bother? Matrix multiplication is what GPUs (and BLAS) are <i>built</i> for — the notebook measures this trick at <b>hundreds of times faster</b> than the Python loop, and <span style="font-family:monospace">F.conv2d</span> is faster still.</div>
+  </div>
+  <div class="code" id="code"></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=6,K=3,O=N-K+1,NP=O*O;          // 6x6 input, 16 patches, 4x4 output
+// small bright square pattern
+const IMG=[
+ [0,0,0,0,0,0],
+ [0,1,1,1,0,0],
+ [0,1,0,1,0,0],
+ [0,1,1,1,0,0],
+ [0,0,0,0,1,0],
+ [0,0,0,0,0,0]];
+const KERN=[[-1,-1,-1],[0,0,0],[1,1,1]]; // top edge
+const kflat=KERN.flat();
+function patchVals(p){const r=(p/O)|0,c=p%O,v=[];
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++)v.push(IMG[r+i][c+j]);return v;}
+function outVal(p){return patchVals(p).reduce((s,v,i)=>s+v*kflat[i],0);}
+
+let stage=0;             // 0..3
+let prog=0;              // within-stage progress: stage0 → patches copied (0..16); stage2 → dot products done (0..16)
+let timer=null,speed=1;
+
+function gray(v){const g=Math.round(247-v*210);return `rgb(${g},${g+2},${Math.min(255,g+8)})`;}
+function fcol(v){return v>0.55?'#fff':'#46546e';}
+function outColor(v,m){const t=m?Math.min(1,Math.abs(v)/m):0;
+  return v>=0?`rgba(22,163,163,${0.15+0.85*t})`:`rgba(214,69,69,${0.12+0.85*t})`;}
+
+function build(){
+  const ig=$('ig');ig.innerHTML='';
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const d=document.createElement('div');d.className='cell';
+    d.style.background=gray(IMG[r][c]);d.style.color=fcol(IMG[r][c]);
+    d.textContent=IMG[r][c];ig.appendChild(d);}
+  const mat=$('mat');mat.innerHTML='';
+  for(let r=0;r<9;r++)for(let c=0;c<NP;c++){
+    const d=document.createElement('div');d.className='cell empty';d.textContent='·';
+    d.dataset.col=c;d.onclick=()=>selectCol(c);mat.appendChild(d);}
+  const kv=$('kv');kv.innerHTML='';
+  kflat.forEach(v=>{const d=document.createElement('div');d.className='cell';
+    d.textContent=v;d.style.color=v>0?'var(--out)':(v<0?'var(--neg)':'#9fb0cc');kv.appendChild(d);});
+  const og=$('og');og.innerHTML='';
+  for(let p=0;p<NP;p++){const d=document.createElement('div');d.className='cell';d.textContent='·';
+    d.onclick=()=>selectCol(p);og.appendChild(d);}
+}
+
+function maxStage(){return stage===0||stage===2?NP:1;}
+function stepF(){
+  if(prog<maxStage()){prog++;}
+  else if(stage<3){stage++;prog=0;}
+  else{stop();return;}
+  render(true);
+}
+function stepB(){
+  if(prog>0){prog--;}
+  else if(stage>0){stage--;prog=maxStage();}
+  render(false);
+}
+function setStage(s){stop();
+  // jumping forward completes earlier stages; jumping back rewinds later ones
+  stage=s;prog=(s===1||s===3)?1:( s===0?0:0 );
+  if(s>=1) {/* stage 0 considered complete */}
+  render(false);
+}
+function selectCol(c){stop();
+  if(stage<2){stage=2;}
+  prog=c+1;render(false);}
+
+function play(){if(timer){stop();return;}
+  $('play').textContent='⏸ Pause';
+  timer=setInterval(()=>{if(stage===3&&prog>=1){stop();return;}stepF();},460/speed);}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+
+let lastFlight=-1;
+function fly(p){ // FLIP-style flight of patch p from input to its matrix column
+  const r=(p/O)|0,c=p%O;
+  const ig=$('ig').children, mat=$('mat').children;
+  const src=ig[r*N+c].getBoundingClientRect();
+  const dst=mat[p].getBoundingClientRect();
+  const f=document.createElement('div');f.className='flyer';
+  patchVals(p).forEach(v=>{const d=document.createElement('div');d.className='cell';d.textContent=v;f.appendChild(d);});
+  f.style.left=src.left+'px';f.style.top=src.top+'px';
+  document.body.appendChild(f);
+  requestAnimationFrame(()=>{
+    f.style.transform=`translate(${dst.left-src.left}px,${dst.top-src.top}px) scale(.34,1.0)`;
+    f.style.opacity='0.15';});
+  setTimeout(()=>f.remove(),600);
+}
+
+function render(animate){
+  const ig=$('ig').children, mat=$('mat').children, og=$('og').children;
+  // which patches are "in the matrix" so far
+  const filled = stage>0?NP:prog;
+  const curPatch = stage===0?prog-1 : (stage===2?prog-1 : -1);
+  // input window highlight
+  for(let i=0;i<N*N;i++)ig[i].classList.remove('win');
+  const hl = (stage===0&&prog>0)?prog-1 : (stage>=2&&prog>0&&prog<=NP?prog-1:-1);
+  if(hl>=0){const r=(hl/O)|0,c=hl%O;
+    for(let i=0;i<3;i++)for(let j=0;j<3;j++)ig[(r+i)*N+(c+j)].classList.add('win');}
+  // matrix fill
+  for(let col=0;col<NP;col++){const vals=patchVals(col);
+    for(let row=0;row<9;row++){const d=mat[row*NP+col];
+      if(col<filled){d.textContent=vals[row];d.classList.remove('empty');
+        d.style.background=gray(vals[row]);d.style.color=fcol(vals[row]);}
+      else{d.textContent='·';d.classList.add('empty');d.style.background='#fbfdff';d.style.color='#d4dcea';}
+      d.classList.toggle('colhl', col===hl);
+    }}
+  if(animate&&stage===0&&prog>0&&prog-1!==lastFlight){lastFlight=prog-1;fly(prog-1);}
+  // outputs
+  const doneOut = stage<2?0 : (stage===2?prog:NP);
+  let m=0;for(let p=0;p<NP;p++)m=Math.max(m,Math.abs(outVal(p)));
+  for(let p=0;p<NP;p++){const v=outVal(p);
+    og[p].classList.toggle('cur', stage>=2&&p===hl);
+    if(p<doneOut){og[p].classList.add('done');og[p].textContent=v;og[p].style.background=outColor(v,m);}
+    else{og[p].classList.remove('done');og[p].textContent='·';og[p].style.background='#f7f9fd';}}
+  // dot product line
+  const dl=$('dotline');
+  if(stage===2&&prog>0&&prog<=NP){const p=prog-1,vals=patchVals(p),v=outVal(p);
+    dl.style.display='block';
+    dl.innerHTML=`out[${(p/O)|0},${p%O}] = k_flat · col<sub>${p}</sub> = `+
+      vals.map((a,i)=>`<span style="color:${kflat[i]>0?'var(--out)':(kflat[i]<0?'var(--neg)':'#9fb0cc')}">${kflat[i]}·${a}</span>`).join(' + ')+
+      ` = <b style="color:${v>=0?'var(--out)':'var(--neg)'}">${v}</b>`;}
+  else dl.style.display='none';
+  // stage chips
+  document.querySelectorAll('.stagebar .chip').forEach((c,i)=>c.classList.toggle('on',i===stage));
+  // code panel (notebook's actual im2col code)
+  const lines=[
+   `<span class="cm"># ① rip out every 3×3 patch as a column  → shape (1, 9, 16)</span>`,
+   `cols = F.<span class="fn">unfold</span>(x[<span class="cm">None</span>,<span class="cm">None</span>], (<span class="num">3</span>, <span class="num">3</span>))${stage===0?`   <span class="cm"># patch ${Math.max(0,prog-1)} / 15 copied…</span>`:''}`,
+   `<span class="cm"># ② flatten the kernel into one row     → shape (1, 9)</span>`,
+   `k_flat = top_edge.<span class="fn">view</span>(<span class="num">1</span>, <span class="num">9</span>)`,
+   `<span class="cm"># ③ ALL 16 convolutions in ONE matrix multiply → (1, 16)</span>`,
+   `res = k_flat @ cols[<span class="num">0</span>]${stage===2&&prog>0?`   <span class="cm"># dot product ${prog-1}: column ${prog-1} → out ${prog-1}</span>`:''}`,
+   `<span class="cm"># ④ fold the 16 numbers back into a 4×4 feature map</span>`,
+   `out = res.<span class="fn">view</span>(<span class="num">4</span>, <span class="num">4</span>)`];
+  const hlLine=[1,3,5,7][stage];
+  $('code').innerHTML=lines.map((t,i)=>i===hlLine?`<span class="hl">${t}</span>`:t).join('\n');
+}
+
+document.querySelectorAll('.stagebar .chip').forEach((ch,i)=>ch.onclick=()=>setStage(i));
+$('play').onclick=play;
+$('fwd').onclick=()=>{stop();stepF();};
+$('back').onclick=()=>{stop();stepB();};
+$('reset').onclick=()=>{stop();stage=0;prog=0;lastFlight=-1;render(false);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+
+build();render(false);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

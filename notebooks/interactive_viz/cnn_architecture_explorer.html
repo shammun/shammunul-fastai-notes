@@ -1,0 +1,248 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inside simple_cnn — 28×28 pixels → 10 numbers</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:0 0 7px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:4px 10px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  /* top row: canvas left + controls in the empty space to its right */
+  .toprow{display:flex;gap:12px;width:100%;max-width:1240px;margin:0 auto;align-items:stretch;}
+  .canvwrap{flex:1;min-width:0;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);padding:4px;display:flex;align-items:center;justify-content:center;}
+  canvas{display:block;max-width:100%;max-height:252px;width:auto;height:auto;cursor:pointer;border-radius:8px;}
+  .ctrcol{flex:0 0 172px;display:flex;flex-direction:column;gap:9px;justify-content:center;align-items:stretch;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);font-size:12px;color:var(--soft);text-align:center;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:8px 10px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;width:100%;}
+  .stepb{background:#ece7fb;color:var(--ac);flex:1;}
+  .btnrow{display:flex;gap:7px;}
+  input[type=range]{width:100%;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);}
+  /* bottom row: info cards LEFT · code RIGHT, parameter bar pinned so its end aligns with the cards' end */
+  .botrow{display:flex;gap:12px;width:100%;max-width:1240px;margin:8px auto 0;align-items:stretch;}
+  .leftcards{flex:0 0 330px;display:flex;flex-direction:column;gap:8px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);font-size:11.5px;line-height:1.5;}
+  .card h3{margin:0 0 3px;font-size:11.5px;color:var(--ac);}
+  .mono{font-family:"SF Mono",Consolas,monospace;background:#f4f7fd;border-radius:8px;padding:4px 8px;font-size:11px;margin:4px 0;overflow-x:auto;}
+  .mono .num{color:#c4761a;font-weight:700;}.mono .res{color:var(--out);font-weight:700;}
+  .rightcol{flex:1;min-width:0;display:flex;flex-direction:column;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 13px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.65;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;display:inline-block;width:100%;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .spacer{flex:1;}
+  .pbarlab{font-size:11px;color:var(--soft);margin:8px 0 3px;}
+  .pbarlab b{color:var(--ink);}
+  .pbar{display:flex;height:20px;border-radius:9px;overflow:hidden;border:1px solid var(--line);}
+  .pbar div{display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;line-height:1.45;}
+</style></head><body>
+<h1>Inside <span style="font-family:monospace">simple_cnn</span> — how 784 pixels become 10 numbers</h1>
+<p class="sub">Every conv layer uses <b>stride 2</b>, so the image <b>halves</b> each time (28→14→7→4→2→1) while the channels <b>grow</b> (1→8→16→32→64) — no pooling anywhere, stride does all the shrinking. <b>Click any block</b> (or chip) for its code, shape math, and parameter count.</p>
+
+<div class="stagebar" id="chips"></div>
+
+<div class="toprow">
+  <div class="canvwrap"><canvas id="cv" width="1100" height="330"></canvas></div>
+  <div class="ctrcol">
+    <button class="play" id="play">▶ Play forward pass</button>
+    <div class="btnrow">
+      <button class="stepb" id="back">⏮ Step</button>
+      <button class="stepb" id="fwd">Step ⏭</button>
+    </div>
+    <div>speed <span class="speedv" id="spv">1×</span><br><input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"></div>
+  </div>
+</div>
+
+<div class="botrow">
+  <div class="leftcards">
+    <div class="card"><h3 id="t-shape">Shape math</h3><div id="c-shape"></div></div>
+    <div class="card"><h3 id="t-par">Parameters</h3><div id="c-par"></div></div>
+    <div class="card"><h3>Why this layer?</h3><div id="c-why"></div></div>
+  </div>
+  <div class="rightcol">
+    <div class="code" id="code"></div>
+    <div class="spacer"></div>
+    <div class="pbarlab"><b>Parameter distribution</b> — each colored segment is one layer’s share of the <b>30,154 total weights</b> (the number inside = that layer’s parameter count). Click a segment to jump to that layer.</div>
+    <div class="pbar" id="pbar"></div>
+  </div>
+</div>
+
+<div class="legend">For comparison, the earlier Linear(784→50→10) MLP needed <b>39,760</b> parameters — the CNN does better (~98% accuracy) with fewer, because it <b>reuses the same small kernel everywhere</b>.</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const LAYERS=[
+ {name:'input',   C:1,  S:28, code:`xb.view(-1, 1, 28, 28)`, par:0,
+  shape:`Reshape the flat <b>784-pixel</b> rows back into images:<div class="mono">(bs, 784) → <span class="res">(bs, 1, 28, 28)</span></div>1 channel = grayscale.`,
+  parr:`No parameters — just a reshape (<span style="font-family:monospace">view</span> costs nothing).`,
+  why:`Convolutions need the 2-D structure back. A Linear layer threw away <i>where</i> each pixel was; a CNN is built around it.`},
+ {name:'conv(1, 8)',  C:8,  S:14, par:80,
+  code:`conv(1, 8)    # nn.Conv2d(1, 8, kernel_size=3, stride=2, padding=1) + ReLU`,
+  shape:`<div class="mono">⌊(28 + 2·1 − 3)/<span class="num">2</span>⌋ + 1 = <span class="res">14</span></div>(bs, 1, 28, 28) → <span style="color:var(--out);font-weight:700">(bs, 8, 14, 14)</span>`,
+  parr:`<div class="mono">3·3·1·8 + 8 = <span class="res">80</span></div>9 weights per kernel × 1 input ch × 8 filters, + 8 biases.`,
+  why:`8 different 3×3 kernels — think 8 learnable edge detectors. Stride 2 halves the map so later layers see a wider view per pixel.`},
+ {name:'conv(8, 16)', C:16, S:7, par:1168,
+  code:`conv(8, 16)   # nn.Conv2d(8, 16, kernel_size=3, stride=2, padding=1) + ReLU`,
+  shape:`<div class="mono">⌊(14 + 2·1 − 3)/<span class="num">2</span>⌋ + 1 = <span class="res">7</span></div>(bs, 8, 14, 14) → <span style="color:var(--out);font-weight:700">(bs, 16, 7, 7)</span>`,
+  parr:`<div class="mono">3·3·8·16 + 16 = <span class="res">1,168</span></div>Each of the 16 filters now spans <b>all 8</b> input channels (3×3×8).`,
+  why:`Combining 8 edge maps lets these 16 filters detect corners, curves, strokes — features <i>of features</i>.`},
+ {name:'conv(16, 32)',C:32, S:4, par:4640,
+  code:`conv(16, 32)  # nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1) + ReLU`,
+  shape:`<div class="mono">⌊(7 + 2·1 − 3)/<span class="num">2</span>⌋ + 1 = ⌊3⌋ + 1 = <span class="res">4</span></div>(bs, 16, 7, 7) → <span style="color:var(--out);font-weight:700">(bs, 32, 4, 4)</span>`,
+  parr:`<div class="mono">3·3·16·32 + 32 = <span class="res">4,640</span></div>`,
+  why:`The classic trade: every time the map halves, channels double — total information capacity stays roughly constant while each pixel summarizes a bigger region.`},
+ {name:'conv(32, 64)',C:64, S:2, par:18496,
+  code:`conv(32, 64)  # nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1) + ReLU`,
+  shape:`<div class="mono">⌊(4 + 2·1 − 3)/<span class="num">2</span>⌋ + 1 = ⌊1.5⌋ + 1 = <span class="res">2</span></div>(bs, 32, 4, 4) → <span style="color:var(--out);font-weight:700">(bs, 64, 2, 2)</span>`,
+  parr:`<div class="mono">3·3·32·64 + 64 = <span class="res">18,496</span></div>The biggest layer — 61% of all parameters live here.`,
+  why:`Each of the 2×2 positions now “sees” most of the digit (a huge receptive field — Part 7 explains why).`},
+ {name:'conv(64, 10, act=False)',C:10, S:1, par:5770,
+  code:`conv(64, 10, act=False)  # NO ReLU — these are the raw class scores (logits)`,
+  shape:`<div class="mono">⌊(2 + 2·1 − 3)/<span class="num">2</span>⌋ + 1 = ⌊0.5⌋ + 1 = <span class="res">1</span></div>(bs, 64, 2, 2) → <span style="color:var(--out);font-weight:700">(bs, 10, 1, 1)</span>`,
+  parr:`<div class="mono">3·3·64·10 + 10 = <span class="res">5,770</span></div>`,
+  why:`10 channels = 10 digit classes; the 1×1 map means one score each. No ReLU: the loss (cross-entropy) wants unbounded logits, positive <i>and</i> negative.`},
+ {name:'flatten',  C:10, S:1, par:0, flat:true,
+  code:`nn.Flatten()             # (bs, 10, 1, 1) → (bs, 10)`,
+  shape:`<div class="mono">(bs, 10, 1, 1) → <span class="res">(bs, 10)</span></div>`,
+  parr:`No parameters — drops the two size-1 dimensions.`,
+  why:`The loss function expects a plain (batch, classes) matrix. This is what the “broken CNN” forgot — it ended with (bs, 10, 28, 28)!`}
+];
+const TOTAL=LAYERS.reduce((s,l)=>s+l.par,0);
+let sel=0,timer=null,speed=1;
+const COLORS=['#f6921e','#9a82e0','#8d72db','#7f63d6','#7152d0','#16a3a3','#16a3a3'];
+
+const cv=$('cv'),ctx=cv.getContext('2d');
+let boxes=[];
+function shade(hex,f){const n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  return `rgb(${Math.round(r*f)},${Math.round(g*f)},${Math.round(b*f)})`;}
+function draw(){
+  const W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
+  boxes=[];
+  const base=H-66;
+  // layout: x positions
+  let x=34;
+  const gaps=58;
+  LAYERS.forEach((L,i)=>{
+    const sp=Math.max(12,L.S*5.4);           // face size from spatial dims
+    const d=Math.max(8,Math.sqrt(L.C)*9);    // depth from channels
+    const col=COLORS[i];
+    const active=i===sel;
+    const w=L.flat?10:sp,h=L.flat?Math.max(60,sp):sp;
+    const fh=L.flat?80:sp;
+    const y0=base-fh;
+    const ox=d*0.55,oy=-d*0.4;
+    // glow
+    if(active){ctx.save();ctx.shadowColor=col;ctx.shadowBlur=22;}
+    // side face
+    ctx.fillStyle=shade(col,active?0.62:0.45);
+    ctx.beginPath();ctx.moveTo(x+w,y0);ctx.lineTo(x+w+ox,y0+oy);ctx.lineTo(x+w+ox,y0+oy+fh);ctx.lineTo(x+w,y0+fh);ctx.closePath();ctx.fill();
+    // top face
+    ctx.fillStyle=shade(col,active?0.85:0.62);
+    ctx.beginPath();ctx.moveTo(x,y0);ctx.lineTo(x+ox,y0+oy);ctx.lineTo(x+w+ox,y0+oy);ctx.lineTo(x+w,y0);ctx.closePath();ctx.fill();
+    // front face
+    ctx.fillStyle=active?col:shade(col,0.78)+'';
+    ctx.globalAlpha=active?1:0.82;
+    ctx.fillRect(x,y0,w,fh);ctx.globalAlpha=1;
+    // grid on front face (spatial structure)
+    if(!L.flat&&L.S>1){ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;
+      const ng=Math.min(L.S,7);
+      for(let g=1;g<ng;g++){const t=g/ng;
+        ctx.beginPath();ctx.moveTo(x+t*w,y0);ctx.lineTo(x+t*w,y0+fh);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(x,y0+t*fh);ctx.lineTo(x+w,y0+t*fh);ctx.stroke();}}
+    if(active)ctx.restore();
+    // labels
+    ctx.fillStyle=active?'#25324a':'#5a6b86';
+    ctx.font=(active?'bold ':'')+'11px monospace';ctx.textAlign='center';
+    const lblx=x+(w+ox)/2;
+    ctx.fillText(L.flat?'(bs, 10)':`${L.C}×${L.S}×${L.S}`,lblx,base+18);
+    ctx.font='10px "Segoe UI"';ctx.fillStyle=active?'#7b5cd6':'#9fb0cc';
+    ctx.fillText(i===0?'input':(L.flat?'flatten':'L'+i),lblx,base+33);
+    boxes.push({x0:x-6,x1:x+w+ox+6,y0:y0+oy-8,y1:base+36,i});
+    // arrow + op label to next
+    if(i<LAYERS.length-1){
+      const ax=x+w+ox+8, ax2=ax+gaps-16, ay=base-fh/2;
+      ctx.strokeStyle=(i===sel-1)?'#7b5cd6':'#cdb8f5';ctx.lineWidth=(i===sel-1)?3:2;
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax2,ay);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(ax2,ay);ctx.lineTo(ax2-7,ay-5);ctx.lineTo(ax2-7,ay+5);ctx.closePath();
+      ctx.fillStyle=(i===sel-1)?'#7b5cd6':'#cdb8f5';ctx.fill();
+      if(!LAYERS[i+1].flat){ctx.fillStyle=(i===sel-1)?'#7b5cd6':'#9fb0cc';ctx.font='9.5px monospace';
+        ctx.fillText('3×3 s2',(ax+ax2)/2,ay-9);}
+    }
+    x+=w+ox+gaps;
+  });
+  ctx.textAlign='left';
+}
+cv.onclick=e=>{
+  const r=cv.getBoundingClientRect();
+  const mx=(e.clientX-r.left)*cv.width/r.width, my=(e.clientY-r.top)*cv.height/r.height;
+  for(const b of boxes)if(mx>=b.x0&&mx<=b.x1&&my>=b.y0&&my<=b.y1){stop();sel=b.i;render();return;}
+};
+
+function render(){
+  draw();
+  document.querySelectorAll('#chips .chip').forEach((c,i)=>c.classList.toggle('on',i===sel));
+  const L=LAYERS[sel];
+  $('c-shape').innerHTML=L.shape;
+  $('c-par').innerHTML=L.parr;
+  $('c-why').innerHTML=L.why;
+  // full model code with highlight
+  const rows=[
+   `simple_cnn = nn.Sequential(`,
+   `    <span class="fn">conv</span>(<span class="num">1</span>, <span class="num">8</span>),                    <span class="cm"># 28×28 → 14×14</span>`,
+   `    <span class="fn">conv</span>(<span class="num">8</span>, <span class="num">16</span>),                   <span class="cm"># 14×14 → 7×7</span>`,
+   `    <span class="fn">conv</span>(<span class="num">16</span>, <span class="num">32</span>),                  <span class="cm"># 7×7   → 4×4</span>`,
+   `    <span class="fn">conv</span>(<span class="num">32</span>, <span class="num">64</span>),                  <span class="cm"># 4×4   → 2×2</span>`,
+   `    <span class="fn">conv</span>(<span class="num">64</span>, <span class="num">10</span>, act=<span class="num">False</span>),       <span class="cm"># 2×2   → 1×1, no ReLU</span>`,
+   `    nn.<span class="fn">Flatten</span>(),                  <span class="cm"># (bs,10,1,1) → (bs,10)</span>`,
+   `)`];
+  const map={0:-1,1:1,2:2,3:3,4:4,5:5,6:6};
+  const h=map[sel];
+  $('code').innerHTML=rows.map((t,i)=>i===h?`<span class="hl">${t}</span>`:t).join('\n')
+    +`\n<span class="cm"># selected: ${L.code}</span>`;
+  // param bar
+  const pb=$('pbar');pb.innerHTML='';
+  LAYERS.forEach((l,i)=>{if(!l.par)return;
+    const d=document.createElement('div');
+    d.style.width=(l.par/TOTAL*100)+'%';d.style.background=COLORS[i];
+    d.style.opacity=i===sel?'1':'0.55';
+    d.textContent=l.par.toLocaleString();d.title=`${l.name}: ${l.par.toLocaleString()} params`;
+    d.onclick=()=>{stop();sel=i;render();};d.style.cursor='pointer';
+    pb.appendChild(d);});
+}
+function stepF(){if(sel<LAYERS.length-1){sel++;render();}else stop();}
+function stepB(){if(sel>0){sel--;render();}}
+function play(){if(timer){stop();return;}
+  if(sel>=LAYERS.length-1)sel=0;
+  $('play').textContent='⏸ Pause';
+  timer=setInterval(()=>{if(sel>=LAYERS.length-1){stop();return;}stepF();},900/speed);}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play forward pass';}
+
+const chips=$('chips');
+LAYERS.forEach((L,i)=>{const b=document.createElement('button');b.className='chip';
+  b.textContent=(i===0?'input 1×28×28':(L.flat?'flatten':L.name));
+  b.onclick=()=>{stop();sel=i;render();};chips.appendChild(b);});
+$('play').onclick=play;$('fwd').onclick=()=>{stop();stepF();};$('back').onclick=()=>{stop();stepB();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

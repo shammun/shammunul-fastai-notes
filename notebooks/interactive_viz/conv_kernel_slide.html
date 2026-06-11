@@ -1,0 +1,275 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Convolution Machine</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:900px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;margin-top:2px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .grid{display:grid;gap:2px;}
+  .cell{width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-family:"SF Mono",Consolas,monospace;font-size:11px;border-radius:5px;border:1px solid #eef2f8;position:relative;transition:box-shadow .12s;}
+  .ig .cell{cursor:pointer;}
+  .ig .cell.win{outline:3px solid var(--in);outline-offset:-2px;z-index:2;}
+  .ig .cell.cwin{outline:3px solid var(--ac);outline-offset:-2px;z-index:3;}
+  .og .cell{cursor:pointer;background:#f7f9fd;color:#b9c4d8;}
+  .og .cell.done{color:#fff;font-weight:700;}
+  .og .cell.cur{outline:3px solid var(--ac);outline-offset:-2px;z-index:2;}
+  .og .cell:hover{outline:2px solid var(--ac);outline-offset:-2px;}
+  .kg .cell{width:38px;height:38px;font-size:13px;font-weight:700;background:#fff;}
+  .kg input{width:100%;height:100%;border:none;text-align:center;font-family:inherit;font-size:13px;font-weight:700;color:var(--ink);background:transparent;border-radius:5px;}
+  .kg input:focus{outline:2px solid var(--ac);}
+  .mulrow{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:4px;}
+  .opsym{font-size:18px;font-weight:700;color:var(--soft);}
+  .mg .cell{width:38px;height:38px;font-size:11.5px;font-weight:700;background:#fbfdff;}
+  .sumbox{margin-top:6px;text-align:center;font-family:monospace;font-size:12px;background:#f4f7fd;border-radius:8px;padding:5px 9px;line-height:1.5;}
+  .sumbox .v{font-weight:700;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:2px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  select{font-family:inherit;font-size:12px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:4px 7px;background:#fff;cursor:pointer;}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:780px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}
+  .code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+  @media (max-width:980px){.cell{width:26px;height:26px;font-size:9px;}.kg .cell,.mg .cell{width:32px;height:32px;}}
+</style></head><body>
+<h1>The Convolution Machine</h1>
+<p class="sub">A <b>kernel</b> slides over the image, doing the same three things at every stop: <b style="color:var(--in)">① place the 3×3 window</b>, <b style="color:var(--ac)">② multiply element-wise</b>, <b style="color:var(--out)">③ sum &amp; write one output pixel</b>. Click the stage chips, click any <b>output cell</b> to jump there, or press Play.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① Place window</button>
+  <button class="chip" id="st1">② Multiply element-wise</button>
+  <button class="chip" id="st2">③ Sum → write output</button>
+</div>
+
+<div class="selrow">
+  kernel: <select id="ksel">
+    <option value="top">top_edge (−1 / 0 / +1 rows)</option>
+    <option value="left">left_edge (−1 / 0 / +1 cols)</option>
+    <option value="diag">diag1_edge (diagonal)</option>
+    <option value="blur">blur (all 1/9)</option>
+    <option value="sharpen">sharpen</option>
+    <option value="custom">custom — edit the cells!</option>
+  </select>
+  &nbsp;·&nbsp; speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" style="color:var(--in)">Input image (9×9) <small>a tiny “7” — click a pixel to move the window</small></div>
+    <div class="grid ig" id="ig" style="grid-template-columns:repeat(9,32px)"></div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">window ⊙ kernel <small>element-wise products</small></div>
+    <div class="mulrow">
+      <div class="grid kg" id="pg" style="grid-template-columns:repeat(3,38px)"></div>
+      <div class="opsym">⊙</div>
+      <div class="grid kg" id="kg" style="grid-template-columns:repeat(3,38px)"></div>
+    </div>
+    <div class="mulrow"><div class="opsym" style="font-size:14px">=</div></div>
+    <div class="mulrow"><div class="grid mg" id="mg" style="grid-template-columns:repeat(3,38px)"></div></div>
+    <div class="sumbox" id="sumbox">sum = …</div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--out)">Output feature map (7×7) <small>click any cell to jump to it</small></div>
+    <div class="grid og" id="og" style="grid-template-columns:repeat(7,32px)"></div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = input window</b> &nbsp;·&nbsp; <b class="a">purple = current op</b> &nbsp;·&nbsp; <b class="o">teal = output written so far</b> &nbsp;·&nbsp; output is 7×7 because a 3×3 kernel can’t hang off the 9×9 edge (9 − 3 + 1 = 7)</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=9, K=3, O=N-K+1;            // 9x9 input, 3x3 kernel, 7x7 output
+// a tiny bright "7" on dark background (values 0..1)
+const IMG=[
+ [0,0,0,0,0,0,0,0,0],
+ [0,.6,.9,.9,.9,.9,.8,0,0],
+ [0,0,0,0,0,.8,.9,0,0],
+ [0,0,0,0,.7,.9,0,0,0],
+ [0,0,0,.6,.9,.3,0,0,0],
+ [0,0,0,.9,.8,0,0,0,0],
+ [0,0,.7,.9,0,0,0,0,0],
+ [0,0,.9,.6,0,0,0,0,0],
+ [0,0,0,0,0,0,0,0,0]];
+const KERNELS={
+ top:[[-1,-1,-1],[0,0,0],[1,1,1]],
+ left:[[-1,0,1],[-1,0,1],[-1,0,1]],
+ diag:[[0,-1,1],[-1,1,0],[1,0,-1]],
+ blur:[[1/9,1/9,1/9],[1/9,1/9,1/9],[1/9,1/9,1/9]],
+ sharpen:[[0,-1,0],[-1,5,-1],[0,-1,0]],
+ custom:[[-1,-1,-1],[0,0,0],[1,1,1]]
+};
+let kname='top', kernel=KERNELS.top.map(r=>r.slice());
+let pos=0, phase=0;                  // pos 0..48 over output cells; phase 0..2
+let out=Array.from({length:O},()=>Array(O).fill(null));
+let timer=null, speed=1;
+
+function gray(v){const g=Math.round(247-v*210);return `rgb(${g},${g+2},${Math.min(255,g+8)})`;}
+function fcol(v){return v>0.55?'#fff':'#46546e';}
+function outColor(v,maxAbs){const t=Math.min(1,Math.abs(v)/(maxAbs||1));
+  return v>=0?`rgba(22,163,163,${0.15+0.85*t})`:`rgba(214,69,69,${0.15+0.85*t})`;}
+
+function buildGrids(){
+  const ig=$('ig'); ig.innerHTML='';
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const d=document.createElement('div');d.className='cell';
+    d.style.background=gray(IMG[r][c]);d.style.color=fcol(IMG[r][c]);
+    d.textContent=IMG[r][c]?IMG[r][c].toFixed(1).replace('0.','.'):'0';
+    d.dataset.r=r;d.dataset.c=c;
+    d.onclick=()=>{const rr=Math.min(Math.max(r-1,0),O-1),cc=Math.min(Math.max(c-1,0),O-1);
+      jumpTo(rr*O+cc);};
+    ig.appendChild(d);
+  }
+  const og=$('og'); og.innerHTML='';
+  for(let i=0;i<O*O;i++){
+    const d=document.createElement('div');d.className='cell';d.textContent='·';
+    d.onclick=()=>jumpTo(i);
+    og.appendChild(d);
+  }
+  const kg=$('kg'); kg.innerHTML='';
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++){
+    const d=document.createElement('div');d.className='cell';
+    const inp=document.createElement('input');inp.value=fmtK(kernel[r][c]);
+    inp.readOnly=(kname!=='custom');
+    inp.onchange=()=>{const v=parseFloat(inp.value);if(!isNaN(v)){kernel[r][c]=v;recomputeAll();}inp.value=fmtK(kernel[r][c]);};
+    d.appendChild(inp);kg.appendChild(d);
+  }
+  $('pg').innerHTML='<div class="cell"></div>'.repeat(9);
+  $('mg').innerHTML='<div class="cell"></div>'.repeat(9);
+}
+function fmtK(v){return Math.abs(v-1/9)<1e-9?'⅑':(Number.isInteger(v)?String(v):v.toFixed(1));}
+function fmtV(v){return (Math.abs(v)<1e-9?0:v).toFixed(2).replace('-0.00','0.00');}
+
+function convAt(r,c){let s=0;for(let i=0;i<3;i++)for(let j=0;j<3;j++)s+=IMG[r+i][c+j]*kernel[i][j];return s;}
+function maxAbsOut(){let m=0;for(let r=0;r<O;r++)for(let c=0;c<O;c++)m=Math.max(m,Math.abs(convAt(r,c)));return m;}
+
+function recomputeAll(){ // after kernel edit: recompute already-written outputs
+  for(let r=0;r<O;r++)for(let c=0;c<O;c++)if(out[r][c]!==null)out[r][c]=convAt(r,c);
+  render();
+}
+
+function jumpTo(i){stop();pos=i;phase=2;
+  // ensure everything up to pos is written (so jumping feels like scrubbing)
+  for(let p=0;p<=pos;p++){const r=(p/O)|0,c=p%O;out[r][c]=convAt(r,c);}
+  render();}
+
+function setPhase(ph){stop();phase=ph;
+  if(ph===2){const r=(pos/O)|0,c=pos%O;out[r][c]=convAt(r,c);}
+  render();}
+
+function stepF(){ if(phase<2){phase++;}
+  else if(pos<O*O-1){pos++;phase=0;}
+  else {stop();render();return;}
+  if(phase===2){const r=(pos/O)|0,c=pos%O;out[r][c]=convAt(r,c);}
+  render();}
+function stepB(){ if(phase>0){phase--;}
+  else if(pos>0){const r=(pos/O)|0,c=pos%O;out[r][c]=null;pos--;phase=2;}
+  render();}
+
+function play(){ if(timer){stop();return;}
+  $('play').textContent='⏸ Pause';
+  timer=setInterval(()=>{ if(pos===O*O-1&&phase===2){stop();return;} stepF(); },420/speed);}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+
+function render(){
+  const r=(pos/O)|0, c=pos%O;        // output coords; input window top-left = (r,c)
+  // input highlight
+  document.querySelectorAll('#ig .cell').forEach(d=>{
+    const rr=+d.dataset.r, cc=+d.dataset.c;
+    const inWin=rr>=r&&rr<r+3&&cc>=c&&cc<c+3;
+    d.classList.toggle('win',inWin&&phase===0);
+    d.classList.toggle('cwin',inWin&&phase>0);
+  });
+  // products + kernel display
+  const pgc=$('pg').children, mgc=$('mg').children;
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){
+    const idx=i*3+j, a=IMG[r+i][c+j], k=kernel[i][j], p=a*k;
+    pgc[idx].textContent=a?a.toFixed(1).replace('0.','.'):'0';
+    pgc[idx].style.background=gray(a);pgc[idx].style.color=fcol(a);
+    if(phase>=1){mgc[idx].textContent=fmtV(p).replace('0.00','0');
+      mgc[idx].style.color=p>0.001?'var(--out)':(p<-0.001?'var(--neg)':'#b9c4d8');
+      mgc[idx].style.background=p>0.001?'rgba(22,163,163,.08)':(p<-0.001?'rgba(214,69,69,.07)':'#fbfdff');
+    } else {mgc[idx].textContent='·';mgc[idx].style.color='#d4dcea';mgc[idx].style.background='#fbfdff';}
+  }
+  const s=convAt(r,c);
+  $('sumbox').innerHTML = phase===2
+    ? `sum = <span class="v" style="color:${s>=0?'var(--out)':'var(--neg)'}">${fmtV(s)}</span> → written to output[<span class="v">${r}</span>, <span class="v">${c}</span>]`
+    : (phase===1?`products ready — stage ③ adds them up`:`window at rows ${r}..${r+2}, cols ${c}..${c+2}`);
+  // output grid
+  const og=$('og').children, m=maxAbsOut();
+  for(let i=0;i<O*O;i++){
+    const rr=(i/O)|0, cc=i%O, v=out[rr][cc];
+    og[i].classList.toggle('cur',i===pos);
+    if(v!==null){og[i].classList.add('done');og[i].textContent=Math.abs(v)<0.005?'0':v.toFixed(1);
+      og[i].style.background=outColor(v,m);}
+    else{og[i].classList.remove('done');og[i].textContent='·';og[i].style.background='#f7f9fd';}
+  }
+  // stage chips
+  [0,1,2].forEach(i=>$('st'+i).classList.toggle('on',i===phase));
+  // code sync — the notebook's own functions, with live numbers
+  const i1=r+1, j1=c+1; // notebook indexes by CENTER pixel: im[row-1:row+2, col-1:col+2]
+  const L=[
+   `<span class="cm"># stage ① — place the 3×3 window (centered on row=${i1}, col=${j1})</span>`,
+   `win = im[<span class="num">${i1}</span>-1:<span class="num">${i1}</span>+2, <span class="num">${j1}</span>-1:<span class="num">${j1}</span>+2]   <span class="cm"># shape (3, 3)</span>`,
+   `<span class="cm"># stage ② — multiply element-wise with the kernel</span>`,
+   `prod = win * ${kname==='custom'?'kernel':kname+'_edge'.replace('blur_edge','blur').replace('sharpen_edge','sharpen')}`,
+   `<span class="cm"># stage ③ — sum the 9 products → one output pixel</span>`,
+   `out[<span class="num">${r}</span>, <span class="num">${c}</span>] = prod.<span class="fn">sum</span>()   <span class="cm"># = ${fmtV(s)}</span>`];
+  const hl=[1,3,5][phase];
+  $('code').innerHTML=L.map((t,i)=>i===hl?`<span class="hl">${t}</span>`:t).join('\n')
+   +`\n<span class="cm"># …exactly the notebook's apply_kernel(row, col, kernel) = (im[row-1:row+2, col-1:col+2] * kernel).sum()</span>`;
+}
+
+$('st0').onclick=()=>setPhase(0);
+$('st1').onclick=()=>setPhase(1);
+$('st2').onclick=()=>setPhase(2);
+$('play').onclick=play;
+$('fwd').onclick=()=>{stop();stepF();};
+$('back').onclick=()=>{stop();stepB();};
+$('reset').onclick=()=>{stop();pos=0;phase=0;out=Array.from({length:O},()=>Array(O).fill(null));render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+$('ksel').onchange=e=>{kname=e.target.value;kernel=KERNELS[kname].map(r=>r.slice());stop();
+  out=Array.from({length:O},()=>Array(O).fill(null));pos=0;phase=0;buildGrids();render();};
+
+buildGrids();render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

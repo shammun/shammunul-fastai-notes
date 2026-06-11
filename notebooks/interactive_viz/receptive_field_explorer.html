@@ -1,0 +1,286 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receptive Field Explorer — what does one deep neuron actually "see"?</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:1000px;line-height:1.45;}
+  .cfg{display:flex;gap:9px;justify-content:center;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--soft);margin-bottom:7px;}
+  .cfg b{color:var(--ink);}
+  .cfg .div{width:1px;height:22px;background:var(--line);margin:0 3px;}
+  .seg{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden;background:#fff;}
+  .seg button{border:none;background:transparent;color:var(--soft);font-weight:700;font-size:11.5px;padding:4px 11px;cursor:pointer;font-family:inherit;}
+  .seg button.on{background:var(--ac);color:#fff;}
+  button{font-family:inherit;font-weight:700;font-size:12px;border:none;border-radius:9px;padding:6px 12px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:104px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .rst{background:#fff;color:var(--soft);border:2px solid var(--line);}
+  input[type=range]{width:104px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  /* main: animation LEFT (sized to its content), code + RF table RIGHT */
+  .mainrow{display:flex;gap:12px;width:100%;max-width:1240px;margin:0 auto;align-items:stretch;justify-content:center;}
+  .leftcol{flex:1.5;min-width:0;display:flex;flex-direction:column;gap:6px;}
+  .canvwrap{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);position:relative;flex:1;min-height:290px;}
+  canvas{position:absolute;inset:5px;width:calc(100% - 10px);height:calc(100% - 10px);cursor:pointer;border-radius:8px;}
+  .stagebar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
+  .chip{font-family:inherit;font-weight:700;font-size:11px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:4px 10px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .rightcol{flex:1;max-width:450px;min-width:330px;display:flex;flex-direction:column;gap:8px;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.6;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;display:inline-block;width:100%;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);font-size:11.5px;line-height:1.5;}
+  .card h3{margin:0 0 4px;font-size:11.5px;color:var(--ac);}
+  .mono{font-family:"SF Mono",Consolas,monospace;background:#f4f7fd;border-radius:8px;padding:5px 8px;font-size:11px;margin:4px 0;line-height:1.7;}
+  #c-int{white-space:normal;overflow-x:visible;}
+  table.rf{border-collapse:collapse;width:100%;font-size:11px;font-family:"SF Mono",Consolas,monospace;}
+  table.rf th{color:var(--soft);font-weight:700;text-align:right;padding:2px 6px;border-bottom:1px solid var(--line);font-size:10.5px;}
+  table.rf td{text-align:right;padding:2px 6px;border-bottom:1px solid #eef2fa;}
+  table.rf tr.cur td{background:#f1ecfd;font-weight:700;color:var(--ac);}
+  table.rf td:first-child,table.rf th:first-child{text-align:left;}
+  .botrow{display:flex;gap:12px;width:100%;max-width:1240px;margin:8px auto 0;align-items:stretch;}
+  .botrow .card{flex:1;min-width:0;}
+  .warn{color:var(--neg);font-weight:700;}
+</style></head><body>
+<h1>Receptive Field Explorer — what does one deep neuron "see"?</h1>
+<p class="sub"><b>Click any square in any layer</b> and watch its <b>cone of influence</b> descend: <b style="color:var(--ac)">purple</b> = the neuron you picked · <b style="color:var(--out)">teal</b> = intermediate windows · <b style="color:var(--in)">orange</b> = the patch of the <b>input</b> it can see (its receptive field). With k=3, s=2 the field roughly <b>doubles every layer</b>.</p>
+
+<div class="cfg">
+  <span><b>layers</b></span><span class="seg" id="segL"></span>
+  <span><b>kernel k</b></span><span class="seg" id="segK"></span>
+  <span><b>stride s</b></span><span class="seg" id="segS"></span>
+  <span id="cfgnote"></span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play descent</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="rst" id="reset">↺ Reset</button>
+  &nbsp;·&nbsp; speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="mainrow">
+  <div class="leftcol">
+    <div class="canvwrap"><canvas id="cv" width="760" height="360"></canvas></div>
+    <div class="stagebar" id="chips"></div>
+  </div>
+  <div class="rightcol">
+    <div class="code" id="code"></div>
+    <div class="card"><h3>Receptive-field formula (iterative)</h3>
+      <div class="mono">r ← r + (k−1)·j&nbsp;&nbsp;<span style="color:#5a6b86"># field grows</span> &nbsp;·&nbsp; j ← j·s&nbsp;&nbsp;<span style="color:#5a6b86"># jump compounds</span></div>
+      <table class="rf" id="rftab"></table>
+    </div>
+  </div>
+</div>
+
+<div class="botrow">
+  <div class="card"><h3>Interval recursion (this descent) — a neuron at index i depends on [i·s, i·s+k−1] one layer down</h3>
+    <div class="mono" id="c-int"></div>
+  </div>
+  <div class="card"><h3>What this means</h3><div id="c-why"></div></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'), ctx=cv.getContext('2d');
+const N0=31;                       // input width (1-D slice for clarity)
+let K=3, S=2, NL=4;                // kernel, stride, requested layer count
+let sizes=[];                      // sizes[0]=input ... sizes[L]
+let focusL=4, focusI=0;            // which neuron is picked
+let prog=0;                        // descent progress: 0..focusL (continuous)
+let playing=false, last=0, speed=1;
+let cells=[];                      // hit boxes {x,y,w,h,layer,idx}
+
+function feasibleLayers(){ let n=N0,c=0; while(c<5){ const m=Math.floor((n-K)/S)+1; if(m<1)break; n=m;c++; } return c; }
+function rebuildSizes(){
+  const maxL=feasibleLayers();
+  if(NL>maxL){ NL=maxL; $('cfgnote').innerHTML='<span class="warn">layers capped at '+maxL+' (next layer would be empty)</span>'; }
+  else $('cfgnote').textContent='input = '+N0+' wide';
+  sizes=[N0]; for(let l=0;l<NL;l++) sizes.push(Math.floor((sizes[l]-K)/S)+1);
+  if(focusL>NL) focusL=NL;
+  focusI=Math.min(focusI, sizes[focusL]-1);
+  if(focusL===NL) focusI=Math.floor((sizes[NL]-1)/2);
+}
+function intervals(){               // intervals[d] = [lo,hi] at layer (focusL-d)
+  const iv=[[focusI,focusI]];
+  for(let l=focusL;l>=1;l--){ const [a,b]=iv[iv.length-1]; iv.push([a*S, b*S+K-1]); }
+  return iv;
+}
+function rfTable(){                 // per layer: n, jump, rf (bottom-up)
+  const rows=[{name:'input',n:sizes[0],j:1,r:1}];
+  let j=1,r=1;
+  for(let l=1;l<=NL;l++){ r=r+(K-1)*j; j=j*S; rows.push({name:'L'+l,n:sizes[l],j:j,r:r}); }
+  return rows;
+}
+
+/* ---------- layout & drawing ---------- */
+function layout(){
+  cells=[];
+  const W=cv.width, H=cv.height, rows=NL+1;
+  const topPad=42, botPad=14;
+  const dy=(H-topPad-botPad)/Math.max(rows-1,1);
+  const cw=Math.min(26,(W-36)/sizes[0]);
+  for(let l=0;l<=NL;l++){
+    const n=sizes[l], y=H-botPad-l*dy-cw/2;
+    const x0=(W-n*cw)/2;
+    for(let i=0;i<n;i++) cells.push({x:x0+i*cw+1,y:y-cw/2+1,w:cw-2,h:cw-2,layer:l,idx:i});
+  }
+}
+function cellAt(layer,idx){ return cells.find(c=>c.layer===layer&&c.idx===idx); }
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const iv=intervals(), stage=Math.min(Math.floor(prog),focusL), frac=prog-stage;
+  // cones + intervals
+  for(let d=1;d<=focusL;d++){
+    const visible = d<=stage ? 1 : (d===stage+1 ? frac : 0);
+    if(visible<=0) continue;
+    const up=iv[d-1], lo=iv[d];
+    const Lup=focusL-d+1, Ldn=focusL-d;
+    const a=cellAt(Lup,up[0]), b=cellAt(Lup,up[1]);
+    const c=cellAt(Ldn,lo[0]), e=cellAt(Ldn,lo[1]);
+    if(!a||!c) continue;
+    ctx.globalAlpha=0.13*visible;
+    ctx.fillStyle='#7b5cd6';
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y+a.h); ctx.lineTo(b.x+b.w, b.y+b.h);
+    ctx.lineTo(e.x+e.w, c.y); ctx.lineTo(c.x, c.y); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha=1;
+    // interval fill on lower row
+    const col = Ldn===0 ? '#f6921e' : '#16a3a3';
+    for(let i=lo[0];i<=lo[1];i++){ const cc=cellAt(Ldn,i); if(!cc)continue;
+      ctx.globalAlpha=(Ldn===0?0.85:0.55)*visible; ctx.fillStyle=col;
+      rr(cc.x,cc.y,cc.w,cc.h,4); ctx.fill(); ctx.globalAlpha=1; }
+  }
+  // base grid
+  for(const c of cells){
+    ctx.strokeStyle='#dde5f2'; ctx.lineWidth=1; rr(c.x,c.y,c.w,c.h,4); ctx.stroke();
+  }
+  // focus cell
+  const f=cellAt(focusL,focusI);
+  if(f){ ctx.fillStyle='#7b5cd6'; rr(f.x,f.y,f.w,f.h,4); ctx.fill();
+    ctx.strokeStyle='#5a3fb0'; ctx.lineWidth=2; rr(f.x-1.5,f.y-1.5,f.w+3,f.h+3,5); ctx.stroke(); }
+  // labels — above-left of each row so cells can use the full width
+  ctx.fillStyle='#5a6b86'; ctx.font='700 13px Segoe UI'; ctx.textAlign='left';
+  for(let l=0;l<=NL;l++){ const c0=cellAt(l,0);
+    ctx.fillText((l===0?'input':'L'+l)+'  ('+sizes[l]+' wide)', c0.x, c0.y-6); }
+  ctx.textAlign='center'; ctx.fillStyle='#25324a'; ctx.font='600 14px Segoe UI';
+  ctx.fillText('\u25b2 deeper layers \u2014 each square is one neuron; click any square', cv.width/2, 19);
+}
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+/* size the drawing buffer to the displayed box (1:1 pixels → crisp, fills the area) */
+function fitCanvas(){
+  const w=cv.clientWidth, h=cv.clientHeight;
+  if(w>40&&h>40&&(cv.width!==w||cv.height!==h)){ cv.width=w; cv.height=h; }
+}
+
+/* ---------- side panels ---------- */
+function renderPanels(){
+  const iv=intervals(), stage=Math.min(Math.floor(prog),focusL);
+  // interval recursion text — compact chain on one wrapping line
+  let s='';
+  for(let d=0;d<=focusL;d++){
+    const L=focusL-d, [a,b]=iv[d];
+    const lbl=(L===0?'input':'L'+L)+'\u2009['+a+','+b+']';
+    const seg=d===stage?'<b style="background:#f1ecfd;border-radius:4px;padding:1px 4px;color:#7b5cd6">'+lbl+'</b>':lbl;
+    s+=(d?' <span style="color:#9fb0cc">\u2192</span> ':'')+seg;
+  }
+  s+=' &nbsp;<span style="color:#5a6b86">(each step: lo\u2190lo\u00b7'+S+', hi\u2190hi\u00b7'+S+'+'+(K-1)+')</span>';
+  $('c-int').innerHTML=s;
+  // RF table
+  const rows=rfTable(); const reached=focusL-stage;  // layer index reached so far
+  let t='<tr><th>layer</th><th>n</th><th>jump j</th><th>RF r</th></tr>';
+  for(let i=rows.length-1;i>=0;i--){ const r=rows[i];
+    t+='<tr class="'+(i===reached&&i<=focusL?'cur':'')+'"><td>'+r.name+'</td><td>'+r.n+'</td><td>'+r.j+'</td><td>'+r.r+'×'+r.r+'</td></tr>'; }
+  $('rftab').innerHTML=t;
+  // why text — kept short so the whole page fits one viewport
+  const rf=rows[focusL].r, inIv=iv[focusL], wide=inIv[1]-inIv[0]+1;
+  $('c-why').innerHTML='Your neuron in <b>'+(focusL===0?'the input':'L'+focusL)+'</b> sees <b style="color:#f6921e">'+wide+' input pixels</b> here (a <b>'+rf+'\u00d7'+rf+'</b> patch in 2-D). Early layers \u2192 edges &amp; textures; deep layers \u2192 whole digits, same tiny kernels. '+
+    (S>1?'Stride '+S+' multiplies the jump <b>j</b> every layer, so the field grows <b>geometrically</b> \u2014 depth is cheap zoom-out.':'Stride 1 grows the field by only k\u22121='+(K-1)+' per layer (<b>linear</b>) \u2014 stride or pooling is what makes it explode.');
+  // chips
+  const bar=$('chips'); bar.innerHTML='';
+  for(let d=0;d<=focusL;d++){
+    const b=document.createElement('button'); b.className='chip'+(d===stage?' on':'');
+    b.textContent= d===0?'① pick neuron': (d===focusL?('②'+'…').slice(0,0)+'⬇ reach input':'⬇ to L'+(focusL-d));
+    if(d===0) b.textContent='① focus neuron';
+    b.onclick=()=>{ prog=d; playing=false; $('play').textContent='▶ Play descent'; renderAll(); };
+    bar.appendChild(b);
+  }
+  // code panel
+  let lines=['<span class="cm"># every layer below shrinks the map but widens the *view*</span>',
+             'net = nn.Sequential('];
+  for(let l=1;l<=NL;l++){
+    const hl=(focusL-stage)===l?'hl':'';
+    lines.push('<span class="'+hl+'">    nn.Conv2d(c'+(l-1)+', c'+l+', kernel_size=<span class="num">'+K+'</span>, stride=<span class="num">'+S+'</span>),  <span class="cm"># L'+l+': '+sizes[l-1]+' → '+sizes[l]+'</span></span>');
+  }
+  lines.push(')');
+  lines.push('<span class="cm"># receptive field after L'+focusL+': </span><span class="num">'+rows[focusL].r+'×'+rows[focusL].r+'</span><span class="cm"> input pixels</span>');
+  $('code').innerHTML=lines.join('\n');
+}
+function renderAll(){ fitCanvas(); layout(); draw(); renderPanels(); }
+addEventListener('resize',()=>renderAll());
+
+/* ---------- interaction ---------- */
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect();
+  const x=(e.clientX-r.left)*cv.width/r.width, y=(e.clientY-r.top)*cv.height/r.height;
+  for(const c of cells){ if(x>=c.x&&x<=c.x+c.w&&y>=c.y&&y<=c.y+c.h){
+    if(c.layer===0) return;                  // input pixels have no window below
+    focusL=c.layer; focusI=c.idx; prog=0; playing=true; last=0;
+    $('play').textContent='⏸ Pause'; renderAll(); return; } }
+});
+$('play').onclick=()=>{ if(prog>=focusL){prog=0;} playing=!playing; last=0;
+  $('play').textContent=playing?'⏸ Pause':'▶ Play descent'; };
+$('fwd').onclick=()=>{ playing=false; $('play').textContent='▶ Play descent';
+  prog=Math.min(focusL,Math.floor(prog+1e-6)+1); renderAll(); };
+$('back').onclick=()=>{ playing=false; $('play').textContent='▶ Play descent';
+  prog=Math.max(0,Math.ceil(prog-1e-6)-1); renderAll(); };
+$('reset').onclick=()=>{ playing=false; prog=0; $('play').textContent='▶ Play descent'; renderAll(); };
+$('speed').oninput=e=>{ speed=+e.target.value; $('spv').textContent=speed+'×'; };
+
+function seg(el,opts,get,set){
+  el.innerHTML='';
+  for(const o of opts){ const b=document.createElement('button');
+    b.textContent=o; b.className=get()===o?'on':'';
+    b.onclick=()=>{ set(o); rebuildSizes(); prog=0; playing=false; $('play').textContent='▶ Play descent'; buildSegs(); renderAll(); };
+    el.appendChild(b); }
+}
+function buildSegs(){
+  seg($('segL'),[1,2,3,4,5],()=>NL,v=>NL=v);
+  seg($('segK'),[3,5,7],()=>K,v=>K=v);
+  seg($('segS'),[1,2],()=>S,v=>S=v);
+}
+
+/* ---------- anim loop ---------- */
+function loop(t){
+  if(playing){
+    if(!last) last=t;
+    prog+=(t-last)/900*speed; last=t;
+    if(prog>=focusL){ prog=focusL; playing=false; $('play').textContent='▶ Play descent'; }
+    draw(); renderPanels();
+  } else last=0;
+  requestAnimationFrame(loop);
+}
+rebuildSizes(); focusL=NL; focusI=Math.floor((sizes[NL]-1)/2);
+buildSegs(); renderAll(); requestAnimationFrame(loop);
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

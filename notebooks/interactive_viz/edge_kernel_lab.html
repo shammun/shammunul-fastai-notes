@@ -1,0 +1,225 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edge Kernel Lab</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--dc:22px;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:18px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12.5px;margin:0 auto 8px;max-width:900px;line-height:1.5;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:6px 14px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12.5px;font-weight:700;margin:0 0 7px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:11px;}
+  .grid{display:grid;gap:2px;}
+  .cell{display:flex;align-items:center;justify-content:center;font-family:"SF Mono",Consolas,monospace;border-radius:4px;border:1px solid #eef2f8;}
+  /* scenario view — natural height, no stretching */
+  #scen{display:flex;gap:14px;justify-content:center;align-items:stretch;flex-wrap:wrap;}
+  .pg .cell{width:46px;height:46px;font-size:14px;font-weight:700;}
+  .kg .cell{width:46px;height:46px;font-size:15px;font-weight:700;background:#fff;}
+  .math{font-family:"SF Mono",Consolas,monospace;font-size:13px;line-height:2.0;background:#f4f7fd;border-radius:10px;padding:10px 14px;max-width:430px;}
+  .math .neg{color:var(--neg);font-weight:700;}.math .pos{color:var(--out);font-weight:700;}.math .zer{color:#9fb0cc;}
+  .verdict{margin-top:10px;font-size:13.5px;font-weight:700;text-align:center;border-radius:10px;padding:9px;}
+  .v0{background:#f1f4fa;color:var(--soft);}
+  .vp{background:rgba(22,163,163,.12);color:var(--out);}
+  .vn{background:rgba(214,69,69,.10);color:var(--neg);}
+  /* draw view */
+  #drawwrap{display:none;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .dg .cell{width:var(--dc);height:var(--dc);cursor:crosshair;}
+  .og .cell{width:var(--dc);height:var(--dc);font-size:0;}
+  .toolrow{display:flex;gap:8px;justify-content:center;align-items:center;margin:9px 0 0;flex-wrap:wrap;font-size:12.5px;color:var(--soft);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:7px 13px;cursor:pointer;}
+  .tool{background:#ece7fb;color:var(--ac);}
+  .tool.on{background:var(--ac);color:#fff;}
+  .ghost{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  select{font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:5px 8px;background:#fff;cursor:pointer;}
+  .kg input{width:100%;height:100%;border:none;text-align:center;font-family:inherit;font-size:13px;font-weight:700;color:var(--ink);background:transparent;border-radius:4px;}
+  .kg input:focus{outline:2px solid var(--ac);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 13px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.65;max-width:840px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:11px;color:var(--soft);margin-top:6px;line-height:1.45;}
+  .legend b.p{color:var(--out);}.legend b.n{color:var(--neg);}
+  @media (max-width:760px){:root{--dc:17px;}}
+</style></head><body>
+<h1>Edge Kernel Lab — why does <span style="font-family:monospace">[−1,−1,−1 / 0,0,0 / +1,+1,+1]</span> find top edges?</h1>
+<p class="sub">The kernel <b>rewards</b> bright pixels under its <b style="color:var(--out)">+1 row</b> and <b>penalizes</b> bright pixels under its <b style="color:var(--neg)">−1 row</b>. Step through the four scenarios — then <b>draw your own image</b> and watch the edge map react live.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Uniform region</button>
+  <button class="chip" data-s="1">② Top edge (dark→light)</button>
+  <button class="chip" data-s="2">③ Bottom edge (light→dark)</button>
+  <button class="chip" data-s="3">④ Vertical edge</button>
+  <button class="chip" data-s="4">🖌 ⑤ Draw your own</button>
+</div>
+
+<div id="scen"></div>
+
+<div id="drawwrap">
+  <div class="card">
+    <div class="cap" style="color:var(--in)">Your image (16×16) <small>click / drag to paint — try drawing a box or a 7</small></div>
+    <div class="grid dg" id="dg" style="grid-template-columns:repeat(16,var(--dc))"></div>
+    <div class="toolrow">
+      <button class="tool on" id="brush">🖌 Brush</button>
+      <button class="tool" id="eraser">⌫ Eraser</button>
+      <button class="ghost" id="clear">Clear</button>
+      <button class="ghost" id="preset1">▦ Box</button>
+      <button class="ghost" id="preset2">７ Seven</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">Kernel <small>pick one, or edit “custom”</small></div>
+    <div style="display:flex;justify-content:center;margin-bottom:8px">
+      <select id="ksel">
+        <option value="top">top_edge</option>
+        <option value="left">left_edge</option>
+        <option value="diag1">diag1_edge</option>
+        <option value="diag2">diag2_edge</option>
+        <option value="custom">custom (editable)</option>
+      </select>
+    </div>
+    <div class="grid kg" id="kg" style="grid-template-columns:repeat(3,42px);justify-content:center"></div>
+    <div class="legend" style="max-width:230px">A kernel is a tiny <b>pattern matcher</b>: the output is large exactly where the image locally looks like the kernel’s +/− layout.</div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--out)">Edge map (14×14) <small><b class="p" style="color:var(--out)">teal = positive</b>, <b style="color:var(--neg)">red = negative</b>, white ≈ 0</small></div>
+    <div class="grid og" id="og" style="grid-template-columns:repeat(14,var(--dc))"></div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend" id="bottomnote"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const KER={
+ top:[[-1,-1,-1],[0,0,0],[1,1,1]],
+ left:[[-1,0,1],[-1,0,1],[-1,0,1]],
+ diag1:[[0,-1,1],[-1,1,0],[1,0,-1]],
+ diag2:[[1,-1,0],[0,1,-1],[-1,0,1]],
+ custom:[[-1,-1,-1],[0,0,0],[1,1,1]]
+};
+let kname='top', kernel=KER.top.map(r=>r.slice());
+const SCEN=[
+ {name:'uniform',  patch:[[1,1,1],[1,1,1],[1,1,1]], note:'All nine pixels are equally bright: the −1 row subtracts <b>exactly</b> what the +1 row adds. They cancel → output ≈ 0. <b>No edge here.</b>'},
+ {name:'top edge', patch:[[0,0,0],[0,0,0],[1,1,1]], note:'Dark above, light below — the +1 row sits on bright pixels (adds a lot) while the −1 row sits on dark pixels (subtracts nothing). <b>Large positive → strong top edge!</b>'},
+ {name:'bottom edge', patch:[[1,1,1],[0,0,0],[0,0,0]], note:'Light above, dark below — now the −1 row is on the bright pixels. The same kernel responds with a <b>large negative</b> number. Sign tells you the edge direction.'},
+ {name:'vertical edge', patch:[[0,0,1],[0,0,1],[0,0,1]], note:'A vertical edge changes left-to-right, but this kernel only compares <b>top vs bottom</b>: each row contributes the same, so + and − cancel. <b>≈ 0 — wrong detector for this edge.</b> (left_edge would fire here.)'}
+];
+let scenIdx=0;
+
+// ---------- scenario rendering ----------
+function gray(v){const g=Math.round(247-v*210);return `rgb(${g},${g+2},${Math.min(255,g+8)})`;}
+function fcol(v){return v>0.55?'#fff':'#46546e';}
+function renderScenario(){
+  const sc=SCEN[scenIdx], k=KER.top;
+  let terms=[],sum=0;
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){const p=sc.patch[i][j]*k[i][j];sum+=p;
+    const cls=p>0?'pos':(p<0?'neg':'zer');
+    terms.push(`<span class="${cls}">(${k[i][j]>=0?'+':''}${k[i][j]}·${sc.patch[i][j]})</span>`);}
+  const vcls=Math.abs(sum)<0.01?'v0':(sum>0?'vp':'vn');
+  const vtxt=Math.abs(sum)<0.01?'output ≈ 0 — nothing detected':(sum>0?`output = +${sum} — strong POSITIVE response`:`output = ${sum} — strong NEGATIVE response`);
+  let patchHTML='';sc.patch.forEach(r=>r.forEach(v=>{patchHTML+=`<div class="cell" style="background:${gray(v)};color:${fcol(v)}">${v}</div>`;}));
+  let kHTML='';k.forEach(r=>r.forEach(v=>{kHTML+=`<div class="cell" style="color:${v>0?'var(--out)':(v<0?'var(--neg)':'#9fb0cc')}">${v>0?'+':''}${v}</div>`;}));
+  $('scen').innerHTML=`
+   <div class="card"><div class="cap" style="color:var(--in)">image patch — ${sc.name}</div>
+     <div class="grid pg" style="grid-template-columns:repeat(3,42px)">${patchHTML}</div></div>
+   <div class="card"><div class="cap" style="color:var(--ac)">top_edge kernel</div>
+     <div class="grid kg" style="grid-template-columns:repeat(3,42px)">${kHTML}</div></div>
+   <div class="card" style="max-width:470px"><div class="cap">the arithmetic, term by term</div>
+     <div class="math">${terms.slice(0,3).join(' + ')} +<br>${terms.slice(3,6).join(' + ')} +<br>${terms.slice(6,9).join(' + ')}<br>= <b>${sum}</b></div>
+     <div class="verdict ${vcls}">${vtxt}</div>
+     <div class="legend" style="text-align:left;margin-top:8px">${sc.note}</div></div>`;
+  $('code').innerHTML=
+`<span class="cm"># the notebook's manual convolution — same arithmetic you see above</span>
+(patch * top_edge).<span class="fn">sum</span>()        <span class="cm"># = ${sum}</span>
+<span class="cm"># top_edge = tensor([[-1,-1,-1], [0,0,0], [1,1,1]])</span>`;
+  $('bottomnote').innerHTML='Try all four chips. One kernel = one question asked everywhere: <i>“is it darker above me than below me?”</i>';
+}
+
+// ---------- draw-your-own ----------
+const DN=16, DO=DN-2;
+let img=Array.from({length:DN},()=>Array(DN).fill(0));
+let painting=false, erase=false;
+function presetBox(){img=Array.from({length:DN},()=>Array(DN).fill(0));
+  for(let i=4;i<12;i++){img[4][i]=1;img[11][i]=1;img[i][4]=1;img[i][11]=1;}}
+function presetSeven(){img=Array.from({length:DN},()=>Array(DN).fill(0));
+  for(let j=3;j<12;j++)img[3][j]=1; for(let i=4;i<13;i++)img[i][Math.max(3,12-i)]=1;}
+function buildDraw(){
+  const dg=$('dg');dg.innerHTML='';
+  for(let r=0;r<DN;r++)for(let c=0;c<DN;c++){
+    const d=document.createElement('div');d.className='cell';d.dataset.r=r;d.dataset.c=c;
+    d.onpointerdown=e=>{e.preventDefault();painting=true;paint(r,c);};
+    d.onpointerenter=()=>{if(painting)paint(r,c);};
+    dg.appendChild(d);
+  }
+  window.onpointerup=()=>painting=false;
+  const og=$('og');og.innerHTML='';
+  for(let i=0;i<DO*DO;i++){const d=document.createElement('div');d.className='cell';og.appendChild(d);}
+  const kg=$('kg');kg.innerHTML='';
+  for(let r=0;r<3;r++)for(let c=0;c<3;c++){
+    const d=document.createElement('div');d.className='cell';
+    const inp=document.createElement('input');inp.value=kernel[r][c];
+    inp.readOnly=(kname!=='custom');
+    inp.onchange=()=>{const v=parseFloat(inp.value);if(!isNaN(v))kernel[r][c]=v;inp.value=kernel[r][c];renderDraw();};
+    d.appendChild(inp);kg.appendChild(d);
+  }
+}
+function paint(r,c){img[r][c]=erase?0:1;renderDraw();}
+function renderDraw(){
+  const dgc=$('dg').children;
+  for(let r=0;r<DN;r++)for(let c=0;c<DN;c++){const d=dgc[r*DN+c];
+    d.style.background=gray(img[r][c]);}
+  // edge map
+  const ogc=$('og').children;let m=0,vals=[];
+  for(let r=0;r<DO;r++)for(let c=0;c<DO;c++){let s=0;
+    for(let i=0;i<3;i++)for(let j=0;j<3;j++)s+=img[r+i][c+j]*kernel[i][j];
+    vals.push(s);m=Math.max(m,Math.abs(s));}
+  vals.forEach((v,i)=>{const t=m?Math.min(1,Math.abs(v)/m):0;
+    ogc[i].style.background=v>=0?`rgba(22,163,163,${t})`:`rgba(214,69,69,${t})`;
+    ogc[i].title=`output[${(i/DO)|0}, ${i%DO}] = ${v.toFixed(1)}`;});
+  $('code').innerHTML=
+`<span class="cm"># the notebook builds the full edge map with a nested comprehension:</span>
+rng = <span class="fn">range</span>(<span class="num">1</span>, <span class="num">${DN-1}</span>)
+edge_map = tensor([[<span class="fn">apply_kernel</span>(i, j, ${kname==='custom'?'kernel':kname+'_edge'}) <span class="cm">for</span> j <span class="cm">in</span> rng] <span class="cm">for</span> i <span class="cm">in</span> rng])
+<span class="cm"># …or, vectorized, the PyTorch one-liner you'll meet in Part 4:</span>
+edge_map = F.<span class="fn">conv2d</span>(img[<span class="cm">None</span>,<span class="cm">None</span>], k[<span class="cm">None</span>,<span class="cm">None</span>])[<span class="num">0</span>,<span class="num">0</span>]   <span class="cm"># (16,16) → (14,14)</span>`;
+  $('bottomnote').innerHTML='Paint a shape, then switch kernels: <b>top_edge</b> lights up horizontal strokes, <b>left_edge</b> vertical ones, the diagonals catch the slants. Each kernel sees only its own pattern — a CNN <b>learns</b> these numbers instead of us hand-writing them.';
+}
+
+// ---------- wiring ----------
+document.querySelectorAll('.stagebar .chip').forEach(ch=>{
+  ch.onclick=()=>{document.querySelectorAll('.stagebar .chip').forEach(c=>c.classList.remove('on'));
+    ch.classList.add('on');const s=+ch.dataset.s;
+    if(s<4){scenIdx=s;$('scen').style.display='flex';$('drawwrap').style.display='none';renderScenario();}
+    else{$('scen').style.display='none';$('drawwrap').style.display='flex';renderDraw();}};
+});
+$('brush').onclick=()=>{erase=false;$('brush').classList.add('on');$('eraser').classList.remove('on');};
+$('eraser').onclick=()=>{erase=true;$('eraser').classList.add('on');$('brush').classList.remove('on');};
+$('clear').onclick=()=>{img=Array.from({length:DN},()=>Array(DN).fill(0));renderDraw();};
+$('preset1').onclick=()=>{presetBox();renderDraw();};
+$('preset2').onclick=()=>{presetSeven();renderDraw();};
+$('ksel').onchange=e=>{kname=e.target.value;kernel=KER[kname].map(r=>r.slice());buildDraw();presetCurrent();renderDraw();};
+function presetCurrent(){/* keep current img */}
+
+presetSeven();buildDraw();renderScenario();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

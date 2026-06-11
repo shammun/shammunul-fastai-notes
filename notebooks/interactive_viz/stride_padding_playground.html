@@ -1,0 +1,196 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stride &amp; Padding Playground</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;height:100%;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px;display:flex;flex-direction:column;}
+  h1{font-size:19px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12.5px;margin:0 0 10px;max-width:880px;margin-left:auto;margin-right:auto;line-height:1.5;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:6px 14px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .ctlcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 16px;box-shadow:0 6px 16px rgba(123,92,214,.08);display:flex;gap:18px;justify-content:center;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--soft);max-width:980px;margin:0 auto 12px;}
+  .ctl{display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .ctl b{font-family:monospace;color:var(--ac);font-size:14px;}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .main{display:flex;gap:16px;justify-content:center;align-items:flex-start;flex-wrap:wrap;flex:1;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12.5px;font-weight:700;margin:0 0 7px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:11px;}
+  .grid{display:grid;gap:2px;}
+  .cell{width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-family:"SF Mono",Consolas,monospace;font-size:10px;border-radius:4px;border:1px solid #eef2f8;background:#fbfdff;}
+  .cell.pad{background:repeating-linear-gradient(45deg,#fdf4e7,#fdf4e7 4px,#fff 4px,#fff 8px);border:1px dashed #f0c489;color:#caa15f;}
+  .cell.real{background:#e9eef9;color:#46546e;}
+  .cell.win{outline:3px solid var(--in);outline-offset:-2px;z-index:2;}
+  .og .cell{cursor:pointer;color:#b9c4d8;}
+  .og .cell.done{background:rgba(22,163,163,.7);color:#fff;font-weight:700;}
+  .og .cell.cur{outline:3px solid var(--ac);outline-offset:-2px;}
+  .og .cell:hover{outline:2px solid var(--ac);outline-offset:-2px;}
+  .formula{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);padding:12px 16px;max-width:330px;font-size:13px;line-height:1.7;}
+  .formula .big{font-family:monospace;font-size:14.5px;background:#f4f7fd;border-radius:8px;padding:8px 10px;margin:8px 0;text-align:center;}
+  .formula .num{color:var(--in);font-weight:700;}.formula .res{color:var(--out);font-weight:700;font-size:16px;}
+  .badge{display:inline-block;border-radius:999px;padding:3px 11px;font-size:11.5px;font-weight:700;margin-top:6px;}
+  .b-same{background:rgba(22,163,163,.13);color:var(--out);}
+  .b-half{background:rgba(123,92,214,.13);color:var(--ac);}
+  .b-shrink{background:rgba(246,146,30,.14);color:#c4761a;}
+  .b-warn{background:rgba(214,69,69,.10);color:var(--neg);}
+  .ctr{display:flex;gap:8px;justify-content:center;align-items:center;margin:12px 0 4px;flex-wrap:wrap;font-size:12.5px;color:var(--soft);}
+  button{font-family:inherit;font-weight:700;font-size:13px;border:none;border-radius:9px;padding:8px 15px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:92px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:36px;display:inline-block;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:10px 14px;font-family:"SF Mono",Consolas,monospace;font-size:12.5px;line-height:1.75;max-width:800px;margin:8px auto 0;overflow-x:auto;white-space:pre;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:11.5px;color:var(--soft);margin-top:6px;line-height:1.5;}
+  @media (max-width:860px){.cell{width:22px;height:22px;font-size:8px;}}
+</style></head><body>
+<h1>Stride &amp; Padding Playground</h1>
+<p class="sub"><b style="color:#c4761a">Padding</b> adds a ring of zeros so the kernel can reach the edges; <b style="color:var(--ac)">stride</b> makes the kernel jump several pixels at a time, shrinking the output. Move the sliders, click the presets (each shows its PyTorch call), click any output cell to place the window, or press Play.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-p="valid">“valid” — p=0, s=1 (shrinks)</button>
+  <button class="chip" data-p="same">“same” — p=k//2, s=1 (size kept)</button>
+  <button class="chip" data-p="halve">downsample — p=1, s=2 (halves)</button>
+  <button class="chip" data-p="big">5×5 kernel, p=2, s=1</button>
+</div>
+
+<div class="ctlcard">
+  <div class="ctl">input n <input id="n" type="range" min="4" max="10" value="8"><b id="nv">8</b></div>
+  <div class="ctl">kernel k <input id="k" type="range" min="1" max="5" step="2" value="3"><b id="kv">3</b></div>
+  <div class="ctl">padding p <input id="p" type="range" min="0" max="2" value="0"><b id="pv">0</b></div>
+  <div class="ctl">stride s <input id="s" type="range" min="1" max="3" value="1"><b id="sv">1</b></div>
+  <div class="ctl">speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><b class="speedv" id="spv">1×</b></div>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" style="color:var(--in)">Padded input <small><span style="color:#caa15f">striped = zero padding</span>, solid = real pixels</small></div>
+    <div class="grid" id="ig"></div>
+  </div>
+  <div class="formula">
+    <b>Output size formula</b> (the notebook’s):
+    <div class="big">⌊ (n + 2p − k) / s ⌋ + 1</div>
+    <div class="big" id="plug"></div>
+    <div id="badge"></div>
+    <div id="floornote" style="font-size:11.5px;color:var(--soft);margin-top:7px;line-height:1.5"></div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--out)">Output <small>click a cell to jump the window there</small></div>
+    <div class="grid og" id="og"></div>
+  </div>
+</div>
+
+<div class="ctr">
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend" id="note"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+let n=8,k=3,p=0,s=1,pos=0,timer=null,speed=1,preset='valid';
+const osize=()=>Math.floor((n+2*p-k)/s)+1;
+const padded=()=>n+2*p;
+
+function clampPos(){const O=osize();if(pos>=O*O)pos=Math.max(0,O*O-1);}
+function build(){
+  clampPos();
+  const P=padded(),O=osize();
+  const ig=$('ig');ig.style.gridTemplateColumns=`repeat(${P},30px)`;ig.innerHTML='';
+  for(let r=0;r<P;r++)for(let c=0;c<P;c++){
+    const d=document.createElement('div');
+    const isPad=r<p||c<p||r>=P-p||c>=P-p;
+    d.className='cell '+(isPad?'pad':'real');
+    d.textContent=isPad?'0':'·';
+    ig.appendChild(d);}
+  const og=$('og');og.style.gridTemplateColumns=`repeat(${O},30px)`;og.innerHTML='';
+  for(let i=0;i<O*O;i++){const d=document.createElement('div');d.className='cell';d.textContent='·';
+    d.onclick=()=>{stop();pos=i;render();};og.appendChild(d);}
+  render();
+}
+function stepF(){const O=osize();if(pos<O*O-1){pos++;render();}else{stop();render();}}
+function stepB(){if(pos>0){pos--;render();}}
+function play(){if(timer){stop();return;}
+  $('play').textContent='⏸ Pause';
+  timer=setInterval(()=>{const O=osize();if(pos>=O*O-1){stop();return;}stepF();},380/speed);}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+
+function render(){
+  const P=padded(),O=osize();
+  const r=(pos/O)|0,c=pos%O, wr=r*s, wc=c*s;     // window top-left in padded coords
+  const ig=$('ig').children;
+  for(let i=0;i<P*P;i++)ig[i].classList.remove('win');
+  for(let i=0;i<k;i++)for(let j=0;j<k;j++){const rr=wr+i,cc=wc+j;
+    if(rr<P&&cc<P)ig[rr*P+cc].classList.add('win');}
+  const og=$('og').children;
+  for(let i=0;i<O*O;i++){og[i].classList.toggle('cur',i===pos);
+    og[i].classList.toggle('done',i<=pos);og[i].textContent=i<=pos?'✓':'·';}
+  // formula
+  $('plug').innerHTML=`⌊ (<span class="num">${n}</span> + 2·<span class="num">${p}</span> − <span class="num">${k}</span>) / <span class="num">${s}</span> ⌋ + 1 = ⌊${(n+2*p-k)}/${s}⌋ + 1 = <span class="res">${O}</span>`;
+  // badge
+  let badge='';
+  if(O===n&&s===1)badge='<span class="badge b-same">SAME size — padding exactly cancels the shrink (p = k//2)</span>';
+  else if(s===2&&O===Math.ceil(n/2))badge='<span class="badge b-half">HALVED — this is the notebook’s stride-2 downsampling</span>';
+  else if(O<n)badge=`<span class="badge b-shrink">shrinks: ${n} → ${O}</span>`;
+  else badge=`<span class="badge b-shrink">${n} → ${O}</span>`;
+  const leftover=(n+2*p-k)%s;
+  $('badge').innerHTML=badge+(leftover?` <span class="badge b-warn">⌊⌋ floor drops ${leftover} leftover pixel${leftover>1?'s':''}</span>`:'');
+  $('floornote').textContent=leftover
+    ?'The stride doesn’t divide evenly, so the last window can’t fit — the floor ⌊⌋ in the formula silently throws those columns/rows away.'
+    :'The stride tiles the input exactly — no pixels are wasted.';
+  // code
+  $('code').innerHTML=
+`<span class="cm"># in PyTorch, padding and stride are just arguments:</span>
+out = F.<span class="fn">conv2d</span>(x, kernel, padding=<span class="num">${p}</span>, stride=<span class="num">${s}</span>)
+<span class="cm"># input ${n}×${n}  →  output ${O}×${O}   (window currently at output[${r}, ${c}], input rows ${wr}..${wr+k-1})</span>
+<span class="cm"># the notebook's conv() helper bakes in the classic combo:  nn.Conv2d(ni, nf, ks, stride=2, padding=ks//2)</span>`;
+  $('note').innerHTML='Memorize the two workhorse settings: <b>p = k//2, s = 1</b> keeps the size (used everywhere), and <b>p = 1, s = 2</b> halves it (how <span style="font-family:monospace">simple_cnn</span> shrinks 28→14→7→4→2→1 with no pooling at all).';
+}
+
+function applyPreset(name){preset=name;stop();pos=0;
+  if(name==='valid'){k=3;p=0;s=1;}
+  if(name==='same'){k=3;p=1;s=1;}
+  if(name==='halve'){k=3;p=1;s=2;}
+  if(name==='big'){k=5;p=2;s=1;}
+  $('k').value=k;$('p').value=p;$('s').value=s;syncLabels();build();
+  document.querySelectorAll('.stagebar .chip').forEach(ch=>ch.classList.toggle('on',ch.dataset.p===name));
+}
+function syncLabels(){$('nv').textContent=n;$('kv').textContent=k;$('pv').textContent=p;$('sv').textContent=s;}
+['n','k','p','s'].forEach(id=>$(id).oninput=e=>{
+  stop();window[id]=0; // noop guard
+  if(id==='n')n=+e.target.value;if(id==='k')k=+e.target.value;
+  if(id==='p')p=+e.target.value;if(id==='s')s=+e.target.value;
+  if(k>n+2*p){k=Math.min(k,n+2*p);$('k').value=k;}
+  pos=0;syncLabels();
+  document.querySelectorAll('.stagebar .chip').forEach(ch=>ch.classList.remove('on'));
+  build();});
+document.querySelectorAll('.stagebar .chip').forEach(ch=>ch.onclick=()=>applyPreset(ch.dataset.p));
+$('play').onclick=play;$('fwd').onclick=()=>{stop();stepF();};$('back').onclick=()=>{stop();stepB();};
+$('reset').onclick=()=>{stop();pos=0;render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+syncLabels();build();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

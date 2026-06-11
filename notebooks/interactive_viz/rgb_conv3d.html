@@ -1,0 +1,287 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RGB Convolution in 3D — one kernel, three channels, one number out</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;height:100%;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;display:flex;flex-direction:column;overflow:auto;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .cfg{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--soft);margin-bottom:7px;}
+  .cfg b{color:var(--ink);}
+  .seg{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden;background:#fff;}
+  .seg button{border:none;background:transparent;color:var(--soft);font-weight:700;font-size:11.5px;padding:4px 11px;cursor:pointer;font-family:inherit;}
+  .seg button.on{background:var(--ac);color:#fff;}
+  /* main: 3D scene LEFT · stages + per-channel sums + code stacked RIGHT.
+     align-items:stretch makes the scene end exactly where the right column ends. */
+  .mainrow{display:flex;gap:12px;width:100%;max-width:1240px;margin:0 auto;align-items:stretch;flex:1;min-height:330px;}
+  #scene{flex:1;min-width:0;min-height:300px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);position:relative;cursor:grab;overflow:hidden;}
+  #scene:active{cursor:grabbing;}
+  #fallback{display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;color:var(--soft);font-size:13px;padding:24px;line-height:1.7;}
+  .hint3d{position:absolute;right:10px;bottom:8px;font-size:11px;color:#9aa8c4;pointer-events:none;}
+  .rightcol{flex:0 0 470px;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:8px;}
+  .stagebar{display:flex;flex-direction:column;gap:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:10px;padding:8px 12px;cursor:pointer;transition:all .15s;text-align:left;width:100%;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .sums{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .sc{background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 10px;box-shadow:0 4px 10px rgba(123,92,214,.06);font-size:11px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .sc .lab{font-weight:700;font-size:10.5px;letter-spacing:.2px;}
+  .sc .val{font-family:"SF Mono",Consolas,monospace;font-size:14.5px;font-weight:700;}
+  .sc.r .lab{color:#d64545;}.sc.g .lab{color:#2e9e4f;}.sc.b .lab{color:#3b6fd4;}
+  .sc.t{border-color:var(--out);grid-column:1 / -1;} .sc.t .lab{color:var(--out);} .sc.t .val{color:var(--out);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:10px 13px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.75;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;display:inline-block;width:100%;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .ctr{display:flex;gap:8px;justify-content:center;align-items:center;margin:8px 0 2px;flex-wrap:wrap;font-size:12px;color:var(--soft);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:7px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .rst{background:#fff;color:var(--soft);border:2px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);}
+  #pos{width:200px;} #speed{width:104px;}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:4px;line-height:1.45;max-width:980px;margin-left:auto;margin-right:auto;}
+  @media (max-width:980px){.rightcol{flex:1 1 100%;}.mainrow{flex-wrap:wrap;}}
+</style></head><body>
+<h1>RGB Convolution in 3D — the kernel is a <span style="font-family:monospace">3×3×3</span> <b>cube</b>, not a square</h1>
+<p class="sub">A colour image here has shape <span style="font-family:monospace">(3, 8, 8)</span>: three stacked channel planes. One filter spans <b>ALL channels at once</b> — a 3×3 window from R, G <i>and</i> B (27 numbers) × 27 weights → <b>one</b> output number. <b>Drag to rotate · scroll to zoom.</b></p>
+
+<div class="cfg">
+  <span><b>filter-1 kernel</b></span><span class="seg" id="segK"></span>
+  &nbsp;<span><b># filters</b></span><span class="seg" id="segF"></span>
+</div>
+
+<div class="mainrow">
+  <div id="scene">
+    <div id="fallback">⚠️ three.js could not load (this view needs internet access for the CDN).<br>
+    The arithmetic to the right still works — use the position slider and stage chips.</div>
+    <div class="hint3d">drag = rotate · wheel = zoom</div>
+  </div>
+  <div class="rightcol">
+    <div class="stagebar">
+      <button class="chip on" id="st0">① place the 3×3×3 window</button>
+      <button class="chip" id="st1">② multiply &amp; sum each channel</button>
+      <button class="chip" id="st2">③ add them → write 1 number</button>
+    </div>
+    <div class="sums">
+      <div class="sc r"><span class="lab">R: (patch_R · W_R).sum()</span><span class="val" id="sR">—</span></div>
+      <div class="sc g"><span class="lab">G: (patch_G · W_G).sum()</span><span class="val" id="sG">—</span></div>
+      <div class="sc b"><span class="lab">B: (patch_B · W_B).sum()</span><span class="val" id="sB">—</span></div>
+      <div class="sc"><span class="lab">+ bias b</span><span class="val" id="sBias">0.00</span></div>
+      <div class="sc t"><span class="lab">= out[f, y, x]</span><span class="val" id="sT">—</span></div>
+    </div>
+    <div class="code" id="code"></div>
+  </div>
+</div>
+
+<div class="ctr">
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="rst" id="reset">↺ Reset</button>
+  &nbsp;·&nbsp; position <input id="pos" type="range" min="0" max="35" step="1" value="0"><span class="speedv" id="posv">(0,0)</span>
+  &nbsp;·&nbsp; speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="legend">With <b>n filters</b>, weights have shape <span style="font-family:monospace">(n, 3, 3, 3)</span> and you get <b>n stacked output maps</b> — the output of a conv layer is itself a multi-channel "image", exactly what the next layer consumes. The sum strip shows <b>filter 1</b>'s arithmetic.</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+/* ================= pure-JS data & math (works even without three.js) ============== */
+const N=8, OUT=N-2;
+function makeInput(){
+  const R=[],G=[],B=[];
+  for(let y=0;y<N;y++){R.push([]);G.push([]);B.push([]);
+    for(let x=0;x<N;x++){
+      R[y].push(+(y/(N-1)).toFixed(2));                                  // vertical gradient
+      G[y].push((x>=2&&x<=5&&y>=2&&y<=5)?0.9:0.15);                       // bright square
+      B[y].push(Math.abs(x-y)<=1?0.9:0.1);                                // diagonal stripe
+    }}
+  return [R,G,B];
+}
+const X=makeInput();
+const KERNELS={
+  'blur (all 1/27)'   : ch=>Array.from({length:3},()=>Array.from({length:3},()=>+(1/27).toFixed(3))),
+  'red-pass (W_G=W_B=0)': ch=>Array.from({length:3},()=>Array.from({length:3},()=>ch===0?+(1/9).toFixed(3):0)),
+  'vertical edge'     : ch=>[[-1,0,1],[-1,0,1],[-1,0,1]].map(r=>r.map(v=>+(v/3).toFixed(3))),
+};
+let kName='blur (all 1/27)';
+let nFilters=1;
+function filterWeights(f){            // f=0 → selected; f=1 → green-pass; f=2 → blue-pass
+  if(f===0) return [0,1,2].map(c=>KERNELS[kName](c));
+  const pass=f;                        // 1→G, 2→B
+  return [0,1,2].map(c=>Array.from({length:3},()=>Array.from({length:3},()=>c===pass?+(1/9).toFixed(3):0)));
+}
+function chanSum(c,y,x,W){ let s=0; for(let i=0;i<3;i++)for(let j=0;j<3;j++) s+=X[c][y+i][x+j]*W[c][i][j]; return s; }
+function convAt(y,x,W){ return chanSum(0,y,x,W)+chanSum(1,y,x,W)+chanSum(2,y,x,W); }
+const outMaps=()=>Array.from({length:nFilters},(_,f)=>{const W=filterWeights(f),M=[];
+  for(let y=0;y<OUT;y++){M.push([]);for(let x=0;x<OUT;x++)M[y].push(convAt(y,x,W));}return M;});
+
+/* ================= state ================= */
+let pos=0, stage=0, playing=false, speed=1, acc=0, lastT=0;
+const py=()=>Math.floor(pos/OUT), px=()=>pos%OUT;
+
+function renderSums(){
+  const W=filterWeights(0), y=py(), x=px();
+  const r=chanSum(0,y,x,W), g=chanSum(1,y,x,W), b=chanSum(2,y,x,W);
+  $('sR').textContent=stage>=1?r.toFixed(3):'—';
+  $('sG').textContent=stage>=1?g.toFixed(3):'—';
+  $('sB').textContent=stage>=1?b.toFixed(3):'—';
+  $('sT').textContent=stage>=2?(r+g+b).toFixed(3):'—';
+  $('posv').textContent='('+y+','+x+')';
+  $('pos').value=pos;
+  for(let i=0;i<3;i++) $('st'+i).classList.toggle('on',i===stage);
+  const L=[
+   '<span class="cm"># weights for the WHOLE layer: one cube per filter</span>',
+   'W.shape = (<span class="num">'+nFilters+'</span>, <span class="num">3</span>, <span class="num">3</span>, <span class="num">3</span>)   <span class="cm"># (n_filters, in_ch, kH, kW)</span>',
+   '',
+   '<span class="'+(stage===0?'hl':'')+'">patch = img[:, <span class="num">'+y+'</span>:<span class="num">'+(y+3)+'</span>, <span class="num">'+x+'</span>:<span class="num">'+(x+3)+'</span>]        <span class="cm"># (3,3,3) — ALL channels</span></span>',
+   '<span class="'+(stage===1?'hl':'')+'">per_ch = (patch * W[<span class="num">0</span>]).<span class="fn">sum</span>(dim=(<span class="num">1</span>,<span class="num">2</span>))   <span class="cm"># [R, G, B] partial sums</span></span>',
+   '<span class="'+(stage===2?'hl':'')+'">out[<span class="num">0</span>, <span class="num">'+y+'</span>, <span class="num">'+x+'</span>] = per_ch.<span class="fn">sum</span>() + b[<span class="num">0</span>]     <span class="cm"># ONE number '+(stage>=2?'= <span class="num">'+(r+g+b).toFixed(3)+'</span>':'')+'</span></span>',
+  ];
+  $('code').innerHTML=L.join('\n');
+}
+
+/* ================= three.js scene (render-only) ================= */
+let three=null;
+function initThree(){
+  if(typeof THREE==='undefined'){ $('fallback').style.display='flex'; return; }
+  const el=$('scene'), Wp=el.clientWidth, Hp=el.clientHeight;
+  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+  renderer.setSize(Wp,Hp); renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  el.appendChild(renderer.domElement);
+  const scene=new THREE.Scene();
+  const cam=new THREE.PerspectiveCamera(40,Wp/Hp,0.1,200);
+  scene.add(new THREE.AmbientLight(0xffffff,0.85));
+  const dl=new THREE.DirectionalLight(0xffffff,0.5); dl.position.set(5,8,6); scene.add(dl);
+  const root=new THREE.Group(); scene.add(root);
+
+  const CH_COL=[0xd64545,0x2e9e4f,0x3b6fd4];
+  const cubeGeo=new THREE.BoxGeometry(0.82,0.82,0.5);
+  const inputGroup=new THREE.Group(); root.add(inputGroup);
+  for(let c=0;c<3;c++) for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+    const v=X[c][y][x];
+    const m=new THREE.MeshLambertMaterial({color:CH_COL[c],transparent:true,opacity:0.18+0.72*v});
+    const cube=new THREE.Mesh(cubeGeo,m);
+    cube.position.set(x-N/2+0.5,(N-1-y)-N/2+0.5,-c*0.9);
+    inputGroup.add(cube);
+  }
+  inputGroup.position.x=-6.2;
+  // kernel wireframe cube
+  const kGeo=new THREE.BoxGeometry(3,3,0.5+1.8);
+  const kEdges=new THREE.LineSegments(new THREE.EdgesGeometry(kGeo),
+    new THREE.LineBasicMaterial({color:0x7b5cd6,linewidth:2}));
+  root.add(kEdges);
+  // output planes (up to 3 filters)
+  const outGroups=[];
+  const oGeo=new THREE.BoxGeometry(0.82,0.82,0.3);
+  for(let f=0;f<3;f++){
+    const g=new THREE.Group();
+    for(let y=0;y<OUT;y++) for(let x=0;x<OUT;x++){
+      const m=new THREE.MeshLambertMaterial({color:0x16a3a3,transparent:true,opacity:0.06});
+      const cube=new THREE.Mesh(oGeo,m); cube.userData={y,x};
+      cube.position.set(x-OUT/2+0.5,(OUT-1-y)-OUT/2+0.5,-f*0.7);
+      g.add(cube);
+    }
+    g.position.x=5.8; g.visible=f<nFilters; root.add(g); outGroups.push(g);
+  }
+  // simple orbit
+  let theta=0.5, phi=0.32, radius=22, drag=false, lx=0, ly=0;
+  function camUpdate(){
+    cam.position.set(radius*Math.sin(theta)*Math.cos(phi), radius*Math.sin(phi), radius*Math.cos(theta)*Math.cos(phi));
+    cam.lookAt(0,0,0);
+  }
+  el.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;});
+  addEventListener('pointerup',()=>drag=false);
+  addEventListener('pointermove',e=>{ if(!drag)return;
+    theta-=(e.clientX-lx)*0.008; phi=Math.max(-1.2,Math.min(1.2,phi+(e.clientY-ly)*0.006));
+    lx=e.clientX; ly=e.clientY; });
+  el.addEventListener('wheel',e=>{e.preventDefault();radius=Math.max(10,Math.min(38,radius+e.deltaY*0.02));},{passive:false});
+  camUpdate();
+  function onResize(){const w=el.clientWidth,h=el.clientHeight;if(!w||!h)return;
+    renderer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix();}
+  addEventListener('resize',onResize);
+  three={renderer,scene,cam,root,kEdges,outGroups,inputGroup,camUpdate,
+    setFilters(n){ outGroups.forEach((g,i)=>g.visible=i<n); },
+    refreshOutputs(){
+      const maps=outMaps();
+      let mx=0.01; maps.forEach(M=>M.forEach(r=>r.forEach(v=>mx=Math.max(mx,Math.abs(v)))));
+      outGroups.forEach((g,f)=>{ if(f>=nFilters)return;
+        g.children.forEach(cb=>{ const {y,x}=cb.userData;
+          const done=(y*OUT+x)<pos || ((y*OUT+x)===pos&&stage>=2);
+          const v=Math.abs(maps[f][y][x])/mx;
+          cb.material.opacity=done?0.15+0.8*v:0.06;
+          cb.material.color.set(done&&maps[f][y][x]<0?0xd64545:0x16a3a3);
+        });});
+    },
+    placeKernel(){ const y=py(),x=px();
+      kEdges.position.set(inputGroup.position.x + (x+1.5-N/2), (N-1-(y+1))-N/2+0.5, -0.9);
+      // pulse on multiply stage
+      const s=stage===1?1.06:1.0; kEdges.scale.set(s,s,s);
+    }};
+}
+function render3d(){ if(!three)return;
+  three.placeKernel(); three.refreshOutputs(); three.camUpdate();
+  three.renderer.render(three.scene,three.cam);
+}
+
+/* ================= controls ================= */
+function setStage(s){ stage=s; renderSums(); }
+function advance(){           // ①→②→③→ next position ①
+  if(stage<2){ stage++; }
+  else { if(pos<OUT*OUT-1){ pos++; stage=0; } else { playing=false; $('play').textContent='▶ Play'; } }
+  renderSums();
+}
+function retreat(){
+  if(stage>0){ stage--; }
+  else if(pos>0){ pos--; stage=2; }
+  renderSums();
+}
+$('st0').onclick=()=>setStage(0); $('st1').onclick=()=>setStage(1); $('st2').onclick=()=>setStage(2);
+$('play').onclick=()=>{ playing=!playing; $('play').textContent=playing?'⏸ Pause':'▶ Play'; };
+$('fwd').onclick=()=>{playing=false;$('play').textContent='▶ Play';advance();};
+$('back').onclick=()=>{playing=false;$('play').textContent='▶ Play';retreat();};
+$('reset').onclick=()=>{playing=false;$('play').textContent='▶ Play';pos=0;stage=0;renderSums();};
+$('pos').oninput=e=>{ pos=+e.target.value; stage=2; renderSums(); };
+$('speed').oninput=e=>{ speed=+e.target.value; $('spv').textContent=speed+'×'; };
+
+function seg(el,opts,get,set){
+  el.innerHTML='';
+  for(const o of opts){ const b=document.createElement('button');
+    b.textContent=o; b.className=String(get())===String(o)?'on':'';
+    b.onclick=()=>{ set(o); seg(el,opts,get,set); if(three){three.setFilters(nFilters);} renderSums(); };
+    el.appendChild(b); }
+}
+seg($('segK'),Object.keys(KERNELS),()=>kName,v=>kName=v);
+seg($('segF'),[1,2,3],()=>nFilters,v=>nFilters=v);
+
+/* ================= loop ================= */
+function loop(t){
+  if(playing){ if(!lastT)lastT=t; acc+=(t-lastT)*speed; lastT=t;
+    while(acc>520){ acc-=520; advance(); } }
+  else { lastT=0; acc=0; }
+  render3d();
+  requestAnimationFrame(loop);
+}
+initThree(); renderSums(); requestAnimationFrame(loop);
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>
