@@ -10005,6 +10005,67 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f171f2fc">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Deep-Dive:-How-__setattr__-and-parameters()-Power-PyTorch's-Module-Magic">Deep Dive: How <code>__setattr__</code> and <code>parameters()</code> Power PyTorch's Module Magic<a class="anchor-link" href="#Deep-Dive:-How-__setattr__-and-parameters()-Power-PyTorch's-Module-Magic">¶</a></h3><p>The <code>MyModule</code> class above is a <strong>toy reconstruction</strong> of the single most important piece of "magic" inside <code>nn.Module</code>: how PyTorch <em>automatically</em> keeps track of every layer you assign to <code>self</code> — without you ever maintaining a list by hand. Let's unpack it line by line, slowly, assuming nothing.</p>
+<h4 id="The-puzzle-we're-solving">The puzzle we're solving<a class="anchor-link" href="#The-puzzle-we're-solving">¶</a></h4><p>When you write a normal PyTorch model you do things like:</p>
+<div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">l1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">n_in</span><span class="p">,</span> <span class="n">nh</span><span class="p">)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">l2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">nh</span><span class="p">,</span> <span class="n">n_out</span><span class="p">)</span>
+</pre></div>
+<p>Later you call <code>model.parameters()</code> and — somehow — PyTorch hands you the weights and biases of <strong>both</strong> <code>l1</code> and <code>l2</code>, even though you never told it "please remember these two layers." How does it know? That is the puzzle. <code>MyModule</code> shows the trick in about 15 lines.</p>
+<h4 id="Step-1-%E2%80%94-self._modules-=-%7B%7D:-the-registry">Step 1 — <code>self._modules = {}</code>: the registry<a class="anchor-link" href="#Step-1-%E2%80%94-self._modules-=-%7B%7D:-the-registry">¶</a></h4><p>The first line of <code>__init__</code> creates an empty dictionary called <code>_modules</code>. Think of it as a <strong>guest book</strong>: every layer that gets assigned to the module will "sign in" here. The name has a leading underscore (<code>_modules</code>) on purpose — by Python convention that signals "this is internal bookkeeping, not something a user sets directly." That underscore will <em>also</em> become the key that lets us avoid an infinite loop, as we'll see in a moment.</p>
+<p>Why a dictionary and not a list? Because we want to remember each layer <strong>by name</strong> (<code>"l1"</code>, <code>"l2"</code>), so we can both look them up and print them nicely.</p>
+<h4 id="Step-2-%E2%80%94-__setattr__:-the-interceptor-(this-is-the-real-magic)">Step 2 — <code>__setattr__</code>: the interceptor (this is the real magic)<a class="anchor-link" href="#Step-2-%E2%80%94-__setattr__:-the-interceptor-(this-is-the-real-magic)">¶</a></h4><p>In Python, <strong>every single time</strong> you write <code>self.something = value</code>, Python does not just blindly store it. It secretly calls a method named <code>__setattr__(self, "something", value)</code>. Normally you never define this method, so Python uses its built-in default (which just stores the attribute). But if you <em>do</em> define it yourself, <strong>you get to run your own code on every assignment.</strong> That hook is exactly what PyTorch exploits.</p>
+<p>So when <code>__init__</code> runs the line <code>self.l1 = nn.Linear(n_in, nh)</code>, what <em>actually</em> happens under the hood is:</p>
+<ol>
+<li>Python calls <code>self.__setattr__("l1", &lt;the Linear layer&gt;)</code>.</li>
+<li>Our custom <code>__setattr__</code> runs. It checks: does the name start with <code>_</code>? <code>"l1"</code> does <strong>not</strong>, so this is a "real" layer the user cares about → we record it: <code>self._modules["l1"] = &lt;the Linear layer&gt;</code>.</li>
+<li>Then <code>super().__setattr__("l1", &lt;layer&gt;)</code> does the <em>normal</em> thing — actually attaching <code>l1</code> to the object so that <code>self.l1</code> works later.</li>
+</ol>
+<p>Both steps happen on one line. The user wrote one innocent assignment; behind the scenes the layer was <em>both</em> stored as a normal attribute <em>and</em> registered in the guest book. The user never had to maintain a list — registration is automatic. <strong>That single intercept-and-record move is the whole trick.</strong></p>
+<h4 id="Why-the-if-not-k.startswith(%22_%22)-guard?-(two-reasons,-one-critical)">Why the <code>if not k.startswith("_")</code> guard? (two reasons, one critical)<a class="anchor-link" href="#Why-the-if-not-k.startswith(%22_%22)-guard?-(two-reasons,-one-critical)">¶</a></h4><ol>
+<li><p><strong>Filtering out non-layers.</strong> We only want <em>layers</em> in the registry, not random scalars. If later you wrote <code>self.dropout_rate = 0.5</code>, you would not want <code>0.5</code> showing up when you ask for submodules. The underscore rule is a simple proxy for "internal / non-module stuff — skip it."</p>
+</li>
+<li><p><strong>Avoiding infinite recursion (the critical reason).</strong> Look closely: inside <code>__setattr__</code> we run <code>self._modules[k] = v</code>. But assigning <code>self._modules = {}</code> back in <code>__init__</code> is <em>itself</em> an attribute assignment — so it <em>also</em> triggers <code>__setattr__</code>! If there were no guard, the very act of creating <code>_modules</code> would try to do <code>self._modules["_modules"] = {}</code> <em>before <code>_modules</code> even exists</em>, and the program would crash (or loop forever in a richer version). The guard <code>if not k.startswith("_")</code> makes the <code>_modules</code> assignment <strong>skip</strong> the registration branch and jump straight to <code>super().__setattr__</code>, which is exactly what we want. So the underscore name is not merely stylistic — it is <strong>load-bearing</strong>.</p>
+</li>
+</ol>
+<h4 id="Why-super().__setattr__(k,-v)-instead-of-self.__dict__%5Bk%5D-=-v?">Why <code>super().__setattr__(k, v)</code> instead of <code>self.__dict__[k] = v</code>?<a class="anchor-link" href="#Why-super().__setattr__(k,-v)-instead-of-self.__dict__%5Bk%5D-=-v?">¶</a></h4><p><code>super().__setattr__</code> calls the <strong>parent class's</strong> (here, <code>object</code>'s) normal attribute-setting machinery — the very behavior we temporarily "hijacked." We <em>must</em> call it. Otherwise the layer would be registered in the guest book but never actually attached to the object, and <code>self.l1</code> would raise <code>AttributeError</code>. Calling <code>super()</code> (rather than poking at <code>__dict__</code> directly) is the clean, correct way to say: "now go do the normal thing you would have done if I had not interfered."</p>
+<h4 id="Step-3-%E2%80%94-parameters():-walking-the-registry">Step 3 — <code>parameters()</code>: walking the registry<a class="anchor-link" href="#Step-3-%E2%80%94-parameters():-walking-the-registry">¶</a></h4><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">module</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="k">yield from</span> <span class="n">module</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
+</pre></div>
+<p>This method answers the question "give me every learnable tensor in the whole model." It does so by walking the guest book:</p>
+<ul>
+<li><code>self._modules.values()</code> → each registered layer (here, the two <code>nn.Linear</code>s).</li>
+<li>Each of <em>those</em> layers is itself a real <code>nn.Module</code>, so it has its <strong>own</strong> <code>.parameters()</code> that yields its weight and bias tensors.</li>
+<li><code>yield from module.parameters()</code> means "re-emit every parameter that this child yields, one by one, as if they were my own." <code>yield from</code> is Python shorthand for "loop over this sub-generator and yield each item from it" — it flattens the nested structure into one stream.</li>
+</ul>
+<p>The result is a <strong>single flat stream</strong> of every weight and bias across all layers. Notice that this is naturally <strong>recursive</strong>: because each child is itself asked for <em>its</em> parameters, a module that contains modules that contain modules would still surface everything, all the way down. This is exactly how the real <code>nn.Module.parameters()</code> gathers the entire network's parameters into the one stream you hand to an optimizer:</p>
+<div class="highlight"><pre><span></span><span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+</pre></div>
+<p>Using <code>yield</code> / <code>yield from</code> also makes this <strong>lazy</strong>: parameters are produced on demand as you iterate, instead of building one giant list in memory — handy for very large models.</p>
+<h4 id="Step-4-%E2%80%94-__repr__:-just-for-readable-printing">Step 4 — <code>__repr__</code>: just for readable printing<a class="anchor-link" href="#Step-4-%E2%80%94-__repr__:-just-for-readable-printing">¶</a></h4><p><code>__repr__</code> controls what you see when you <code>print(mdl)</code> (or evaluate it in a cell). Here it returns the <code>_modules</code> dict, so printing the module shows you the registry directly — a quick way to confirm that both layers really did get registered.</p>
+<h4 id="Putting-it-all-together">Putting it all together<a class="anchor-link" href="#Putting-it-all-together">¶</a></h4><p>When <code>MyModule(m, nh, 10)</code> runs:</p>
+<ol>
+<li><code>_modules = {}</code> is created (the guard skips registering it).</li>
+<li><code>self.l1 = ...</code> → <code>__setattr__</code> registers <code>l1</code> in the guest book, then really attaches it.</li>
+<li><code>self.l2 = ...</code> → same for <code>l2</code>.</li>
+<li><code>print(mdl)</code> → <code>__repr__</code> shows <code>{'l1': Linear(...), 'l2': Linear(...)}</code>.</li>
+<li><code>mdl.parameters()</code> → walks both layers, yielding <strong>4</strong> tensors total (a weight + a bias for each <code>Linear</code>).</li>
+</ol>
+<p><strong>The big idea:</strong> the real <code>nn.Module</code> does exactly this, just more thoroughly — it keeps <em>separate</em> registries for sub-modules, parameters, and buffers, and its <code>__setattr__</code> inspects the <em>type</em> of what you assign (is it a <code>Parameter</code>? a <code>Module</code>?) rather than only looking at the name. But the core mechanism is identical: <strong>intercept every assignment, auto-register the interesting ones, and recurse when collecting parameters.</strong> That one mechanism is <em>why</em> you can write a model as plain <code>self.layer = ...</code> lines and still get <code>model.parameters()</code>, <code>model.to(device)</code>, <code>model.state_dict()</code>, and <code>model.eval()</code> "for free" across the entire tree of layers.</p>
+<blockquote>
+<p><strong>Climate / EO bridge:</strong> this is the same pattern you lean on when you wrap a U-Net downscaler or a ViT encoder inside a larger parent module and pass <code>model.parameters()</code> straight to the optimizer. The recursive registry is precisely what lets you treat a deeply nested architecture as one single trainable object.</p>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
+
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
