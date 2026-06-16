@@ -11067,6 +11067,338 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 <div class="ce-interactive ce-fullbleed">
 <iframe src="interactive_viz/dataloader_pipeline.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ad053d66">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="Multiprocessing-DataLoader">Multiprocessing DataLoader<a class="anchor-link" href="#Multiprocessing-DataLoader">¶</a></h1>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=610f6640">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p>PyTorch's real <code>DataLoader</code> can fetch data using <strong>several worker processes in parallel</strong> (the <code>num_workers</code> argument). Before we use the built-in one, this short section builds a tiny version ourselves so the magic is no longer magic — and it all rests on one simple capability of our <code>Dataset</code>: <strong>it can return a whole batch from a list of indices in a single call.</strong></p>
+<p><strong>Why bother with multiple processes?</strong>
+In real training, <em>loading</em> the data is often slower than the GPU computing on it: reading files from disk, decoding JPEGs, resizing, applying augmentations. If the main process had to do all that, the GPU would sit idle waiting for the next batch. Instead, worker processes prepare <em>upcoming</em> batches while the GPU trains on the <em>current</em> one, so the two overlap and the GPU is kept fed. That overlap is the whole point of multiprocessing data loading.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=35539bd5">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># MULTIPROCESSING DATALOADER -- the imports</span>
+<span class="c1"># ============================================================================</span>
+<span class="c1"># torch.multiprocessing is PyTorch's drop-in replacement for Python's standard</span>
+<span class="c1"># `multiprocessing` module. Its key advantage: it knows how to share TENSORS</span>
+<span class="c1"># between processes efficiently (through shared memory) instead of slowly</span>
+<span class="c1"># pickling and copying them. A DataLoader with n_workers&gt;0 spins up several</span>
+<span class="c1"># *worker processes*, and each one builds batches in parallel -- this is the</span>
+<span class="c1"># module that makes passing those batches back to the main process fast.</span>
+<span class="kn">import</span> <span class="nn">torch.multiprocessing</span> <span class="k">as</span> <span class="nn">mp</span>
+
+<span class="c1"># store_attr() is a tiny fastcore helper. Called inside an __init__, it</span>
+<span class="c1"># automatically saves every argument as self.&lt;name&gt; -- so instead of writing</span>
+<span class="c1">#     self.ds = ds; self.batchs = batchs; self.n_workers = n_workers; ...</span>
+<span class="c1"># you just call store_attr() once. (fastcore is usually imported as `fc`, so</span>
+<span class="c1"># you'll also see it written `fc.store_attr()`.)</span>
+<span class="kn">from</span> <span class="nn">fastcore.basics</span> <span class="kn">import</span> <span class="n">store_attr</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=52356ff1">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="c1"># KEY IDEA #1: our Dataset can be indexed with a *list* of indices at once.</span>
+<span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="c1"># train_ds[3] returns ONE sample. But train_ds[[3, 6, 8, 1]] returns FOUR</span>
+<span class="c1"># samples stacked together in a single call -- effectively a whole batch --</span>
+<span class="c1"># because the underlying x/y tensors support "fancy indexing" (indexing by a</span>
+<span class="c1"># list or tensor of positions, not just one integer).</span>
+<span class="c1">#</span>
+<span class="c1"># Why this matters for multiprocessing: a worker can be handed an entire list</span>
+<span class="c1"># of indices for one batch and grab them all in one operation, rather than</span>
+<span class="c1"># looping over samples one at a time.</span>
+<span class="n">train_ds</span><span class="p">[[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span>   <span class="c1"># -&gt; (x[[3,6,8,1]], y[[3,6,8,1]]) : a 4-sample batch</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
+<pre>(tensor([[0., 0., 0.,  ..., 0., 0., 0.],
+         [0., 0., 0.,  ..., 0., 0., 0.],
+         [0., 0., 0.,  ..., 0., 0., 0.],
+         [0., 0., 0.,  ..., 0., 0., 0.]]),
+ tensor([1, 1, 1, 0]))</pre>
+</div>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=939b3f51">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="c1"># KEY IDEA #2: ds[...] is just syntactic sugar for ds.__getitem__(...)</span>
+<span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="c1"># These two lines are IDENTICAL in effect:</span>
+<span class="c1">#     train_ds[[3, 6, 8, 1]]</span>
+<span class="c1">#     train_ds.__getitem__([3, 6, 8, 1])</span>
+<span class="c1"># Writing the dunder method out explicitly matters here because in the NEXT</span>
+<span class="c1"># cell we want to pass __getitem__ around *as a function* (to map()). The</span>
+<span class="c1"># square-bracket syntax can't be passed as a value, but the method name can.</span>
+<span class="n">train_ds</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
+<pre>(tensor([[0., 0., 0.,  ..., 0., 0., 0.],
+         [0., 0., 0.,  ..., 0., 0., 0.],
+         [0., 0., 0.,  ..., 0., 0., 0.],
+         [0., 0., 0.,  ..., 0., 0., 0.]]),
+ tensor([1, 1, 1, 0]))</pre>
+</div>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=4238c314">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="c1"># KEY IDEA #3: map() applies __getitem__ to several index-lists in turn.</span>
+<span class="c1"># ----------------------------------------------------------------------------</span>
+<span class="c1"># We feed map() two batches' worth of indices: [3, 6] and [8, 1].</span>
+<span class="c1"># map() calls train_ds.__getitem__([3, 6]) and then train_ds.__getitem__([8, 1]),</span>
+<span class="c1"># yielding one (xb, yb) batch per index-list.</span>
+<span class="c1">#</span>
+<span class="c1"># THIS little loop is the heart of a multiprocessing DataLoader: take the</span>
+<span class="c1"># epoch's indices, split them into per-batch chunks, then `map` __getitem__</span>
+<span class="c1"># over those chunks. With workers, those calls are dispatched to PARALLEL</span>
+<span class="c1"># processes -- so while the GPU trains on batch N, the workers are already</span>
+<span class="c1"># fetching batches N+1, N+2, ... ready to hand over.</span>
+<span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">map</span><span class="p">(</span><span class="n">train_ds</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">,</span> <span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="p">[</span><span class="mi">8</span><span class="p">,</span> <span class="mi">1</span><span class="p">])):</span> <span class="nb">print</span><span class="p">(</span><span class="n">o</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>(tensor([[0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.]]), tensor([1, 1]))
+(tensor([[0., 0., 0.,  ..., 0., 0., 0.],
+        [0., 0., 0.,  ..., 0., 0., 0.]]), tensor([1, 0]))
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f139690d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="What-did-those-three-cells-just-show-us?">What did those three cells just show us?<a class="anchor-link" href="#What-did-those-three-cells-just-show-us?">¶</a></h3><p>Taken together, the cells above reveal the entire trick behind a multiprocessing <code>DataLoader</code>:</p>
+<ol>
+<li><p><strong><code>train_ds[[3, 6, 8, 1]]</code></strong> — a <code>Dataset</code> indexed by a <em>list</em> returns a <em>batch</em> of samples at once (4 here), thanks to tensor fancy-indexing. <strong>One call → one batch.</strong></p>
+</li>
+<li><p><strong><code>train_ds.__getitem__([3, 6, 8, 1])</code></strong> — exactly the same operation, written the "long way." <code>ds[idxs]</code> is just sugar for <code>ds.__getitem__(idxs)</code>. We spell out the method name so we can hand it to <code>map</code> as a plain function.</p>
+</li>
+<li><p><strong><code>map(train_ds.__getitem__, ([3, 6], [8, 1]))</code></strong> — <code>map</code> applies that function to each <em>list of indices</em>, producing one batch per list. This is a tiny, single-process preview of what the workers will do.</p>
+</li>
+</ol>
+<p><strong>How real multiprocessing uses this.</strong> A DataLoader takes the epoch's (optionally shuffled) indices, chops them into per-batch chunks like <code>[3, 6]</code>, <code>[8, 1]</code>, …, and <code>map</code>s <code>__getitem__</code> over them — but distributes those calls across <code>n_workers</code> separate processes. Each worker independently calls <code>ds.__getitem__(chunk)</code>, builds its batch, and ships it back through a queue. (This is why <code>torch.multiprocessing</code>, with its shared-memory tensors, matters — plain copying would erase the speed-up.)</p>
+<p>Let's now package exactly this idea into a small, reusable class.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=eb0680c4">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># OUR OWN MULTIPROCESSING DATALOADER (a tiny ~6-line version)</span>
+<span class="c1"># ============================================================================</span>
+<span class="k">class</span> <span class="nc">DataLoader</span><span class="p">():</span>
+  <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">batchs</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">collate_fn</span><span class="o">=</span><span class="n">collate</span><span class="p">):</span>
+    <span class="c1"># store_attr() auto-saves EVERY argument as an attribute: self.ds,</span>
+    <span class="c1"># self.batchs, self.n_workers, self.collate_fn -- shorthand for writing</span>
+    <span class="c1"># those four `self.x = x` lines by hand. (fc = fastcore.)</span>
+    <span class="n">fc</span><span class="o">.</span><span class="n">store_attr</span><span class="p">()</span>
+
+  <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c1"># __iter__ is what Python calls when you do `for batch in dl:` or iter(dl).</span>
+    <span class="c1"># It contains `yield`, so it is a GENERATOR: batches are produced lazily,</span>
+    <span class="c1"># one at a time, only as the training loop asks for them.</span>
+    <span class="c1">#</span>
+    <span class="c1"># mp.Pool(self.n_workers) launches a pool of N worker PROCESSES; the</span>
+    <span class="c1"># `with` block guarantees they are cleaned up when iteration ends.</span>
+    <span class="k">with</span> <span class="n">mp</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_workers</span><span class="p">)</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+      <span class="c1"># ex.map(fn, iterable) runs fn(item) for each item -- in PARALLEL across</span>
+      <span class="c1"># the worker processes -- and returns the results in order.</span>
+      <span class="c1"># self.batchs yields LISTS of indices (one list per batch, e.g. [3,6,8,1]),</span>
+      <span class="c1"># so each worker computes self.ds.__getitem__(those_indices) = one ready</span>
+      <span class="c1"># batch. `yield from` re-emits each finished batch to the caller.</span>
+      <span class="k">yield from</span> <span class="n">ex</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">,</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batchs</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=78a40181">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Reading-the-DataLoader-class-line-by-line">Reading the <code>DataLoader</code> class line by line<a class="anchor-link" href="#Reading-the-DataLoader-class-line-by-line">¶</a></h3><p>Those ~6 lines <em>are</em> a working multiprocessing data loader. Here is every piece:</p>
+<ul>
+<li><p><strong><code>def __init__(self, ds, batchs, n_workers=1, collate_fn=collate)</code></strong> — it takes the dataset <code>ds</code>, a <code>batchs</code> object that yields <strong>lists of indices</strong> (one list per batch — a <code>BatchSampler</code> does exactly this), how many worker processes to use (<code>n_workers</code>), and a <code>collate_fn</code>.</p>
+</li>
+<li><p><strong><code>fc.store_attr()</code></strong> — fastcore's <code>store_attr</code> saves <em>every</em> <code>__init__</code> argument as <code>self.&lt;name&gt;</code> automatically. It is a one-line replacement for <code>self.ds = ds; self.batchs = batchs; self.n_workers = n_workers; self.collate_fn = collate_fn</code>.</p>
+</li>
+<li><p><strong><code>def __iter__(self)</code></strong> — Python calls this whenever you write <code>for batch in dl:</code> or <code>iter(dl)</code>. Because it contains <code>yield</code>, it is a <strong>generator</strong>: batches are produced lazily, one at a time, only as the training loop asks — so you never hold a whole epoch in memory at once.</p>
+</li>
+<li><p><strong><code>with mp.Pool(self.n_workers) as ex:</code></strong> — opens a pool of <code>n_workers</code> separate worker <strong>processes</strong>. The <code>with</code> block guarantees the pool is shut down cleanly once iteration finishes.</p>
+</li>
+<li><p><strong><code>ex.map(self.ds.__getitem__, iter(self.batchs))</code></strong> — the payoff. <code>ex.map</code> takes our function (<code>self.ds.__getitem__</code>) and an iterable of inputs (<code>self.batchs</code>, which yields index-lists), then runs <code>ds.__getitem__(index_list)</code> <strong>in parallel across the worker processes</strong>, returning the finished batches in order. It is the very same <code>map(__getitem__, …)</code> from the cell above — just executed by a pool of processes instead of the main one.</p>
+</li>
+<li><p><strong><code>yield from …</code></strong> — re-emits each batch the pool produces, one by one, to whoever is iterating the DataLoader.</p>
+</li>
+</ul>
+<blockquote>
+<p><strong>Why no explicit <code>collate</code> call here?</strong> In the full PyTorch pipeline, <code>collate</code> stacks a <em>list of individual samples</em> into batch tensors. But our <code>Dataset</code> already returns a fully-stacked batch when indexed with a list (<code>ds[[3,6,8,1]]</code>), so each worker hands back a ready-made <code>(xb, yb)</code> — there is nothing left to collate. <code>collate_fn</code> is stored for API-compatibility but is not needed in this simplified version.</p>
+</blockquote>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=2c8ed8b5">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># Build our DataLoader: pass the dataset, a batch-sampler that yields LISTS of</span>
+<span class="c1"># indices (train_samp = BatchSampler(RandomSampler(train_ds), bs, ...)), and</span>
+<span class="c1"># ask for 2 worker processes.</span>
+<span class="n">train_dl</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">train_ds</span><span class="p">,</span> <span class="n">batchs</span><span class="o">=</span><span class="n">train_samp</span><span class="p">,</span> <span class="n">n_workers</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="c1"># iter(dl) triggers __iter__, which opens the worker Pool. `it` is now a</span>
+<span class="c1"># generator we can pull batches from, one at a time, with next().</span>
+<span class="n">it</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">train_dl</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=9cd81b6e">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># next(it) pulls ONE batch from the generator: a worker process fetched</span>
+<span class="c1"># ds[batch_indices] and handed back the stacked (xb, yb) tensors.</span>
+<span class="n">xb</span><span class="p">,</span> <span class="n">yb</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">it</span><span class="p">)</span>
+<span class="c1"># Confirm the shapes: a batch of `bs` flattened 28x28 images (784 pixels each)</span>
+<span class="c1"># and the matching labels -- e.g. (torch.Size([50, 784]), torch.Size([50])).</span>
+<span class="n">xb</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">yb</span><span class="o">.</span><span class="n">shape</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child jp-OutputArea-executeResult">
+<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[ ]:</div>
+<div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
+<pre>(torch.Size([50, 784]), torch.Size([50]))</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=fb84cd65">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Interpreting-the-result,-and-when-to-use-this">Interpreting the result, and when to use this<a class="anchor-link" href="#Interpreting-the-result,-and-when-to-use-this">¶</a></h3><p>Running the two cells above prints something like <code>(torch.Size([50, 784]), torch.Size([50]))</code> — a batch of 50 flattened 28×28 images and their 50 labels, <strong>fetched by a worker process</strong> rather than the main one. From the training loop's point of view nothing changed: it still just iterates <code>for xb, yb in dl</code>. All the parallelism is hidden inside <code>__iter__</code>.</p>
+<p><strong>Practical takeaways (these carry straight over to PyTorch's real <code>DataLoader</code>):</strong></p>
+<ul>
+<li><code>n_workers</code> / <code>num_workers = 0</code> → everything runs in the main process. Simplest, easiest to debug, and the safe choice if you hit pickling errors or are on Windows/Jupyter.</li>
+<li><code>n_workers</code> / <code>num_workers &gt; 0</code> → that many background loader processes. A big win whenever data preparation (disk I/O, image decoding, augmentation) is the bottleneck and you want the workers racing ahead of the GPU.</li>
+<li>For any of this to work, the <code>Dataset</code> must support indexing by a list/array — exactly the capability the very first cell in this section verified.</li>
+</ul>
+<p>This hand-rolled class is a <strong>teaching toy</strong> to demystify the mechanism. In real code you would use PyTorch's built-in <code>DataLoader</code> (next section), which does all this far more robustly — handling shuffling, pinned memory, timeouts, worker seeding, and graceful shutdown.</p>
+</div>
+</div>
+</div>
+</div>
+
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
