@@ -10066,6 +10066,125 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 </div>
 </div>
 
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=189c1958">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h4 id="Worked-Examples:-which-names-start-with-_,-and-why-the-guard-matters">Worked Examples: which names start with <code>_</code>, and why the guard matters<a class="anchor-link" href="#Worked-Examples:-which-names-start-with-_,-and-why-the-guard-matters">¶</a></h4><p>The two confusing lines are:</p>
+<div class="highlight"><pre><span></span><span class="k">if</span> <span class="ow">not</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"_"</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_modules</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+</pre></div>
+<p>Here <code>k</code> is <strong>the name of the attribute being assigned</strong> (a string), and <code>v</code> is <strong>the value</strong>. Remember: this code runs <em>once for every</em> <code>self.&lt;name&gt; = &lt;value&gt;</code> anywhere in the class. So the real question is — <em>what strings does <code>k</code> take, and which ones start with <code>_</code>?</em></p>
+<h5 id="Example-1-%E2%80%94-what-k-actually-is-on-each-assignment">Example 1 — what <code>k</code> actually is on each assignment<a class="anchor-link" href="#Example-1-%E2%80%94-what-k-actually-is-on-each-assignment">¶</a></h5><p>Watch every assignment that happens when we build the module, and what <code>k</code> equals each time:</p>
+<table>
+<thead>
+<tr>
+<th>The line of code that runs</th>
+<th><code>k</code> (the name string)</th>
+<th>Does <code>k</code> start with <code>_</code>?</th>
+<th>So we register it?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>self._modules = {}</code></td>
+<td><code>"_modules"</code></td>
+<td><strong>Yes</strong> (<code>_modules</code>)</td>
+<td><strong>No</strong> — skipped</td>
+</tr>
+<tr>
+<td><code>self.l1 = nn.Linear(...)</code></td>
+<td><code>"l1"</code></td>
+<td>No</td>
+<td><strong>Yes</strong> → <code>_modules["l1"] = layer</code></td>
+</tr>
+<tr>
+<td><code>self.l2 = nn.Linear(...)</code></td>
+<td><code>"l2"</code></td>
+<td>No</td>
+<td><strong>Yes</strong> → <code>_modules["l2"] = layer</code></td>
+</tr>
+</tbody>
+</table>
+<p>So out of three assignments, only the two <em>layers</em> (<code>l1</code>, <code>l2</code>) land in the registry. The bookkeeping dictionary <code>_modules</code> deliberately leaves <em>itself</em> out. That is the entire purpose of the rule.</p>
+<h5 id="Example-2-%E2%80%94-_-is-just-the-first-character-of-the-name">Example 2 — <code>_</code> is just the first character of the name<a class="anchor-link" href="#Example-2-%E2%80%94-_-is-just-the-first-character-of-the-name">¶</a></h5><p><code>startswith("_")</code> is a plain Python string test — it asks "is the first letter an underscore?" Nothing more. Try it yourself:</p>
+<div class="highlight"><pre><span></span><span class="s2">"l1"</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)</span>          <span class="c1"># False  -&gt; a layer, REGISTER it</span>
+<span class="s2">"weights"</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)</span>     <span class="c1"># False  -&gt; REGISTER it</span>
+<span class="s2">"_modules"</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)</span>    <span class="c1"># True   -&gt; internal bookkeeping, SKIP it</span>
+<span class="s2">"_count"</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)</span>      <span class="c1"># True   -&gt; SKIP it</span>
+<span class="s2">"__hidden"</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)</span>    <span class="c1"># True   -&gt; SKIP it (it starts with _, the rest doesn't matter)</span>
+</pre></div>
+<table>
+<thead>
+<tr>
+<th>Name you might assign</th>
+<th>Starts with <code>_</code>?</th>
+<th>Treated as…</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>self.l1</code> / <code>self.layer3</code> / <code>self.encoder</code></td>
+<td>No</td>
+<td>a <strong>layer</strong> → registered in <code>_modules</code></td>
+</tr>
+<tr>
+<td><code>self.weights</code> / <code>self.head</code></td>
+<td>No</td>
+<td>registered (anything public is assumed to be a module)</td>
+</tr>
+<tr>
+<td><code>self._modules</code></td>
+<td>Yes</td>
+<td>internal registry → skipped</td>
+</tr>
+<tr>
+<td><code>self._count</code> / <code>self._cache</code></td>
+<td>Yes</td>
+<td>internal state → skipped</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The convention:</strong> a leading underscore is Python's universal signal for "this is <em>private / internal</em> — not part of the public interface." We piggy-back on that convention: <em>public</em> names (no underscore) are assumed to be layers the user wants tracked; <em>underscore</em> names are our own internal plumbing that must NOT be tracked.</p>
+<blockquote>
+<p>⚠️ Note this toy uses a simple rule: "if it's public, treat it as a module." The <em>real</em> <code>nn.Module</code> is smarter — it checks the <strong>type</strong> of <code>v</code> (is it a <code>Module</code>? a <code>Parameter</code>?) instead of just the name. So in real PyTorch you <em>can</em> write <code>self.dropout_rate = 0.5</code> safely. But for this simplified teaching version, the underscore-name rule is what keeps non-layers out.</p>
+</blockquote>
+<h5 id="Example-3-%E2%80%94-why-the-guard-is-%22load-bearing%22-(a-step-by-step-crash-trace)">Example 3 — why the guard is "load-bearing" (a step-by-step crash trace)<a class="anchor-link" href="#Example-3-%E2%80%94-why-the-guard-is-%22load-bearing%22-(a-step-by-step-crash-trace)">¶</a></h5><p>"Load-bearing" means: <em>remove this line and the whole thing collapses.</em> Let's prove it by tracing what happens <strong>with</strong> and <strong>without</strong> the guard, on the very first assignment <code>self._modules = {}</code>.</p>
+<p>Remember the order of events inside <code>__setattr__</code>: the registration line (<code>self._modules[k] = v</code>) runs <strong>first</strong>, and <code>super().__setattr__</code> (which actually creates the attribute) runs <strong>after</strong>. That ordering is the trap.</p>
+<p><strong>WITH the guard (correct):</strong></p>
+<pre><code>__init__ runs:  self._modules = {}
+   -&gt; Python calls __setattr__(self, k="_modules", v={})
+   -&gt; guard:  "_modules".startswith("_")  ==  True
+   -&gt; so we SKIP the line  self._modules[k] = v   (good!)
+   -&gt; we go straight to  super().__setattr__("_modules", {})
+   -&gt; NOW self._modules exists and equals {}   ✅
+</code></pre>
+<p><strong>WITHOUT the guard (crash):</strong></p>
+<pre><code>__init__ runs:  self._modules = {}
+   -&gt; Python calls __setattr__(self, k="_modules", v={})
+   -&gt; (no guard, so we run the registration line):
+        self._modules[k] = v
+   -&gt; but to do  self._modules[...]  Python must first READ self._modules
+   -&gt; self._modules does NOT exist yet — we are in the middle of creating it!
+   -&gt; 💥 AttributeError: 'MyModule' object has no attribute '_modules'
+</code></pre>
+<p>The crash happens because the registry tries to register <em>itself</em> before it has been created — a chicken-and-egg problem. The guard breaks the cycle: by skipping registration for any underscore name, the <code>_modules = {}</code> assignment quietly goes straight to <code>super().__setattr__</code> and is created normally. <em>Then</em>, and only then, can later layers be stored into it.</p>
+<p>You can confirm this yourself — comment out the <code>if not k.startswith("_"):</code> line (so registration always runs) and re-run the cell; you'll get exactly that <code>AttributeError</code> on the first line of <code>__init__</code>.</p>
+<h5 id="Example-4-%E2%80%94-the-happy-path,-all-the-way-through">Example 4 — the happy path, all the way through<a class="anchor-link" href="#Example-4-%E2%80%94-the-happy-path,-all-the-way-through">¶</a></h5><p>Now trace the <em>successful</em> run with the guard in place:</p>
+<pre><code>1. self._modules = {}          k="_modules"  -&gt; guard True  -&gt; skip register -&gt; super() creates it.  _modules = {}
+2. self.l1 = nn.Linear(...)    k="l1"        -&gt; guard False -&gt; register:  _modules = {"l1": &lt;Linear&gt;}
+                                              -&gt; super() attaches it, so self.l1 also works
+3. self.l2 = nn.Linear(...)    k="l2"        -&gt; guard False -&gt; register:  _modules = {"l1": &lt;Linear&gt;, "l2": &lt;Linear&gt;}
+                                              -&gt; super() attaches it, so self.l2 also works
+</code></pre>
+<p>End state: <code>self._modules</code> holds both layers, and <code>self.l1</code> / <code>self.l2</code> are usable normally. When you later call <code>parameters()</code>, it walks <code>_modules.values()</code> → the two <code>Linear</code>s → yields their 4 tensors. Everything works <em>because</em> the one bookkeeping attribute kept itself out of its own guest book.</p>
+</div>
+</div>
+</div>
+</div>
+
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
