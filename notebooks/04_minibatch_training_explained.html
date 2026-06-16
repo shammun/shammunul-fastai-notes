@@ -10058,9 +10058,7 @@ $$L = -\log(p_{\text{correct class}})$$</p>
 <li><code>mdl.parameters()</code> → walks both layers, yielding <strong>4</strong> tensors total (a weight + a bias for each <code>Linear</code>).</li>
 </ol>
 <p><strong>The big idea:</strong> the real <code>nn.Module</code> does exactly this, just more thoroughly — it keeps <em>separate</em> registries for sub-modules, parameters, and buffers, and its <code>__setattr__</code> inspects the <em>type</em> of what you assign (is it a <code>Parameter</code>? a <code>Module</code>?) rather than only looking at the name. But the core mechanism is identical: <strong>intercept every assignment, auto-register the interesting ones, and recurse when collecting parameters.</strong> That one mechanism is <em>why</em> you can write a model as plain <code>self.layer = ...</code> lines and still get <code>model.parameters()</code>, <code>model.to(device)</code>, <code>model.state_dict()</code>, and <code>model.eval()</code> "for free" across the entire tree of layers.</p>
-<blockquote>
-<p><strong>Climate / EO bridge:</strong> this is the same pattern you lean on when you wrap a U-Net downscaler or a ViT encoder inside a larger parent module and pass <code>model.parameters()</code> straight to the optimizer. The recursive registry is precisely what lets you treat a deeply nested architecture as one single trainable object.</p>
-</blockquote>
+
 </div>
 </div>
 </div>
