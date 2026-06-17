@@ -10693,6 +10693,9 @@ cls(*get_dls(...))                 # *(train_dl, valid_dl)  -&gt;  cls(train_dl,
 - wraps <strong>valid</strong> in a <code>DataLoader</code> that does <strong>not</strong> shuffle (order is irrelevant when you are only measuring), at <code>batch_size=bs*2</code> (no gradients to store during validation, so bigger batches are free speed);
 - returns them as a <code>(train_dl, valid_dl)</code> tuple.</p>
 <p>Any <code>**kwargs</code> you passed to <code>from_dd</code> arrive here and are forwarded again into both <code>DataLoader</code>s - that is the "tunnel."</p>
+<blockquote>
+<p><strong>Naming note - "valid" here is really the <em>test</em> split.</strong> Fashion-MNIST ships only <code>train</code> and <code>test</code> splits (no dedicated validation split). <code>from_dd</code> passes <code>dd.values()</code> - that is <code>[train_ds, test_ds]</code> - into <code>get_dls</code>, whose <em>second</em> positional parameter is named <code>valid_ds</code>. So the <strong>test</strong> split lands in <code>self.valid</code>, and <code>dls.valid</code> actually iterates the test data. That is fine for this course, where we use <code>.valid</code> purely to <em>monitor</em> progress (no hyperparameter tuning against it). In a workflow where you <em>do</em> tune against <code>.valid</code>, you'd instead want a genuine held-out validation split, kept separate from a final test set you only touch once.</p>
+</blockquote>
 <h3>Full trace with real data</h3>
 <pre><code class="language-python"># Built earlier in this notebook:
 dsd = load_dataset('fashion_mnist').with_transform(transformi)
