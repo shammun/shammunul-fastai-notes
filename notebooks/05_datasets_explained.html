@@ -8548,6 +8548,37 @@ a.anchor-link {
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=deepdive05">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p><strong>Deep dive: <code>x: torch.stack([TF.to_tensor(o[x]) for o in b])</code></strong></p>
+<p>Here <code>b</code> is the list of samples passed in by the DataLoader, and <code>x</code> / <code>y</code> are the string keys (e.g. <code>x = 'image'</code>, <code>y = 'label'</code>). Let's trace the image line piece by piece.</p>
+<p><strong>What is <code>o</code> in each iteration?</strong>
+<code>o</code> is <strong>one sample dict</strong> from the batch list. If <code>b</code> holds 64 samples, the comprehension runs 64 times, and each <code>o</code> looks like <code>{'image': &lt;PIL Image 28&times;28&gt;, 'label': 7}</code>.</p>
+<p><strong>What is <code>o[x]</code>?</strong>
+Since <code>x</code> is the string <code>'image'</code>, <code>o[x]</code> is <code>o['image']</code> &mdash; the <strong>PIL Image</strong> for that single sample (one grayscale 28&times;28 picture).</p>
+<p><strong>What happens in <code>TF.to_tensor(o[x])</code>?</strong>
+<code>TF.to_tensor</code> (from <code>torchvision.transforms.functional</code>) converts the PIL image into a float tensor and does two things at once:</p>
+<ul>
+<li>Reorders the layout to <strong>channel-first</strong> <code>[C, H, W]</code> &rarr; <code>[1, 28, 28]</code> for a grayscale image.</li>
+<li>Rescales pixel values from integers in <code>[0, 255]</code> to floats in <code>[0.0, 1.0]</code>.</li>
+</ul>
+<p>So each call returns one tensor of shape <code>[1, 28, 28]</code>.</p>
+<p><strong>What happens after <code>[TF.to_tensor(o[x]) for o in b]</code> completes?</strong>
+The comprehension produces a plain <strong>Python list of tensors</strong>, one per sample:</p>
+<pre><code>[tensor[1,28,28], tensor[1,28,28], ..., tensor[1,28,28]]   # length = batch size
+</code></pre>
+<p>It is still a list &mdash; not yet a single batched tensor.</p>
+<p><strong>What happens when <code>torch.stack(...)</code> runs on that list?</strong>
+<code>torch.stack</code> joins the list along a <strong>new leading dimension</strong> (dim 0). It takes the 64 tensors of shape <code>[1, 28, 28]</code> and produces <strong>one</strong> tensor of shape <code>[64, 1, 28, 28]</code> = <code>[B, C, H, W]</code>. Note that <code>stack</code> <em>adds</em> a new axis (unlike <code>torch.cat</code>, which concatenates along an existing one), and it requires every tensor to share the same shape &mdash; which holds here because every image is 28&times;28.</p>
+<p><strong>Net result:</strong> the key <code>x</code> (<code>'image'</code>) maps to a <code>[B, 1, 28, 28]</code> tensor of stacked, normalized images &mdash; exactly the batch format the model's training loop expects.</p>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=f10570e0">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
