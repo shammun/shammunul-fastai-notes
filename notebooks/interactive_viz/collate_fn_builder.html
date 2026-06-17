@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>collate_fn</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--ok:#2fa36b;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 420px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:18px;}
+  h1{font-size:19px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:13px;margin:0 auto 14px;max-width:780px;line-height:1.5;}
+  .strip{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 auto 12px;max-width:920px;}
+  .chip{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:7px 13px;font-size:12px;font-weight:600;
+        color:var(--soft);cursor:pointer;transition:.18s;user-select:none;display:flex;gap:7px;align-items:center;}
+  .chip .dot{width:8px;height:8px;border-radius:50%;background:var(--line);}
+  .chip:hover{border-color:var(--ac);color:var(--ink);}
+  .chip.active{background:var(--ac);border-color:var(--ac);color:#fff;box-shadow:0 6px 16px rgba(123,92,214,.26);}
+  .chip.active .dot{background:#fff;}.chip.done .dot{background:var(--ok);}
+  .stagebar{height:5px;background:var(--line);border-radius:999px;max-width:920px;margin:0 auto 16px;overflow:hidden;}
+  .stagebar .fill{height:100%;background:linear-gradient(90deg,var(--in),var(--ac));transition:width .4s;}
+  .main{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;max-width:1000px;margin:0 auto;align-items:start;}
+  @media(max-width:780px){.main{grid-template-columns:1fr;}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 8px 22px rgba(123,92,214,.09);}
+  .stage-title{font-size:15px;font-weight:700;margin:0 0 6px;}
+  .stage-body{font-size:13px;line-height:1.55;color:var(--soft);min-height:54px;}
+  .stage-body b{color:var(--ink);}
+  .stage-body .pill{display:inline-block;background:#eef3fb;border-radius:6px;padding:1px 7px;font-family:monospace;font-size:11px;color:var(--ac);}
+  .canvaswrap{margin-top:12px;text-align:center;}
+  canvas{max-width:100%;height:auto;background:#fbfdff;border:1px solid var(--line);border-radius:10px;}
+  .codehead{font-size:11.5px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  pre{margin:0;background:#1d2434;color:#e7edf8;border-radius:10px;padding:13px 14px;font-size:12px;line-height:1.7;
+      font-family:ui-monospace,Menlo,Consolas,monospace;overflow-x:auto;white-space:pre-wrap;}
+  pre .c{color:#7a8aa8;font-style:italic;}pre .k{color:#c792ea;}pre .f{color:#82aaff;}pre .s{color:#c3e88d;}
+  pre .hl{background:rgba(246,146,30,.25);border-radius:4px;padding:1px 3px;}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;margin:16px auto 0;max-width:920px;}
+  button{font:inherit;font-size:13px;font-weight:600;border:1.5px solid var(--line);background:#fff;color:var(--ink);
+         border-radius:9px;padding:8px 15px;cursor:pointer;transition:.15s;}
+  button:hover{border-color:var(--ac);color:var(--ac);}
+  button.primary{background:var(--ac);color:#fff;border-color:var(--ac);}button.primary:hover{background:#6a4cc4;color:#fff;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  .speed{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--soft);}
+  .speed input{accent-color:var(--ac);width:120px;}
+  .note{text-align:center;font-size:12px;color:var(--soft);margin:14px auto 0;max-width:780px;line-height:1.55;}
+  .shape{display:inline-block;font-family:monospace;background:#1d2434;color:#c3e88d;border-radius:6px;padding:2px 8px;font-size:12px;}
+</style></head><body>
+<h1>Inside a custom <code>collate_fn</code>: 4 samples become 1 batch</h1>
+<p class="sub">A DataLoader hands your <b>collate function a list of samples</b> — here, dicts of <span style="color:var(--in);font-weight:700">PIL image</span> + <span style="color:var(--out);font-weight:700">integer label</span>. The function's job is to turn that list into one neat <b>batch</b>: images <span class="shape">[B,1,28,28]</span> and labels <span class="shape">[B]</span>. Step through it, or press Play.</p>
+
+<div class="strip" id="strip"></div>
+<div class="stagebar"><div class="fill" id="fill"></div></div>
+
+<div class="main">
+  <div class="card">
+    <div class="stage-title" id="stitle"></div>
+    <div class="stage-body" id="sbody"></div>
+    <div class="canvaswrap"><canvas id="cv" width="760" height="330"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="codehead">▶ Code for this stage</div>
+    <pre id="code"></pre>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="prev">‹ Prev</button>
+  <button class="primary" id="play">▶ Play</button>
+  <button id="next">Next ›</button>
+  <button id="reset">↺ Reset</button>
+  <div class="speed">Speed
+    <input type="range" id="speed" min="0.4" max="2.4" step="0.1" value="1">
+    <span id="spv" style="font-family:monospace;color:var(--ac);font-weight:700;">1.0×</span>
+  </div>
+</div>
+
+<p class="note"><b>Why a custom collate?</b> PyTorch's default collate can't turn PIL images into tensors, so we do it ourselves: <span class="pill">TF.to_tensor</span> converts + scales each image to <span class="shape">[1,28,28]</span> in 0–1, then <span class="pill">torch.stack</span> piles them up with a new batch axis in front.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$("cv"),ctx=cv.getContext("2d");
+const W=760,H=330;
+let DPR=Math.max(1,window.devicePixelRatio||1);
+cv.width=W*DPR;cv.height=H*DPR;cv.style.width="100%";cv.style.maxWidth=W+"px";ctx.scale(DPR,DPR);
+function bh(){parent.postMessage({type:"viz-height",id:"collate_fn_builder",height:Math.ceil(document.body.scrollHeight)},"*");}
+
+const COL={ink:"#25324a",soft:"#5a6b86",line:"#dde5f2",in:"#f6921e",out:"#16a3a3",ac:"#7b5cd6"};
+const LABELS=[9,0,0,3];const NAMES={0:"T-shirt",3:"Dress",9:"Ankle boot"};
+function tile(cx,cy,s,seed,lit){
+  // draw a tiny 8x8 procedural greyscale tile to suggest a clothing image
+  const n=8,p=s/n;
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    const v=0.25+0.6*Math.abs(Math.sin((x+1)*(y+2)*0.9+seed*1.7));
+    const dist=((x-3.5)**2+(y-3.5)**2)/22; const g=Math.max(0,v*(1-dist));
+    const c=Math.round(g*255);ctx.fillStyle=`rgb(${c},${c},${c})`;
+    ctx.fillRect(cx+x*p,cy+y*p,Math.ceil(p),Math.ceil(p));
+  }
+  ctx.strokeStyle=lit?COL.in:COL.line;ctx.lineWidth=lit?2.5:1;
+  ctx.strokeRect(cx-1,cy-1,s+2,s+2);
+}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+function clear(){ctx.clearRect(0,0,W,H);}
+
+// stage draw functions ----------------------------------------------------
+function drawList(highlightConv){
+  clear();
+  ctx.fillStyle=COL.soft;ctx.font="600 13px Segoe UI";ctx.textAlign="left";
+  ctx.fillText("b  =  [ sample, sample, sample, sample ]   (a Python list of dicts)",24,26);
+  const xs=[40,220,400,580];
+  xs.forEach((x,i)=>{
+    ctx.fillStyle="#fff";ctx.strokeStyle=COL.line;ctx.lineWidth=1.2;
+    roundRect(x,50,150,250,12);ctx.fill();ctx.stroke();
+    ctx.fillStyle=COL.ac;ctx.font="700 12px ui-monospace";ctx.textAlign="left";
+    ctx.fillText("{ "+i,x+12,72);
+    ctx.fillStyle=COL.in;ctx.font="600 11px Segoe UI";
+    ctx.fillText("'image':",x+12,92);
+    tile(x+18,100,114,i,highlightConv);
+    if(highlightConv){ctx.fillStyle=COL.in;ctx.font="700 10px ui-monospace";ctx.fillText("TF.to_tensor →",x+18,234);
+      ctx.fillStyle=COL.out;ctx.fillText("[1,28,28]",x+18,248);}
+    ctx.fillStyle=COL.out;ctx.font="600 11px Segoe UI";
+    ctx.fillText("'label': "+LABELS[i],x+12,272);
+    ctx.fillStyle=COL.soft;ctx.font="400 10px Segoe UI";
+    ctx.fillText(NAMES[LABELS[i]]||"",x+12,288);
+    ctx.fillStyle=COL.ac;ctx.font="700 12px ui-monospace";ctx.fillText("}",x+12,300);
+  });
+}
+function drawStack(){
+  clear();
+  ctx.fillStyle=COL.ink;ctx.font="700 13px Segoe UI";ctx.textAlign="left";
+  ctx.fillText("torch.stack( the 4 image tensors )  →  one tensor with a new batch axis", 24,26);
+  // draw 4 stacked planes in pseudo-3d
+  const bx=120,by=70,off=26;
+  for(let i=3;i>=0;i--){
+    const x=bx+i*off,y=by+i*off;
+    // perspective parallelogram
+    ctx.fillStyle=i===0?"#fff7ef":"#fff";ctx.strokeStyle=COL.in;ctx.lineWidth=1.6;
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+150,y);ctx.lineTo(x+150,y+150);ctx.lineTo(x,y+150);ctx.closePath();
+    ctx.fill();ctx.stroke();
+    tile(x+12,y+12,126,i,false);
+    ctx.fillStyle=COL.in;ctx.font="700 11px ui-monospace";ctx.fillText("img "+i,x+8,y-6);
+  }
+  ctx.fillStyle=COL.out;ctx.font="700 16px ui-monospace";ctx.textAlign="left";
+  ctx.fillText("→",420,170);
+  ctx.fillStyle="#eefcfb";ctx.strokeStyle=COL.out;ctx.lineWidth=2;roundRect(470,90,240,150,12);ctx.fill();ctx.stroke();
+  ctx.fillStyle=COL.out;ctx.font="700 15px ui-monospace";ctx.textAlign="center";
+  ctx.fillText("xb  =  [4, 1, 28, 28]",590,160);
+  ctx.fillStyle=COL.soft;ctx.font="400 11px Segoe UI";
+  ctx.fillText("batch · channel · height · width",590,184);
+}
+function drawLabels(){
+  clear();
+  ctx.fillStyle=COL.ink;ctx.font="700 13px Segoe UI";ctx.textAlign="left";
+  ctx.fillText("tensor([ o['label'] for o in b ])  →  one 1-D tensor of labels",24,26);
+  const xs=[60,180,300,420];
+  xs.forEach((x,i)=>{
+    ctx.fillStyle="#eefcfb";ctx.strokeStyle=COL.out;ctx.lineWidth=1.6;roundRect(x,80,90,90,12);ctx.fill();ctx.stroke();
+    ctx.fillStyle=COL.out;ctx.font="700 26px ui-monospace";ctx.textAlign="center";ctx.fillText(LABELS[i],x+45,128);
+    ctx.fillStyle=COL.soft;ctx.font="400 10px Segoe UI";ctx.fillText(NAMES[LABELS[i]]||"",x+45,156);
+  });
+  ctx.fillStyle=COL.out;ctx.font="700 16px ui-monospace";ctx.fillText("→",530,130);
+  ctx.fillStyle="#eefcfb";ctx.strokeStyle=COL.out;ctx.lineWidth=2;roundRect(560,90,170,75,12);ctx.fill();ctx.stroke();
+  ctx.fillStyle=COL.out;ctx.font="700 15px ui-monospace";ctx.textAlign="center";ctx.fillText("yb = [4]",645,122);
+  ctx.fillStyle=COL.soft;ctx.font="400 11px Segoe UI";ctx.fillText("tensor([9,0,0,3])",645,146);
+}
+function drawBatch(){
+  clear();
+  ctx.fillStyle=COL.ink;ctx.font="700 14px Segoe UI";ctx.textAlign="center";
+  ctx.fillText("One batch dict — ready for the model",W/2,30);
+  ctx.fillStyle="#fff";ctx.strokeStyle=COL.ac;ctx.lineWidth=2;roundRect(180,55,400,210,14);ctx.fill();ctx.stroke();
+  ctx.textAlign="left";
+  ctx.fillStyle=COL.ac;ctx.font="700 14px ui-monospace";ctx.fillText("{",210,90);
+  ctx.fillStyle=COL.in;ctx.font="600 13px ui-monospace";ctx.fillText("'image':",234,125);
+  ctx.fillStyle=COL.out;ctx.fillText("tensor [4, 1, 28, 28]",330,125);
+  ctx.fillStyle=COL.soft;ctx.font="400 11px Segoe UI";ctx.fillText("4 images, stacked & scaled to 0–1",234,148);
+  ctx.fillStyle=COL.out;ctx.font="600 13px ui-monospace";ctx.fillText("'label':",234,190);
+  ctx.fillStyle=COL.out;ctx.fillText("tensor [4]",330,190);
+  ctx.fillStyle=COL.soft;ctx.font="400 11px Segoe UI";ctx.fillText("the 4 integer labels",234,213);
+  ctx.fillStyle=COL.ac;ctx.font="700 14px ui-monospace";ctx.fillText("}",210,245);
+}
+
+const STAGES=[
+  {title:"1 · The input: a list of samples",
+   body:"The DataLoader grabs a few samples and hands your function a <b>plain Python list</b>. Each element is a dict with a <span style='color:var(--in)'><b>PIL image</b></span> and an <span style='color:var(--out)'><b>integer label</b></span>.",
+   draw:()=>drawList(false),
+   code:`<span class="c"># b is a LIST of per-sample dicts</span>
+<span class="k">def</span> <span class="f">collate_fn</span>(b):
+    <span class="c"># [{'image': PIL, 'label': 9}, ...]</span>`},
+  {title:"2 · Convert each image to a tensor",
+   body:"<span class='pill'>TF.to_tensor</span> turns each PIL image into a tensor, <b>scaling 0–255 → 0.0–1.0</b> and reordering to <b>channel-first</b> <span class='shape'>[1,28,28]</span>.",
+   draw:()=>drawList(true),
+   code:`    <span class="hl">TF.to_tensor</span>(o[x]) <span class="k">for</span> o <span class="k">in</span> b
+    <span class="c"># each PIL → [1,28,28] in 0..1</span>`},
+  {title:"3 · Stack the images into one tensor",
+   body:"<span class='pill'>torch.stack</span> piles the 4 image tensors on top of each other, adding a <b>new batch axis at the front</b> → <span class='shape'>[4,1,28,28]</span>.",
+   draw:drawStack,
+   code:`    x: <span class="hl">torch.stack</span>([
+        TF.to_tensor(o[x]) <span class="k">for</span> o <span class="k">in</span> b
+    ]),  <span class="c"># → [B,1,28,28]</span>`},
+  {title:"4 · Gather the labels",
+   body:"The integer labels are collected into a Python list and wrapped as a <b>1-D tensor</b> <span class='shape'>[4]</span> — one number per sample.",
+   draw:drawLabels,
+   code:`    y: <span class="hl">tensor</span>([o[y] <span class="k">for</span> o <span class="k">in</span> b])
+    <span class="c"># → [B]</span>`},
+  {title:"5 · Return one batch dict",
+   body:"The function returns a single dict: <span class='shape'>image:[4,1,28,28]</span> and <span class='shape'>label:[4]</span>. This is what <span class='pill'>next(iter(dl))</span> gives you.",
+   draw:drawBatch,
+   code:`    <span class="k">return</span> {
+        x: torch.stack([...]),  <span class="c"># [B,1,28,28]</span>
+        y: tensor([...]),       <span class="c"># [B]</span>
+    }
+<span class="c"># dl = DataLoader(train, collate_fn=collate_fn,</span>
+<span class="c">#                 batch_size=16)</span>`}
+];
+
+let cur=0,playing=false,timer=null,speed=1;
+const strip=$("strip");
+STAGES.forEach((s,i)=>{
+  const c=document.createElement("div");c.className="chip";
+  c.innerHTML=`<span class="dot"></span>${s.title.split("·")[1].trim()}`;
+  c.onclick=()=>{stop();go(i);};strip.appendChild(c);
+});
+function render(){
+  const s=STAGES[cur];
+  $("stitle").textContent=s.title;$("sbody").innerHTML=s.body;$("code").innerHTML=s.code;
+  s.draw();
+  $("fill").style.width=((cur+1)/STAGES.length*100)+"%";
+  [...strip.children].forEach((c,i)=>{c.classList.toggle("active",i===cur);c.classList.toggle("done",i<cur);});
+  $("prev").disabled=cur===0;$("next").disabled=cur===STAGES.length-1;
+  requestAnimationFrame(bh);
+}
+function go(i){cur=Math.max(0,Math.min(STAGES.length-1,i));render();}
+function stop(){playing=false;clearTimeout(timer);$("play").textContent="▶ Play";$("play").classList.add("primary");}
+function step(){if(cur>=STAGES.length-1){stop();return;}go(cur+1);timer=setTimeout(step,1700/speed);}
+$("play").onclick=()=>{if(playing){stop();return;}if(cur>=STAGES.length-1)go(0);
+  playing=true;$("play").textContent="⏸ Pause";$("play").classList.remove("primary");timer=setTimeout(step,1100/speed);};
+$("next").onclick=()=>{stop();go(cur+1);};$("prev").onclick=()=>{stop();go(cur-1);};
+$("reset").onclick=()=>{stop();go(0);};
+$("speed").oninput=e=>{speed=+e.target.value;$("spv").textContent=speed.toFixed(1)+"×";};
+render();addEventListener("load",bh);addEventListener("resize",bh);
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle("ce-narrow", window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:"ce-frame-height",height:ch()},"*"); }
+  function up(){ reflow(); postH(); }
+  addEventListener("load",up); addEventListener("resize",up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

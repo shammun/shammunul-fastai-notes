@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dataset lifecycle</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--ok:#2fa36b;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 420px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:18px 18px 6px;}
+  h1{font-size:19px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:13px;margin:0 auto 14px;max-width:760px;line-height:1.5;}
+  .stage-strip{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 auto 14px;max-width:900px;}
+  .chip{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:7px 14px;font-size:12.5px;
+        font-weight:600;color:var(--soft);cursor:pointer;transition:.18s;user-select:none;display:flex;align-items:center;gap:7px;}
+  .chip .dot{width:9px;height:9px;border-radius:50%;background:var(--line);transition:.18s;}
+  .chip:hover{border-color:var(--ac);color:var(--ink);}
+  .chip.active{border-color:var(--ac);color:#fff;background:var(--ac);box-shadow:0 6px 16px rgba(123,92,214,.28);}
+  .chip.active .dot{background:#fff;}
+  .chip.done .dot{background:var(--ok);}
+  .stagebar{position:relative;height:5px;background:var(--line);border-radius:999px;max-width:900px;margin:0 auto 16px;overflow:hidden;}
+  .stagebar .fill{position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,var(--in),var(--ac));border-radius:999px;transition:width .4s ease;}
+  .main{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;max-width:980px;margin:0 auto;align-items:start;}
+  @media(max-width:760px){.main{grid-template-columns:1fr;}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;
+        box-shadow:0 8px 22px rgba(123,92,214,.09);}
+  .stage-title{font-size:15px;font-weight:700;margin:0 0 8px;display:flex;align-items:center;gap:8px;}
+  .stage-title .n{background:var(--ac);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;
+        align-items:center;justify-content:center;font-size:12px;}
+  .stage-body{font-size:13.5px;line-height:1.6;color:var(--soft);min-height:90px;}
+  .stage-body b{color:var(--ink);}
+  .scene{margin-top:12px;display:flex;flex-direction:column;gap:10px;}
+  .box{border:1.5px dashed var(--line);border-radius:10px;padding:11px 13px;font-size:12.5px;position:relative;transition:.3s;
+       background:#fbfdff;}
+  .box.lit{border-style:solid;border-color:var(--in);background:#fff7ef;box-shadow:0 4px 14px rgba(246,146,30,.14);}
+  .box.lit.outk{border-color:var(--out);background:#eefcfb;box-shadow:0 4px 14px rgba(22,163,163,.14);}
+  .box .lab{font-weight:700;color:var(--ink);font-size:12.5px;}
+  .box .meta{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--soft);margin-top:4px;}
+  .splitrow{display:flex;gap:10px;}
+  .splitrow .box{flex:1;text-align:center;}
+  .pill{display:inline-block;background:#eef3fb;border-radius:6px;padding:1px 7px;font-family:monospace;font-size:11px;color:var(--ac);}
+  .codewrap{margin-top:2px;}
+  .codehead{font-size:11.5px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  pre{margin:0;background:#1d2434;color:#e7edf8;border-radius:10px;padding:13px 14px;font-size:12.5px;line-height:1.65;
+      font-family:ui-monospace,Menlo,Consolas,monospace;overflow-x:auto;}
+  pre .k{color:#c792ea;}pre .f{color:#82aaff;}pre .s{color:#c3e88d;}pre .c{color:#7a8aa8;font-style:italic;}
+  pre .hl{background:rgba(246,146,30,.22);border-radius:4px;padding:1px 3px;display:inline-block;}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;margin:16px auto 0;max-width:900px;}
+  button{font:inherit;font-size:13px;font-weight:600;border:1.5px solid var(--line);background:#fff;color:var(--ink);
+          border-radius:9px;padding:8px 15px;cursor:pointer;transition:.15s;}
+  button:hover{border-color:var(--ac);color:var(--ac);}
+  button.primary{background:var(--ac);color:#fff;border-color:var(--ac);}
+  button.primary:hover{background:#6a4cc4;color:#fff;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  .speed{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--soft);}
+  .speed input{accent-color:var(--ac);width:120px;}
+  .note{text-align:center;font-size:12px;color:var(--soft);margin:14px auto 0;max-width:760px;line-height:1.55;}
+</style></head><body>
+<h1>The lifecycle of a Hugging Face dataset</h1>
+<p class="sub">Loading data happens in distinct stages. Click any stage to jump to it and see the exact line of code responsible — or press <b>Play</b> to watch the whole pipeline build itself. Nothing is downloaded until you ask for the data.</p>
+
+<div class="stage-strip" id="strip"></div>
+<div class="stagebar"><div class="fill" id="fill"></div></div>
+
+<div class="main">
+  <div class="card">
+    <div class="stage-title"><span class="n" id="snum">1</span><span id="stitle">Builder: peek at metadata</span></div>
+    <div class="stage-body" id="sbody"></div>
+    <div class="scene" id="scene"></div>
+  </div>
+  <div class="card codewrap">
+    <div class="codehead">▶ Code for this stage</div>
+    <pre id="code"></pre>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="prev">‹ Prev</button>
+  <button class="primary" id="play">▶ Play</button>
+  <button id="next">Next ›</button>
+  <button id="reset">↺ Reset</button>
+  <div class="speed">Speed
+    <input type="range" id="speed" min="0.4" max="2.4" step="0.1" value="1">
+    <span id="spv" style="font-family:monospace;color:var(--ac);font-weight:700;">1.0×</span>
+  </div>
+</div>
+
+<p class="note">Key idea: <b>metadata first, data later</b>. <span class="pill">load_dataset_builder</span> only fetches the schema and sizes (cheap). The actual images arrive only when you call <span class="pill">load_dataset</span>, and they're cached so the second call is instant.</p>
+
+<script>
+const STAGES = [
+  {
+    title:"Builder — peek at the metadata",
+    body:"<b>load_dataset_builder</b> contacts the Hub and downloads <b>only the metadata</b> — no images. Think of it as reading the label on a box before opening it. It's fast and tells you what's inside.",
+    scene:`<div class="box lit"><div class="lab">📋 DatasetBuilder (Fashion-MNIST)</div><div class="meta">description, citation, homepage…</div></div>`,
+    code:`<span class="c"># fetches METADATA ONLY — no images downloaded here</span>
+builder = <span class="f hl">load_dataset_builder</span>(<span class="s">'fashion_mnist'</span>)`
+  },
+  {
+    title:"Features — the schema",
+    body:"<b>builder.info.features</b> describes the <b>schema</b>: what fields each sample has and their types. Here: an <span class='pill'>image</span> (an Image feature) and a <span class='pill'>label</span> (a ClassLabel of 10 classes).",
+    scene:`<div class="box lit"><div class="lab">features = {</div>
+      <div class="meta">'image': Image(),</div>
+      <div class="meta">'label': ClassLabel(10 classes)</div>
+      <div class="lab">}</div></div>`,
+    code:`<span class="c"># .features describes the SCHEMA (fields + types)</span>
+builder.info.<span class="hl">features</span>
+<span class="c"># {'image': Image(), 'label': ClassLabel(names=[...])}</span>`
+  },
+  {
+    title:"Splits — how it's partitioned",
+    body:"<b>builder.info.splits</b> describes how the data is partitioned and how big each part is — still <b>just numbers</b>, no images yet.",
+    scene:`<div class="splitrow">
+        <div class="box lit"><div class="lab">train</div><div class="meta">60,000</div></div>
+        <div class="box lit outk"><div class="lab">test</div><div class="meta">10,000</div></div>
+      </div>`,
+    code:`<span class="c"># .splits: partition names + sizes</span>
+builder.info.<span class="hl">splits</span>
+<span class="c"># {'train': 60000 examples, 'test': 10000 examples}</span>`
+  },
+  {
+    title:"Load — download + cache the real data",
+    body:"<b>load_dataset</b> finally <b>downloads and caches</b> the images, returning a <b>DatasetDict</b> — a dict whose values are the two splits. Run it again and it's instant (served from cache).",
+    scene:`<div class="box lit"><div class="lab">⬇ DatasetDict</div><div class="meta">{ 'train': Dataset, 'test': Dataset }</div></div>
+      <div class="splitrow" style="margin-top:8px">
+        <div class="box lit"><div class="lab">🖼 train</div><div class="meta">60,000 imgs</div></div>
+        <div class="box lit outk"><div class="lab">🖼 test</div><div class="meta">10,000 imgs</div></div>
+      </div>`,
+    code:`<span class="c"># now the data is actually downloaded + cached</span>
+dsd = <span class="f hl">load_dataset</span>(<span class="s">'fashion_mnist'</span>)
+<span class="c"># DatasetDict({'train': ..., 'test': ...})</span>`
+  },
+  {
+    title:"Unpack — grab the two splits",
+    body:"A DatasetDict behaves like a normal dict, so we just <b>pull out the splits</b> by key. Now <span class='pill'>train</span> and <span class='pill'>test</span> are ready to index, slice, and feed to a DataLoader.",
+    scene:`<div class="splitrow">
+        <div class="box lit"><div class="lab">train ✓</div><div class="meta">ready</div></div>
+        <div class="box lit outk"><div class="lab">test ✓</div><div class="meta">ready</div></div>
+      </div>`,
+    code:`<span class="c"># a DatasetDict is just a dict — pull out the splits</span>
+train, test = dsd[<span class="s">'train'</span>], dsd[<span class="s">'test'</span>]`
+  }
+];
+
+const $=id=>document.getElementById(id);
+let cur=0, playing=false, timer=null, speed=1;
+
+function broadcastHeight(){
+  // Measure the exact bottom of the last visible element so the parent iframe
+  // wraps tightly with no empty space below. We scan the last few elements and
+  // take the farthest bottom edge (robust to reflow / variable last element).
+  let maxB=0;
+  document.querySelectorAll("body > *").forEach(el=>{
+    const r=el.getBoundingClientRect();
+    const mb=parseFloat(getComputedStyle(el).marginBottom)||0;
+    maxB=Math.max(maxB, r.bottom+window.scrollY+mb);
+  });
+  const pad=parseFloat(getComputedStyle(document.body).paddingBottom)||0;
+  const h=Math.ceil(maxB+pad);
+  parent.postMessage({type:"viz-height",id:"dataset_lifecycle",height:h},"*");
+}
+
+const strip=$("strip");
+STAGES.forEach((s,i)=>{
+  const c=document.createElement("div");
+  c.className="chip"; c.dataset.i=i;
+  c.innerHTML=`<span class="dot"></span>${i+1}. ${s.title.split("—")[0].trim()}`;
+  c.onclick=()=>{stop();go(i);};
+  strip.appendChild(c);
+});
+
+function render(){
+  const s=STAGES[cur];
+  $("snum").textContent=cur+1;
+  $("stitle").textContent=s.title;
+  $("sbody").innerHTML=s.body;
+  $("scene").innerHTML=s.scene;
+  $("code").innerHTML=s.code;
+  $("fill").style.width=((cur+1)/STAGES.length*100)+"%";
+  [...strip.children].forEach((c,i)=>{
+    c.classList.toggle("active",i===cur);
+    c.classList.toggle("done",i<cur);
+  });
+  $("prev").disabled=cur===0;
+  $("next").disabled=cur===STAGES.length-1;
+  requestAnimationFrame(broadcastHeight);
+}
+function go(i){cur=Math.max(0,Math.min(STAGES.length-1,i));render();}
+function stop(){playing=false;clearTimeout(timer);$("play").textContent="▶ Play";$("play").classList.add("primary");}
+function step(){
+  if(cur>=STAGES.length-1){stop();return;}
+  go(cur+1);
+  timer=setTimeout(step,1600/speed);
+}
+$("play").onclick=()=>{
+  if(playing){stop();return;}
+  if(cur>=STAGES.length-1)go(0);
+  playing=true;$("play").textContent="⏸ Pause";$("play").classList.remove("primary");
+  timer=setTimeout(step,1100/speed);
+};
+$("next").onclick=()=>{stop();go(cur+1);};
+$("prev").onclick=()=>{stop();go(cur-1);};
+$("reset").onclick=()=>{stop();go(0);};
+$("speed").oninput=e=>{speed=+e.target.value;$("spv").textContent=speed.toFixed(1)+"×";};
+
+render();
+addEventListener("load",broadcastHeight);
+addEventListener("resize",broadcastHeight);
+// Re-measure after layout/fonts settle so the iframe wraps tightly.
+[120,360,800].forEach(t=>setTimeout(broadcastHeight,t));
+if(document.fonts&&document.fonts.ready){document.fonts.ready.then(broadcastHeight);}
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle("ce-narrow", window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:"ce-frame-height",height:ch()},"*"); }
+  function up(){ reflow(); postH(); }
+  addEventListener("load",up); addEventListener("resize",up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

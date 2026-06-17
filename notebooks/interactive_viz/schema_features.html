@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Features & ClassLabel</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 420px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:18px;}
+  h1{font-size:19px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:13px;margin:0 auto 16px;max-width:720px;line-height:1.5;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px;margin:0 auto;align-items:start;}
+  @media(max-width:720px){.grid{grid-template-columns:1fr;}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 8px 22px rgba(123,92,214,.09);}
+  .cap{font-size:14px;font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:8px;}
+  .cap .tag{font-size:10.5px;font-weight:700;color:#fff;border-radius:6px;padding:2px 8px;}
+  .tag.in{background:var(--in);}.tag.out{background:var(--out);}
+  .schema{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.9;color:var(--soft);}
+  .schema .key{color:var(--ac);}
+  .schema .row{padding:4px 8px;border-radius:8px;cursor:default;transition:.18s;}
+  .schema .row.hot{background:#f4f0fd;}
+  .classes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .clab{font-size:11.5px;padding:4px 9px;border-radius:999px;border:1.5px solid var(--line);background:#fbfdff;color:var(--soft);
+        cursor:pointer;transition:.15s;}
+  .clab:hover{border-color:var(--out);color:var(--ink);}
+  .clab.sel{background:var(--out);border-color:var(--out);color:#fff;font-weight:700;box-shadow:0 4px 12px rgba(22,163,163,.25);}
+  .clab .ix{opacity:.65;font-family:monospace;margin-right:5px;}
+  .dial{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:6px;}
+  .imgbox{width:140px;height:140px;border-radius:12px;border:1.5px solid var(--line);background:#0d1320;
+          display:flex;align-items:center;justify-content:center;}
+  canvas{image-rendering:pixelated;border-radius:8px;}
+  .mapping{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:#f4f7fd;border-radius:10px;
+           padding:12px 14px;text-align:center;line-height:1.9;width:100%;}
+  .mapping .i{color:var(--in);font-weight:700;}
+  .mapping .o{color:var(--out);font-weight:700;}
+  .mapping .arrow{color:var(--ac);font-weight:700;margin:0 8px;}
+  .row2{display:flex;align-items:center;gap:10px;justify-content:center;font-size:13px;margin-top:6px;}
+  input[type=range]{accent-color:var(--in);width:180px;max-width:60vw;}
+  pre{margin:12px 0 0;background:#1d2434;color:#e7edf8;border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.65;
+      font-family:ui-monospace,Menlo,Consolas,monospace;overflow-x:auto;}
+  pre .c{color:#7a8aa8;font-style:italic;}pre .f{color:#82aaff;}pre .s{color:#c3e88d;}
+  pre .hl{background:rgba(22,163,163,.22);border-radius:4px;padding:1px 3px;}
+  .note{text-align:center;font-size:12px;color:var(--soft);margin:16px auto 0;max-width:720px;line-height:1.55;}
+</style></head><body>
+<h1>What <code>.features</code> really is — the schema &amp; the label decoder</h1>
+<p class="sub">Every sample has named fields with <b>types</b>. The <span style="color:var(--out);font-weight:700">label</span> is stored as a plain integer to save space; a <b>ClassLabel</b> remembers the human-readable names. Click a class on the left, or spin the dial on the right, to see <code>int2str</code> translate <span style="color:var(--in)">9</span> → <span style="color:var(--out)">"Ankle boot"</span>.</p>
+
+<div class="grid">
+  <div class="card">
+    <div class="cap">The schema <span class="tag in">features</span></div>
+    <div class="schema">
+      <div class="row" id="row-img">{<span class="key">'image'</span>: Image()  <span style="color:#8aa">&larr; a PIL image</span></div>
+      <div class="row hot" id="row-lab"><span class="key">'label'</span>: ClassLabel(names=[…10…])  <span style="color:#8aa">&larr; an int 0–9</span>}</div>
+    </div>
+    <div class="classes" id="classes"></div>
+    <pre><span class="c"># the ClassLabel carries the int→name mapping</span>
+featy = ds.features[<span class="s">'label'</span>]
+featy.<span class="f hl">int2str</span>(<span style="color:#f6921e">idx</span>)   <span class="c"># single int → name</span>
+featy.<span class="f hl">int2str</span>(yb)    <span class="c"># or a whole list of labels</span></pre>
+  </div>
+
+  <div class="card">
+    <div class="cap">The decoder <span class="tag out">int2str</span></div>
+    <div class="dial">
+      <div class="imgbox"><canvas id="cv" width="112" height="112"></canvas></div>
+      <div class="row2">label index =
+        <input id="idx" type="range" min="0" max="9" step="1" value="9">
+        <span id="idxv" style="font-family:monospace;color:var(--in);font-weight:700;font-size:15px">9</span>
+      </div>
+      <div class="mapping">
+        <span class="i">int2str</span>(<span class="i" id="mi">9</span>)
+        <span class="arrow">→</span>
+        <span class="o">"<span id="mo">Ankle boot</span>"</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="note">Why store an int and not the string? Because <b>60,000 small integers</b> are far cheaper than 60,000 copies of a word, and the model needs numbers anyway. The names live <b>once</b>, inside the ClassLabel feature, ready whenever you want a human-readable title.</p>
+
+<script>
+const NAMES=["T-shirt/top","Trouser","Pullover","Dress","Coat","Sandal","Shirt","Sneaker","Bag","Ankle boot"];
+const $=id=>document.getElementById(id);
+function bh(){parent.postMessage({type:"viz-height",id:"schema_features",height:Math.ceil(document.body.scrollHeight)},"*");}
+
+// tiny procedural 28x28 glyph per class so each pick looks distinct
+function glyph(idx){
+  const N=28,a=new Float32Array(N*N);
+  const px=(x,y,v)=>{if(x>=0&&x<N&&y>=0&&y<N)a[y*N+x]=Math.max(a[y*N+x],v);};
+  const blob=(cx,cy,rx,ry,v)=>{for(let y=0;y<N;y++)for(let x=0;x<N;x++){const d=((x-cx)/rx)**2+((y-cy)/ry)**2;if(d<=1)px(x,y,v*(1-0.5*d));}};
+  const rect=(x0,y0,x1,y1,v)=>{for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)px(x,y,v);};
+  if(idx===0){rect(9,5,18,9,.85);rect(6,8,9,13,.8);rect(18,8,21,13,.8);rect(9,9,18,24,.9);}
+  else if(idx===1){rect(9,4,18,12,.85);rect(9,12,13,25,.9);rect(15,12,18,25,.9);}
+  else if(idx===2){rect(8,6,19,22,.9);rect(5,8,8,16,.8);rect(19,8,22,16,.8);}
+  else if(idx===3){rect(11,4,16,8,.85);for(let y=8;y<25;y++){const w=2+(y-8)*0.55;rect(Math.round(13-w),y,Math.round(13+w),y,.9);}}
+  else if(idx===4){rect(8,5,19,23,.9);rect(4,7,8,18,.82);rect(19,7,23,18,.82);rect(12,6,15,22,.55);}
+  else if(idx===5){rect(6,16,21,20,.9);rect(6,12,11,16,.7);}
+  else if(idx===6){rect(9,5,18,9,.85);rect(6,8,9,15,.8);rect(18,8,21,15,.8);rect(9,9,18,23,.88);}
+  else if(idx===7){blob(13,17,9,5,.9);rect(5,19,22,22,.95);rect(7,12,13,17,.7);}
+  else if(idx===8){rect(7,9,20,24,.9);rect(10,5,17,9,.7);px(10,5,0);}
+  else{rect(8,7,16,21,.92);rect(8,21,22,24,.95);rect(8,7,12,12,.7);}
+  return a;
+}
+function draw(idx){
+  const ctx=$("cv").getContext("2d");const N=28,S=4;
+  const a=glyph(idx);
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const v=a[y*N+x];const c=Math.round(v*255);
+    ctx.fillStyle=`rgb(${c},${c},${c})`;
+    ctx.fillRect(x*S,y*S,S,S);
+  }
+}
+const cw=$("classes");
+NAMES.forEach((n,i)=>{
+  const el=document.createElement("div");el.className="clab";el.dataset.i=i;
+  el.innerHTML=`<span class="ix">${i}</span>${n}`;
+  el.onclick=()=>set(i);
+  cw.appendChild(el);
+});
+function set(i){
+  $("idx").value=i;$("idxv").textContent=i;$("mi").textContent=i;$("mo").textContent=NAMES[i];
+  [...cw.children].forEach((c,j)=>c.classList.toggle("sel",j===i));
+  draw(i);bh();
+}
+$("idx").oninput=e=>set(+e.target.value);
+set(9);
+addEventListener("load",bh);addEventListener("resize",bh);
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle("ce-narrow", window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:"ce-frame-height",height:ch()},"*"); }
+  function up(){ reflow(); postH(); }
+  addEventListener("load",up); addEventListener("resize",up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

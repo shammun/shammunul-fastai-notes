@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>itemgetter & duck typing</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 420px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:18px;}
+  h1{font-size:19px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:13px;margin:0 auto 16px;max-width:740px;line-height:1.5;}
+  .panel{max-width:900px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 8px 22px rgba(123,92,214,.09);}
+  .builder{display:flex;flex-direction:column;gap:6px;align-items:center;margin-bottom:14px;}
+  .builder .lbl{font-size:12.5px;color:var(--soft);}
+  .keys{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+  .key{font-family:ui-monospace,monospace;font-size:14px;font-weight:700;border:1.5px solid var(--line);background:#fbfdff;
+       color:var(--soft);border-radius:9px;padding:8px 16px;cursor:pointer;transition:.15s;user-select:none;}
+  .key:hover{border-color:var(--ac);color:var(--ink);}
+  .key.sel{background:var(--ac);border-color:var(--ac);color:#fff;box-shadow:0 5px 14px rgba(123,92,214,.25);}
+  .getter{font-family:ui-monospace,monospace;font-size:15px;text-align:center;background:#f4f0fd;border-radius:10px;
+          padding:11px;margin:6px auto 0;color:var(--ac);font-weight:700;}
+  .flow{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin-top:18px;}
+  @media(max-width:640px){.flow{grid-template-columns:1fr;}.arrow{transform:rotate(90deg);justify-self:center;}}
+  .obj{border:1.5px solid var(--line);border-radius:12px;padding:14px;background:#fbfdff;}
+  .obj h3{margin:0 0 8px;font-size:13px;display:flex;align-items:center;gap:8px;}
+  .obj h3 .badge{font-size:10px;font-weight:700;color:#fff;border-radius:6px;padding:2px 7px;background:var(--in);}
+  .obj.duck h3 .badge{background:var(--out);}
+  .field{font-family:ui-monospace,monospace;font-size:13px;padding:6px 10px;border-radius:8px;margin:4px 0;
+         display:flex;justify-content:space-between;transition:.18s;background:#fff;border:1px solid var(--line);}
+  .field.grab{background:#fff7ef;border-color:var(--in);box-shadow:0 3px 10px rgba(246,146,30,.16);}
+  .field .k{color:var(--ac);font-weight:700;}
+  .arrow{font-size:26px;color:var(--ac);text-align:center;font-weight:700;}
+  .result{border:1.5px solid var(--out);border-radius:12px;padding:14px;background:#eefcfb;}
+  .result h3{margin:0 0 8px;font-size:13px;color:var(--out);}
+  .tuple{font-family:ui-monospace,monospace;font-size:18px;font-weight:700;color:var(--out);text-align:center;padding:8px;}
+  .toggle{display:flex;gap:10px;justify-content:center;margin:16px 0 4px;}
+  .toggle button{font:inherit;font-size:12.5px;font-weight:600;border:1.5px solid var(--line);background:#fff;color:var(--soft);
+                 border-radius:999px;padding:7px 16px;cursor:pointer;transition:.15s;}
+  .toggle button.on{background:var(--out);border-color:var(--out);color:#fff;}
+  pre{margin:14px 0 0;background:#1d2434;color:#e7edf8;border-radius:10px;padding:13px 14px;font-size:12.5px;line-height:1.7;
+      font-family:ui-monospace,monospace;overflow-x:auto;}
+  pre .c{color:#7a8aa8;font-style:italic;}pre .k{color:#c792ea;}pre .f{color:#82aaff;}pre .s{color:#c3e88d;}
+  pre .hl{background:rgba(123,92,214,.28);border-radius:4px;padding:1px 3px;}
+  .note{text-align:center;font-size:12px;color:var(--soft);margin:16px auto 0;max-width:740px;line-height:1.55;}
+</style></head><body>
+<h1><code>itemgetter</code>: build a reusable getter — and why <em>duck typing</em> makes it work anywhere</h1>
+<p class="sub">Pick the keys you want to pull out. <code>itemgetter</code> bakes them into a small function <span style="color:var(--ac);font-weight:700">ig</span> that returns a <b>tuple</b> in that order. The twist: <span style="color:var(--ac);font-weight:700">ig</span> never checks the <em>type</em> of what you pass it — it only needs square-bracket access. So it works on a real dict <b>and</b> on any custom object that defines <code>__getitem__</code>.</p>
+
+<div class="panel">
+  <div class="card">
+    <div class="builder">
+      <div class="lbl">Choose which keys <b>ig</b> should grab (order matters):</div>
+      <div class="keys" id="keys"></div>
+      <div class="getter" id="getter">ig = itemgetter('a', 'c')</div>
+    </div>
+
+    <div class="toggle">
+      <button id="t-dict" class="on">apply to a <b>dict</b></button>
+      <button id="t-duck">apply to a custom <b>D()</b> object</button>
+    </div>
+
+    <div class="flow">
+      <div class="obj" id="objcard">
+        <h3 id="objtitle">d = dict(a=1, b=2, c=3) <span class="badge" id="objbadge">dict</span></h3>
+        <div id="fields"></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="result">
+        <h3 id="restitle">ig(d)</h3>
+        <div class="tuple" id="tuple">(1, 3)</div>
+      </div>
+    </div>
+
+    <pre id="code"></pre>
+  </div>
+  <p class="note"><b>Duck typing:</b> "if it walks like a dict and quacks like a dict…" — Python doesn't care that <code>D()</code> isn't a real dict. Because <code>D</code> defines <code>__getitem__</code>, the very same <span style="color:var(--ac);font-weight:700">ig</span> works on it unchanged. That's how one tiny getter can power <code>collate_dict</code> on Hugging Face batches.</p>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+function bh(){parent.postMessage({type:"viz-height",id:"itemgetter_ducktyping",height:Math.ceil(document.body.scrollHeight)},"*");}
+const ALL=["a","b","c"];const VAL={a:1,b:2,c:3};
+let sel=["a","c"];let mode="dict";
+
+const kw=$("keys");
+ALL.forEach(k=>{
+  const el=document.createElement("div");el.className="key";el.dataset.k=k;el.textContent="'"+k+"'";
+  el.onclick=()=>{
+    const i=sel.indexOf(k);
+    if(i>=0){if(sel.length>1)sel.splice(i,1);}
+    else sel.push(k);
+    render();
+  };
+  kw.appendChild(el);
+});
+function render(){
+  [...kw.children].forEach(c=>c.classList.toggle("sel",sel.includes(c.dataset.k)));
+  $("getter").textContent="ig = itemgetter("+sel.map(k=>"'"+k+"'").join(", ")+")";
+  const isDict=mode==="dict";
+  $("t-dict").classList.toggle("on",isDict);$("t-duck").classList.toggle("on",!isDict);
+  $("objcard").classList.toggle("duck",!isDict);
+  $("objtitle").innerHTML=(isDict?"d = dict(a=1, b=2, c=3)":"obj = D()  (no real dict!)")+' <span class="badge">'+(isDict?"dict":"__getitem__")+'</span>';
+  // fields
+  const fw=$("fields");fw.innerHTML="";
+  ALL.forEach(k=>{
+    const f=document.createElement("div");f.className="field"+(sel.includes(k)?" grab":"");
+    f.innerHTML=`<span class="k">'${k}'</span><span>${VAL[k]}</span>`;
+    fw.appendChild(f);
+  });
+  $("restitle").textContent=isDict?"ig(d)":"ig(obj)   ← same ig!";
+  $("tuple").textContent= sel.length===1 ? VAL[sel[0]] : "("+sel.map(k=>VAL[k]).join(", ")+")";
+  const keysrc=sel.map(k=>"'"+k+"'").join(", ");
+  if(isDict){
+    $("code").innerHTML=`<span class="k">from</span> operator <span class="k">import</span> itemgetter
+ig = <span class="f">itemgetter</span>(${keysrc})
+d  = <span class="f">dict</span>(a=1, b=2, c=3)
+<span class="hl">ig(d)</span>   <span class="c"># → ${sel.length===1?VAL[sel[0]]:"("+sel.map(k=>VAL[k]).join(", ")+")"}</span>`;
+  }else{
+    $("code").innerHTML=`<span class="k">class</span> <span class="f">D</span>:
+    <span class="k">def</span> <span class="f">__getitem__</span>(self, k):
+        <span class="k">return</span> {<span class="s">'a'</span>:1,<span class="s">'b'</span>:2,<span class="s">'c'</span>:3}[k]
+<span class="c"># the SAME ig — duck typing: only [] access is needed</span>
+<span class="hl">ig(D())</span>   <span class="c"># → ${sel.length===1?VAL[sel[0]]:"("+sel.map(k=>VAL[k]).join(", ")+")"}</span>`;
+  }
+  bh();
+}
+$("t-dict").onclick=()=>{mode="dict";render();};
+$("t-duck").onclick=()=>{mode="duck";render();};
+render();addEventListener("load",bh);addEventListener("resize",bh);
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle("ce-narrow", window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:"ce-frame-height",height:ch()},"*"); }
+  function up(){ reflow(); postH(); }
+  addEventListener("load",up); addEventListener("resize",up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>
