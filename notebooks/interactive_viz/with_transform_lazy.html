@@ -1,0 +1,136 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>with_transform: lazy, on-access transforms</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .wrap{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:0 6px 16px rgba(123,92,214,.08)}
+  .cap{text-align:center;font-size:12.5px;font-weight:700;margin:0 0 8px}
+  .btnrow{display:flex;gap:8px;justify-content:center;margin:12px 0 4px;flex-wrap:wrap}
+  button{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px}
+  button.alt{background:#fff;color:var(--ac);border:1px solid var(--ac)}
+  .row{display:flex;align-items:center;gap:10px;border:1px solid #e8edf7;border-radius:9px;padding:7px 10px;margin:6px 0;font-family:monospace;font-size:12px;transition:.3s;cursor:pointer}
+  .row.touched{box-shadow:0 0 0 3px rgba(123,92,214,.25)}
+  .state{font-weight:800;padding:2px 8px;border-radius:6px}
+  .pil{background:#fff1e2;color:#b06900}
+  .tensor{background:#e7f6f4;color:#0e7d7d}
+  .code{background:#f4f7fd;border-radius:8px;padding:8px 11px;font-family:monospace;font-size:12.5px;line-height:1.7;margin-top:8px}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:10px;max-width:680px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .counter{text-align:center;font-size:12.5px;font-weight:700;color:var(--ac);margin-top:6px}
+  .idx{color:var(--ac);font-weight:800;min-width:54px}
+  .ctrl{display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap;font-size:12.5px}
+  .ctrl input{width:60px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;font-family:monospace;font-size:13px}
+  .body.ce-narrow .wrap{flex-direction:column}
+</style></head><body>
+
+<h1>with_transform is lazy: nothing happens until you look</h1>
+<p class="sub">tds = train.with_transform(transformi) &mdash; the transform fires per-sample, on access.</p>
+
+<div class="wrap">
+  <div class="card" style="min-width:330px">
+    <p class="cap">Dataset (8 samples)</p>
+    <div id="rows"></div>
+    <div class="ctrl">
+      <label>access&nbsp;index</label>
+      <input id="ix" type="number" min="0" max="7" value="3">
+      <button id="go">Access &#9658;</button>
+    </div>
+    <div class="btnrow">
+      <button class="alt" id="rand">Access random</button>
+      <button class="alt" id="reset">Reset</button>
+    </div>
+    <div class="counter" id="counter">transform calls so far: 0&nbsp; (only for samples you actually touched)</div>
+    <div class="code" id="log">// click a row, or pick an index and press Access</div>
+  </div>
+
+  <div class="card" style="max-width:300px">
+    <p class="cap">Eager vs. lazy</p>
+    <p class="note" style="margin:0;text-align:left">
+      An <b style="color:var(--in)">eager</b> approach would convert <b>all 8</b> samples (all <b>60,000</b> in real MNIST) to tensors up front &mdash; wasting time and memory on data you may never use.<br><br>
+      <b style="color:var(--ac)">Lazy</b> <code>.with_transform</code> converts <b>only</b> what a DataLoader or loop actually pulls. Rows you never touch stay as compact PIL images.
+    </p>
+  </div>
+</div>
+
+<p class="note">
+  <code>.with_transform(fn)</code> returns a <b>view</b> that keeps the original data in its compact on-disk (Arrow/PIL) form and applies <code>fn</code> only when a sample is read. This saves memory and startup time, and lets you swap transforms cheaply without recopying data.
+</p>
+
+<script>
+(function(){
+  var N=8, calls=0, touched={};
+  var rowsEl=document.getElementById('rows');
+  var counterEl=document.getElementById('counter');
+  var logEl=document.getElementById('log');
+
+  function build(){
+    rowsEl.innerHTML='';
+    for(var i=0;i<N;i++){
+      var r=document.createElement('div');
+      r.className='row'; r.dataset.i=i;
+      r.innerHTML='<span class="idx">tds['+i+']</span>'+
+                  '<span class="state pil">image: PIL 28&times;28</span>';
+      r.addEventListener('click',(function(k){return function(){access(k);};})(i));
+      rowsEl.appendChild(r);
+    }
+  }
+
+  function access(i){
+    var r=rowsEl.querySelector('.row[data-i="'+i+'"]');
+    if(!r) return;
+    r.classList.add('touched');
+    setTimeout(function(){ r.classList.remove('touched'); }, 600);
+    if(!touched[i]){
+      touched[i]=true;
+      calls++;
+      var s=r.querySelector('.state');
+      s.className='state tensor';
+      s.textContent='image: tensor [784]';
+    }
+    logEl.textContent='tds['+i+']  →  transformi runs on sample '+i+'  →  tensor[784]';
+    counterEl.textContent='transform calls so far: '+calls+'  (only for samples you actually touched)';
+  }
+
+  document.getElementById('go').addEventListener('click',function(){
+    var v=parseInt(document.getElementById('ix').value,10);
+    if(isNaN(v)) return;
+    v=Math.max(0,Math.min(N-1,v));
+    document.getElementById('ix').value=v;
+    access(v);
+  });
+  document.getElementById('rand').addEventListener('click',function(){
+    var v=Math.floor(Math.random()*N);
+    document.getElementById('ix').value=v;
+    access(v);
+  });
+  document.getElementById('reset').addEventListener('click',function(){
+    calls=0; touched={};
+    build();
+    counterEl.textContent='transform calls so far: 0  (only for samples you actually touched)';
+    logEl.textContent='// click a row, or pick an index and press Access';
+  });
+
+  build();
+})();
+</script>
+
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

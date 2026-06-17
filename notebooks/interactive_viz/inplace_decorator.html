@@ -1,0 +1,150 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The @inplace decorator</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#e0524b;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .wrap{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;align-items:stretch}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:0 6px 16px rgba(123,92,214,.08);max-width:330px}
+  .cap{text-align:center;font-size:13px;font-weight:800;margin:0 0 8px}
+  .btnrow{display:flex;gap:8px;justify-content:center;margin:12px 0 4px;flex-wrap:wrap}
+  button{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px}
+  button.alt{background:#fff;color:var(--ac);border:1px solid var(--ac)}
+  pre{background:#f4f7fd;border-radius:8px;padding:10px;font-family:monospace;font-size:12px;line-height:1.55;margin:0 0 8px;overflow-x:auto}
+  .ret{font-family:monospace;font-size:13px;font-weight:800;text-align:center;padding:8px;border-radius:8px;transition:.3s}
+  .ok{background:#e7f6f4;color:#0e7d7d}
+  .err{background:#fdecea;color:var(--bad)}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:10px;max-width:680px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .hl{background:#fff3d6;border-radius:4px;padding:0 3px}
+</style></head><body>
+
+<h1>Why <code>@inplace</code>? A missing <code>return</code> silently breaks the pipeline</h1>
+<p class="sub">Both functions modify <code>b</code> correctly &mdash; only one gives it back.</p>
+
+<div class="btnrow">
+  <button id="run">Run transform &#9654;</button>
+  <button id="reset" class="alt">Reset</button>
+</div>
+
+<div class="wrap">
+  <!-- LEFT: WITHOUT @inplace -->
+  <div class="card">
+    <p class="cap" style="color:var(--bad)">WITHOUT <code>@inplace</code></p>
+    <pre>def f(b):
+    b['image'] = [to_tensor(o) ...]
+    <span style="color:var(--bad)"># forgot to return b!</span></pre>
+    <div id="bL" class="bbox"></div>
+    <div id="stepL" class="stepmsg"></div>
+    <div id="retL" class="ret err" style="opacity:.25">return value: &mdash;</div>
+  </div>
+
+  <!-- RIGHT: WITH @inplace -->
+  <div class="card">
+    <p class="cap" style="color:var(--out)">WITH <code>@inplace</code></p>
+    <pre>@inplace
+def f(b):
+    b['image'] = [to_tensor(o) ...]
+
+<span style="color:var(--soft)"># decorator builds:</span>
+def _f(b):
+    f(b)
+    <span class="hl">return b</span></pre>
+    <div id="bR" class="bbox"></div>
+    <div id="stepR" class="stepmsg"></div>
+    <div id="retR" class="ret ok" style="opacity:.25">return value: &mdash;</div>
+  </div>
+</div>
+
+<p class="note">
+  In Python, a function with no <code>return</code> evaluates to <code>None</code>. HuggingFace's
+  <code>.with_transform</code> keeps the <em>return value</em> of your transform, so a transform that mutates
+  <code>b</code> but forgets <code>return b</code> hands back <code>None</code> &mdash; the sample is destroyed.
+  Rather than remember <code>return b</code> in every transform, <code>inplace</code> is a decorator that wraps
+  your function to call it and then return its argument: <span class="hl"><code>@inplace</code> adds the
+  <code>return b</code> for you.</span>
+</p>
+
+<style>
+  .bbox{font-family:monospace;font-size:12px;background:#f4f7fd;border-radius:8px;padding:9px 10px;margin:0 0 8px;line-height:1.8}
+  .bbox .key{color:var(--soft)}
+  .chip{display:inline-block;border-radius:5px;padding:1px 6px;font-size:11px;font-weight:700;margin:1px 2px;transition:.35s}
+  .chip.pil{background:#fde7cf;color:#a85b09}
+  .chip.tensor{background:#d7efef;color:#0e7d7d}
+  .stepmsg{text-align:center;font-size:11.5px;color:var(--ac);font-weight:700;min-height:16px;margin:0 0 8px;transition:.3s}
+</style>
+
+<script id="anim-js">
+(function(){
+  var runBtn=document.getElementById('run'), resetBtn=document.getElementById('reset');
+  var labels=['cat','dog','cat'];
+
+  function renderB(box, kind){
+    var img='';
+    for(var i=0;i<3;i++){
+      img+='<span class="chip '+(kind==='tensor'?'tensor':'pil')+'">'+(kind==='tensor'?'tensor':'PIL')+'</span>';
+    }
+    box.innerHTML='<span class="key">b[\'image\']</span> = ['+img+']<br>'+
+                  '<span class="key">b[\'label\']</span> = ['+labels.join(', ')+']';
+  }
+
+  function reset(){
+    renderB(document.getElementById('bL'),'pil');
+    renderB(document.getElementById('bR'),'pil');
+    document.getElementById('stepL').textContent='';
+    document.getElementById('stepR').textContent='';
+    var rl=document.getElementById('retL'); rl.className='ret err'; rl.style.opacity='.25'; rl.innerHTML='return value: &mdash;';
+    var rr=document.getElementById('retR'); rr.className='ret ok'; rr.style.opacity='.25'; rr.innerHTML='return value: &mdash;';
+    runBtn.disabled=false;
+  }
+
+  function run(){
+    runBtn.disabled=true; reset(); runBtn.disabled=true;
+    // step 1: both call f(b) -> b is modified (PIL -> tensor)
+    setTimeout(function(){
+      document.getElementById('stepL').textContent='step 1 — call f(b): b is modified in place';
+      document.getElementById('stepR').textContent='step 1 — call _f(b): inner f(b) modifies b in place';
+      renderB(document.getElementById('bL'),'tensor');
+      renderB(document.getElementById('bR'),'tensor');
+    },300);
+    // step 2 left: no return -> None
+    setTimeout(function(){
+      document.getElementById('stepL').textContent='step 2 — what does the dataset receive?';
+      var rl=document.getElementById('retL'); rl.style.opacity='1'; rl.innerHTML='return value: None  ✗';
+    },1300);
+    // step 2 right: wrapper runs `return b`
+    setTimeout(function(){
+      document.getElementById('stepR').textContent='step 2 — wrapper runs the highlighted return b';
+      var rr=document.getElementById('retR'); rr.style.opacity='1';
+      rr.innerHTML="return value: {'image':[tensor…],'label':[…]}  ✓";
+    },1800);
+    setTimeout(function(){
+      document.getElementById('stepL').textContent='step 2 — .with_transform keeps None → sample broken';
+      runBtn.disabled=false;
+    },2400);
+  }
+
+  runBtn.addEventListener('click',run);
+  resetBtn.addEventListener('click',reset);
+  reset();
+})();
+</script>
+
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIL image to tensor</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .wrap{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 6px 16px rgba(123,92,214,.08)}
+  .cap{text-align:center;font-size:12.5px;font-weight:700;margin:0 0 8px}
+  .btnrow{display:flex;gap:8px;justify-content:center;margin:12px 0 4px;flex-wrap:wrap}
+  button{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px}
+  button.alt{background:#fff;color:var(--ac);border:1px solid var(--ac)}
+  button:disabled{opacity:.45;cursor:default}
+  .code{background:#f4f7fd;border-radius:8px;padding:8px 11px;font-family:monospace;font-size:12.5px;line-height:1.7;margin-top:8px}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:10px;max-width:660px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .shape{font-family:monospace;color:var(--ac);font-weight:800}
+  /* grid of pixels */
+  .grid{display:grid;gap:2px;transition:gap .5s ease, transform .5s ease}
+  .cell{width:13px;height:13px;border-radius:2px;display:flex;align-items:center;justify-content:center;
+        font-size:7px;color:transparent;transition:background .6s ease, color .4s ease, transform .5s ease;}
+  .cell.show-val{color:#fff;font-size:6px}
+  .stepname{text-align:center;font-size:13px;font-weight:800;color:var(--ac);min-height:18px;margin:0 0 4px}
+  .shaperow{text-align:center;font-size:13px;font-family:monospace;margin:6px 0 0}
+  .badge{display:inline-block;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;color:#fff}
+  .b-in{background:var(--in)}.b-out{background:var(--out)}
+  .samples{font-family:monospace;font-size:11.5px;color:var(--soft);text-align:center;margin-top:6px;line-height:1.6}
+  .strip-wrap{overflow-x:auto;max-width:340px;padding-bottom:4px}
+  .legend{text-align:center;font-size:11px;color:var(--soft);margin-top:4px}
+  .info{max-width:300px;font-size:12px;line-height:1.55;color:var(--soft)}
+  .info b{color:var(--ink)}
+  .progress{display:flex;gap:6px;justify-content:center;margin:4px 0 8px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--line);transition:background .3s}
+  .dot.on{background:var(--ac)}
+</style></head><body>
+<h1>From PIL image to a model-ready tensor</h1>
+<p class="sub">Watch <code>torch.flatten(TF.to_tensor(pil_img))</code> turn a Fashion-MNIST picture into a flat float vector.</p>
+<div class="progress" id="prog"></div>
+<p class="stepname" id="stepname">Stage 1 - PIL image</p>
+<div class="wrap">
+  <div class="card">
+    <p class="cap" id="gridcap"><span class="badge b-in">PIL image, mode='L'</span></p>
+    <div class="strip-wrap"><div class="grid" id="grid"></div></div>
+    <p class="legend" id="legend">dark = 0 &nbsp; light = 255</p>
+    <p class="shaperow" id="shaperow">shape: <span class="shape">28 &times; 28</span> &nbsp;(H &times; W), int 0&hellip;255</p>
+    <p class="samples" id="samples">pixel[0,0]=0 &nbsp; pixel[7,4]=255</p>
+  </div>
+  <div class="card info" id="infocard">
+    <p id="infotext"><b>Stage 1.</b> A Fashion-MNIST image is a 28&times;28 grid of integer brightness values (0 = black, 255 = white). Here is an 8&times;8 boot pictogram standing in for it. Press <b>Step</b> to feed it through the pipeline.</p>
+    <div class="code" id="codebox">img  # PIL.Image, 28&times;28, mode 'L'</div>
+  </div>
+</div>
+<div class="btnrow">
+  <button id="step">Step &#9654;</button>
+  <button id="auto" class="alt">Auto-play</button>
+  <button id="reset" class="alt">Reset</button>
+</div>
+<p class="note">
+  <b>TF.to_tensor</b> does two jobs at once: it <b>scales</b> pixels &#247;255 into floats in [0,1], and it <b>reorders axes</b> from H&times;W&times;C to C&times;H&times;W (channels-first). <b>torch.flatten</b> then collapses everything into a 1-D vector &mdash; only needed for non-convolutional (linear) models; conv nets keep the 2-D shape.
+</p>
+
+<script>
+// ---- 8x8 grayscale boot pictogram (0..255) ----
+var X=0, F=255, G=150;
+var IMG=[
+ [X,X,F,F,X,X,X,X],
+ [X,X,F,F,X,X,X,X],
+ [X,X,F,F,X,X,X,X],
+ [X,X,F,F,X,X,X,X],
+ [X,X,F,F,G,G,X,X],
+ [X,X,F,F,F,F,G,X],
+ [X,F,F,F,F,F,F,F],
+ [X,F,F,F,F,F,F,F]
+];
+var N=IMG.length;                 // 8
+var grid=document.getElementById('grid');
+var cells=[];
+function buildGrid(){
+  grid.style.gridTemplateColumns='repeat('+N+',13px)';
+  grid.innerHTML='';
+  cells=[];
+  for(var r=0;r<N;r++)for(var c=0;c<N;c++){
+    var d=document.createElement('div');
+    d.className='cell';
+    var v=IMG[r][c];
+    d.style.background='rgb('+v+','+v+','+v+')';
+    d.textContent=v;
+    d.dataset.r=r; d.dataset.c=c;
+    grid.appendChild(d); cells.push(d);
+  }
+}
+buildGrid();
+
+var stage=0, MAX=4, timer=null;
+var stepname=document.getElementById('stepname');
+var infotext=document.getElementById('infotext');
+var codebox=document.getElementById('codebox');
+var shaperow=document.getElementById('shaperow');
+var samples=document.getElementById('samples');
+var legend=document.getElementById('legend');
+var gridcap=document.getElementById('gridcap');
+var prog=document.getElementById('prog');
+for(var i=0;i<MAX;i++){var dd=document.createElement('div');dd.className='dot';prog.appendChild(dd);}
+var dots=prog.children;
+
+function setDots(){for(var i=0;i<MAX;i++)dots[i].className='dot'+(i<=stage?' on':'');}
+
+function render(){
+  setDots();
+  // STAGE 0 : PIL int image
+  if(stage===0){
+    stepname.textContent='Stage 1 - PIL image';
+    gridcap.innerHTML='<span class="badge b-in">PIL image, mode=\'L\'</span>';
+    legend.innerHTML='dark = 0 &nbsp; light = 255';
+    for(var k=0;k<cells.length;k++){var v=IMG[cells[k].dataset.r][cells[k].dataset.c];
+      cells[k].style.background='rgb('+v+','+v+','+v+')';cells[k].textContent=v;cells[k].classList.add('show-val');cells[k].style.color='#fff';}
+    grid.style.transform='none';grid.style.gap='2px';
+    shaperow.innerHTML='shape: <span class="shape">28 &times; 28</span> &nbsp;(H &times; W), int 0&hellip;255';
+    samples.innerHTML='pixel[0,0]=0 &nbsp; pixel[7,4]=255';
+    infotext.innerHTML='<b>Stage 1.</b> A Fashion-MNIST image is a 28&times;28 grid of integer brightness values (0=black, 255=white). Here is an 8&times;8 boot pictogram standing in for it. Press <b>Step</b> to feed it through the pipeline.';
+    codebox.innerHTML="img  # PIL.Image, 28&times;28, mode 'L'";
+  }
+  // STAGE 1 : to_tensor -> scale + reorder
+  else if(stage===1){
+    stepname.textContent='Stage 2 - TF.to_tensor()';
+    gridcap.innerHTML='<span class="badge b-out">float tensor [0,1]</span>';
+    legend.innerHTML='every value &#247; 255 &rarr; float';
+    for(var k=0;k<cells.length;k++){var v=IMG[cells[k].dataset.r][cells[k].dataset.c];
+      var f=v/255;cells[k].textContent=f.toFixed(2);cells[k].classList.add('show-val');cells[k].style.color='#fff';}
+    grid.style.transform='none';grid.style.gap='2px';
+    shaperow.innerHTML='shape: <span class="shape">[1, 28, 28]</span> &nbsp;(C &times; H &times; W), float32';
+    samples.innerHTML='255 &rarr; 1.00 &nbsp; 128 &rarr; 0.50 &nbsp; 0 &rarr; 0.00';
+    infotext.innerHTML='<b>Stage 2.</b> <b>TF.to_tensor</b> divides every pixel by 255 (now floats in [0,1]) <i>and</i> moves the channel axis to the front: H&times;W&times;C&nbsp;<code>(28,28,1)</code> &rarr; C&times;H&times;W&nbsp;<code>(1,28,28)</code>. PyTorch convs and layers expect this <b>channels-first</b> layout.';
+    codebox.innerHTML="t = TF.to_tensor(img)  # &divide;255, HWC&rarr;CHW<br>t.shape  # torch.Size([1, 28, 28])";
+  }
+  // STAGE 2 : flatten -> unroll into 1D strip
+  else if(stage===2){
+    stepname.textContent='Stage 3 - torch.flatten()';
+    gridcap.innerHTML='<span class="badge b-out">flat 1-D vector</span>';
+    legend.innerHTML='rows laid end to end &rarr; one long strip';
+    // collapse to a single row
+    grid.style.gridTemplateColumns='repeat('+(N*N)+',8px)';
+    grid.style.gap='1px';
+    for(var k=0;k<cells.length;k++){var v=IMG[cells[k].dataset.r][cells[k].dataset.c];
+      cells[k].style.width='8px';cells[k].style.height='8px';cells[k].classList.remove('show-val');cells[k].style.color='transparent';
+      cells[k].style.background='rgb('+v+','+v+','+v+')';}
+    shaperow.innerHTML='shape: <span class="shape">[784]</span> &nbsp;(28&times;28 = 784), float32';
+    samples.innerHTML='vec[0]=0.00 &nbsp; &hellip; &nbsp; vec[783]=1.00';
+    infotext.innerHTML='<b>Stage 3.</b> <b>torch.flatten</b> reads the tensor row by row and lines every value up in a single dimension: <code>[1,28,28]</code> &rarr; <code>[784]</code>. The 2-D structure is gone &mdash; it is now just a list of 784 numbers.';
+    codebox.innerHTML="v = torch.flatten(t)  # [1,28,28] &rarr; [784]<br>v.shape  # torch.Size([784])";
+  }
+  // STAGE 3 : done summary
+  else{
+    stepname.textContent='Stage 4 - done';
+    gridcap.innerHTML='<span class="badge b-out">model-ready input</span>';
+    legend.innerHTML='ready to feed a linear layer';
+    grid.style.gridTemplateColumns='repeat('+(N*N)+',8px)';grid.style.gap='1px';
+    shaperow.innerHTML='shape: <span class="shape">[784]</span> &nbsp;float32, range [0,1]';
+    samples.innerHTML='one row &times; 784 features';
+    infotext.innerHTML='<b>Done.</b> Fully-connected (linear) layers want a flat float vector, not an integer 2-D image &mdash; so we scaled, reordered, and flattened in one expression.';
+    codebox.innerHTML="torch.flatten(TF.to_tensor(img))<br>&nbsp;&nbsp;&rarr; shape [784], dtype float32, range [0,1]";
+  }
+}
+
+function step(){ if(stage<MAX-1){stage++;render();} updateBtns(); }
+function reset(){ stopAuto(); stage=0; buildGrid(); render(); updateBtns(); }
+function updateBtns(){ document.getElementById('step').disabled=(stage>=MAX-1); }
+
+function stopAuto(){ if(timer){clearInterval(timer);timer=null;document.getElementById('auto').textContent='Auto-play';} }
+function toggleAuto(){
+  if(timer){stopAuto();return;}
+  document.getElementById('auto').textContent='Pause';
+  timer=setInterval(function(){ if(stage>=MAX-1){stopAuto();return;} step(); },1400);
+}
+
+document.getElementById('step').onclick=step;
+document.getElementById('reset').onclick=reset;
+document.getElementById('auto').onclick=toggleAuto;
+render(); updateBtns();
+</script>
+
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

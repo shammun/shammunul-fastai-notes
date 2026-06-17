@@ -1,0 +1,153 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>collate_dict: list of dicts to batched tuple</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .wrap{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:0 6px 16px rgba(123,92,214,.08)}
+  .cap{text-align:center;font-size:12.5px;font-weight:700;margin:0 0 8px}
+  .btnrow{display:flex;gap:8px;justify-content:center;margin:12px 0 4px;flex-wrap:wrap}
+  button{background:var(--ac);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:13px}
+  button.alt{background:#fff;color:var(--ac);border:1px solid var(--ac)}
+  button:disabled{opacity:.45;cursor:default}
+  .code{background:#f4f7fd;border-radius:8px;padding:8px 11px;font-family:monospace;font-size:12.5px;line-height:1.7;margin-top:8px}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:10px;max-width:660px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .samp{font-family:monospace;font-size:11.5px;border:1px solid #e8edf7;border-radius:8px;padding:6px 8px;margin:5px 0;transition:.3s}
+  .imgcell{display:inline-block;width:16px;height:16px;border-radius:3px;vertical-align:middle}
+  .tag{font-weight:800}
+  .kimg{color:var(--in);font-weight:700}
+  .klab{color:var(--ac);font-weight:700}
+  .stack{display:inline-flex;flex-direction:column;gap:1px;vertical-align:middle}
+  .row.dim{opacity:.32}
+  .card.dim{opacity:.4}
+  .card.hot{box-shadow:0 0 0 2px var(--ac),0 6px 16px rgba(123,92,214,.18)}
+  .swatchrow{display:flex;gap:4px;justify-content:center;align-items:center;margin:6px 0}
+  .lblval{color:var(--ac);font-weight:700}
+  .resv{color:var(--out);font-weight:700}
+  .narrow .wrap{flex-direction:column;align-items:stretch}
+</style></head><body>
+
+<h1>collate_dict: a list of samples becomes one batched tuple</h1>
+<p class="sub">default_collate stacks by key; itemgetter pulls the values out in order.</p>
+
+<div class="btnrow">
+  <button id="stepBtn">Step &#9654;</button>
+  <button id="resetBtn" class="alt">Reset</button>
+</div>
+
+<div class="wrap">
+
+  <!-- STAGE 0: INPUT -->
+  <div class="card" id="cardIn" style="min-width:230px">
+    <p class="cap">Input: list of 4 dicts</p>
+    <div class="samp row" id="r0">{ <span class="kimg">'image'</span>: <span class="imgcell" style="background:#e8554e"></span>, <span class="klab">'label'</span>: <span class="lblval">9</span> }</div>
+    <div class="samp row" id="r1">{ <span class="kimg">'image'</span>: <span class="imgcell" style="background:#2f8de0"></span>, <span class="klab">'label'</span>: <span class="lblval">0</span> }</div>
+    <div class="samp row" id="r2">{ <span class="kimg">'image'</span>: <span class="imgcell" style="background:#3cab5b"></span>, <span class="klab">'label'</span>: <span class="lblval">0</span> }</div>
+    <div class="samp row" id="r3">{ <span class="kimg">'image'</span>: <span class="imgcell" style="background:#e0a72f"></span>, <span class="klab">'label'</span>: <span class="lblval">3</span> }</div>
+    <div class="code">b = [d0, d1, d2, d3]  <span style="color:var(--soft)"># a batch</span></div>
+  </div>
+
+  <!-- STAGE 1: default_collate -->
+  <div class="card dim" id="cardCol" style="min-width:240px">
+    <p class="cap">default_collate &#8594; dict of batched tensors</p>
+    <div class="code" style="line-height:2">{
+      <br>&nbsp;&nbsp;<span class="kimg">'image'</span>:
+      <span class="stack" id="imgStack">
+        <span class="imgcell" style="background:#e8554e"></span>
+        <span class="imgcell" style="background:#2f8de0"></span>
+        <span class="imgcell" style="background:#3cab5b"></span>
+        <span class="imgcell" style="background:#e0a72f"></span>
+      </span>
+      <span class="tag kimg">tensor[4,1,28,28]</span>,
+      <br>&nbsp;&nbsp;<span class="klab">'label'</span>:
+      <span class="tag klab">tensor([9, 0, 0, 3])</span>
+      <br>}</div>
+    <p class="note" style="margin-top:8px">This is a <b>transpose</b>: list&#8209;of&#8209;dicts &#8594; dict&#8209;of&#8209;stacked&#8209;values. Each key is gathered across all 4 samples and stacked along a new batch axis.</p>
+  </div>
+
+  <!-- STAGE 2: itemgetter -->
+  <div class="card dim" id="cardOut" style="min-width:240px">
+    <p class="cap">Result: a tuple</p>
+    <div class="code">get = itemgetter(<span class="kimg">'image'</span>, <span class="klab">'label'</span>)</div>
+    <div class="code" style="margin-top:6px">get(collated) &#8594; pulls values <b>in feature order</b></div>
+    <div class="code" style="margin-top:6px">(xb, yb) = (
+      <br>&nbsp;&nbsp;<span class="resv">tensor[4,1,28,28]</span>,
+      <br>&nbsp;&nbsp;<span class="resv">tensor([9, 0, 0, 3])</span>
+      <br>)</div>
+    <div class="code" style="margin-top:6px;color:var(--out)">for xb, yb in dl:  <span style="color:var(--soft)"># wants positional (x, y)</span></div>
+  </div>
+
+</div>
+
+<p class="note" id="status">Press <b>Step &#9654;</b> to walk through the transpose.</p>
+
+<p class="note">Dicts are convenient for <i>named</i> access, but training loops want <i>positional</i> <code>(x, y)</code>. <code>collate_dict</code> bridges the two: <code>default_collate</code> does the batching/transpose (list of dicts &#8594; dict of stacked tensors), and <code>itemgetter</code> does the dict&#8594;tuple extraction in the dataset's feature order.</p>
+
+<script>
+(function(){
+  var stage=0, max=3;
+  var stepBtn=document.getElementById('stepBtn'),
+      resetBtn=document.getElementById('resetBtn'),
+      cardIn=document.getElementById('cardIn'),
+      cardCol=document.getElementById('cardCol'),
+      cardOut=document.getElementById('cardOut'),
+      status=document.getElementById('status'),
+      imgStack=document.getElementById('imgStack'),
+      rows=[0,1,2,3].map(function(i){return document.getElementById('r'+i);});
+
+  var msgs=[
+    'Press <b>Step &#9654;</b> to walk through the transpose.',
+    '<b>Stage 1 — default_collate(b):</b> group the 4 samples <b>by key</b>. Images stack into one [4,1,28,28] block; labels gather into one tensor([9,0,0,3]). The list of dicts has been <b>transposed</b> into a dict of stacked tensors.',
+    '<b>Stage 2 — itemgetter(*ds.features):</b> <code>get = itemgetter(\'image\',\'label\')</code> pulls the two values out of the dict <b>in feature order</b>, returning the tuple <code>(xb, yb)</code> — exactly what <code>for xb, yb in dl:</code> expects.',
+    '<b>Done.</b> list of 4 dicts &#8594; dict of stacked tensors &#8594; tuple (xb, yb). <code>default_collate</code> batched + transposed; <code>itemgetter</code> extracted in order.'
+  ];
+
+  function render(){
+    // reset classes
+    cardIn.classList.remove('hot');
+    cardCol.classList.remove('hot'); cardCol.classList.add('dim');
+    cardOut.classList.remove('hot'); cardOut.classList.add('dim');
+    rows.forEach(function(r){r.classList.remove('dim');});
+    imgStack.style.flexDirection='column';
+
+    if(stage===0){
+      cardIn.classList.add('hot');
+    } else if(stage===1){
+      cardCol.classList.remove('dim'); cardCol.classList.add('hot');
+      rows.forEach(function(r){r.classList.add('dim');});
+    } else if(stage>=2){
+      cardCol.classList.remove('dim');
+      cardOut.classList.remove('dim'); cardOut.classList.add('hot');
+      rows.forEach(function(r){r.classList.add('dim');});
+      if(stage>=3){ cardOut.classList.add('hot'); }
+    }
+    status.innerHTML=msgs[stage];
+    stepBtn.disabled = stage>=max;
+  }
+
+  stepBtn.addEventListener('click',function(){ if(stage<max){stage++; render();} });
+  resetBtn.addEventListener('click',function(){ stage=0; render(); });
+  render();
+})();
+</script>
+
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

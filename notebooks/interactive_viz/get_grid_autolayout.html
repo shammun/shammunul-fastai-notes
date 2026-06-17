@@ -1,0 +1,142 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>get_grid: auto image layout</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:14px}
+  h1{font-size:17px;margin:0 0 2px;text-align:center}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 0 10px}
+  .wrap{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:0 6px 16px rgba(123,92,214,.08)}
+  .cap{text-align:center;font-size:12.5px;font-weight:700;margin:0 0 8px}
+  .ctl{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;margin:6px 0}
+  label{font-size:12.5px;color:var(--soft);font-weight:700}
+  input[type=range]{accent-color:var(--ac)}
+  button{background:#fff;color:var(--ac);border:1px solid var(--ac);border-radius:8px;padding:5px 11px;font-weight:700;cursor:pointer;font-size:12.5px}
+  button.on{background:var(--ac);color:#fff}
+  .code{background:#f4f7fd;border-radius:8px;padding:8px 11px;font-family:monospace;font-size:12.5px;line-height:1.8;margin-top:8px}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin-top:10px;max-width:660px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .grid{display:grid;gap:6px}
+  .slot{width:34px;height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:12px;font-weight:800;transition:.25s}
+  .fill{background:var(--ac);color:#fff;box-shadow:0 0 0 2px rgba(123,92,214,.25)}
+  .empty{background:#f1f4fb;color:#c2cce0;border:1px dashed #cdd7ea}
+  .warn{color:var(--in);font-weight:800}
+  .branch{color:var(--ac);font-weight:800}
+  .dims{text-align:center;font-size:12.5px;color:var(--soft);margin-top:4px}
+  .dims b{color:var(--ink)}
+</style></head><body>
+<h1>get_grid(n): auto-arranging images into a tidy grid</h1>
+<p class="sub">Move the slider; watch rows &times; cols recompute and extra slots switch off.</p>
+
+<div class="ctl">
+  <label>n = <span id="nval">8</span></label>
+  <input type="range" id="n" min="1" max="16" value="8" step="1">
+</div>
+<div class="ctl">
+  <label>mode:</label>
+  <button id="m-auto" class="on" data-mode="auto">auto</button>
+  <button id="m-rows" data-mode="rows">fix rows=3</button>
+  <button id="m-cols" data-mode="cols">fix cols=4</button>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <p class="cap">Resulting grid</p>
+    <div class="grid" id="grid"></div>
+    <p class="dims" id="dims"></p>
+  </div>
+  <div class="card" style="max-width:340px">
+    <p class="cap">What the code computes</p>
+    <div class="code" id="code"></div>
+  </div>
+</div>
+
+<p class="note" id="note"></p>
+
+<script>
+(function(){
+  var nEl=document.getElementById('n'), nval=document.getElementById('nval');
+  var grid=document.getElementById('grid'), code=document.getElementById('code');
+  var dims=document.getElementById('dims'), note=document.getElementById('note');
+  var btns={auto:document.getElementById('m-auto'),rows:document.getElementById('m-rows'),cols:document.getElementById('m-cols')};
+  var mode='auto';
+
+  function compute(n,mode){
+    var nrows,ncols,line;
+    if(mode==='rows'){
+      nrows=3; ncols=Math.floor(n/nrows);
+      line='<span class="branch">if nrows:</span><br>nrows = 3<br>ncols = floor('+n+' / 3) = '+ncols;
+    } else if(mode==='cols'){
+      ncols=4; nrows=Math.ceil(n/ncols);
+      line='<span class="branch">elif ncols:</span><br>ncols = 4<br>nrows = ceil('+n+' / 4) = '+nrows;
+    } else {
+      nrows=Math.floor(Math.sqrt(n)); ncols=Math.floor(n/nrows);
+      line='<span class="branch">else:</span><br>nrows = int(sqrt('+n+')) = '+nrows+'<br>ncols = floor('+n+' / '+nrows+') = '+ncols;
+    }
+    var slots=nrows*ncols;
+    return {nrows:nrows,ncols:ncols,slots:slots,line:line};
+  }
+
+  function render(){
+    var n=+nEl.value; nval.textContent=n;
+    var c=compute(n,mode);
+    var slots=c.slots, fillCount=Math.min(n,slots), empty=Math.max(0,slots-n);
+    var shortfall=Math.max(0,n-slots);
+
+    // grid
+    grid.style.gridTemplateColumns='repeat('+c.ncols+', 34px)';
+    grid.innerHTML='';
+    for(var i=0;i<slots;i++){
+      var d=document.createElement('div');
+      if(i<fillCount){ d.className='slot fill'; d.textContent=i; }
+      else { d.className='slot empty'; d.textContent='off'; d.title='set_axis_off()'; }
+      grid.appendChild(d);
+    }
+
+    // code panel
+    var html=c.line
+      +'<br>slots = '+c.nrows+'×'+c.ncols+' = '+slots
+      +'<br>empty = slots − n = '+empty;
+    if(shortfall>0){
+      html+='<br><span class="warn">⚠ '+slots+' slots &lt; '+n+' imgs — '+shortfall+' image'+(shortfall>1?'s':'')+" won't fit</span>";
+    }
+    code.innerHTML=html;
+
+    dims.innerHTML='<b>'+c.nrows+'</b> rows &times; <b>'+c.ncols+'</b> cols = <b>'+slots+'</b> slots'
+      +(empty>0?(' &nbsp;('+empty+' off)'):'');
+
+    note.innerHTML='get_grid defaults to a near-square layout (<code>floor(sqrt(n))</code> rows), '
+      +'computes the other dimension, then calls <code>set_axis_off()</code> on any slot beyond n so '
+      +'empty cells don’t show ugly empty axes. Overriding nrows/ncols can leave too few slots — '
+      +'choose them to cover n.';
+  }
+
+  function setMode(m){
+    mode=m;
+    for(var k in btns) btns[k].classList.toggle('on',k===m);
+    render();
+  }
+
+  nEl.addEventListener('input',render);
+  for(var k in btns)(function(k){ btns[k].addEventListener('click',function(){setMode(k);}); })(k);
+  render();
+})();
+</script>
+
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>
