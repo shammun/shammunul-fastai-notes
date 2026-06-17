@@ -10588,6 +10588,146 @@ show_image(im, ax=None, figsize=None, title=None, noframe=True, *, cmap=None, no
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=dl-deepdive">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr />
+<h2>Deep Dive: <code>DataLoaders.from_dd</code> - every symbol explained, with Fashion-MNIST data</h2>
+<p>The class above is only five lines, but it leans on <strong>three</strong> different Python features at once - <code>*args</code>, <code>@classmethod</code>, and <code>**kwargs</code> - and it reuses the <code>*</code> symbol for two <em>opposite</em> jobs. That trips up almost everyone the first time. So let's slow all the way down and name <strong>every</strong> piece, using the exact data we already built in this notebook: the Fashion-MNIST <code>DatasetDict</code> (<code>dsd</code>) and the <code>transformi</code> transform.</p>
+<h3>One-line mental model</h3>
+<blockquote>
+<p><code>DataLoaders.from_dd(dsd, batch_size=128)</code> takes the <strong>two raw splits</strong> inside a Hugging Face <code>DatasetDict</code> and hands you back <strong>one object</strong> whose <code>.train</code> and <code>.valid</code> attributes are ready-to-use PyTorch <code>DataLoader</code>s, each already yielding <code>(xb, yb)</code> tuples.</p>
+</blockquote>
+<p>Everything below is just <em>how</em> that one line works.</p>
+<h3>The cast of characters</h3>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Plain-English meaning</th>
+<th>Concrete value when we call <code>from_dd(dsd, batch_size=128)</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cls</code></td>
+<td>The <strong>class itself</strong>, passed in automatically because <code>from_dd</code> is a <code>@classmethod</code>. Here it <em>is</em> <code>DataLoaders</code>.</td>
+<td><code>DataLoaders</code></td>
+</tr>
+<tr>
+<td><code>dd</code></td>
+<td>A <strong>D</strong>ataset<strong>D</strong>ict - the dict-like object <code>load_dataset(...)</code> returns, mapping a split-name to a <code>Dataset</code>.</td>
+<td><code>dsd</code>, i.e. <code>{'train': Dataset(60000), 'test': Dataset(10000)}</code></td>
+</tr>
+<tr>
+<td><code>batch_size</code></td>
+<td>How many samples go in each <strong>training</strong> batch. (Validation uses <code>batch_size*2</code> - see <code>get_dls</code> below.)</td>
+<td><code>128</code></td>
+</tr>
+<tr>
+<td><code>as_tuple</code></td>
+<td>A keyword that is <strong>accepted but not actually used</strong> in this version of the body - a placeholder kept for API compatibility. Setting it to <code>False</code> changes nothing here.</td>
+<td><code>True</code> (the default)</td>
+</tr>
+<tr>
+<td><code>**kwargs</code></td>
+<td>"Catch any <em>other</em> keyword arguments and forward them on." Lets options like <code>num_workers=4</code> tunnel through to PyTorch's <code>DataLoader</code>.</td>
+<td><code>{}</code> (we passed none)</td>
+</tr>
+<tr>
+<td><code>*dls</code> (in <code>__init__</code>)</td>
+<td>"Collect <em>all</em> positional arguments into a tuple called <code>dls</code>."</td>
+<td><code>(train_dl, valid_dl)</code></td>
+</tr>
+<tr>
+<td><code>f</code></td>
+<td>The tuple-returning collate function that <code>collate_dict</code> builds from the training split's features (<code>'image'</code>, <code>'label'</code>).</td>
+<td>a function <code>b -&gt; (xb, yb)</code></td>
+</tr>
+</tbody>
+</table>
+<h3><code>cls</code> - the part everyone asks about</h3>
+<p>In a <strong>regular</strong> method the first parameter is <code>self</code> - one particular <em>instance</em> of the class. In a <strong><code>@classmethod</code></strong> the first parameter is <code>cls</code> - the <em>class itself</em>. You never pass it by hand: when you write <code>DataLoaders.from_dd(dsd, batch_size=128)</code>, Python silently slips the <code>DataLoaders</code> class in as <code>cls</code>.</p>
+<p>So inside the method these are all true:</p>
+<pre><code class="language-python">cls is DataLoaders          # True
+cls(train_dl, valid_dl)     # identical to  DataLoaders(train_dl, valid_dl)
+</code></pre>
+<p><strong>Why write <code>cls(...)</code> instead of just <code>DataLoaders(...)</code>?</strong> Because <code>cls</code> means "whatever class this method was actually called on," it keeps the factory <strong>inheritance-friendly</strong>:</p>
+<pre><code class="language-python">class GPUDataLoaders(DataLoaders): ...
+dls = GPUDataLoaders.from_dd(dsd, 128)   # cls is GPUDataLoaders -&gt; you get a GPUDataLoaders back
+</code></pre>
+<p>Hard-coding <code>DataLoaders(...)</code> would always build the base class, even when the method is called on a subclass. <code>cls</code> does the right thing for free. This is the whole reason <code>from_dd</code> is a <code>@classmethod</code> and not a plain function: a factory's job is to <em>construct the class it lives on</em>.</p>
+<h3><code>dd</code> - the DatasetDict, concretely</h3>
+<p><code>dd</code> is just short for <strong>DatasetDict</strong>. In this notebook it is exactly <code>dsd</code>. It behaves like an ordinary dictionary keyed by split name:</p>
+<pre><code class="language-python">dd['train']     # -&gt; the Dataset of 60,000 training images
+dd['test']      # -&gt; the Dataset of 10,000 test images
+dd.values()     # -&gt; [train_ds, test_ds]   (the splits, in order)
+</code></pre>
+<p>Two different accesses happen in the body, for two different reasons:</p>
+<ul>
+<li><code>dd['train']</code> - grab <strong>only the training split</strong>, because <code>collate_dict</code> needs <em>a</em> dataset to read the feature names (<code>'image'</code>, <code>'label'</code>) from. Train and test share the same features, so either would do; train is the conventional choice.</li>
+<li><code>dd.values()</code> - grab <strong>both splits as a list</strong>, to feed them as the two datasets that <code>get_dls</code> expects.</li>
+</ul>
+<h3>The two faces of <code>*</code></h3>
+<p>This is the crux, and the bit worth re-reading. The same <code>*</code> symbol does two <strong>opposite</strong> things in this class:</p>
+<p><strong>1. <code>*</code> in a <em>definition</em> = "pack" (collect many arguments into one tuple).</strong></p>
+<pre><code class="language-python">def __init__(self, *dls):          # dls becomes a tuple of however many args you passed
+    self.train, self.valid = dls[:2]
+</code></pre>
+<p>Call <code>DataLoaders(a, b)</code> and inside the method <code>dls == (a, b)</code>. We then keep the first two as <code>.train</code> and <code>.valid</code>. (Why allow more than two? Some later code passes a separate test loader as a third argument - it is simply ignored here.)</p>
+<p><strong>2. <code>*</code> in a <em>call</em> = "unpack / splat" (spread one iterable out into many arguments).</strong></p>
+<pre><code class="language-python">get_dls(*dd.values(), ...)         # *[train_ds, test_ds]   -&gt;  get_dls(train_ds, test_ds, ...)
+cls(*get_dls(...))                 # *(train_dl, valid_dl)  -&gt;  cls(train_dl, valid_dl)
+</code></pre>
+<p><code>get_dls</code> <em>returns</em> a 2-tuple <code>(train_dl, valid_dl)</code>; the <code>*</code> in front splats that tuple into two positional arguments to <code>cls</code>, which <code>__init__</code> then re-packs into <code>dls</code>. Pack -&gt; unpack -&gt; pack again: that little round-trip is exactly what lets <code>from_dd</code> stay agnostic about how many loaders are flowing through it.</p>
+<h3><code>get_dls</code> - what it returns (recap from notebook 04)</h3>
+<pre><code class="language-python">def get_dls(train_ds, valid_ds, bs, **kwargs):
+    return (DataLoader(train_ds, batch_size=bs,   shuffle=True,  **kwargs),
+            DataLoader(valid_ds, batch_size=bs*2,                **kwargs))
+</code></pre>
+<p>So <code>get_dls</code>:
+- wraps <strong>train</strong> in a <code>DataLoader</code> that <strong>shuffles</strong> (sample order shouldn't bias learning), at <code>batch_size=bs</code>;
+- wraps <strong>valid</strong> in a <code>DataLoader</code> that does <strong>not</strong> shuffle (order is irrelevant when you are only measuring), at <code>batch_size=bs*2</code> (no gradients to store during validation, so bigger batches are free speed);
+- returns them as a <code>(train_dl, valid_dl)</code> tuple.</p>
+<p>Any <code>**kwargs</code> you passed to <code>from_dd</code> arrive here and are forwarded again into both <code>DataLoader</code>s - that is the "tunnel."</p>
+<h3>Full trace with real data</h3>
+<pre><code class="language-python"># Built earlier in this notebook:
+dsd = load_dataset('fashion_mnist').with_transform(transformi)
+# dsd = {'train': Dataset(60000), 'test': Dataset(10000)};
+# each sample is {'image': [784] tensor, 'label': int 0..9}
+
+dls = DataLoaders.from_dd(dsd, batch_size=128)
+</code></pre>
+<p>What Python does, step by step:</p>
+<ol>
+<li><strong>Bind the parameters.</strong> <code>cls=DataLoaders</code>, <code>dd=dsd</code>, <code>batch_size=128</code>, <code>as_tuple=True</code>, <code>kwargs={}</code>.</li>
+<li><strong><code>f = collate_dict(dd['train'])</code>.</strong> Reads <code>dd['train'].features = ['image','label']</code> and returns a collate function that batches a list of samples with <code>default_collate</code> and then extracts a <strong>tuple</strong> <code>(images, labels)</code> via <code>itemgetter('image','label')</code>.</li>
+<li><strong><code>dd.values()</code></strong> -&gt; <code>[train_ds, test_ds]</code>; the <code>*</code> splats it, so the call is <code>get_dls(train_ds, test_ds, bs=128, collate_fn=f)</code>.</li>
+<li><strong><code>get_dls</code> returns</strong> <code>(train_dl, valid_dl)</code> - train shuffles at batch size 128, valid does not at batch size 256, both using <code>f</code>.</li>
+<li><strong><code>cls(*(train_dl, valid_dl))</code></strong> -&gt; <code>DataLoaders(train_dl, valid_dl)</code> -&gt; <code>__init__</code> sets <code>self.train = train_dl</code> and <code>self.valid = valid_dl</code>.</li>
+<li><strong>Result:</strong> <code>dls</code>, exposing <code>dls.train</code> and <code>dls.valid</code>.</li>
+</ol>
+<p>Now use it:</p>
+<pre><code class="language-python">xb, yb = next(iter(dls.train))
+xb.shape   # torch.Size([128, 784])   &lt;- 128 flattened 28x28 images
+yb.shape   # torch.Size([128])        &lt;- 128 integer labels (0..9)
+
+for xb, yb in dls.train:   # one full pass over the 60k training images, 128 at a time, shuffled
+    ...
+for xb, yb in dls.valid:   # 10k validation images, 256 at a time, not shuffled
+    ...
+</code></pre>
+<p>Because each batch is already a <strong>tuple</strong>, you can unpack it directly as <code>for xb, yb in ...</code> - no more <code>b['image']</code> / <code>b['label']</code> bookkeeping. That tuple shape <code>(xb, yb)</code> is exactly the contract every training loop in notebooks 09+ expects, which is why this five-line class quietly underpins the rest of the course.</p>
+<blockquote>
+<p><strong>One honest caveat:</strong> <code>as_tuple=True</code> is declared but never read in <em>this</em> body - the tuple behaviour actually comes from <code>f</code> (the <code>collate_dict</code> function), not from <code>as_tuple</code>. It is a vestigial hook; don't expect <code>as_tuple=False</code> to change anything here.</p>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5b60105a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
