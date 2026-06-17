@@ -10660,6 +10660,64 @@ cls(train_dl, valid_dl)     # identical to  DataLoaders(train_dl, valid_dl)
 dls = GPUDataLoaders.from_dd(dsd, 128)   # cls is GPUDataLoaders -&gt; you get a GPUDataLoaders back
 </code></pre>
 <p>Hard-coding <code>DataLoaders(...)</code> would always build the base class, even when the method is called on a subclass. <code>cls</code> does the right thing for free. This is the whole reason <code>from_dd</code> is a <code>@classmethod</code> and not a plain function: a factory's job is to <em>construct the class it lives on</em>.</p>
+<h3>What <code>@classmethod</code> actually does</h3>
+<p><code>@classmethod</code> is a built-in decorator that changes <strong>one thing</strong>: <em>which object Python automatically passes in as the method's first argument.</em></p>
+<table>
+<thead>
+<tr>
+<th>Kind of method</th>
+<th>First arg you receive</th>
+<th>How you call it</th>
+<th>Needs an existing instance?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>regular method</td>
+<td><code>self</code> - the <strong>instance</strong></td>
+<td><code>instance.method()</code></td>
+<td>yes</td>
+</tr>
+<tr>
+<td><code>@classmethod</code></td>
+<td><code>cls</code> - the <strong>class</strong></td>
+<td><code>Class.method()</code> (or <code>instance.method()</code>)</td>
+<td><strong>no</strong></td>
+</tr>
+<tr>
+<td><code>@staticmethod</code></td>
+<td>nothing special</td>
+<td><code>Class.method()</code></td>
+<td>no</td>
+</tr>
+</tbody>
+</table>
+<p>So <code>@classmethod</code> lets you call <code>DataLoaders.from_dd(dsd, 128)</code> <strong>directly on the class</strong>, before any <code>DataLoaders</code> object exists - which is exactly what you need for a method whose <em>whole job is to create one</em>.</p>
+<p><strong>What it does to the code (mechanically).</strong> The <code>@</code> line is pure syntactic sugar. These two definitions are identical:</p>
+<pre><code class="language-python">class DataLoaders:
+    @classmethod
+    def from_dd(cls, dd, batch_size, ...): ...
+
+# ...is exactly the same as:
+
+class DataLoaders:
+    def from_dd(cls, dd, batch_size, ...): ...
+    from_dd = classmethod(from_dd)
+</code></pre>
+<p><code>classmethod(...)</code> wraps the function in a <strong>descriptor</strong>. When you later access <code>DataLoaders.from_dd</code>, that descriptor hands back a <em>bound method</em> with the class already slotted into the first parameter. That is why you call <code>from_dd(dsd, 128)</code> with <strong>two</strong> arguments even though the header lists <strong>three</strong> (<code>cls, dd, batch_size</code>): Python fills in <code>cls</code> for you, automatically.</p>
+<p><strong>Why we use it here - it is an "alternative constructor."</strong> A class normally has one entry point, <code>__init__</code>, and it expects <em>already-built</em> pieces: <code>DataLoaders(train_dl, valid_dl)</code>. But often you start from <em>raw</em> material instead - here a <code>DatasetDict</code>. A <code>@classmethod</code> factory adds a second, friendlier door:</p>
+<pre><code class="language-python">DataLoaders(train_dl, valid_dl)            # low-level: you already have the loaders
+DataLoaders.from_dd(dsd, batch_size=128)   # high-level: start from raw data
+</code></pre>
+<p><code>from_dd</code> does the prep work (build the collate fn <code>f</code>, call <code>get_dls</code>) and then funnels the result through the <em>normal</em> constructor via <code>cls(...)</code>. This is a standard Python idiom - the same pattern behind <code>dict.fromkeys(...)</code>, <code>datetime.fromtimestamp(...)</code>, and <code>torch.Tensor.from_numpy(...)</code>. A name like <code>from_X</code> is almost always a tell-tale sign of a <code>@classmethod</code> constructor.</p>
+<p><strong>How it changes behavior vs. a plain function.</strong> You <em>could</em> instead write a module-level <code>def make_dataloaders(dd, bs): return DataLoaders(...)</code>. It would even work. Making it a <code>@classmethod</code> buys two things:</p>
+<ol>
+<li><strong>Grouping / discoverability</strong> - it lives <em>on</em> the class (<code>DataLoaders.from_dd</code>), right where you would look for "how do I build one of these?"</li>
+<li><strong>Inheritance</strong> - because it receives <code>cls</code> (not a hard-coded <code>DataLoaders</code>), a subclass automatically gets a factory that builds <em>itself</em>, as shown in the <code>cls</code> section above.</li>
+</ol>
+<blockquote>
+<p><strong>Rule of thumb:</strong> reach for <code>@classmethod</code> when a method needs the <strong>class</strong> but not any specific <strong>instance</strong> - most often to build and return an instance (a factory / alternative constructor). Reach for <code>@staticmethod</code> when it needs <em>neither</em> (just a helper parked in the class's namespace). Use a plain method when it works on a particular object's data via <code>self</code>.</p>
+</blockquote>
 <h3><code>dd</code> - the DatasetDict, concretely</h3>
 <p><code>dd</code> is just short for <strong>DatasetDict</strong>. In this notebook it is exactly <code>dsd</code>. It behaves like an ordinary dictionary keyed by split name:</p>
 <pre><code class="language-python">dd['train']     # -&gt; the Dataset of 60,000 training images
