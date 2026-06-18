@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>color_dim explorer</title>
+<style>
+  :root{
+    --ink:#25324a; --soft:#5a6b86; --line:#dde5f2;
+    --in:#f6921e; --out:#16a3a3; --ac:#7b5cd6; --bg:#eef3fb;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:16px;;overflow-x:hidden;}
+  h1{font-size:18px;margin:0 0 3px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12.5px;margin:0 auto 14px;max-width:720px;line-height:1.5;}
+  .wrap{max-width:980px;margin:0 auto;}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:14px;
+         box-shadow:0 8px 22px rgba(123,92,214,.09);padding:16px;}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;margin-bottom:14px;}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#f7faff;}
+  .seg button{border:0;background:transparent;padding:8px 13px;font-size:12px;font-weight:600;color:var(--soft);cursor:pointer;transition:.15s;}
+  .seg button.on{color:#fff;}
+  .seg.regime button.on{background:var(--ac);}
+  .row{display:flex;gap:7px;align-items:center;font-size:12px;color:var(--soft);}
+  input[type=range]{accent-color:var(--in);}
+  .stages{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:12px;}
+  .stages button{border:1px solid var(--line);background:#f7faff;color:var(--soft);
+    border-radius:18px;padding:6px 12px;font-size:11.5px;font-weight:600;cursor:pointer;transition:.15s;}
+  .stages button.on{background:var(--out);color:#fff;border-color:var(--out);}
+  .stagewrap{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;}
+  @media(max-width:760px){.stagewrap{grid-template-columns:1fr;}}
+  canvas{display:block;width:100%;height:auto;background:#fbfdff;border:1px solid var(--line);border-radius:10px;}
+  .cardlabel{font-size:11px;font-weight:700;color:var(--soft);text-transform:uppercase;letter-spacing:.04em;margin:0 0 7px;}
+  .explain{margin-top:6px;border-radius:10px;background:#f4f7fd;padding:12px 14px;font-size:12.8px;line-height:1.58;}
+  .explain b{color:var(--out);}
+  code{background:#eef2fb;padding:1px 5px;border-radius:5px;font-size:11.5px;}
+  pre{margin:8px 0 0;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.6;
+      background:#1f2740;color:#e7ecf7;border-radius:9px;padding:11px;overflow-x:auto;}
+  pre .ln{display:block;padding:1px 6px;border-radius:4px;border-left:3px solid transparent;}
+  pre .ln.hot{background:rgba(22,163,163,.2);border-left-color:var(--out);}
+  .cm{color:#7e8db0;}.kw{color:#c98bff;}.fn{color:#62d0d0;}
+  .play{background:var(--ac);color:#fff;border:0;border-radius:9px;padding:8px 15px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .ghost{background:#eef1fb;color:var(--ink);border:0;border-radius:9px;padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .verdict{margin-top:12px;border-radius:10px;padding:11px 14px;font-size:12.8px;line-height:1.55;text-align:center;}
+</style></head>
+<body>
+<h1>Building the <code>color_dim</code> heatmap, step by step</h1>
+<p class="sub">This is the most powerful plot in the notebook — and the most confusing. Each <b>column</b> is one training batch; each <b>row</b> is an activation-magnitude bin (0 at the bottom). Bright = many activations there. Follow the 4 stages to see how a stream of histograms becomes one image.</p>
+
+<div class="wrap">
+ <div class="panel">
+  <div class="controls">
+    <span class="row">regime:</span>
+    <div class="seg regime" id="regime">
+      <button data-r="healthy" class="on">Healthy</button>
+      <button data-r="dead">Dead ReLUs</button>
+      <button data-r="explode">Exploding</button>
+    </div>
+    <span class="row">batch <input id="batch" type="range" min="0" max="59" step="1" value="0"><b id="batchv" style="font-family:monospace;color:var(--in)">0</b>/59</span>
+    <button class="play" id="play">&#9654; Play training</button>
+    <span class="row">speed <input id="speed" type="range" min="0.4" max="2.4" step="0.1" value="1" style="width:90px"></span>
+  </div>
+
+  <div class="stages" id="stages">
+    <button data-s="0" class="on">1 · one histogram</button>
+    <button data-s="1">2 · stack over batches</button>
+    <button data-s="2">3 · transpose &rarr; image</button>
+    <button data-s="3">4 · log1p + color</button>
+  </div>
+
+  <div class="stagewrap">
+    <div>
+      <div class="cardlabel" id="leftlabel">Single batch histogram</div>
+      <canvas id="left" width="520" height="300"></canvas>
+    </div>
+    <div>
+      <div class="cardlabel">What the code is doing</div>
+      <div class="explain" id="explain"></div>
+      <pre id="code"><span class="ln" data-l="h"><span class="cm"># per batch, in the hook:</span></span><span class="ln" data-l="h">acts.<span class="fn">abs</span>().<span class="fn">histc</span>(<span style="color:#ff9eb5">40</span>, <span style="color:#ff9eb5">0</span>, <span style="color:#ff9eb5">10</span>)  <span class="cm"># 40 bins</span></span><span class="ln">&nbsp;</span><span class="ln" data-l="stack"><span class="cm"># after training, build the image:</span></span><span class="ln" data-l="stack"><span class="kw">def</span> <span class="fn">get_hist</span>(h):</span><span class="ln" data-l="stack">  x = torch.<span class="fn">stack</span>(h.stats[<span style="color:#ff9eb5">2</span>])  <span class="cm"># (batches, 40)</span></span><span class="ln" data-l="t">  x = x.<span class="fn">t</span>()              <span class="cm"># (40, batches)</span></span><span class="ln" data-l="log">  x = x.<span class="fn">float</span>().<span class="fn">log1p</span>() <span class="cm"># compress counts</span></span><span class="ln" data-l="log">  <span class="kw">return</span> x</span></pre>
+    </div>
+  </div>
+  <div class="verdict" id="verdict"></div>
+ </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let regime='healthy', stage=0, batch=0, playing=false, timer=null, speed=1;
+const NB=60, NBIN=40;
+
+// build the full (batches x bins) matrix for current regime
+function buildMatrix(){
+  const M=[];
+  for(let b=0;b<NB;b++){
+    const p=b/(NB-1);
+    const row=new Array(NBIN).fill(0);
+    let center, width, deadFrac=0, total=4000;
+    if(regime==='healthy'){ center=6+ -2*p; width=5; deadFrac=0.08; }   // settles into low-mid band
+    else if(regime==='dead'){ center=1.5; width=2.2; deadFrac=0.35+0.45*p; } // more and more pile at zero
+    else { center=4+22*p; width=4+10*p; deadFrac=0.05; }                // band climbs and widens
+    for(let i=0;i<NBIN;i++){
+      const mag=i*(10/NBIN)+0.125;
+      let v=Math.exp(-Math.pow((mag-center)/width,2))*total;
+      row[i]=v;
+    }
+    // dead pile in bin 0..2
+    const dead=deadFrac*total*1.4;
+    row[0]+=dead; row[1]+=dead*0.4;
+    M.push(row);
+  }
+  return M;
+}
+let MAT=buildMatrix();
+
+// viridis-ish ramp
+function color(t){ // t in 0..1
+  t=Math.max(0,Math.min(1,t));
+  const stops=[[68,1,84],[59,82,139],[33,145,140],[94,201,98],[253,231,37]];
+  const seg=t*(stops.length-1);const i=Math.floor(seg);const f=seg-i;
+  const a=stops[i],b=stops[Math.min(i+1,stops.length-1)];
+  return `rgb(${a[0]+(b[0]-a[0])*f|0},${a[1]+(b[1]-a[1])*f|0},${a[2]+(b[2]-a[2])*f|0})`;
+}
+
+const STAGES=[
+  {label:'Stage 1 — one batch &rarr; one histogram',hot:['h'],
+   text:'In the hook we run <code>acts.abs().histc(40, 0, 10)</code>. This counts how many activations fall into each of <b>40 magnitude bins</b> from 0 to 10. The result is a single column of 40 numbers — one snapshot of this batch. Scrub the <b>batch</b> slider to see it change as training proceeds.'},
+  {label:'Stage 2 — stack every batch into rows',hot:['stack'],
+   text:'We saved one histogram per batch in <code>h.stats[2]</code>. <code>torch.stack(...)</code> piles them into a matrix of shape <b>(batches, 40)</b>: each row is a batch, each of the 40 columns is a bin. Time runs <b>top to bottom</b> here.'},
+  {label:'Stage 3 — transpose so bins go up the y-axis',hot:['t'],
+   text:'<code>.t()</code> flips rows and columns to <b>(40, batches)</b>. Now each <b>column is a batch</b> (time &rarr; right) and each <b>row is a bin</b> (magnitude &rarr; up, with bin 0 at the bottom thanks to <code>origin=\'lower\'</code>). This is the orientation of the final image.'},
+  {label:'Stage 4 — log1p, then color the counts',hot:['log'],
+   text:'Raw counts span a huge range, so a few bins would wash out everything. <code>log1p(x)=log(x+1)</code> compresses them. Map the compressed value to color (dark = few, bright = many) and you get the finished <b>color_dim</b> heatmap.'}
+];
+
+function drawHistogram(){ // stage 0
+  const cv=$('left'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const padL=40,padB=40,padT=16,padR=14;
+  const pw=W-padL-padR, ph=H-padT-padB;
+  const row=MAT[batch];
+  const mx=Math.max(...row);
+  const bw=pw/NBIN;
+  // axes
+  ctx.strokeStyle='#e6ecf6';ctx.beginPath();ctx.moveTo(padL,padT);ctx.lineTo(padL,padT+ph);ctx.lineTo(padL+pw,padT+ph);ctx.stroke();
+  for(let i=0;i<NBIN;i++){
+    const h=row[i]/mx*ph;
+    const mag=i*(10/NBIN);
+    ctx.fillStyle=color(i/NBIN);
+    ctx.fillRect(padL+i*bw+0.5,padT+ph-h,bw-1,h);
+  }
+  ctx.fillStyle='#7d8db0';ctx.font='11px Segoe UI';ctx.textAlign='center';
+  ctx.fillText('activation magnitude  (0 \u2192 10)',padL+pw/2,H-8);
+  ctx.save();ctx.translate(13,padT+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('count',0,0);ctx.restore();
+  ctx.textAlign='left';ctx.fillStyle='#5a6b86';ctx.font='12px Segoe UI';
+  ctx.fillText('batch '+batch,padL+6,padT+14);
+}
+
+function drawStacked(transpose,colored){ // stages 1,2,3
+  const cv=$('left'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const padL=46,padB=38,padT=14,padR=16;
+  const pw=W-padL-padR, ph=H-padT-padB;
+  const upto = playing? batch+1 : NB;       // when playing, reveal progressively
+  if(!transpose){
+    // rows = batches (top->bottom), cols = bins
+    const cellH=ph/NB, cellW=pw/NBIN;
+    let gmax=0;MAT.forEach(r=>r.forEach(v=>{if(v>gmax)gmax=v;}));
+    for(let b=0;b<upto;b++)for(let i=0;i<NBIN;i++){
+      const v=MAT[b][i]; const t=colored?Math.log1p(v)/Math.log1p(gmax):v/gmax;
+      ctx.fillStyle=color(t);
+      ctx.fillRect(padL+i*cellW,padT+b*cellH,Math.ceil(cellW),Math.ceil(cellH));
+    }
+    ctx.fillStyle='#7d8db0';ctx.font='11px Segoe UI';ctx.textAlign='center';
+    ctx.fillText('40 bins  (magnitude \u2192)',padL+pw/2,H-8);
+    ctx.save();ctx.translate(14,padT+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('batch (time \u2193)',0,0);ctx.restore();
+    ctx.textAlign='left';ctx.fillStyle='#5a6b86';ctx.font='12px Segoe UI';
+    ctx.fillText('shape (batches, 40)',padL+4,padT-1<14?12:12);
+  } else {
+    // rows = bins (bottom->top => origin lower), cols = batches
+    const cellW=pw/NB, cellH=ph/NBIN;
+    let gmax=0;MAT.forEach(r=>r.forEach(v=>{if(v>gmax)gmax=v;}));
+    for(let b=0;b<upto;b++)for(let i=0;i<NBIN;i++){
+      const v=MAT[b][i]; const t=colored?Math.log1p(v)/Math.log1p(gmax):v/gmax;
+      ctx.fillStyle=color(t);
+      // bin 0 at bottom
+      ctx.fillRect(padL+b*cellW,padT+(NBIN-1-i)*cellH,Math.ceil(cellW),Math.ceil(cellH));
+    }
+    // current batch marker
+    if(playing){ctx.strokeStyle='#f6921e';ctx.lineWidth=2;
+      ctx.strokeRect(padL+(batch)*cellW,padT,Math.max(2,cellW),ph);}
+    ctx.fillStyle='#7d8db0';ctx.font='11px Segoe UI';ctx.textAlign='center';
+    ctx.fillText('batch  (training time \u2192)',padL+pw/2,H-8);
+    ctx.save();ctx.translate(14,padT+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('magnitude bin (0 at bottom)',0,0);ctx.restore();
+    ctx.textAlign='left';ctx.fillStyle='#5a6b86';ctx.font='12px Segoe UI';
+    ctx.fillText(colored?'finished color_dim':'shape (40, batches)',padL+4,12);
+  }
+}
+
+function setHot(keys){
+  document.querySelectorAll('#code .ln').forEach(l=>l.classList.remove('hot'));
+  keys.forEach(k=>document.querySelectorAll('#code .ln[data-l="'+k+'"]').forEach(l=>l.classList.add('hot')));
+}
+
+function verdict(){
+  const v=$('verdict');
+  if(regime==='healthy'){v.style.background='rgba(22,163,163,.10)';
+    v.innerHTML='<b style="color:#0e8a8a">Healthy:</b> a bright band that settles into the lower-middle and stays stable across batches — activations are moderate and consistent.';}
+  else if(regime==='dead'){v.style.background='rgba(224,85,110,.10)';
+    v.innerHTML='<b style="color:#c0394f">Dead ReLUs:</b> brightness collapses to the very bottom row (bin 0) and grows over time — more and more neurons output exactly zero and stop learning.';}
+  else {v.style.background='rgba(246,146,30,.10)';
+    v.innerHTML='<b style="color:#c9760f">Exploding:</b> the bright band climbs upward and spreads — activation magnitudes keep growing, heading toward instability.';}
+}
+
+function render(){
+  const st=STAGES[stage];
+  $('leftlabel').innerHTML=st.label;
+  $('explain').innerHTML=st.text;
+  setHot(st.hot);
+  $('batch').parentElement.style.opacity = stage===0||playing? '1':'0.45';
+  if(stage===0) drawHistogram();
+  else if(stage===1) drawStacked(false,false);
+  else if(stage===2) drawStacked(true,false);
+  else drawStacked(true,true);
+  verdict();
+  setTimeout(report,20);
+}
+
+function play(){
+  if(playing){stop();return;}
+  playing=true;$('play').innerHTML='&#10073;&#10073; Pause';
+  if(stage===0) {stage=3;document.querySelectorAll('#stages button').forEach(b=>b.classList.toggle('on',+b.dataset.s===3));}
+  batch=0;
+  const tick=()=>{
+    $('batch').value=batch;$('batchv').textContent=batch;
+    render();
+    batch++;
+    if(batch>=NB){stop();$('play').innerHTML='&#9654; Replay training';return;}
+    timer=setTimeout(tick,90/speed);
+  };
+  tick();
+}
+function stop(){playing=false;$('play').innerHTML='&#9654; Play training';clearTimeout(timer);}
+
+document.querySelectorAll('#regime button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#regime button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');regime=b.dataset.r;MAT=buildMatrix();render();
+});
+document.querySelectorAll('#stages button').forEach(b=>b.onclick=()=>{
+  stop();stage=+b.dataset.s;
+  document.querySelectorAll('#stages button').forEach(x=>x.classList.toggle('on',x===b));
+  render();
+});
+$('batch').oninput=e=>{batch=+e.target.value;$('batchv').textContent=batch;if(stage===0)render();};
+$('speed').oninput=e=>speed=+e.target.value;
+$('play').onclick=play;
+render();
+
+// ---- report content height to the notebook iframe (no scaling, ever) ----
+var __vid="color_dim_explorer";
+function report(){
+  parent.postMessage({type:'viz-height',id:__vid,height:document.body.scrollHeight},'*');
+}
+new ResizeObserver(report).observe(document.body);
+window.addEventListener('load',report);
+window.addEventListener('resize',report);
+setTimeout(report,150);setTimeout(report,400);
+</script>
+</body>
+</html>

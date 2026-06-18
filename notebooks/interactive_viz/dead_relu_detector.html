@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dead ReLU detector</title>
+<style>
+  :root{
+    --ink:#25324a; --soft:#5a6b86; --line:#dde5f2;
+    --in:#f6921e; --out:#16a3a3; --ac:#7b5cd6; --bg:#eef3fb; --bad:#e0556e;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:16px;;overflow-x:hidden;}
+  h1{font-size:18px;margin:0 0 3px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12.5px;margin:0 auto 14px;max-width:700px;line-height:1.5;}
+  .wrap{max-width:940px;margin:0 auto;}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:14px;
+         box-shadow:0 8px 22px rgba(123,92,214,.09);padding:16px;}
+  .controls{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;align-items:center;margin-bottom:14px;}
+  .row{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--soft);}
+  input[type=range]{accent-color:var(--in);width:150px;}
+  .mono{font-family:monospace;color:var(--in);font-weight:700;width:42px;display:inline-block;text-align:right;}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:680px){.two{grid-template-columns:1fr;}}
+  canvas{display:block;width:100%;height:auto;background:#fbfdff;border:1px solid var(--line);border-radius:10px;}
+  .cardlabel{font-size:11px;font-weight:700;color:var(--soft);text-transform:uppercase;letter-spacing:.04em;margin:0 0 7px;text-align:center;}
+  .readout{margin-top:14px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+  .stat{background:#f4f7fd;border-radius:10px;padding:10px 16px;text-align:center;min-width:120px;}
+  .stat .big{font-size:24px;font-weight:800;font-family:monospace;}
+  .stat .lbl{font-size:11px;color:var(--soft);margin-top:2px;}
+  .verdict{margin-top:12px;border-radius:10px;padding:11px 14px;font-size:12.8px;line-height:1.55;text-align:center;}
+  code{background:#eef2fb;padding:1px 5px;border-radius:5px;font-size:11.8px;}
+  pre{margin:10px auto 0;max-width:560px;font-family:"SF Mono",Consolas,monospace;font-size:11.8px;line-height:1.6;
+      background:#1f2740;color:#e7ecf7;border-radius:9px;padding:12px;overflow-x:auto;}
+  .cm{color:#7e8db0;}.fn{color:#62d0d0;}.nu{color:#ff9eb5;}
+  b.bad{color:var(--bad);}b.good{color:#0e8a8a;}
+</style></head>
+<body>
+<h1>Dead ReLUs: when neurons get stuck at zero</h1>
+<p class="sub">ReLU outputs <code>max(0, x)</code>. If a neuron's pre-activation is almost always negative, ReLU outputs <b>0 every time</b> — the neuron is "dead" and learns nothing. Move the sliders to push the input distribution negative and watch the dead fraction climb.</p>
+
+<div class="wrap">
+ <div class="panel">
+  <div class="controls">
+    <div class="row">input mean&nbsp;<input id="mean" type="range" min="-3" max="3" step="0.1" value="0.4"><span class="mono" id="meanv">0.4</span></div>
+    <div class="row">input spread&nbsp;<input id="std" type="range" min="0.3" max="3" step="0.1" value="1.2"><span class="mono" id="stdv">1.2</span></div>
+    <div class="row">bias&nbsp;<input id="bias" type="range" min="-3" max="2" step="0.1" value="0"><span class="mono" id="biasv">0.0</span></div>
+  </div>
+
+  <div class="two">
+    <div>
+      <div class="cardlabel" style="color:var(--in)">pre-activation  (input + bias)</div>
+      <canvas id="pre" width="440" height="240"></canvas>
+    </div>
+    <div>
+      <div class="cardlabel" style="color:var(--out)">after ReLU  &mdash; the red pile is dead</div>
+      <canvas id="post" width="440" height="240"></canvas>
+    </div>
+  </div>
+
+  <div class="readout">
+    <div class="stat"><div class="big" id="deadbig">0%</div><div class="lbl">dead fraction (bin&nbsp;0)</div></div>
+    <div class="stat"><div class="big" id="meanbig" style="color:var(--out)">0.00</div><div class="lbl">output mean</div></div>
+    <div class="stat"><div class="big" id="stdbig" style="color:var(--ac)">0.00</div><div class="lbl">output std</div></div>
+  </div>
+
+  <div class="verdict" id="verdict"></div>
+
+  <pre><span class="cm"># this is exactly what dead_chart() plots, per layer:</span>
+<span class="fn">def</span> get_min(h):
+    h1 = torch.stack(h.stats[<span class="nu">2</span>]).t().float()  <span class="cm"># (40 bins, batches)</span>
+    <span class="fn">return</span> h1[<span class="nu">0</span>] / h1.sum(<span class="nu">0</span>)   <span class="cm"># bin-0 count &divide; total = dead fraction</span></pre>
+ </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=4000;       // sample count
+const NBIN=40, LO=0, HI=10;
+let samples=[];
+
+// deterministic gaussian sampler (Box-Muller with seeded LCG)
+let seed=12345;
+function rnd(){seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;}
+function gauss(){let u=rnd()||1e-9,v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+function regen(mean,std){seed=12345;samples=[];for(let i=0;i<N;i++)samples.push(mean+std*gauss());}
+
+function drawDist(cv,vals,color,clampZero,markZero){
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
+  const padL=34,padB=34,padT=12,padR=12,pw=W-padL-padR,ph=H-padT-padB;
+  // histogram from -5..8
+  const lo=-5,hi=8,bins=52,counts=new Array(bins).fill(0);
+  let deadCount=0;
+  vals.forEach(v=>{
+    if(clampZero && v<=0){deadCount++;}
+    const x=clampZero?Math.max(0,v):v;
+    let bi=Math.floor((x-lo)/(hi-lo)*bins);bi=Math.max(0,Math.min(bins-1,bi));counts[bi]++;
+  });
+  const mx=Math.max(...counts);
+  const bw=pw/bins;
+  // zero line
+  const zx=padL+(0-lo)/(hi-lo)*pw;
+  ctx.strokeStyle='#c9d4e8';ctx.setLineDash([4,3]);ctx.beginPath();ctx.moveTo(zx,padT);ctx.lineTo(zx,padT+ph);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#9fb0cc';ctx.font='10px monospace';ctx.fillText('0',zx-3,padT+ph+13);
+  // bars
+  for(let i=0;i<bins;i++){
+    const h=counts[i]/mx*ph; if(h<=0)continue;
+    const x0=lo+i/bins*(hi-lo);
+    let c=color;
+    if(clampZero){ // the pile at/near zero from clamping is "dead"
+      if(i===Math.floor((0-lo)/(hi-lo)*bins)) c=getCss('--bad');
+    } else {
+      if(x0<0) c=getCss('--bad'); // negatives that WILL die
+    }
+    ctx.fillStyle=c;
+    ctx.fillRect(padL+i*bw+0.4,padT+ph-h,bw-0.8,h);
+  }
+  // axis
+  ctx.strokeStyle='#e6ecf6';ctx.beginPath();ctx.moveTo(padL,padT+ph);ctx.lineTo(padL+pw,padT+ph);ctx.stroke();
+  return deadCount;
+}
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+function render(){
+  const mean=+$('mean').value, std=+$('std').value, bias=+$('bias').value;
+  $('meanv').textContent=mean.toFixed(1);$('stdv').textContent=std.toFixed(1);$('biasv').textContent=bias.toFixed(1);
+  regen(mean,std);
+  const pre=samples.map(v=>v+bias);
+  const post=pre.map(v=>Math.max(0,v));
+  drawDist($('pre'),pre,getCss('--in'),false,true);
+  drawDist($('post'),pre,getCss('--out'),true,true); // clampZero handles ReLU + red pile
+
+  const dead=pre.filter(v=>v<=0).length/N;
+  const om=post.reduce((a,b)=>a+b,0)/N;
+  const ov=Math.sqrt(post.reduce((a,b)=>a+(b-om)*(b-om),0)/N);
+  $('deadbig').textContent=(dead*100).toFixed(0)+'%';
+  $('deadbig').style.color = dead>0.6?getCss('--bad'):dead>0.3?getCss('--in'):'#0e8a8a';
+  $('meanbig').textContent=om.toFixed(2);
+  $('stdbig').textContent=ov.toFixed(2);
+
+  const v=$('verdict');
+  if(dead>0.6){v.style.background='rgba(224,85,110,.10)';
+    v.innerHTML=`<b class="bad">${(dead*100).toFixed(0)}% dead.</b> Most neurons output zero and receive <b>zero gradient</b> — they cannot recover. In <code>dead_chart()</code> this layer's line sits near the top.`;}
+  else if(dead>0.3){v.style.background='rgba(246,146,30,.10)';
+    v.innerHTML=`<b style="color:#c9760f">${(dead*100).toFixed(0)}% dead.</b> A worrying chunk is silent. Often caused by a too-negative bias or a learning rate that pushed pre-activations negative.`;}
+  else {v.style.background='rgba(22,163,163,.10)';
+    v.innerHTML=`<b class="good">Only ${(dead*100).toFixed(0)}% dead.</b> Healthy — most neurons pass signal through and keep learning. This is what you want <code>dead_chart()</code> to show (lines near the bottom).`;}
+  setTimeout(report,20);
+}
+['mean','std','bias'].forEach(id=>$(id).oninput=render);
+render();
+
+// ---- report content height to the notebook iframe (no scaling, ever) ----
+var __vid="dead_relu_detector";
+function report(){
+  parent.postMessage({type:'viz-height',id:__vid,height:document.body.scrollHeight},'*');
+}
+new ResizeObserver(report).observe(document.body);
+window.addEventListener('load',report);
+window.addEventListener('resize',report);
+setTimeout(report,150);setTimeout(report,400);
+</script>
+</body>
+</html>

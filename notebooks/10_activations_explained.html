@@ -3,7 +3,7 @@
 <html lang="en">
 <head><meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
 <title>10_activations_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
@@ -7566,12 +7566,12 @@ a.anchor-link {
 <tr>
 <td><strong>Vanishing activations</strong></td>
 <td>Values get smaller each layer</td>
-<td>Mean → 0, Std → 0</td>
+<td>Mean &rarr; 0, Std &rarr; 0</td>
 </tr>
 <tr>
 <td><strong>Exploding activations</strong></td>
 <td>Values get larger each layer</td>
-<td>Mean/Std → infinity</td>
+<td>Mean/Std &rarr; infinity</td>
 </tr>
 <tr>
 <td><strong>Dead ReLUs</strong></td>
@@ -7595,6 +7595,67 @@ a.anchor-link {
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%8E%AE-Interactive:-see-activations-vanish,-stay-healthy,-or-explode">🎮 Interactive: see activations vanish, stay healthy, or explode<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-see-activations-vanish,-stay-healthy,-or-explode">¶</a></h2><p>Before any code, build the intuition. A signal passes through many layers. Depending on how the weights are scaled, the <strong>spread (std)</strong> of the activations can shrink toward zero (<em>vanishing</em>), stay near one (<em>healthy</em>), or grow without bound (<em>exploding</em>). Pick a regime, drag the init-scale slider, and press <strong>Animate flow</strong> to watch the signal move layer by layer.</p>
+<blockquote>
+<p>Everything later in this notebook &mdash; hooks, histograms, <code>color_dim</code> &mdash; exists to <em>measure</em> exactly this behavior on a real network.</p>
+</blockquote>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. Loads ./interactive_viz/why_monitor_activations.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># The widget broadcasts its own content height, so the frame auto-wraps with</span>
+<span class="c1"># no empty space below it. To use the published copy instead, swap the src for:</span>
+<span class="c1">#   https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/why_monitor_activations.html</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s1">'''</span>
+<span class="s1">&lt;iframe id="why_monitor_activations-frame"</span>
+<span class="s1">        src="interactive_viz/why_monitor_activations.html"</span>
+<span class="s1">        title="Why monitor activations"</span>
+<span class="s1">        loading="lazy"</span>
+<span class="s1">        style="width:100%; height:560px; border:1px solid #dde5f2;</span>
+<span class="s1">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12);</span>
+<span class="s1">               display:block;"&gt;&lt;/iframe&gt;</span>
+<span class="s1">&lt;script&gt;</span>
+<span class="s1">(function(){</span>
+<span class="s1">  function onMsg(e){</span>
+<span class="s1">    if(e.data &amp;&amp; e.data.type==="viz-height" &amp;&amp; e.data.id==="why_monitor_activations"){</span>
+<span class="s1">      var f=document.getElementById("why_monitor_activations-frame");</span>
+<span class="s1">      if(f) f.style.height=(e.data.height)+"px";   // wrap height to content</span>
+<span class="s1">    }</span>
+<span class="s1">  }</span>
+<span class="s1">  window.addEventListener("message", onMsg);</span>
+<span class="s1">})();</span>
+<span class="s1">&lt;/script&gt;</span>
+<span class="s1">'''</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe id="why_monitor_activations-frame" src="interactive_viz/why_monitor_activations.html" loading="lazy" title="why_monitor_activations"
+        style="display:block; width:100%; max-width:100%; height:560px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -8188,7 +8249,7 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="How-__call__-Works-in-SequentialModel-%E2%80%94-From-Python's-Callable-Protocol-to-the-Training-Loop">How <code>__call__</code> Works in <code>SequentialModel</code> — From Python's Callable Protocol to the Training Loop<a class="anchor-link" href="#How-__call__-Works-in-SequentialModel-%E2%80%94-From-Python's-Callable-Protocol-to-the-Training-Loop">¶</a></h1><hr/>
+<h1 id="How-__call__-Works-in-SequentialModel-%E2%80%94-From-Python's-Callable-Protocol-to-the-Training-Loop">How <code>__call__</code> Works in <code>SequentialModel</code> &mdash; From Python's Callable Protocol to the Training Loop<a class="anchor-link" href="#How-__call__-Works-in-SequentialModel-%E2%80%94-From-Python's-Callable-Protocol-to-the-Training-Loop">¶</a></h1><hr/>
 <h2 id="The-Question">The Question<a class="anchor-link" href="#The-Question">¶</a></h2><p>In the <code>SequentialModel</code> class from Part 3 of the notebook, a <code>__call__</code> method is defined:</p>
 <div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">SequentialModel</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">layers</span><span class="p">):</span>
@@ -8207,7 +8268,7 @@ a.anchor-link {
 <p>But nowhere in the code does anyone write <code>model.__call__(x)</code>. So what calls it, and how?</p>
 <hr/>
 <h2 id="Python's-Callable-Protocol">Python's Callable Protocol<a class="anchor-link" href="#Python's-Callable-Protocol">¶</a></h2><p>This is a fundamental Python language feature, not something specific to PyTorch or this notebook.</p>
-<p>In Python, <strong>any object can be "called" like a function if its class defines a <code>__call__</code> method.</strong> This is part of Python's data model — the set of special "dunder" methods that Python translates operator syntax into behind the scenes.</p>
+<p>In Python, <strong>any object can be "called" like a function if its class defines a <code>__call__</code> method.</strong> This is part of Python's data model &mdash; the set of special "dunder" methods that Python translates operator syntax into behind the scenes.</p>
 <p>The rule is simple: when Python encounters <code>obj(args)</code>, it looks up <code>__call__</code> on the object's class and executes <code>type(obj).__call__(obj, args)</code>.</p>
 <p>This is the same mechanism behind many other dunder methods:</p>
 <table>
@@ -8244,7 +8305,7 @@ a.anchor-link {
 </tr>
 </tbody>
 </table>
-<p>You've already seen the iteration one in this notebook — <code>for h in hc</code> calls <code>hc.__iter__()</code>. The callable protocol with <code>__call__</code> works exactly the same way.</p>
+<p>You've already seen the iteration one in this notebook &mdash; <code>for h in hc</code> calls <code>hc.__iter__()</code>. The callable protocol with <code>__call__</code> works exactly the same way.</p>
 <h3 id="Concrete-Example">Concrete Example<a class="anchor-link" href="#Concrete-Example">¶</a></h3><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Adder</span><span class="p">:</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">n</span>
@@ -8253,9 +8314,9 @@ a.anchor-link {
         <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span>
 
 <span class="n">add_five</span> <span class="o">=</span> <span class="n">Adder</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
-<span class="n">add_five</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># Python translates this to add_five.__call__(10) → returns 15</span>
+<span class="n">add_five</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># Python translates this to add_five.__call__(10) &rarr; returns 15</span>
 </pre></div>
-<p><code>add_five</code> is not a function — it's an instance of <code>Adder</code>. But because <code>Adder</code> defines <code>__call__</code>, you can use it with parentheses as if it were a function. Python doesn't care <em>what</em> an object is; it only cares whether the object's class has a <code>__call__</code> method.</p>
+<p><code>add_five</code> is not a function &mdash; it's an instance of <code>Adder</code>. But because <code>Adder</code> defines <code>__call__</code>, you can use it with parentheses as if it were a function. Python doesn't care <em>what</em> an object is; it only cares whether the object's class has a <code>__call__</code> method.</p>
 <hr/>
 <h2 id="Where-__call__-Gets-Triggered-in-the-Training-Loop">Where <code>__call__</code> Gets Triggered in the Training Loop<a class="anchor-link" href="#Where-__call__-Gets-Triggered-in-the-Training-Loop">¶</a></h2><p>The <code>__call__</code> method is never called by name anywhere in the code. Instead, it's triggered inside <code>TrainCB</code>:</p>
 <div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">TrainCB</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
@@ -8312,7 +8373,7 @@ a.anchor-link {
     <span class="o">...</span>
 </pre></div>
 <p><code>self.callback('predict')</code> calls <code>run_cbs</code>, which finds <code>TrainCB.predict</code> and executes it.</p>
-<h3 id="Step-5:-TrainCB.predict-%E2%80%94-Where-__call__-Gets-Triggered">Step 5: <code>TrainCB.predict</code> — Where <code>__call__</code> Gets Triggered<a class="anchor-link" href="#Step-5:-TrainCB.predict-%E2%80%94-Where-__call__-Gets-Triggered">¶</a></h3><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">TrainCB</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
+<h3 id="Step-5:-TrainCB.predict-%E2%80%94-Where-__call__-Gets-Triggered">Step 5: <code>TrainCB.predict</code> &mdash; Where <code>__call__</code> Gets Triggered<a class="anchor-link" href="#Step-5:-TrainCB.predict-%E2%80%94-Where-__call__-Gets-Triggered">¶</a></h3><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">TrainCB</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_inp</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span> <span class="o">=</span> <span class="n">n_inp</span>
     <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">preds</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span><span class="p">])</span>
 </pre></div>
@@ -8323,7 +8384,7 @@ self.n_inp = 1
 
 learn.batch[:1] = (images_tensor,)          # slice gives a tuple with one element
 
-*learn.batch[:1]  → images_tensor            # * unpacks the tuple
+*learn.batch[:1]  &rarr; images_tensor            # * unpacks the tuple
 
 learn.model(images_tensor)                   # this is the final call
 </code></pre>
@@ -8339,10 +8400,10 @@ SequentialModel.__call__(self=learn.model, x=images_tensor)
         self.act_stds[i].append(to_cpu(x).std().item())
     return x
 </code></pre>
-<p>That's it. Python sees parentheses after an object, looks for <code>__call__</code> on its class, and executes it. No registration, no special setup — defining <code>__call__</code> on a class is sufficient.</p>
+<p>That's it. Python sees parentheses after an object, looks for <code>__call__</code> on its class, and executes it. No registration, no special setup &mdash; defining <code>__call__</code> on a class is sufficient.</p>
 <hr/>
-<h2 id="An-Important-Nuance:-__call__-vs-forward">An Important Nuance: <code>__call__</code> vs <code>forward</code><a class="anchor-link" href="#An-Important-Nuance:-__call__-vs-forward">¶</a></h2><p>Because <code>SequentialModel</code> inherits from <code>nn.Module</code>, there's a subtlety worth noting. Normally in PyTorch, you define <code>forward()</code> (not <code>__call__</code>), because <code>nn.Module.__call__</code> does important bookkeeping — it handles hooks, sets training mode flags, and then calls <code>self.forward()</code>. By overriding <code>__call__</code> directly, this class <strong>bypasses that machinery</strong>. That's fine for this pedagogical example (and actually makes the code simpler to understand), but it means PyTorch's built-in hooks won't fire on this model — which is ironic given that the very next section of the notebook introduces hooks.</p>
-<p>This is intentional. Part 3 is meant to be the "naive approach" that motivates the cleaner hook-based solution in Parts 4–9.</p>
+<h2 id="An-Important-Nuance:-__call__-vs-forward">An Important Nuance: <code>__call__</code> vs <code>forward</code><a class="anchor-link" href="#An-Important-Nuance:-__call__-vs-forward">¶</a></h2><p>Because <code>SequentialModel</code> inherits from <code>nn.Module</code>, there's a subtlety worth noting. Normally in PyTorch, you define <code>forward()</code> (not <code>__call__</code>), because <code>nn.Module.__call__</code> does important bookkeeping &mdash; it handles hooks, sets training mode flags, and then calls <code>self.forward()</code>. By overriding <code>__call__</code> directly, this class <strong>bypasses that machinery</strong>. That's fine for this pedagogical example (and actually makes the code simpler to understand), but it means PyTorch's built-in hooks won't fire on this model &mdash; which is ironic given that the very next section of the notebook introduces hooks.</p>
+<p>This is intentional. Part 3 is meant to be the "naive approach" that motivates the cleaner hook-based solution in Parts 4&ndash;9.</p>
 <p>For comparison, if the code had used <code>nn.Sequential</code> instead:</p>
 <div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="n">cnn_layers</span><span class="p">())</span>   <span class="c1"># standard PyTorch model</span>
 <span class="n">learn</span> <span class="o">=</span> <span class="n">fit</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
@@ -8356,9 +8417,9 @@ nn.Module.__call__(self=learn.model, images_tensor)
     ↓
     nn.Sequential.forward(images_tensor)
     ↓  (loops through each layer, passing output to next)
-    layer0(x) → layer1(x) → layer2(x) → ... → output
+    layer0(x) &rarr; layer1(x) &rarr; layer2(x) &rarr; ... &rarr; output
 </code></pre>
-<p>The <code>SequentialModel</code> from Part 3 skips the <code>nn.Module.__call__</code> → <code>forward()</code> indirection entirely. Both paths end up running data through the layers, but only the standard path supports PyTorch's hook system.</p>
+<p>The <code>SequentialModel</code> from Part 3 skips the <code>nn.Module.__call__</code> &rarr; <code>forward()</code> indirection entirely. Both paths end up running data through the layers, but only the standard path supports PyTorch's hook system.</p>
 </div>
 </div>
 </div>
@@ -8453,7 +8514,65 @@ nn.Module.__call__(self=learn.model, images_tensor)
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%8E%AE-Interactive:-how-a-forward-hook-fires">🎮 Interactive: how a forward hook fires<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-how-a-forward-hook-fires">¶</a></h2><p>A hook is a function PyTorch calls <strong>for you</strong>, right after a layer produces its output. Step through the five stages (or press <strong>Play</strong>) to see exactly when your <code>append_stats(module, input, output)</code> runs &mdash; the matching line of code lights up on the right. Notice you never call the hook yourself, and the model is never modified.</p>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. Loads ./interactive_viz/forward_hook_flow.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># The widget broadcasts its own content height, so the frame auto-wraps with</span>
+<span class="c1"># no empty space below it. To use the published copy instead, swap the src for:</span>
+<span class="c1">#   https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/forward_hook_flow.html</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s1">'''</span>
+<span class="s1">&lt;iframe id="forward_hook_flow-frame"</span>
+<span class="s1">        src="interactive_viz/forward_hook_flow.html"</span>
+<span class="s1">        title="How a forward hook fires"</span>
+<span class="s1">        loading="lazy"</span>
+<span class="s1">        style="width:100%; height:560px; border:1px solid #dde5f2;</span>
+<span class="s1">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12);</span>
+<span class="s1">               display:block;"&gt;&lt;/iframe&gt;</span>
+<span class="s1">&lt;script&gt;</span>
+<span class="s1">(function(){</span>
+<span class="s1">  function onMsg(e){</span>
+<span class="s1">    if(e.data &amp;&amp; e.data.type==="viz-height" &amp;&amp; e.data.id==="forward_hook_flow"){</span>
+<span class="s1">      var f=document.getElementById("forward_hook_flow-frame");</span>
+<span class="s1">      if(f) f.style.height=(e.data.height)+"px";   // wrap height to content</span>
+<span class="s1">    }</span>
+<span class="s1">  }</span>
+<span class="s1">  window.addEventListener("message", onMsg);</span>
+<span class="s1">})();</span>
+<span class="s1">&lt;/script&gt;</span>
+<span class="s1">'''</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe id="forward_hook_flow-frame" src="interactive_viz/forward_hook_flow.html" loading="lazy" title="forward_hook_flow"
+        style="display:block; width:100%; max-width:100%; height:560px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8596,7 +8715,7 @@ nn.Module.__call__(self=learn.model, images_tensor)
 <h2 id="Step-1:-What-partial-Does">Step 1: What <code>partial</code> Does<a class="anchor-link" href="#Step-1:-What-partial-Does">¶</a></h2><p><code>partial</code> is from Python's <code>functools</code>. It creates a <strong>new function</strong> from an existing one by pre-filling some arguments. Our <code>append_stats</code> has four parameters:</p>
 <div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">append_stats</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">inp</span><span class="p">,</span> <span class="n">outp</span><span class="p">):</span>
 </pre></div>
-<p>When you write <code>partial(append_stats, i)</code> — say <code>i=0</code> — it creates a brand new function that behaves exactly like:</p>
+<p>When you write <code>partial(append_stats, i)</code> &mdash; say <code>i=0</code> &mdash; it creates a brand new function that behaves exactly like:</p>
 <div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">new_function</span><span class="p">(</span><span class="n">mod</span><span class="p">,</span> <span class="n">inp</span><span class="p">,</span> <span class="n">outp</span><span class="p">):</span>
     <span class="k">return</span> <span class="n">append_stats</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">inp</span><span class="p">,</span> <span class="n">outp</span><span class="p">)</span>
 </pre></div>
@@ -8608,13 +8727,13 @@ nn.Module.__call__(self=learn.model, images_tensor)
 <p>For a 5-layer model, this creates five different functions, each with its own layer index frozen in: <code>partial(append_stats, 0)</code>, <code>partial(append_stats, 1)</code>, <code>partial(append_stats, 2)</code>, etc.</p>
 <hr/>
 <h2 id="Step-2:-What-register_forward_hook-Does">Step 2: What <code>register_forward_hook</code> Does<a class="anchor-link" href="#Step-2:-What-register_forward_hook-Does">¶</a></h2><p>When you call <code>m.register_forward_hook(some_function)</code>, PyTorch doesn't run <code>some_function</code> immediately. It simply stores it internally on that layer, like putting a sticky note on it saying "call this function every time data flows through me."</p>
-<p>The contract is: PyTorch will call your hook function with exactly three arguments — <code>(module, input, output)</code> — every time that layer's forward pass completes. This is a PyTorch-defined signature that you must match.</p>
+<p>The contract is: PyTorch will call your hook function with exactly three arguments &mdash; <code>(module, input, output)</code> &mdash; every time that layer's forward pass completes. This is a PyTorch-defined signature that you must match.</p>
 <p>So after registration, layer 0 has <code>partial(append_stats, 0)</code> stored on it, layer 1 has <code>partial(append_stats, 1)</code>, and so on. Nothing has executed yet.</p>
 <hr/>
 <h2 id="Step-3:-What-Happens-When-fit(model)-Runs">Step 3: What Happens When <code>fit(model)</code> Runs<a class="anchor-link" href="#Step-3:-What-Happens-When-fit(model)-Runs">¶</a></h2><p>The <code>fit</code> function creates a <code>Learner</code> and calls <code>learn.fit(epochs)</code>, which loops over batches. For each batch, the <code>TrainCB.predict</code> method runs:</p>
 <div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 </pre></div>
-<p>This calls <code>model(x)</code> — the forward pass. Since <code>model</code> is <code>nn.Sequential</code>, data flows through each layer in sequence. When data passes through, say, layer 0 (the first conv block), PyTorch internally does something like this:</p>
+<p>This calls <code>model(x)</code> &mdash; the forward pass. Since <code>model</code> is <code>nn.Sequential</code>, data flows through each layer in sequence. When data passes through, say, layer 0 (the first conv block), PyTorch internally does something like this:</p>
 <div class="highlight"><pre><span></span><span class="c1"># Inside PyTorch's internals (simplified):</span>
 <span class="n">output</span> <span class="o">=</span> <span class="n">layer_0</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>        <span class="c1"># compute the layer's output normally</span>
 
@@ -8622,16 +8741,16 @@ nn.Module.__call__(self=learn.model, images_tensor)
 <span class="k">for</span> <span class="n">hook_fn</span> <span class="ow">in</span> <span class="n">layer_0</span><span class="o">.</span><span class="n">_forward_hooks</span><span class="p">:</span>
     <span class="n">hook_fn</span><span class="p">(</span><span class="n">layer_0</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>     <span class="c1"># call each registered hook</span>
 </pre></div>
-<p>That <code>hook_fn</code> is <code>partial(append_stats, 0)</code>, which needs three arguments — and PyTorch supplies exactly those three: <code>(module, input, output)</code>. So the call becomes:</p>
+<p>That <code>hook_fn</code> is <code>partial(append_stats, 0)</code>, which needs three arguments &mdash; and PyTorch supplies exactly those three: <code>(module, input, output)</code>. So the call becomes:</p>
 <div class="highlight"><pre><span></span><span class="n">partial</span><span class="p">(</span><span class="n">append_stats</span><span class="p">,</span> <span class="mi">0</span><span class="p">)(</span><span class="n">layer_0</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>
 </pre></div>
 <p>which is equivalent to:</p>
 <div class="highlight"><pre><span></span><span class="n">append_stats</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">layer_0</span><span class="p">,</span> <span class="nb">input</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>
 </pre></div>
 <p>Now all four parameters have values: <code>i=0</code> (from <code>partial</code>), <code>mod=layer_0</code>, <code>inp=input</code>, <code>outp=output</code> (all three from PyTorch). Inside <code>append_stats</code>, it computes <code>outp.mean()</code> and <code>outp.std()</code> and appends them to <code>act_means[0]</code> and <code>act_stds[0]</code>.</p>
-<p>Then data flows to layer 1, and the same thing happens — PyTorch calls <code>partial(append_stats, 1)(layer_1, input, output)</code>, which stores stats in <code>act_means[1]</code> and <code>act_stds[1]</code>. And so on for every layer, on every batch.</p>
+<p>Then data flows to layer 1, and the same thing happens &mdash; PyTorch calls <code>partial(append_stats, 1)(layer_1, input, output)</code>, which stores stats in <code>act_means[1]</code> and <code>act_stds[1]</code>. And so on for every layer, on every batch.</p>
 <hr/>
-<h2 id="Step-4:-The-Names-Don't-Matter-%E2%80%94-The-Position-Does">Step 4: The Names Don't Matter — The Position Does<a class="anchor-link" href="#Step-4:-The-Names-Don't-Matter-%E2%80%94-The-Position-Does">¶</a></h2><p>You might wonder: how does PyTorch know which argument is the input and which is the output? Does it look at the names <code>inp</code> and <code>outp</code>?</p>
+<h2 id="Step-4:-The-Names-Don't-Matter-%E2%80%94-The-Position-Does">Step 4: The Names Don't Matter &mdash; The Position Does<a class="anchor-link" href="#Step-4:-The-Names-Don't-Matter-%E2%80%94-The-Position-Does">¶</a></h2><p>You might wonder: how does PyTorch know which argument is the input and which is the output? Does it look at the names <code>inp</code> and <code>outp</code>?</p>
 <p><strong>No.</strong> You can name them anything you want. These would all work identically:</p>
 <div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">append_stats</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">inp</span><span class="p">,</span> <span class="n">outp</span><span class="p">):</span>        <span class="c1"># original</span>
 <span class="k">def</span> <span class="nf">append_stats</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">layer</span><span class="p">,</span> <span class="n">x_in</span><span class="p">,</span> <span class="n">x_out</span><span class="p">):</span>    <span class="c1"># also fine</span>
@@ -8667,7 +8786,7 @@ nn.Module.__call__(self=learn.model, images_tensor)
               0      self     args    output
            (partial) (1st)    (2nd)    (3rd)
 </code></pre>
-<p><code>orange</code> would hold the output tensor. The name is just a label for you, the programmer — Python and PyTorch only care about <strong>which position</strong> each value lands in.</p>
+<p><code>orange</code> would hold the output tensor. The name is just a label for you, the programmer &mdash; Python and PyTorch only care about <strong>which position</strong> each value lands in.</p>
 <p>This is exactly how all Python functions work. When you write <code>def add(a, b): return a + b</code> and call <code>add(3, 5)</code>, Python doesn't look for a variable named <code>a</code> with value 3. It just assigns the first argument to the first parameter and the second to the second.</p>
 <hr/>
 <h2 id="The-Complete-Timeline">The Complete Timeline<a class="anchor-link" href="#The-Complete-Timeline">¶</a></h2><pre><code>REGISTRATION PHASE (before any training):
@@ -8675,18 +8794,18 @@ nn.Module.__call__(self=learn.model, images_tensor)
   for i=1: layer_1 stores partial(append_stats, 1)    ← no execution
   ...
 
-TRAINING PHASE — fit(model) → each batch:
+TRAINING PHASE &mdash; fit(model) &rarr; each batch:
   model(x) triggers the forward pass:
-    layer_0(x)  → PyTorch auto-calls partial(append_stats, 0)(layer_0, inp, outp)
-                   → append_stats(0, layer_0, inp, outp)
-                   → act_means[0].append(outp.mean())
+    layer_0(x)  &rarr; PyTorch auto-calls partial(append_stats, 0)(layer_0, inp, outp)
+                   &rarr; append_stats(0, layer_0, inp, outp)
+                   &rarr; act_means[0].append(outp.mean())
 
-    layer_1(...)→ PyTorch auto-calls partial(append_stats, 1)(layer_1, inp, outp)
-                   → append_stats(1, layer_1, inp, outp)
-                   → act_means[1].append(outp.mean())
+    layer_1(...)&rarr; PyTorch auto-calls partial(append_stats, 1)(layer_1, inp, outp)
+                   &rarr; append_stats(1, layer_1, inp, outp)
+                   &rarr; act_means[1].append(outp.mean())
     ...
 </code></pre>
-<p>So <code>partial</code> solves a specific problem: PyTorch's hook signature is fixed at <code>(module, input, output)</code> — you can't pass extra arguments like the layer index. By using <code>partial</code>, you "smuggle in" the layer index ahead of time, creating a custom function per layer that still matches PyTorch's expected three-argument signature.</p>
+<p>So <code>partial</code> solves a specific problem: PyTorch's hook signature is fixed at <code>(module, input, output)</code> &mdash; you can't pass extra arguments like the layer index. By using <code>partial</code>, you "smuggle in" the layer index ahead of time, creating a custom function per layer that still matches PyTorch's expected three-argument signature.</p>
 </div>
 </div>
 </div>
@@ -8760,10 +8879,10 @@ TRAINING PHASE — fit(model) → each batch:
 <span class="w">        </span><span class="sd">"""Remove the hook from the module."""</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">hook</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
 <span class="w">        </span><span class="sd">"""</span>
-<span class="sd">        self.hook.remove() — This calls PyTorch's built-in remove method. When you call </span>
+<span class="sd">        self.hook.remove() &mdash; This calls PyTorch's built-in remove method. When you call </span>
 <span class="sd">        m.register_forward_hook(...), PyTorch returns a RemovableHandle object. That handle </span>
 <span class="sd">        has a .remove() method that tells PyTorch "stop calling this hook function, detach it from </span>
-<span class="sd">        the layer." That's what self.hook stores — that PyTorch handle.</span>
+<span class="sd">        the layer." That's what self.hook stores &mdash; that PyTorch handle.</span>
 <span class="sd">        """</span>
     
     <span class="k">def</span> <span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -9071,8 +9190,8 @@ TRAINING PHASE — fit(model) → each batch:
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="The-Hooks-Class-%E2%80%94-Motivation,-What's-New,-and-How-It-Works">The <code>Hooks</code> Class — Motivation, What's New, and How It Works<a class="anchor-link" href="#The-Hooks-Class-%E2%80%94-Motivation,-What's-New,-and-How-It-Works">¶</a></h1><hr/>
-<h2 id="Motivation:-Why-Do-We-Need-a-Hooks-Class?">Motivation: Why Do We Need a <code>Hooks</code> Class?<a class="anchor-link" href="#Motivation:-Why-Do-We-Need-a-Hooks-Class?">¶</a></h2><p>After Part 5 introduced the <code>Hook</code> class, we had a clean way to attach a hook to a <strong>single</strong> layer, store stats on the hook object, and remove it when done. But in practice, we never want to hook just one layer — we want to monitor <strong>all</strong> the convolutional layers (or all layers) in a model simultaneously. Here's what that looked like with the <code>Hook</code> class alone:</p>
+<h1 id="The-Hooks-Class-%E2%80%94-Motivation,-What's-New,-and-How-It-Works">The <code>Hooks</code> Class &mdash; Motivation, What's New, and How It Works<a class="anchor-link" href="#The-Hooks-Class-%E2%80%94-Motivation,-What's-New,-and-How-It-Works">¶</a></h1><hr/>
+<h2 id="Motivation:-Why-Do-We-Need-a-Hooks-Class?">Motivation: Why Do We Need a <code>Hooks</code> Class?<a class="anchor-link" href="#Motivation:-Why-Do-We-Need-a-Hooks-Class?">¶</a></h2><p>After Part 5 introduced the <code>Hook</code> class, we had a clean way to attach a hook to a <strong>single</strong> layer, store stats on the hook object, and remove it when done. But in practice, we never want to hook just one layer &mdash; we want to monitor <strong>all</strong> the convolutional layers (or all layers) in a model simultaneously. Here's what that looked like with the <code>Hook</code> class alone:</p>
 <div class="highlight"><pre><span></span><span class="n">set_seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="n">cnn_layers</span><span class="p">())</span>
 
@@ -9089,29 +9208,29 @@ TRAINING PHASE — fit(model) → each batch:
 </pre></div>
 <p>This works, but it has three problems:</p>
 <ol>
-<li><strong>Manual creation</strong> — you write a list comprehension yourself to create individual <code>Hook</code> objects every time</li>
-<li><strong>Manual cleanup</strong> — you must remember to call <code>h.remove()</code> on every single hook when you're done</li>
-<li><strong>No safety net</strong> — if your code crashes between creating hooks and removing them, the hooks leak in memory. The PyTorch hooks remain attached to the modules, keeping those modules (and their tensors) alive even after you think you've discarded them</li>
+<li><strong>Manual creation</strong> &mdash; you write a list comprehension yourself to create individual <code>Hook</code> objects every time</li>
+<li><strong>Manual cleanup</strong> &mdash; you must remember to call <code>h.remove()</code> on every single hook when you're done</li>
+<li><strong>No safety net</strong> &mdash; if your code crashes between creating hooks and removing them, the hooks leak in memory. The PyTorch hooks remain attached to the modules, keeping those modules (and their tensors) alive even after you think you've discarded them</li>
 </ol>
-<p>Problem 3 is particularly insidious because it's silent — your code won't throw an error, it will just consume more and more GPU/CPU memory.</p>
+<p>Problem 3 is particularly insidious because it's silent &mdash; your code won't throw an error, it will just consume more and more GPU/CPU memory.</p>
 <p>The <code>Hooks</code> class solves all three problems by wrapping the batch creation into a single constructor call and leveraging Python's <strong>context manager protocol</strong> to guarantee cleanup.</p>
 <hr/>
-<h2 id="What-Stays-the-Same:-Each-Hook-Is-Still-Tied-to-One-Layer">What Stays the Same: Each Hook Is Still Tied to One Layer<a class="anchor-link" href="#What-Stays-the-Same:-Each-Hook-Is-Still-Tied-to-One-Layer">¶</a></h2><p>Before looking at what's new, it's important to understand what the <code>Hooks</code> class does <strong>not</strong> change — the per-layer hook association.</p>
+<h2 id="What-Stays-the-Same:-Each-Hook-Is-Still-Tied-to-One-Layer">What Stays the Same: Each Hook Is Still Tied to One Layer<a class="anchor-link" href="#What-Stays-the-Same:-Each-Hook-Is-Still-Tied-to-One-Layer">¶</a></h2><p>Before looking at what's new, it's important to understand what the <code>Hooks</code> class does <strong>not</strong> change &mdash; the per-layer hook association.</p>
 <p>When the <code>Hook</code> class was used directly, each <code>Hook</code> was already attached to a specific layer:</p>
 <div class="highlight"><pre><span></span><span class="n">hooks</span> <span class="o">=</span> <span class="p">[</span><span class="n">Hook</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">append_stats</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">model</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="o">.</span><span class="n">children</span><span class="p">()]</span>
 </pre></div>
 <p>Python iterates over the first 5 children of the model. For a model built from <code>cnn_layers()</code>, those children are:</p>
-<pre><code>l = Sequential(Conv2d(1→8), ReLU)     →  Hook(l, append_stats)  →  hooks[0]
-l = Sequential(Conv2d(8→16), ReLU)    →  Hook(l, append_stats)  →  hooks[1]
-l = Sequential(Conv2d(16→32), ReLU)   →  Hook(l, append_stats)  →  hooks[2]
-l = Sequential(Conv2d(32→64), ReLU)   →  Hook(l, append_stats)  →  hooks[3]
-l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4]
+<pre><code>l = Sequential(Conv2d(1&rarr;8), ReLU)     &rarr;  Hook(l, append_stats)  &rarr;  hooks[0]
+l = Sequential(Conv2d(8&rarr;16), ReLU)    &rarr;  Hook(l, append_stats)  &rarr;  hooks[1]
+l = Sequential(Conv2d(16&rarr;32), ReLU)   &rarr;  Hook(l, append_stats)  &rarr;  hooks[2]
+l = Sequential(Conv2d(32&rarr;64), ReLU)   &rarr;  Hook(l, append_stats)  &rarr;  hooks[3]
+l = Conv2d(64&rarr;10)                     &rarr;  Hook(l, append_stats)  &rarr;  hooks[4]
 </code></pre>
-<p>Inside each <code>Hook.__init__</code>, the line <code>self.hook = m.register_forward_hook(partial(f, self))</code> registers the hook <strong>on that specific module <code>m</code></strong>. So <code>hooks[0]</code> is permanently attached to the first Sequential block, <code>hooks[1]</code> to the second, and so on. Each <code>Hook</code> object stores stats only for the layer it was registered on — when that layer's forward pass fires, PyTorch calls the hook function with that layer's output, and <code>append_stats</code> records it on that particular <code>Hook</code> object's <code>.stats</code>.</p>
+<p>Inside each <code>Hook.__init__</code>, the line <code>self.hook = m.register_forward_hook(partial(f, self))</code> registers the hook <strong>on that specific module <code>m</code></strong>. So <code>hooks[0]</code> is permanently attached to the first Sequential block, <code>hooks[1]</code> to the second, and so on. Each <code>Hook</code> object stores stats only for the layer it was registered on &mdash; when that layer's forward pass fires, PyTorch calls the hook function with that layer's output, and <code>append_stats</code> records it on that particular <code>Hook</code> object's <code>.stats</code>.</p>
 <p>The <code>Hooks</code> class does <strong>exactly the same thing</strong> internally. Its <code>__init__</code>:</p>
 <div class="highlight"><pre><span></span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">([</span><span class="n">Hook</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">ms</span><span class="p">])</span>
 </pre></div>
-<p>is doing the same <code>Hook(m, f)</code> call for each module. Same <code>Hook</code> objects, same <code>register_forward_hook</code> calls, same per-layer association. The hook mechanism is identical — what changes is only how we <strong>manage</strong> those hooks.</p>
+<p>is doing the same <code>Hook(m, f)</code> call for each module. Same <code>Hook</code> objects, same <code>register_forward_hook</code> calls, same per-layer association. The hook mechanism is identical &mdash; what changes is only how we <strong>manage</strong> those hooks.</p>
 <hr/>
 <h2 id="What's-Different-With-the-Hooks-Class">What's Different With the <code>Hooks</code> Class<a class="anchor-link" href="#What's-Different-With-the-Hooks-Class">¶</a></h2><h3 id="Before:-Hook-Class-Directly">Before: <code>Hook</code> Class Directly<a class="anchor-link" href="#Before:-Hook-Class-Directly">¶</a></h3><div class="highlight"><pre><span></span><span class="n">hooks</span> <span class="o">=</span> <span class="p">[</span><span class="n">Hook</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">append_stats</span><span class="p">)</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">children</span><span class="p">())[:</span><span class="mi">5</span><span class="p">]]</span>
 <span class="n">fit</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
@@ -9137,7 +9256,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
 <li>Creates a <code>Hook(m, append_stats)</code> for each one</li>
 <li>Passes the resulting list to <code>list.__init__</code> via <code>super().__init__(...)</code></li>
 </ol>
-<p>So <code>Hooks</code> <em>is</em> a <code>list</code> — it inherits from <code>list</code>. After construction, it's literally a list containing 6 <code>Hook</code> objects. That's why <code>hooks[:5]</code>, <code>hooks[i]</code>, <code>len(hooks)</code>, and <code>for h in hooks</code> all work — they're standard list operations inherited from <code>list</code>.</p>
+<p>So <code>Hooks</code> <em>is</em> a <code>list</code> &mdash; it inherits from <code>list</code>. After construction, it's literally a list containing 6 <code>Hook</code> objects. That's why <code>hooks[:5]</code>, <code>hooks[i]</code>, <code>len(hooks)</code>, and <code>for h in hooks</code> all work &mdash; they're standard list operations inherited from <code>list</code>.</p>
 <hr/>
 <h2 id="Difference-2:-Automatic-Cleanup-via-Context-Manager">Difference 2: Automatic Cleanup via Context Manager<a class="anchor-link" href="#Difference-2:-Automatic-Cleanup-via-Context-Manager">¶</a></h2><p>This is the main reason <code>Hooks</code> exists. The <code>with</code> statement uses Python's <strong>context manager protocol</strong>, which relies on two dunder methods:</p>
 <div class="highlight"><pre><span></span><span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
@@ -9150,47 +9269,47 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
 <pre><code>with Hooks(model, append_stats) as hooks:
 │
 ├─ Step 1: Python creates the Hooks object
-│    Hooks(model, append_stats)  →  a list of 6 Hook objects
+│    Hooks(model, append_stats)  &rarr;  a list of 6 Hook objects
 │
 ├─ Step 2: Python calls __enter__()
-│    returns self  →  this becomes the variable 'hooks'
+│    returns self  &rarr;  this becomes the variable 'hooks'
 │
 ├─ Step 3: The indented block runs
 │    fit(model)           ← hooks are active, recording stats
 │    for i, h in ...      ← plotting from recorded stats
 │
-└─ Step 4: Python calls __exit__() — GUARANTEED, even if an exception occurs
+└─ Step 4: Python calls __exit__() &mdash; GUARANTEED, even if an exception occurs
      self.remove()
        └─ for h in self:
               h.remove()   ← removes each hook from its module
 </code></pre>
 <p>The critical guarantee is Step 4. Compare these two scenarios:</p>
-<p><strong>Without context manager</strong> — if <code>fit(model)</code> crashes:</p>
+<p><strong>Without context manager</strong> &mdash; if <code>fit(model)</code> crashes:</p>
 <div class="highlight"><pre><span></span><span class="n">hooks</span> <span class="o">=</span> <span class="p">[</span><span class="n">Hook</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">append_stats</span><span class="p">)</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">children</span><span class="p">()]</span>
 <span class="n">fit</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>        <span class="c1"># ← CRASH! Exception thrown</span>
 <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hooks</span><span class="p">:</span>
     <span class="n">h</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>    <span class="c1"># ← This line NEVER executes. Hooks leak.</span>
 </pre></div>
-<p><strong>With context manager</strong> — if <code>fit(model)</code> crashes:</p>
+<p><strong>With context manager</strong> &mdash; if <code>fit(model)</code> crashes:</p>
 <div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">Hooks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">append_stats</span><span class="p">)</span> <span class="k">as</span> <span class="n">hooks</span><span class="p">:</span>
     <span class="n">fit</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>    <span class="c1"># ← CRASH! Exception thrown</span>
                   <span class="c1"># Python STILL calls __exit__(), which calls self.remove()</span>
                   <span class="c1"># All hooks are cleaned up safely</span>
 </pre></div>
-<p>This is the same pattern as <code>with open('file.txt') as f:</code> — the file gets closed even if your code throws an error.</p>
+<p>This is the same pattern as <code>with open('file.txt') as f:</code> &mdash; the file gets closed even if your code throws an error.</p>
 <hr/>
 <h2 id="The-Additional-Safety-Methods">The Additional Safety Methods<a class="anchor-link" href="#The-Additional-Safety-Methods">¶</a></h2><p>The <code>Hooks</code> class also defines two more cleanup methods for edge cases:</p>
-<p><strong><code>__del__</code> — fallback if someone forgets <code>with</code>:</strong></p>
+<p><strong><code>__del__</code> &mdash; fallback if someone forgets <code>with</code>:</strong></p>
 <div class="highlight"><pre><span></span><span class="k">def</span> <span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
 </pre></div>
 <p>If someone writes <code>hooks = Hooks(model, append_stats)</code> without <code>with</code>, the hooks will still be cleaned up when the <code>hooks</code> variable gets garbage collected by Python.</p>
-<p><strong><code>__delitem__</code> — safe deletion of individual hooks:</strong></p>
+<p><strong><code>__delitem__</code> &mdash; safe deletion of individual hooks:</strong></p>
 <div class="highlight"><pre><span></span><span class="k">def</span> <span class="fm">__delitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
     <span class="bp">self</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
     <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__delitem__</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
 </pre></div>
-<p>This handles <code>del hooks[2]</code>. Without this override, <code>del hooks[2]</code> would remove the <code>Hook</code> object from the list but leave the actual PyTorch hook still attached to the module — a subtle leak. The override ensures the PyTorch hook is removed from the module first, then the <code>Hook</code> object is removed from the list.</p>
+<p>This handles <code>del hooks[2]</code>. Without this override, <code>del hooks[2]</code> would remove the <code>Hook</code> object from the list but leave the actual PyTorch hook still attached to the module &mdash; a subtle leak. The override ensures the PyTorch hook is removed from the module first, then the <code>Hook</code> object is removed from the list.</p>
 <hr/>
 <h2 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h2><table>
 <thead>
@@ -9204,7 +9323,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
 <tr>
 <td>Layer-to-hook association</td>
 <td><code>Hook(l, f)</code> registers on layer <code>l</code></td>
-<td>Identical — internally creates <code>Hook(m, f)</code> for each module</td>
+<td>Identical &mdash; internally creates <code>Hook(m, f)</code> for each module</td>
 </tr>
 <tr>
 <td>Creating multiple hooks</td>
@@ -9214,7 +9333,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
 <tr>
 <td>Cleanup on success</td>
 <td>Must call <code>h.remove()</code> on each</td>
-<td><code>with</code> block calls <code>__exit__</code> → <code>remove()</code> automatically</td>
+<td><code>with</code> block calls <code>__exit__</code> &rarr; <code>remove()</code> automatically</td>
 </tr>
 <tr>
 <td>Cleanup on crash</td>
@@ -9233,7 +9352,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
 </tr>
 </tbody>
 </table>
-<p>The <code>Hooks</code> class doesn't change the hook mechanism at all — each hook is still attached to a specific layer via <code>register_forward_hook</code>, and each <code>Hook</code> object still stores stats only for its own layer. What <code>Hooks</code> adds is purely a <strong>management wrapper</strong>: convenience for creating multiple hooks in one call, and safety for guaranteeing they all get cleaned up.</p>
+<p>The <code>Hooks</code> class doesn't change the hook mechanism at all &mdash; each hook is still attached to a specific layer via <code>register_forward_hook</code>, and each <code>Hook</code> object still stores stats only for its own layer. What <code>Hooks</code> adds is purely a <strong>management wrapper</strong>: convenience for creating multiple hooks in one call, and safety for guaranteeing they all get cleaned up.</p>
 </div>
 </div>
 </div>
@@ -9290,11 +9409,11 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1">#| export</span>
 
-<span class="c1"># `HooksCallback` — Every Line Explained</span>
+<span class="c1"># `HooksCallback` &mdash; Every Line Explained</span>
 
 <span class="c1"># This #| is a special comment used by nbdev (a tool for creating Python libraries</span>
 <span class="c1"># from notebooks). It tells nbdev: "include this code in the exported library module."</span>
-<span class="c1"># You can ignore this line — it has no effect on how the code runs.</span>
+<span class="c1"># You can ignore this line &mdash; it has no effect on how the code runs.</span>
 
 <span class="k">class</span> <span class="nc">HooksCallback</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
     <span class="c1"># HooksCallback is a new class that INHERITS from Callback.</span>
@@ -9306,7 +9425,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
     <span class="c1"># training loop without modifying the Learner itself.</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hookfunc</span><span class="p">,</span> <span class="n">mod_filter</span><span class="o">=</span><span class="n">fc</span><span class="o">.</span><span class="n">noop</span><span class="p">,</span> <span class="n">on_train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_valid</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mods</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="c1"># __init__ is the constructor — it runs when you create an instance, e.g.:</span>
+        <span class="c1"># __init__ is the constructor &mdash; it runs when you create an instance, e.g.:</span>
         <span class="c1">#   hc = HooksCallback(append_stats, mod_filter=lambda m: isinstance(m, nn.Conv2d))</span>
         <span class="c1">#</span>
         <span class="c1"># Arguments:</span>
@@ -9314,14 +9433,14 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
         <span class="c1"># hookfunc (required):</span>
         <span class="c1">#   The function that will be called every time a hooked layer produces output.</span>
         <span class="c1">#   In our case, this is append_stats, which records mean, std, and histograms.</span>
-        <span class="c1">#   This function is NOT called yet — it's just saved for later use.</span>
+        <span class="c1">#   This function is NOT called yet &mdash; it's just saved for later use.</span>
         <span class="c1">#</span>
         <span class="c1"># mod_filter (optional, default=fc.noop):</span>
         <span class="c1">#   A function that takes a module (layer) and returns True or False.</span>
         <span class="c1">#   It decides WHICH layers in the model should be hooked.</span>
         <span class="c1">#   Example: lambda m: isinstance(m, nn.Conv2d) means "only hook Conv2d layers"</span>
         <span class="c1">#   The default fc.noop is a fastcore function that does nothing and returns None,</span>
-        <span class="c1">#   which is falsy — meaning by default NO modules pass the filter.</span>
+        <span class="c1">#   which is falsy &mdash; meaning by default NO modules pass the filter.</span>
         <span class="c1">#   In practice, you almost always pass your own filter.</span>
         <span class="c1">#</span>
         <span class="c1"># on_train (optional, default=True):</span>
@@ -9335,7 +9454,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
         <span class="c1">#</span>
         <span class="c1"># mods (optional, default=None):</span>
         <span class="c1">#   An explicit list of modules (layers) to hook.</span>
-        <span class="c1">#   If you provide this, mod_filter is ignored — you're saying</span>
+        <span class="c1">#   If you provide this, mod_filter is ignored &mdash; you're saying</span>
         <span class="c1">#   "hook exactly these layers, don't auto-discover."</span>
         <span class="c1">#   If None (the default), before_fit will auto-discover layers using mod_filter.</span>
 
@@ -9350,7 +9469,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
         <span class="c1">#   self.mods = mods</span>
         <span class="c1">#</span>
         <span class="c1"># After this line, you can access self.hookfunc, self.mod_filter, etc.</span>
-        <span class="c1"># This is purely a convenience — it does the same thing as manual assignment.</span>
+        <span class="c1"># This is purely a convenience &mdash; it does the same thing as manual assignment.</span>
 
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="c1"># Calls Callback.__init__(), the parent class constructor.</span>
@@ -9364,9 +9483,9 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
         <span class="c1"># At this point, learn.model already exists and is ready to use.</span>
         <span class="c1">#</span>
         <span class="c1"># The argument 'learn' is the Learner object, which gives us access to:</span>
-        <span class="c1">#   learn.model    — the neural network model</span>
-        <span class="c1">#   learn.training — whether we're currently in training mode</span>
-        <span class="c1">#   learn.dls      — the dataloaders</span>
+        <span class="c1">#   learn.model    &mdash; the neural network model</span>
+        <span class="c1">#   learn.training &mdash; whether we're currently in training mode</span>
+        <span class="c1">#   learn.dls      &mdash; the dataloaders</span>
         <span class="c1">#   etc.</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mods</span><span class="p">:</span> <span class="n">mods</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mods</span>
@@ -9382,7 +9501,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
         <span class="c1"># over ALL modules in the model, RECURSIVELY. This means it walks into</span>
         <span class="c1"># nested Sequential blocks and finds every sub-layer.</span>
         <span class="c1"># For example, if the model has nn.Sequential(Conv2d, ReLU) as a child,</span>
-        <span class="c1"># modules() yields: the Sequential, the Conv2d, AND the ReLU — all three.</span>
+        <span class="c1"># modules() yields: the Sequential, the Conv2d, AND the ReLU &mdash; all three.</span>
         <span class="c1">#</span>
         <span class="c1"># fc.filter_ex() is a fastcore utility that filters this iterator.</span>
         <span class="c1"># It keeps only the modules where self.mod_filter(m) returns True.</span>
@@ -9420,18 +9539,18 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
         <span class="c1"># This is the GATEKEEPER function that sits between PyTorch's hook mechanism</span>
         <span class="c1"># and our actual hook function (append_stats).</span>
         <span class="c1">#</span>
-        <span class="c1"># It is NOT called directly by us — it's called by PyTorch whenever a</span>
+        <span class="c1"># It is NOT called directly by us &mdash; it's called by PyTorch whenever a</span>
         <span class="c1"># hooked layer completes its forward pass.</span>
         <span class="c1">#</span>
         <span class="c1"># Arguments:</span>
-        <span class="c1">#   self  — the HooksCallback instance (because this is a method)</span>
-        <span class="c1">#   learn — the Learner object (pre-filled by partial in before_fit)</span>
-        <span class="c1">#   *args — captures (hook, mod, inp, outp) from PyTorch's hook mechanism</span>
+        <span class="c1">#   self  &mdash; the HooksCallback instance (because this is a method)</span>
+        <span class="c1">#   learn &mdash; the Learner object (pre-filled by partial in before_fit)</span>
+        <span class="c1">#   *args &mdash; captures (hook, mod, inp, outp) from PyTorch's hook mechanism</span>
         <span class="c1">#           hook = the Hook object for this layer</span>
         <span class="c1">#           mod  = the module (layer) that just ran</span>
         <span class="c1">#           inp  = the input to the layer</span>
         <span class="c1">#           outp = the output of the layer (the activations!)</span>
-        <span class="c1">#   **kwargs — captures any keyword arguments (usually none)</span>
+        <span class="c1">#   **kwargs &mdash; captures any keyword arguments (usually none)</span>
 
         <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_train</span> <span class="ow">and</span> <span class="n">learn</span><span class="o">.</span><span class="n">training</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_valid</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">learn</span><span class="o">.</span><span class="n">training</span><span class="p">):</span>
             <span class="c1"># This is the gating logic. It checks TWO conditions with OR:</span>
@@ -9447,8 +9566,8 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
             <span class="c1">#   Both must be True for this condition to pass.</span>
             <span class="c1">#</span>
             <span class="c1"># With the defaults (on_train=True, on_valid=False):</span>
-            <span class="c1">#   During training:   (True and True) or (False and True)  = True  → RECORD</span>
-            <span class="c1">#   During validation: (True and False) or (False and True) = False → SKIP</span>
+            <span class="c1">#   During training:   (True and True) or (False and True)  = True  &rarr; RECORD</span>
+            <span class="c1">#   During validation: (True and False) or (False and True) = False &rarr; SKIP</span>
             <span class="c1">#</span>
             <span class="c1"># Only if the gate passes do we call the actual hook function:</span>
 
@@ -9503,7 +9622,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="The-HooksCallback-Class-%E2%80%94-Why-It-Exists,-What-It-Adds,-and-How-It-Works">The <code>HooksCallback</code> Class — Why It Exists, What It Adds, and How It Works<a class="anchor-link" href="#The-HooksCallback-Class-%E2%80%94-Why-It-Exists,-What-It-Adds,-and-How-It-Works">¶</a></h1><hr/>
+<h1 id="The-HooksCallback-Class-%E2%80%94-Why-It-Exists,-What-It-Adds,-and-How-It-Works">The <code>HooksCallback</code> Class &mdash; Why It Exists, What It Adds, and How It Works<a class="anchor-link" href="#The-HooksCallback-Class-%E2%80%94-Why-It-Exists,-What-It-Adds,-and-How-It-Works">¶</a></h1><hr/>
 <h2 id="The-Core-Problem-HooksCallback-Solves">The Core Problem <code>HooksCallback</code> Solves<a class="anchor-link" href="#The-Core-Problem-HooksCallback-Solves">¶</a></h2><p>With the <code>Hooks</code> class, you had to manually manage the <strong>timing</strong> of hook creation and removal relative to training:</p>
 <div class="highlight"><pre><span></span><span class="n">set_seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="n">cnn_layers</span><span class="p">())</span>
@@ -9515,7 +9634,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
     <span class="c1"># YOU must plot inside the with block (before hooks are removed)</span>
     <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">hooks</span><span class="p">[:</span><span class="mi">5</span><span class="p">]):</span>
         <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">'Layer </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
-<span class="c1"># Hooks removed here — if you forgot to plot above, the data is gone</span>
+<span class="c1"># Hooks removed here &mdash; if you forgot to plot above, the data is gone</span>
 </pre></div>
 <p>Everything must be manually orchestrated inside the <code>with</code> block. The hook creation, the training, and the data access are all tangled together in one indented block that <strong>you</strong> have to write correctly every time.</p>
 <p><code>HooksCallback</code> integrates hooks into the <strong>Learner callback system</strong>, so the Learner itself manages the timing:</p>
@@ -9525,7 +9644,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
 <span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="n">cnn_layers</span><span class="p">())</span>
 <span class="n">fit</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">xtra_cbs</span><span class="o">=</span><span class="p">[</span><span class="n">hc</span><span class="p">])</span>
 
-<span class="c1"># Plot AFTER training — hc still has all the data</span>
+<span class="c1"># Plot AFTER training &mdash; hc still has all the data</span>
 <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">hc</span><span class="p">):</span>
     <span class="n">axs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">'Conv </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
 </pre></div>
@@ -9548,13 +9667,13 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
     <span class="n">hook</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">acts</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
     <span class="n">hook</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">acts</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">histc</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
 </pre></div>
-<p>This function is not called yet — it's just stored for later. It will eventually be called during training every time a hooked layer's forward pass fires.</p>
+<p>This function is not called yet &mdash; it's just stored for later. It will eventually be called during training every time a hooked layer's forward pass fires.</p>
 <h3 id="Argument-2:-mod_filter=lambda-m:-isinstance(m,-nn.Conv2d)">Argument 2: <code>mod_filter=lambda m: isinstance(m, nn.Conv2d)</code><a class="anchor-link" href="#Argument-2:-mod_filter=lambda-m:-isinstance(m,-nn.Conv2d)">¶</a></h3><p>This is a filter function that takes a module and returns <code>True</code> or <code>False</code>. It will be used later (in <code>before_fit</code>) to decide which layers in the model get hooked. The lambda says: "only hook modules that are <code>nn.Conv2d</code> instances."</p>
-<p>This filter is not applied yet either — there's no model to filter at this point. It's stored for use during <code>before_fit</code>.</p>
+<p>This filter is not applied yet either &mdash; there's no model to filter at this point. It's stored for use during <code>before_fit</code>.</p>
 <h3 id="Default-Arguments-(not-passed,-but-important)">Default Arguments (not passed, but important)<a class="anchor-link" href="#Default-Arguments-(not-passed,-but-important)">¶</a></h3><ul>
-<li><code>on_train=True</code> — record stats during training batches</li>
-<li><code>on_valid=False</code> — don't record stats during validation batches</li>
-<li><code>mods=None</code> — don't provide an explicit list of modules (use <code>mod_filter</code> to auto-discover instead)</li>
+<li><code>on_train=True</code> &mdash; record stats during training batches</li>
+<li><code>on_valid=False</code> &mdash; don't record stats during validation batches</li>
+<li><code>mods=None</code> &mdash; don't provide an explicit list of modules (use <code>mod_filter</code> to auto-discover instead)</li>
 </ul>
 <h3 id="What-fc.store_attr()-Does">What <code>fc.store_attr()</code> Does<a class="anchor-link" href="#What-fc.store_attr()-Does">¶</a></h3><p>This is a fastcore utility that automatically stores all <code>__init__</code> arguments as attributes on <code>self</code>. It's equivalent to writing:</p>
 <div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">hookfunc</span> <span class="o">=</span> <span class="n">hookfunc</span>         <span class="c1"># append_stats</span>
@@ -9563,7 +9682,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
 <span class="bp">self</span><span class="o">.</span><span class="n">on_valid</span> <span class="o">=</span> <span class="n">on_valid</span>         <span class="c1"># False</span>
 <span class="bp">self</span><span class="o">.</span><span class="n">mods</span> <span class="o">=</span> <span class="n">mods</span>                 <span class="c1"># None</span>
 </pre></div>
-<h3 id="What-super().__init__()-Does">What <code>super().__init__()</code> Does<a class="anchor-link" href="#What-super().__init__()-Does">¶</a></h3><p>This calls <code>Callback.__init__()</code>, which sets <code>self.order = 0</code> — the default callback execution priority.</p>
+<h3 id="What-super().__init__()-Does">What <code>super().__init__()</code> Does<a class="anchor-link" href="#What-super().__init__()-Does">¶</a></h3><p>This calls <code>Callback.__init__()</code>, which sets <code>self.order = 0</code> &mdash; the default callback execution priority.</p>
 <h3 id="The-State-After-Construction">The State After Construction<a class="anchor-link" href="#The-State-After-Construction">¶</a></h3><p>After this line runs, <code>hc</code> is a <code>HooksCallback</code> object with stored configuration but <strong>no hooks yet</strong>:</p>
 <pre><code>hc = HooksCallback(...)
 │
@@ -9574,7 +9693,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
 ├─ hc.mods       = None                                  (auto-discover layers)
 └─ hc.hooks      = ??? (doesn't exist yet!)
 </code></pre>
-<p>The hooks are only created later, when the Learner calls <code>hc.before_fit(learn)</code> at the start of training. This is a key design choice — the callback is <strong>configured</strong> at construction time but <strong>activated</strong> at training time, because it needs access to <code>learn.model</code> to discover which modules to hook.</p>
+<p>The hooks are only created later, when the Learner calls <code>hc.before_fit(learn)</code> at the start of training. This is a key design choice &mdash; the callback is <strong>configured</strong> at construction time but <strong>activated</strong> at training time, because it needs access to <code>learn.model</code> to discover which modules to hook.</p>
 <h3 id="What-Happens-Next">What Happens Next<a class="anchor-link" href="#What-Happens-Next">¶</a></h3><p>When <code>fit(model, xtra_cbs=[hc])</code> runs, the Learner calls <code>hc.before_fit(learn)</code>, which uses the stored <code>mod_filter</code> to find all Conv2d layers in <code>learn.model</code>, creates <code>Hooks</code> on those layers, and training begins with stats being recorded. After training, the Learner calls <code>hc.after_fit(learn)</code>, which removes the hooks. But the <code>hc</code> object and its collected data persist, so you can plot from it afterwards.</p>
 <hr/>
 <h2 id="What-HooksCallback-Adds:-Three-New-Capabilities">What <code>HooksCallback</code> Adds: Three New Capabilities<a class="anchor-link" href="#What-HooksCallback-Adds:-Three-New-Capabilities">¶</a></h2><h3 id="1.-Automatic-Lifecycle-Management-via-Callbacks">1. Automatic Lifecycle Management via Callbacks<a class="anchor-link" href="#1.-Automatic-Lifecycle-Management-via-Callbacks">¶</a></h3><p><code>HooksCallback</code> hooks into the Learner's callback system to create and remove hooks at exactly the right moments:</p>
@@ -9600,7 +9719,7 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
          └─ HooksCallback.after_fit()   ← hooks removed here
 </code></pre>
 <h3 id="2.-Automatic-Module-Discovery-via-mod_filter">2. Automatic Module Discovery via <code>mod_filter</code><a class="anchor-link" href="#2.-Automatic-Module-Discovery-via-mod_filter">¶</a></h3><p>With <code>Hooks</code>, you had to manually select which layers to hook:</p>
-<div class="highlight"><pre><span></span><span class="c1"># With Hooks — you must manually pick layers</span>
+<div class="highlight"><pre><span></span><span class="c1"># With Hooks &mdash; you must manually pick layers</span>
 <span class="n">hooks</span> <span class="o">=</span> <span class="p">[</span><span class="n">Hook</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">append_stats</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">model</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="o">.</span><span class="n">children</span><span class="p">()]</span>
 <span class="c1"># or</span>
 <span class="k">with</span> <span class="n">Hooks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">append_stats</span><span class="p">)</span> <span class="k">as</span> <span class="n">hooks</span><span class="p">:</span>  <span class="c1"># hooks ALL 6 children</span>
@@ -9617,14 +9736,14 @@ l = Conv2d(64→10)                     →  Hook(l, append_stats)  →  hooks[4
 <pre><code>model (direct children)          model.modules() (recursive)
 ─────────────────────           ──────────────────────────────
 Sequential(Conv2d, ReLU)        Sequential(Conv2d, ReLU)
-Sequential(Conv2d, ReLU)          ├─ Conv2d(1→8)     ← found!
+Sequential(Conv2d, ReLU)          ├─ Conv2d(1&rarr;8)     ← found!
 Sequential(Conv2d, ReLU)          └─ ReLU
 Sequential(Conv2d, ReLU)        Sequential(Conv2d, ReLU)
-Conv2d(64→10)                     ├─ Conv2d(8→16)    ← found!
+Conv2d(64&rarr;10)                     ├─ Conv2d(8&rarr;16)    ← found!
 Flatten                            └─ ReLU
                                  ...and so on for all layers
 </code></pre>
-<p>With <code>mod_filter=lambda m: isinstance(m, nn.Conv2d)</code>, the filter catches the <strong>raw Conv2d layers</strong> no matter how deeply nested they are. You don't need to know the model's structure — just say "give me all Conv2d layers" and <code>HooksCallback</code> finds them.</p>
+<p>With <code>mod_filter=lambda m: isinstance(m, nn.Conv2d)</code>, the filter catches the <strong>raw Conv2d layers</strong> no matter how deeply nested they are. You don't need to know the model's structure &mdash; just say "give me all Conv2d layers" and <code>HooksCallback</code> finds them.</p>
 <h3 id="3.-Train/Valid-Gating">3. Train/Valid Gating<a class="anchor-link" href="#3.-Train/Valid-Gating">¶</a></h3><p><code>HooksCallback</code> can selectively record stats only during training, only during validation, or both:</p>
 <div class="highlight"><pre><span></span><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hookfunc</span><span class="p">,</span> <span class="n">mod_filter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">on_train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_valid</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mods</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="o">...</span>
@@ -9633,7 +9752,7 @@ Flatten                            └─ ReLU
     <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_train</span> <span class="ow">and</span> <span class="n">learn</span><span class="o">.</span><span class="n">training</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">on_valid</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">learn</span><span class="o">.</span><span class="n">training</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">hookfunc</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </pre></div>
-<p>This wrapper checks <code>learn.training</code> before calling the actual hook function. With <code>Hooks</code> alone, hooks fire on <strong>every</strong> forward pass — both training and validation. You'd have to manually add train/valid checking inside your hook function. <code>HooksCallback</code> handles this transparently.</p>
+<p>This wrapper checks <code>learn.training</code> before calling the actual hook function. With <code>Hooks</code> alone, hooks fire on <strong>every</strong> forward pass &mdash; both training and validation. You'd have to manually add train/valid checking inside your hook function. <code>HooksCallback</code> handles this transparently.</p>
 <p>The default (<code>on_train=True, on_valid=False</code>) means stats are recorded during training but not during validation, which is typically what you want when diagnosing training dynamics.</p>
 <hr/>
 <h2 id="How-_hookfunc-Wraps-the-Original-Hook-Function">How <code>_hookfunc</code> Wraps the Original Hook Function<a class="anchor-link" href="#How-_hookfunc-Wraps-the-Original-Hook-Function">¶</a></h2><p>There's a subtle but important detail in how <code>HooksCallback</code> passes functions to <code>Hooks</code>. Compare:</p>
@@ -9688,16 +9807,16 @@ Flatten                            └─ ReLU
 <tr>
 <td>Data access after training</td>
 <td>Must access inside <code>with</code> block</td>
-<td>Access anytime via <code>hc</code> — data persists on hooks</td>
+<td>Access anytime via <code>hc</code> &mdash; data persists on hooks</td>
 </tr>
 <tr>
 <td>Integration with Learner</td>
-<td>None — standalone</td>
+<td>None &mdash; standalone</td>
 <td>Full integration via callback protocol</td>
 </tr>
 </tbody>
 </table>
-<p><code>Hooks</code> manages the <strong>lifecycle</strong> of hooks (creation + cleanup). <code>HooksCallback</code> manages the <strong>integration</strong> — it decides <em>when</em> to create hooks, <em>which</em> modules to hook, and <em>whether</em> to record on each forward pass, all driven by the Learner's callback system.</p>
+<p><code>Hooks</code> manages the <strong>lifecycle</strong> of hooks (creation + cleanup). <code>HooksCallback</code> manages the <strong>integration</strong> &mdash; it decides <em>when</em> to create hooks, <em>which</em> modules to hook, and <em>whether</em> to record on each forward pass, all driven by the Learner's callback system.</p>
 </div>
 </div>
 </div>
@@ -9736,7 +9855,7 @@ Flatten                            └─ ReLU
 <div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-python"><pre><span></span><span class="c1"># Using `HooksCallback` — Every Line Explained</span>
+<div class="highlight hl-python"><pre><span></span><span class="c1"># Using `HooksCallback` &mdash; Every Line Explained</span>
 
 <span class="n">hc</span> <span class="o">=</span> <span class="n">HooksCallback</span><span class="p">(</span>
     <span class="n">append_stats</span><span class="p">,</span>
@@ -9744,10 +9863,10 @@ Flatten                            └─ ReLU
     <span class="c1"># This is the function that will be called every time a hooked layer</span>
     <span class="c1"># produces output during a forward pass. append_stats records the mean,</span>
     <span class="c1"># std, and histogram of the layer's activations onto the Hook object.</span>
-    <span class="c1"># It is NOT called right now — it's just stored as hc.hookfunc for later.</span>
+    <span class="c1"># It is NOT called right now &mdash; it's just stored as hc.hookfunc for later.</span>
 
     <span class="n">mod_filter</span><span class="o">=</span><span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">)</span>
-    <span class="c1"># Second argument: mod_filter — a function that decides WHICH layers to hook.</span>
+    <span class="c1"># Second argument: mod_filter &mdash; a function that decides WHICH layers to hook.</span>
     <span class="c1">#</span>
     <span class="c1"># "lambda m:" defines a small anonymous (unnamed) function that takes one</span>
     <span class="c1"># argument 'm', which will be a module (layer) from the model.</span>
@@ -9757,14 +9876,14 @@ Flatten                            └─ ReLU
     <span class="c1">#</span>
     <span class="c1"># So this filter says: "only hook the Conv2d layers, ignore all others."</span>
     <span class="c1">#</span>
-    <span class="c1"># This filter is NOT applied right now — there's no model yet to filter.</span>
+    <span class="c1"># This filter is NOT applied right now &mdash; there's no model yet to filter.</span>
     <span class="c1"># It's stored as hc.mod_filter and will be used later in before_fit</span>
     <span class="c1"># when the Learner provides the model.</span>
     <span class="c1">#</span>
     <span class="c1"># We didn't pass on_train, on_valid, or mods, so they use their defaults:</span>
-    <span class="c1">#   on_train=True   → record stats during training</span>
-    <span class="c1">#   on_valid=False  → don't record stats during validation</span>
-    <span class="c1">#   mods=None       → auto-discover layers using mod_filter (not manual)</span>
+    <span class="c1">#   on_train=True   &rarr; record stats during training</span>
+    <span class="c1">#   on_valid=False  &rarr; don't record stats during validation</span>
+    <span class="c1">#   mods=None       &rarr; auto-discover layers using mod_filter (not manual)</span>
 <span class="p">)</span>
 <span class="c1"># At this point, hc is a HooksCallback object with configuration stored,</span>
 <span class="c1"># but NO hooks have been created yet. hc.hooks does not exist.</span>
@@ -9791,11 +9910,11 @@ Flatten                            └─ ReLU
 <span class="c1">#</span>
 <span class="c1"># The * operator unpacks the list, so nn.Sequential(*cnn_layers()) is equivalent to:</span>
 <span class="c1">#   nn.Sequential(</span>
-<span class="c1">#       nn.Sequential(Conv2d(1→8), ReLU()),     # layer 0</span>
-<span class="c1">#       nn.Sequential(Conv2d(8→16), ReLU()),    # layer 1</span>
-<span class="c1">#       nn.Sequential(Conv2d(16→32), ReLU()),   # layer 2</span>
-<span class="c1">#       nn.Sequential(Conv2d(32→64), ReLU()),   # layer 3</span>
-<span class="c1">#       Conv2d(64→10),                          # layer 4 (no ReLU)</span>
+<span class="c1">#       nn.Sequential(Conv2d(1&rarr;8), ReLU()),     # layer 0</span>
+<span class="c1">#       nn.Sequential(Conv2d(8&rarr;16), ReLU()),    # layer 1</span>
+<span class="c1">#       nn.Sequential(Conv2d(16&rarr;32), ReLU()),   # layer 2</span>
+<span class="c1">#       nn.Sequential(Conv2d(32&rarr;64), ReLU()),   # layer 3</span>
+<span class="c1">#       Conv2d(64&rarr;10),                          # layer 4 (no ReLU)</span>
 <span class="c1">#       nn.Flatten()                            # layer 5</span>
 <span class="c1">#   )</span>
 <span class="c1">#</span>
@@ -9825,29 +9944,29 @@ Flatten                            └─ ReLU
 <span class="c1"># │ learn.fit(1)                                                    │</span>
 <span class="c1"># │   │                                                             │</span>
 <span class="c1"># │   ├─ learn.callback('before_fit')                               │</span>
-<span class="c1"># │   │    ├─ DeviceCB.before_fit()  → moves model to GPU/CPU      │</span>
+<span class="c1"># │   │    ├─ DeviceCB.before_fit()  &rarr; moves model to GPU/CPU      │</span>
 <span class="c1"># │   │    └─ HooksCallback.before_fit(learn)                       │</span>
 <span class="c1"># │   │         │                                                   │</span>
 <span class="c1"># │   │         │  self.mods is None, so auto-discover:             │</span>
 <span class="c1"># │   │         │  mods = [all Conv2d layers found via mod_filter]  │</span>
-<span class="c1"># │   │         │       = [Conv2d(1→8), Conv2d(8→16),              │</span>
-<span class="c1"># │   │         │          Conv2d(16→32), Conv2d(32→64),           │</span>
-<span class="c1"># │   │         │          Conv2d(64→10)]                           │</span>
+<span class="c1"># │   │         │       = [Conv2d(1&rarr;8), Conv2d(8&rarr;16),              │</span>
+<span class="c1"># │   │         │          Conv2d(16&rarr;32), Conv2d(32&rarr;64),           │</span>
+<span class="c1"># │   │         │          Conv2d(64&rarr;10)]                           │</span>
 <span class="c1"># │   │         │                                                   │</span>
 <span class="c1"># │   │         │  self.hooks = Hooks(mods, partial(_hookfunc, learn))│</span>
-<span class="c1"># │   │         │  → Creates 5 Hook objects, one per Conv2d layer   │</span>
-<span class="c1"># │   │         │  → Each Hook registers a forward hook on its layer│</span>
+<span class="c1"># │   │         │  &rarr; Creates 5 Hook objects, one per Conv2d layer   │</span>
+<span class="c1"># │   │         │  &rarr; Each Hook registers a forward hook on its layer│</span>
 <span class="c1"># │   │                                                             │</span>
 <span class="c1"># │   ├─ TRAINING EPOCH                                             │</span>
 <span class="c1"># │   │    for each batch:                                          │</span>
-<span class="c1"># │   │      learn.callback('before_batch')  → moves batch to device│</span>
+<span class="c1"># │   │      learn.callback('before_batch')  &rarr; moves batch to device│</span>
 <span class="c1"># │   │      TrainCB.predict()                                      │</span>
-<span class="c1"># │   │        → learn.preds = learn.model(images)                  │</span>
-<span class="c1"># │   │        → forward pass runs through all layers               │</span>
-<span class="c1"># │   │        → EACH Conv2d layer triggers its hook:               │</span>
+<span class="c1"># │   │        &rarr; learn.preds = learn.model(images)                  │</span>
+<span class="c1"># │   │        &rarr; forward pass runs through all layers               │</span>
+<span class="c1"># │   │        &rarr; EACH Conv2d layer triggers its hook:               │</span>
 <span class="c1"># │   │            _hookfunc checks: on_train=True, training=True   │</span>
-<span class="c1"># │   │            → gate passes → append_stats(hook, mod, inp, outp)│</span>
-<span class="c1"># │   │            → mean, std, histogram stored on hook.stats      │</span>
+<span class="c1"># │   │            &rarr; gate passes &rarr; append_stats(hook, mod, inp, outp)│</span>
+<span class="c1"># │   │            &rarr; mean, std, histogram stored on hook.stats      │</span>
 <span class="c1"># │   │      TrainCB.get_loss()                                     │</span>
 <span class="c1"># │   │      TrainCB.backward()                                     │</span>
 <span class="c1"># │   │      TrainCB.step()                                         │</span>
@@ -9856,18 +9975,18 @@ Flatten                            └─ ReLU
 <span class="c1"># │   ├─ VALIDATION EPOCH                                           │</span>
 <span class="c1"># │   │    for each batch:                                          │</span>
 <span class="c1"># │   │      TrainCB.predict()                                      │</span>
-<span class="c1"># │   │        → forward pass runs through all layers               │</span>
-<span class="c1"># │   │        → EACH Conv2d layer triggers its hook:               │</span>
+<span class="c1"># │   │        &rarr; forward pass runs through all layers               │</span>
+<span class="c1"># │   │        &rarr; EACH Conv2d layer triggers its hook:               │</span>
 <span class="c1"># │   │            _hookfunc checks: on_valid=False, training=False │</span>
-<span class="c1"># │   │            → gate FAILS → append_stats is NOT called        │</span>
-<span class="c1"># │   │            → no stats recorded during validation            │</span>
+<span class="c1"># │   │            &rarr; gate FAILS &rarr; append_stats is NOT called        │</span>
+<span class="c1"># │   │            &rarr; no stats recorded during validation            │</span>
 <span class="c1"># │   │                                                             │</span>
 <span class="c1"># │   └─ learn.callback('after_fit')                                │</span>
 <span class="c1"># │        └─ HooksCallback.after_fit(learn)                        │</span>
 <span class="c1"># │             └─ self.hooks.remove()                              │</span>
-<span class="c1"># │                → removes all 5 hooks from their Conv2d layers   │</span>
-<span class="c1"># │                → hooks no longer fire on forward passes         │</span>
-<span class="c1"># │                → BUT hook.stats data is still accessible        │</span>
+<span class="c1"># │                &rarr; removes all 5 hooks from their Conv2d layers   │</span>
+<span class="c1"># │                &rarr; hooks no longer fire on forward passes         │</span>
+<span class="c1"># │                &rarr; BUT hook.stats data is still accessible        │</span>
 <span class="c1"># └─────────────────────────────────────────────────────────────────┘</span>
 <span class="c1">#</span>
 <span class="c1"># After fit() returns:</span>
@@ -9889,17 +10008,17 @@ Flatten                            └─ ReLU
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="Using-HooksCallback-%E2%80%94-Every-Line-Explained">Using <code>HooksCallback</code> — Every Line Explained<a class="anchor-link" href="#Using-HooksCallback-%E2%80%94-Every-Line-Explained">¶</a></h1><hr/>
+<h1 id="Using-HooksCallback-%E2%80%94-Every-Line-Explained">Using <code>HooksCallback</code> &mdash; Every Line Explained<a class="anchor-link" href="#Using-HooksCallback-%E2%80%94-Every-Line-Explained">¶</a></h1><hr/>
 <div class="highlight"><pre><span></span><span class="n">hc</span> <span class="o">=</span> <span class="n">HooksCallback</span><span class="p">(</span>
     <span class="n">append_stats</span><span class="p">,</span>
     <span class="c1"># First argument: hookfunc = append_stats</span>
     <span class="c1"># This is the function that will be called every time a hooked layer</span>
     <span class="c1"># produces output during a forward pass. append_stats records the mean,</span>
     <span class="c1"># std, and histogram of the layer's activations onto the Hook object.</span>
-    <span class="c1"># It is NOT called right now — it's just stored as hc.hookfunc for later.</span>
+    <span class="c1"># It is NOT called right now &mdash; it's just stored as hc.hookfunc for later.</span>
 
     <span class="n">mod_filter</span><span class="o">=</span><span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">)</span>
-    <span class="c1"># Second argument: mod_filter — a function that decides WHICH layers to hook.</span>
+    <span class="c1"># Second argument: mod_filter &mdash; a function that decides WHICH layers to hook.</span>
     <span class="c1">#</span>
     <span class="c1"># "lambda m:" defines a small anonymous (unnamed) function that takes one</span>
     <span class="c1"># argument 'm', which will be a module (layer) from the model.</span>
@@ -9909,14 +10028,14 @@ Flatten                            └─ ReLU
     <span class="c1">#</span>
     <span class="c1"># So this filter says: "only hook the Conv2d layers, ignore all others."</span>
     <span class="c1">#</span>
-    <span class="c1"># This filter is NOT applied right now — there's no model yet to filter.</span>
+    <span class="c1"># This filter is NOT applied right now &mdash; there's no model yet to filter.</span>
     <span class="c1"># It's stored as hc.mod_filter and will be used later in before_fit</span>
     <span class="c1"># when the Learner provides the model.</span>
     <span class="c1">#</span>
     <span class="c1"># We didn't pass on_train, on_valid, or mods, so they use their defaults:</span>
-    <span class="c1">#   on_train=True   → record stats during training</span>
-    <span class="c1">#   on_valid=False  → don't record stats during validation</span>
-    <span class="c1">#   mods=None       → auto-discover layers using mod_filter (not manual)</span>
+    <span class="c1">#   on_train=True   &rarr; record stats during training</span>
+    <span class="c1">#   on_valid=False  &rarr; don't record stats during validation</span>
+    <span class="c1">#   mods=None       &rarr; auto-discover layers using mod_filter (not manual)</span>
 <span class="p">)</span>
 <span class="c1"># At this point, hc is a HooksCallback object with configuration stored,</span>
 <span class="c1"># but NO hooks have been created yet. hc.hooks does not exist.</span>
@@ -9943,11 +10062,11 @@ Flatten                            └─ ReLU
 <span class="c1">#</span>
 <span class="c1"># The * operator unpacks the list, so nn.Sequential(*cnn_layers()) is equivalent to:</span>
 <span class="c1">#   nn.Sequential(</span>
-<span class="c1">#       nn.Sequential(Conv2d(1→8), ReLU()),     # layer 0</span>
-<span class="c1">#       nn.Sequential(Conv2d(8→16), ReLU()),    # layer 1</span>
-<span class="c1">#       nn.Sequential(Conv2d(16→32), ReLU()),   # layer 2</span>
-<span class="c1">#       nn.Sequential(Conv2d(32→64), ReLU()),   # layer 3</span>
-<span class="c1">#       Conv2d(64→10),                          # layer 4 (no ReLU)</span>
+<span class="c1">#       nn.Sequential(Conv2d(1&rarr;8), ReLU()),     # layer 0</span>
+<span class="c1">#       nn.Sequential(Conv2d(8&rarr;16), ReLU()),    # layer 1</span>
+<span class="c1">#       nn.Sequential(Conv2d(16&rarr;32), ReLU()),   # layer 2</span>
+<span class="c1">#       nn.Sequential(Conv2d(32&rarr;64), ReLU()),   # layer 3</span>
+<span class="c1">#       Conv2d(64&rarr;10),                          # layer 4 (no ReLU)</span>
 <span class="c1">#       nn.Flatten()                            # layer 5</span>
 <span class="c1">#   )</span>
 <span class="c1">#</span>
@@ -9977,29 +10096,29 @@ Flatten                            └─ ReLU
 <span class="c1"># │ learn.fit(1)                                                    │</span>
 <span class="c1"># │   │                                                             │</span>
 <span class="c1"># │   ├─ learn.callback('before_fit')                               │</span>
-<span class="c1"># │   │    ├─ DeviceCB.before_fit()  → moves model to GPU/CPU      │</span>
+<span class="c1"># │   │    ├─ DeviceCB.before_fit()  &rarr; moves model to GPU/CPU      │</span>
 <span class="c1"># │   │    └─ HooksCallback.before_fit(learn)                       │</span>
 <span class="c1"># │   │         │                                                   │</span>
 <span class="c1"># │   │         │  self.mods is None, so auto-discover:             │</span>
 <span class="c1"># │   │         │  mods = [all Conv2d layers found via mod_filter]  │</span>
-<span class="c1"># │   │         │       = [Conv2d(1→8), Conv2d(8→16),              │</span>
-<span class="c1"># │   │         │          Conv2d(16→32), Conv2d(32→64),           │</span>
-<span class="c1"># │   │         │          Conv2d(64→10)]                           │</span>
+<span class="c1"># │   │         │       = [Conv2d(1&rarr;8), Conv2d(8&rarr;16),              │</span>
+<span class="c1"># │   │         │          Conv2d(16&rarr;32), Conv2d(32&rarr;64),           │</span>
+<span class="c1"># │   │         │          Conv2d(64&rarr;10)]                           │</span>
 <span class="c1"># │   │         │                                                   │</span>
 <span class="c1"># │   │         │  self.hooks = Hooks(mods, partial(_hookfunc, learn))│</span>
-<span class="c1"># │   │         │  → Creates 5 Hook objects, one per Conv2d layer   │</span>
-<span class="c1"># │   │         │  → Each Hook registers a forward hook on its layer│</span>
+<span class="c1"># │   │         │  &rarr; Creates 5 Hook objects, one per Conv2d layer   │</span>
+<span class="c1"># │   │         │  &rarr; Each Hook registers a forward hook on its layer│</span>
 <span class="c1"># │   │                                                             │</span>
 <span class="c1"># │   ├─ TRAINING EPOCH                                             │</span>
 <span class="c1"># │   │    for each batch:                                          │</span>
-<span class="c1"># │   │      learn.callback('before_batch')  → moves batch to device│</span>
+<span class="c1"># │   │      learn.callback('before_batch')  &rarr; moves batch to device│</span>
 <span class="c1"># │   │      TrainCB.predict()                                      │</span>
-<span class="c1"># │   │        → learn.preds = learn.model(images)                  │</span>
-<span class="c1"># │   │        → forward pass runs through all layers               │</span>
-<span class="c1"># │   │        → EACH Conv2d layer triggers its hook:               │</span>
+<span class="c1"># │   │        &rarr; learn.preds = learn.model(images)                  │</span>
+<span class="c1"># │   │        &rarr; forward pass runs through all layers               │</span>
+<span class="c1"># │   │        &rarr; EACH Conv2d layer triggers its hook:               │</span>
 <span class="c1"># │   │            _hookfunc checks: on_train=True, training=True   │</span>
-<span class="c1"># │   │            → gate passes → append_stats(hook, mod, inp, outp)│</span>
-<span class="c1"># │   │            → mean, std, histogram stored on hook.stats      │</span>
+<span class="c1"># │   │            &rarr; gate passes &rarr; append_stats(hook, mod, inp, outp)│</span>
+<span class="c1"># │   │            &rarr; mean, std, histogram stored on hook.stats      │</span>
 <span class="c1"># │   │      TrainCB.get_loss()                                     │</span>
 <span class="c1"># │   │      TrainCB.backward()                                     │</span>
 <span class="c1"># │   │      TrainCB.step()                                         │</span>
@@ -10008,18 +10127,18 @@ Flatten                            └─ ReLU
 <span class="c1"># │   ├─ VALIDATION EPOCH                                           │</span>
 <span class="c1"># │   │    for each batch:                                          │</span>
 <span class="c1"># │   │      TrainCB.predict()                                      │</span>
-<span class="c1"># │   │        → forward pass runs through all layers               │</span>
-<span class="c1"># │   │        → EACH Conv2d layer triggers its hook:               │</span>
+<span class="c1"># │   │        &rarr; forward pass runs through all layers               │</span>
+<span class="c1"># │   │        &rarr; EACH Conv2d layer triggers its hook:               │</span>
 <span class="c1"># │   │            _hookfunc checks: on_valid=False, training=False │</span>
-<span class="c1"># │   │            → gate FAILS → append_stats is NOT called        │</span>
-<span class="c1"># │   │            → no stats recorded during validation            │</span>
+<span class="c1"># │   │            &rarr; gate FAILS &rarr; append_stats is NOT called        │</span>
+<span class="c1"># │   │            &rarr; no stats recorded during validation            │</span>
 <span class="c1"># │   │                                                             │</span>
 <span class="c1"># │   └─ learn.callback('after_fit')                                │</span>
 <span class="c1"># │        └─ HooksCallback.after_fit(learn)                        │</span>
 <span class="c1"># │             └─ self.hooks.remove()                              │</span>
-<span class="c1"># │                → removes all 5 hooks from their Conv2d layers   │</span>
-<span class="c1"># │                → hooks no longer fire on forward passes         │</span>
-<span class="c1"># │                → BUT hook.stats data is still accessible        │</span>
+<span class="c1"># │                &rarr; removes all 5 hooks from their Conv2d layers   │</span>
+<span class="c1"># │                &rarr; hooks no longer fire on forward passes         │</span>
+<span class="c1"># │                &rarr; BUT hook.stats data is still accessible        │</span>
 <span class="c1"># └─────────────────────────────────────────────────────────────────┘</span>
 <span class="c1">#</span>
 <span class="c1"># After fit() returns:</span>
@@ -10079,7 +10198,65 @@ Flatten                            └─ ReLU
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%8E%AE-Interactive:-the-dead-ReLU-detector">🎮 Interactive: the dead-ReLU detector<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-dead-ReLU-detector">¶</a></h2><p>Histograms let us spot <strong>dead ReLUs</strong> &mdash; neurons whose pre-activation is almost always negative, so <code>max(0, x)</code> outputs <code>0</code> every time and they stop learning. Drag the input <strong>mean</strong>, <strong>spread</strong>, and <strong>bias</strong> to push the distribution negative and watch the <em>dead fraction</em> (the count in histogram bin 0) climb. This is precisely the quantity <code>dead_chart()</code> plots per layer.</p>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. Loads ./interactive_viz/dead_relu_detector.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># The widget broadcasts its own content height, so the frame auto-wraps with</span>
+<span class="c1"># no empty space below it. To use the published copy instead, swap the src for:</span>
+<span class="c1">#   https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/dead_relu_detector.html</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s1">'''</span>
+<span class="s1">&lt;iframe id="dead_relu_detector-frame"</span>
+<span class="s1">        src="interactive_viz/dead_relu_detector.html"</span>
+<span class="s1">        title="Dead ReLU detector"</span>
+<span class="s1">        loading="lazy"</span>
+<span class="s1">        style="width:100%; height:560px; border:1px solid #dde5f2;</span>
+<span class="s1">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12);</span>
+<span class="s1">               display:block;"&gt;&lt;/iframe&gt;</span>
+<span class="s1">&lt;script&gt;</span>
+<span class="s1">(function(){</span>
+<span class="s1">  function onMsg(e){</span>
+<span class="s1">    if(e.data &amp;&amp; e.data.type==="viz-height" &amp;&amp; e.data.id==="dead_relu_detector"){</span>
+<span class="s1">      var f=document.getElementById("dead_relu_detector-frame");</span>
+<span class="s1">      if(f) f.style.height=(e.data.height)+"px";   // wrap height to content</span>
+<span class="s1">    }</span>
+<span class="s1">  }</span>
+<span class="s1">  window.addEventListener("message", onMsg);</span>
+<span class="s1">})();</span>
+<span class="s1">&lt;/script&gt;</span>
+<span class="s1">'''</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe id="dead_relu_detector-frame" src="interactive_viz/dead_relu_detector.html" loading="lazy" title="dead_relu_detector"
+        style="display:block; width:100%; max-width:100%; height:560px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10292,7 +10469,7 @@ Flatten                            └─ ReLU
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>Interpretation:</strong></p>
 <ul>
-<li>If the fraction near zero is high and stable → those neurons are "dead"</li>
+<li>If the fraction near zero is high and stable &rarr; those neurons are "dead"</li>
 <li>Dead neurons don't learn because gradient = 0 when ReLU input &lt; 0</li>
 <li>This can happen with:<ul>
 <li>Too high learning rate</li>
@@ -10329,7 +10506,7 @@ Flatten                            └─ ReLU
 <div class="highlight hl-python"><pre><span></span><span class="c1">#|export</span>
 <span class="c1"># This is a special comment used by nbdev (a tool for creating Python libraries</span>
 <span class="c1"># from notebooks). It tells nbdev: "include this code in the exported library module."</span>
-<span class="c1"># You can ignore this line — it has no effect on how the code runs in the notebook.</span>
+<span class="c1"># You can ignore this line &mdash; it has no effect on how the code runs in the notebook.</span>
 
 
 <span class="k">class</span> <span class="nc">ActivationStats</span><span class="p">(</span><span class="n">HooksCallback</span><span class="p">):</span>
@@ -10338,23 +10515,23 @@ Flatten                            └─ ReLU
     <span class="c1"># What does inheritance mean here?</span>
     <span class="c1"># ─────────────────────────────────</span>
     <span class="c1"># ActivationStats gets ALL the functionality of HooksCallback for free:</span>
-    <span class="c1">#   - before_fit()   → auto-discovers Conv2d layers and creates hooks</span>
-    <span class="c1">#   - after_fit()    → removes hooks after training</span>
-    <span class="c1">#   - _hookfunc()    → gates recording by train/valid mode</span>
-    <span class="c1">#   - __iter__()     → lets you loop over hooks with "for h in self"</span>
-    <span class="c1">#   - __len__()      → lets you call len(self) to count hooks</span>
+    <span class="c1">#   - before_fit()   &rarr; auto-discovers Conv2d layers and creates hooks</span>
+    <span class="c1">#   - after_fit()    &rarr; removes hooks after training</span>
+    <span class="c1">#   - _hookfunc()    &rarr; gates recording by train/valid mode</span>
+    <span class="c1">#   - __iter__()     &rarr; lets you loop over hooks with "for h in self"</span>
+    <span class="c1">#   - __len__()      &rarr; lets you call len(self) to count hooks</span>
     <span class="c1">#</span>
     <span class="c1"># ActivationStats then ADDS convenience methods on top:</span>
-    <span class="c1">#   - color_dim()    → visualize activation histograms as color images</span>
-    <span class="c1">#   - dead_chart()   → plot fraction of near-zero activations (dead ReLUs)</span>
-    <span class="c1">#   - plot_stats()   → plot means and standard deviations over training</span>
+    <span class="c1">#   - color_dim()    &rarr; visualize activation histograms as color images</span>
+    <span class="c1">#   - dead_chart()   &rarr; plot fraction of near-zero activations (dead ReLUs)</span>
+    <span class="c1">#   - plot_stats()   &rarr; plot means and standard deviations over training</span>
     <span class="c1">#</span>
     <span class="c1"># Think of it as: HooksCallback is the engine, ActivationStats is the dashboard.</span>
     <span class="c1"># HooksCallback handles all the plumbing (creating hooks, recording data, cleanup).</span>
     <span class="c1"># ActivationStats just provides pretty visualizations of the collected data.</span>
     <span class="c1">#</span>
     <span class="c1"># The inheritance chain is:</span>
-    <span class="c1">#   Callback  →  HooksCallback  →  ActivationStats</span>
+    <span class="c1">#   Callback  &rarr;  HooksCallback  &rarr;  ActivationStats</span>
     <span class="c1">#     │              │                  │</span>
     <span class="c1">#     │              │                  └─ Adds visualization methods</span>
     <span class="c1">#     │              └─ Adds hook lifecycle, module discovery, train/valid gating</span>
@@ -10362,14 +10539,14 @@ Flatten                            └─ ReLU
 
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mod_filter</span><span class="o">=</span><span class="n">fc</span><span class="o">.</span><span class="n">noop</span><span class="p">):</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">append_stats</span><span class="p">,</span> <span class="n">mod_filter</span><span class="p">)</span>
-    <span class="c1"># This is the constructor — it runs when you create an instance:</span>
+    <span class="c1"># This is the constructor &mdash; it runs when you create an instance:</span>
     <span class="c1">#   astats = ActivationStats(mod_filter=lambda m: isinstance(m, nn.Conv2d))</span>
     <span class="c1">#</span>
     <span class="c1"># It takes ONE argument:</span>
     <span class="c1">#</span>
     <span class="c1">#   mod_filter (optional, default=fc.noop):</span>
     <span class="c1">#     A function that decides WHICH layers in the model to monitor.</span>
-    <span class="c1">#     Example: lambda m: isinstance(m, nn.Conv2d)  →  "only monitor Conv2d layers"</span>
+    <span class="c1">#     Example: lambda m: isinstance(m, nn.Conv2d)  &rarr;  "only monitor Conv2d layers"</span>
     <span class="c1">#     The default fc.noop does nothing (returns None), meaning no layers pass.</span>
     <span class="c1">#     In practice, you almost always provide your own filter.</span>
     <span class="c1">#</span>
@@ -10391,7 +10568,7 @@ Flatten                            └─ ReLU
     <span class="c1">#                              ← append_stats is automatically provided!</span>
     <span class="c1">#</span>
     <span class="c1"># ActivationStats HARDCODES append_stats as the hook function.</span>
-    <span class="c1"># You never need to think about which function to pass — the class</span>
+    <span class="c1"># You never need to think about which function to pass &mdash; the class</span>
     <span class="c1"># always uses append_stats, which records means, stds, and histograms.</span>
     <span class="c1">#</span>
     <span class="c1"># After this constructor runs, the object has all the HooksCallback attributes:</span>
@@ -10404,7 +10581,7 @@ Flatten                            └─ ReLU
 
 
     <span class="k">def</span> <span class="nf">color_dim</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span><span class="mi">5</span><span class="p">)):</span>
-        <span class="c1"># Visualize activation histograms as COLOR IMAGES — one image per hooked layer.</span>
+        <span class="c1"># Visualize activation histograms as COLOR IMAGES &mdash; one image per hooked layer.</span>
         <span class="c1">#</span>
         <span class="c1"># This is the most informative visualization in the notebook. Each image shows</span>
         <span class="c1"># how the DISTRIBUTION of activations changes over the course of training.</span>
@@ -10427,18 +10604,18 @@ Flatten                            └─ ReLU
         <span class="c1">#   - For our CNN with 5 Conv2d layers, len(self) = 5</span>
         <span class="c1">#</span>
         <span class="c1"># get_grid(5, figsize=(11,5)) creates a figure with 5 subplots arranged</span>
-        <span class="c1"># in a grid (e.g., 2 rows × 3 columns, with one subplot left empty).</span>
+        <span class="c1"># in a grid (e.g., 2 rows &times; 3 columns, with one subplot left empty).</span>
         <span class="c1">#</span>
         <span class="c1"># Returns:</span>
-        <span class="c1">#   fig  — the overall Figure object (the whole canvas)</span>
-        <span class="c1">#   axes — a 2D numpy array of Axes objects (individual subplots)</span>
-        <span class="c1">#          e.g., for a 2×3 grid: axes has shape (2, 3)</span>
+        <span class="c1">#   fig  &mdash; the overall Figure object (the whole canvas)</span>
+        <span class="c1">#   axes &mdash; a 2D numpy array of Axes objects (individual subplots)</span>
+        <span class="c1">#          e.g., for a 2&times;3 grid: axes has shape (2, 3)</span>
 
         <span class="k">for</span> <span class="n">ax</span><span class="p">,</span><span class="n">h</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axes</span><span class="o">.</span><span class="n">flat</span><span class="p">,</span> <span class="bp">self</span><span class="p">):</span>
             <span class="c1"># This loops over EACH subplot and its corresponding hook SIMULTANEOUSLY.</span>
             <span class="c1">#</span>
             <span class="c1"># axes.flat:</span>
-            <span class="c1">#   axes is a 2D numpy array (e.g., shape (2,3) for a 2×3 grid).</span>
+            <span class="c1">#   axes is a 2D numpy array (e.g., shape (2,3) for a 2&times;3 grid).</span>
             <span class="c1">#   .flat is a numpy property that creates a 1D iterator over all elements.</span>
             <span class="c1">#   So axes.flat yields: axes[0,0], axes[0,1], axes[0,2], axes[1,0], ...</span>
             <span class="c1">#   Each element is a matplotlib Axes object (one subplot to draw on).</span>
@@ -10451,11 +10628,11 @@ Flatten                            └─ ReLU
             <span class="c1">#</span>
             <span class="c1"># zip(axes.flat, self):</span>
             <span class="c1">#   Pairs up each Axes with its corresponding Hook:</span>
-            <span class="c1">#     (axes[0,0], Hook_for_Conv2d_1→8)</span>
-            <span class="c1">#     (axes[0,1], Hook_for_Conv2d_8→16)</span>
-            <span class="c1">#     (axes[0,2], Hook_for_Conv2d_16→32)</span>
-            <span class="c1">#     (axes[1,0], Hook_for_Conv2d_32→64)</span>
-            <span class="c1">#     (axes[1,1], Hook_for_Conv2d_64→10)</span>
+            <span class="c1">#     (axes[0,0], Hook_for_Conv2d_1&rarr;8)</span>
+            <span class="c1">#     (axes[0,1], Hook_for_Conv2d_8&rarr;16)</span>
+            <span class="c1">#     (axes[0,2], Hook_for_Conv2d_16&rarr;32)</span>
+            <span class="c1">#     (axes[1,0], Hook_for_Conv2d_32&rarr;64)</span>
+            <span class="c1">#     (axes[1,1], Hook_for_Conv2d_64&rarr;10)</span>
             <span class="c1">#   If the grid has more subplots than hooks (e.g., 6 subplots for 5 hooks),</span>
             <span class="c1">#   zip stops at the shorter one, leaving the extra subplot empty.</span>
 
@@ -10469,27 +10646,27 @@ Flatten                            └─ ReLU
             <span class="c1">#         return torch.stack(h.stats[2]).t().float().log1p()</span>
             <span class="c1">#</span>
             <span class="c1">#   What it does, step by step:</span>
-            <span class="c1">#     h.stats[2]  →  a list of histogram tensors, one per training batch</span>
+            <span class="c1">#     h.stats[2]  &rarr;  a list of histogram tensors, one per training batch</span>
             <span class="c1">#                    Each tensor has 40 values (40 bins, range 0 to 10)</span>
             <span class="c1">#                    Example: [hist_batch0, hist_batch1, ..., hist_batchN]</span>
             <span class="c1">#</span>
-            <span class="c1">#     torch.stack(h.stats[2])  →  stacks them into a 2D tensor</span>
+            <span class="c1">#     torch.stack(h.stats[2])  &rarr;  stacks them into a 2D tensor</span>
             <span class="c1">#                                 Shape: (num_batches, 40)</span>
             <span class="c1">#                                 Each ROW is one batch's histogram</span>
             <span class="c1">#</span>
-            <span class="c1">#     .t()  →  transpose: (40, num_batches)</span>
+            <span class="c1">#     .t()  &rarr;  transpose: (40, num_batches)</span>
             <span class="c1">#              Now each ROW is one bin, each COLUMN is one batch</span>
             <span class="c1">#              This orients the image so bins are on the Y-axis (vertical)</span>
             <span class="c1">#              and training time is on the X-axis (horizontal)</span>
             <span class="c1">#</span>
-            <span class="c1">#     .float()  →  convert to float (needed for log computation)</span>
+            <span class="c1">#     .float()  &rarr;  convert to float (needed for log computation)</span>
             <span class="c1">#</span>
-            <span class="c1">#     .log1p()  →  applies log(x + 1) to every value</span>
+            <span class="c1">#     .log1p()  &rarr;  applies log(x + 1) to every value</span>
             <span class="c1">#                  Why? Raw histogram counts can vary enormously (e.g., 0 to 50000).</span>
             <span class="c1">#                  log1p compresses large values, making small counts visible.</span>
             <span class="c1">#                  The "+1" prevents log(0) which would be -infinity.</span>
             <span class="c1">#</span>
-            <span class="c1">#   The result is a 2D tensor of shape (40, num_batches) — like a 40-pixel-tall</span>
+            <span class="c1">#   The result is a 2D tensor of shape (40, num_batches) &mdash; like a 40-pixel-tall</span>
             <span class="c1">#   image where each column is one training batch. This is what gets displayed.</span>
             <span class="c1">#</span>
             <span class="c1"># OUTER CALL: show_image(image, ax, origin='lower')</span>
@@ -10512,17 +10689,17 @@ Flatten                            └─ ReLU
             <span class="c1">#                        Dark/purple = few or no activations at that magnitude</span>
             <span class="c1">#</span>
             <span class="c1">#   HEALTHY pattern:  A bright band in the lower-middle region that stays</span>
-            <span class="c1">#                     stable over training — activations are moderate and consistent.</span>
+            <span class="c1">#                     stable over training &mdash; activations are moderate and consistent.</span>
             <span class="c1">#</span>
             <span class="c1">#   UNHEALTHY patterns:</span>
-            <span class="c1">#     - Bright band at very bottom → many near-zero activations (dead ReLUs)</span>
-            <span class="c1">#     - Bright band moving upward  → activations are exploding</span>
-            <span class="c1">#     - Bright band shrinking to 0 → activations are vanishing</span>
-            <span class="c1">#     - All brightness at bottom   → most neurons are dead</span>
+            <span class="c1">#     - Bright band at very bottom &rarr; many near-zero activations (dead ReLUs)</span>
+            <span class="c1">#     - Bright band moving upward  &rarr; activations are exploding</span>
+            <span class="c1">#     - Bright band shrinking to 0 &rarr; activations are vanishing</span>
+            <span class="c1">#     - All brightness at bottom   &rarr; most neurons are dead</span>
 
 
     <span class="k">def</span> <span class="nf">dead_chart</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span><span class="mi">5</span><span class="p">)):</span>
-        <span class="c1"># Plot the FRACTION OF NEAR-ZERO ACTIVATIONS over training — one plot per layer.</span>
+        <span class="c1"># Plot the FRACTION OF NEAR-ZERO ACTIVATIONS over training &mdash; one plot per layer.</span>
         <span class="c1">#</span>
         <span class="c1"># This is the "dead ReLU detector." A dead ReLU is a neuron whose output is</span>
         <span class="c1"># always zero (or very close to zero), meaning it has stopped contributing to</span>
@@ -10546,7 +10723,7 @@ Flatten                            └─ ReLU
             <span class="c1">#   Converts the 2D array of axes into a 1D array.</span>
             <span class="c1">#   .flatten() is a numpy method that returns a COPY as a 1D array.</span>
             <span class="c1">#   Note: In color_dim() above, we used axes.flat (an iterator).</span>
-            <span class="c1">#   Both work the same way here — they produce a flat sequence of axes.</span>
+            <span class="c1">#   Both work the same way here &mdash; they produce a flat sequence of axes.</span>
             <span class="c1">#   The difference is minor: .flat is a view/iterator, .flatten() is a copy.</span>
             <span class="c1">#   For this purpose, both are fine.</span>
             <span class="c1">#</span>
@@ -10562,20 +10739,20 @@ Flatten                            └─ ReLU
             <span class="c1">#         return h1[0] / h1.sum(0)</span>
             <span class="c1">#</span>
             <span class="c1">#   What it does, step by step:</span>
-            <span class="c1">#     h.stats[2]                → list of histogram tensors (one per batch)</span>
-            <span class="c1">#     torch.stack(h.stats[2])   → shape (num_batches, 40)</span>
-            <span class="c1">#     .t()                      → shape (40, num_batches)  [bins × batches]</span>
-            <span class="c1">#     .float()                  → convert to float for division</span>
+            <span class="c1">#     h.stats[2]                &rarr; list of histogram tensors (one per batch)</span>
+            <span class="c1">#     torch.stack(h.stats[2])   &rarr; shape (num_batches, 40)</span>
+            <span class="c1">#     .t()                      &rarr; shape (40, num_batches)  [bins &times; batches]</span>
+            <span class="c1">#     .float()                  &rarr; convert to float for division</span>
             <span class="c1">#</span>
-            <span class="c1">#     h1[0]       → the FIRST row = the first histogram bin</span>
+            <span class="c1">#     h1[0]       &rarr; the FIRST row = the first histogram bin</span>
             <span class="c1">#                   This bin counts activations with magnitude closest to 0.</span>
-            <span class="c1">#                   Shape: (num_batches,) — one count per batch.</span>
+            <span class="c1">#                   Shape: (num_batches,) &mdash; one count per batch.</span>
             <span class="c1">#</span>
-            <span class="c1">#     h1.sum(0)   → sum along axis 0 (sum all 40 bins for each batch)</span>
+            <span class="c1">#     h1.sum(0)   &rarr; sum along axis 0 (sum all 40 bins for each batch)</span>
             <span class="c1">#                   This gives the TOTAL number of activations per batch.</span>
             <span class="c1">#                   Shape: (num_batches,)</span>
             <span class="c1">#</span>
-            <span class="c1">#     h1[0] / h1.sum(0)  → FRACTION of activations that are near zero</span>
+            <span class="c1">#     h1[0] / h1.sum(0)  &rarr; FRACTION of activations that are near zero</span>
             <span class="c1">#                          Values range from 0.0 (no dead neurons) to 1.0 (all dead)</span>
             <span class="c1">#                          Shape: (num_batches,)</span>
             <span class="c1">#</span>
@@ -10583,7 +10760,7 @@ Flatten                            └─ ReLU
             <span class="c1">#</span>
             <span class="c1"># OUTER CALL: ax.plot(get_min(h))</span>
             <span class="c1">#   ax.plot() draws a LINE CHART on the subplot.</span>
-            <span class="c1">#   X-axis: batch index (0, 1, 2, ...) — assigned automatically</span>
+            <span class="c1">#   X-axis: batch index (0, 1, 2, ...) &mdash; assigned automatically</span>
             <span class="c1">#   Y-axis: the fraction of near-zero activations</span>
             <span class="c1">#   This shows how the "deadness" of each layer evolves during training.</span>
 
@@ -10597,13 +10774,13 @@ Flatten                            └─ ReLU
             <span class="c1">#</span>
             <span class="c1"># HOW TO READ THESE PLOTS:</span>
             <span class="c1"># ────────────────────────</span>
-            <span class="c1">#   Y near 0   → very few activations are near zero → healthy layer</span>
-            <span class="c1">#   Y near 0.5 → half the activations are near zero → concerning</span>
-            <span class="c1">#   Y near 1   → almost all activations are near zero → layer is dead!</span>
+            <span class="c1">#   Y near 0   &rarr; very few activations are near zero &rarr; healthy layer</span>
+            <span class="c1">#   Y near 0.5 &rarr; half the activations are near zero &rarr; concerning</span>
+            <span class="c1">#   Y near 1   &rarr; almost all activations are near zero &rarr; layer is dead!</span>
             <span class="c1">#</span>
-            <span class="c1">#   A line that starts low and stays low → layer is healthy throughout</span>
-            <span class="c1">#   A line that rises over training → neurons are dying during training</span>
-            <span class="c1">#   A line that starts high → bad initialization (too many neurons start dead)</span>
+            <span class="c1">#   A line that starts low and stays low &rarr; layer is healthy throughout</span>
+            <span class="c1">#   A line that rises over training &rarr; neurons are dying during training</span>
+            <span class="c1">#   A line that starts high &rarr; bad initialization (too many neurons start dead)</span>
 
 
     <span class="k">def</span> <span class="nf">plot_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">4</span><span class="p">)):</span>
@@ -10620,21 +10797,21 @@ Flatten                            └─ ReLU
         <span class="c1"># Arguments:</span>
         <span class="c1">#   figsize (optional, default=(10,4)):</span>
         <span class="c1">#     The size of the entire figure in inches (width, height).</span>
-        <span class="c1">#     10 wide × 4 tall gives a nice wide layout for two side-by-side plots.</span>
+        <span class="c1">#     10 wide &times; 4 tall gives a nice wide layout for two side-by-side plots.</span>
 
         <span class="n">fig</span><span class="p">,</span><span class="n">axs</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
         <span class="c1"># plt.subplots(1, 2) creates a figure with 1 ROW and 2 COLUMNS of subplots.</span>
         <span class="c1"># This gives us exactly two subplots side by side.</span>
         <span class="c1">#</span>
         <span class="c1"># Returns:</span>
-        <span class="c1">#   fig — the overall Figure object</span>
-        <span class="c1">#   axs — a 1D numpy array with 2 Axes objects: [left_subplot, right_subplot]</span>
+        <span class="c1">#   fig &mdash; the overall Figure object</span>
+        <span class="c1">#   axs &mdash; a 1D numpy array with 2 Axes objects: [left_subplot, right_subplot]</span>
         <span class="c1">#         axs[0] = left subplot (for means)</span>
         <span class="c1">#         axs[1] = right subplot (for stds)</span>
         <span class="c1">#</span>
         <span class="c1"># Note: Unlike color_dim() and dead_chart() which use get_grid() for a</span>
         <span class="c1"># multi-subplot grid (one per layer), here we use plt.subplots() directly</span>
-        <span class="c1"># because we want exactly 2 subplots — all layers are plotted on the SAME</span>
+        <span class="c1"># because we want exactly 2 subplots &mdash; all layers are plotted on the SAME</span>
         <span class="c1"># subplot as separate lines, rather than each layer getting its own subplot.</span>
 
         <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
@@ -10642,11 +10819,11 @@ Flatten                            └─ ReLU
             <span class="c1"># self.__iter__() yields Hook objects via HooksCallback.__iter__().</span>
             <span class="c1">#</span>
             <span class="c1"># For our 5-layer CNN, this loops 5 times:</span>
-            <span class="c1">#   h = Hook for Conv2d(1→8)      (first iteration)</span>
-            <span class="c1">#   h = Hook for Conv2d(8→16)     (second iteration)</span>
-            <span class="c1">#   h = Hook for Conv2d(16→32)    (third iteration)</span>
-            <span class="c1">#   h = Hook for Conv2d(32→64)    (fourth iteration)</span>
-            <span class="c1">#   h = Hook for Conv2d(64→10)    (fifth iteration)</span>
+            <span class="c1">#   h = Hook for Conv2d(1&rarr;8)      (first iteration)</span>
+            <span class="c1">#   h = Hook for Conv2d(8&rarr;16)     (second iteration)</span>
+            <span class="c1">#   h = Hook for Conv2d(16&rarr;32)    (third iteration)</span>
+            <span class="c1">#   h = Hook for Conv2d(32&rarr;64)    (fourth iteration)</span>
+            <span class="c1">#   h = Hook for Conv2d(64&rarr;10)    (fifth iteration)</span>
 
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span> <span class="n">axs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
             <span class="c1"># This inner loop runs TWICE: once for i=0 and once for i=1.</span>
@@ -10659,14 +10836,14 @@ Flatten                            └─ ReLU
             <span class="c1">#   axs[0].plot(h.stats[0])</span>
             <span class="c1">#   axs[0] is the LEFT subplot (means)</span>
             <span class="c1">#   h.stats[0] is the list of MEAN values for this layer</span>
-            <span class="c1">#     — one mean per training batch, e.g., [0.12, 0.15, 0.11, ...]</span>
+            <span class="c1">#     &mdash; one mean per training batch, e.g., [0.12, 0.15, 0.11, ...]</span>
             <span class="c1">#   .plot() draws this as a line on the left subplot.</span>
             <span class="c1">#</span>
             <span class="c1"># When i=1:</span>
             <span class="c1">#   axs[1].plot(h.stats[1])</span>
             <span class="c1">#   axs[1] is the RIGHT subplot (stds)</span>
             <span class="c1">#   h.stats[1] is the list of STD values for this layer</span>
-            <span class="c1">#     — one std per training batch, e.g., [0.45, 0.42, 0.44, ...]</span>
+            <span class="c1">#     &mdash; one std per training batch, e.g., [0.45, 0.42, 0.44, ...]</span>
             <span class="c1">#   .plot() draws this as a line on the right subplot.</span>
             <span class="c1">#</span>
             <span class="c1"># Since the outer loop runs once per layer, and each iteration adds a</span>
@@ -10692,11 +10869,11 @@ Flatten                            └─ ReLU
         <span class="c1">#   So fc.L.range(self) returns something like: [0, 1, 2, 3, 4]</span>
         <span class="c1">#</span>
         <span class="c1">#   These integers become the legend labels. The legend will show:</span>
-        <span class="c1">#     ── 0  (line for Conv2d layer 0: 1→8 channels)</span>
-        <span class="c1">#     ── 1  (line for Conv2d layer 1: 8→16 channels)</span>
-        <span class="c1">#     ── 2  (line for Conv2d layer 2: 16→32 channels)</span>
-        <span class="c1">#     ── 3  (line for Conv2d layer 3: 32→64 channels)</span>
-        <span class="c1">#     ── 4  (line for Conv2d layer 4: 64→10 channels)</span>
+        <span class="c1">#     ── 0  (line for Conv2d layer 0: 1&rarr;8 channels)</span>
+        <span class="c1">#     ── 1  (line for Conv2d layer 1: 8&rarr;16 channels)</span>
+        <span class="c1">#     ── 2  (line for Conv2d layer 2: 16&rarr;32 channels)</span>
+        <span class="c1">#     ── 3  (line for Conv2d layer 3: 32&rarr;64 channels)</span>
+        <span class="c1">#     ── 4  (line for Conv2d layer 4: 64&rarr;10 channels)</span>
         <span class="c1">#</span>
         <span class="c1"># plt.legend() adds the legend to the LAST active subplot (the right one),</span>
         <span class="c1"># but since both subplots share the same lines (same number of layers,</span>
@@ -10705,16 +10882,16 @@ Flatten                            └─ ReLU
         <span class="c1"># HOW TO READ THESE PLOTS:</span>
         <span class="c1"># ────────────────────────</span>
         <span class="c1"># MEANS (left):</span>
-        <span class="c1">#   - All lines near 0 and stable     → healthy (activations are centered)</span>
-        <span class="c1">#   - Lines drifting upward            → activations growing (possible explosion)</span>
-        <span class="c1">#   - Lines collapsing to 0            → activations vanishing</span>
-        <span class="c1">#   - Big differences between layers   → inconsistent initialization</span>
+        <span class="c1">#   - All lines near 0 and stable     &rarr; healthy (activations are centered)</span>
+        <span class="c1">#   - Lines drifting upward            &rarr; activations growing (possible explosion)</span>
+        <span class="c1">#   - Lines collapsing to 0            &rarr; activations vanishing</span>
+        <span class="c1">#   - Big differences between layers   &rarr; inconsistent initialization</span>
         <span class="c1">#</span>
         <span class="c1"># STDS (right):</span>
-        <span class="c1">#   - All lines similar and stable     → healthy (consistent spread)</span>
-        <span class="c1">#   - Lines growing over time          → activations spreading out (exploding)</span>
-        <span class="c1">#   - Lines shrinking toward 0         → activations collapsing (vanishing)</span>
-        <span class="c1">#   - Later layers much smaller        → signal is dying as it passes through</span>
+        <span class="c1">#   - All lines similar and stable     &rarr; healthy (consistent spread)</span>
+        <span class="c1">#   - Lines growing over time          &rarr; activations spreading out (exploding)</span>
+        <span class="c1">#   - Lines shrinking toward 0         &rarr; activations collapsing (vanishing)</span>
+        <span class="c1">#   - Later layers much smaller        &rarr; signal is dying as it passes through</span>
 
 
 <span class="c1"># ═══════════════════════════════════════════════════════════════════════════════</span>
@@ -10735,9 +10912,9 @@ Flatten                            └─ ReLU
 <span class="c1">#   fit(model, xtra_cbs=[astats])</span>
 <span class="c1">#   #</span>
 <span class="c1">#   # During training, the following happens automatically:</span>
-<span class="c1">#   #   before_fit → discovers 5 Conv2d layers, creates hooks on each</span>
-<span class="c1">#   #   each training batch → hooks fire, append_stats records mean/std/histogram</span>
-<span class="c1">#   #   after_fit → hooks are removed (but recorded data remains)</span>
+<span class="c1">#   #   before_fit &rarr; discovers 5 Conv2d layers, creates hooks on each</span>
+<span class="c1">#   #   each training batch &rarr; hooks fire, append_stats records mean/std/histogram</span>
+<span class="c1">#   #   after_fit &rarr; hooks are removed (but recorded data remains)</span>
 <span class="c1">#</span>
 <span class="c1">#</span>
 <span class="c1"># Step 3: Visualize the collected data (call any of the three methods)</span>
@@ -10765,10 +10942,10 @@ Flatten                            └─ ReLU
 <span class="c1">#</span>
 <span class="c1"># ActivationStats is the final, most user-friendly layer in the class hierarchy:</span>
 <span class="c1">#</span>
-<span class="c1">#   Hook           → manages ONE hook on ONE layer</span>
-<span class="c1">#   Hooks          → manages MANY hooks with automatic cleanup</span>
-<span class="c1">#   HooksCallback  → integrates hooks with the Learner's training loop</span>
-<span class="c1">#   ActivationStats → adds visualization methods for instant diagnostics</span>
+<span class="c1">#   Hook           &rarr; manages ONE hook on ONE layer</span>
+<span class="c1">#   Hooks          &rarr; manages MANY hooks with automatic cleanup</span>
+<span class="c1">#   HooksCallback  &rarr; integrates hooks with the Learner's training loop</span>
+<span class="c1">#   ActivationStats &rarr; adds visualization methods for instant diagnostics</span>
 <span class="c1">#</span>
 <span class="c1"># Each class adds convenience on top of the previous one, so by the time you</span>
 <span class="c1"># reach ActivationStats, monitoring your neural network is as simple as:</span>
@@ -10780,6 +10957,65 @@ Flatten                            └─ ReLU
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%8E%AE-Interactive-(3D):-the-activation-landscape">🎮 Interactive (3D): the activation landscape<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-(3D):-the-activation-landscape">¶</a></h2><p>Same data as <code>color_dim</code>, lifted into 3D. Each ridge is one batch's distribution; <strong>height</strong> is the count at that magnitude. <strong>Drag to rotate</strong>, scroll to zoom, and switch regimes to feel the difference: a healthy steady ridge, a tall wall of dead neurons at magnitude&asymp;0, or an exploding ridge marching to the right.</p>
+<p><em>(Loads three.js from a CDN, so it needs an internet connection. If offline, the 2D explorer above shows the same idea.)</em></p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. Loads ./interactive_viz/activation_stats_3d.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># The widget broadcasts its own content height, so the frame auto-wraps with</span>
+<span class="c1"># no empty space below it. To use the published copy instead, swap the src for:</span>
+<span class="c1">#   https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/activation_stats_3d.html</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s1">'''</span>
+<span class="s1">&lt;iframe id="activation_stats_3d-frame"</span>
+<span class="s1">        src="interactive_viz/activation_stats_3d.html"</span>
+<span class="s1">        title="3D activation landscape"</span>
+<span class="s1">        loading="lazy"</span>
+<span class="s1">        style="width:100%; height:470px; border:1px solid #dde5f2;</span>
+<span class="s1">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12);</span>
+<span class="s1">               display:block;"&gt;&lt;/iframe&gt;</span>
+<span class="s1">&lt;script&gt;</span>
+<span class="s1">(function(){</span>
+<span class="s1">  function onMsg(e){</span>
+<span class="s1">    if(e.data &amp;&amp; e.data.type==="viz-height" &amp;&amp; e.data.id==="activation_stats_3d"){</span>
+<span class="s1">      var f=document.getElementById("activation_stats_3d-frame");</span>
+<span class="s1">      if(f) f.style.height=(e.data.height)+"px";   // wrap height to content</span>
+<span class="s1">    }</span>
+<span class="s1">  }</span>
+<span class="s1">  window.addEventListener("message", onMsg);</span>
+<span class="s1">})();</span>
+<span class="s1">&lt;/script&gt;</span>
+<span class="s1">'''</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe id="activation_stats_3d-frame" src="interactive_viz/activation_stats_3d.html" loading="lazy" title="activation_stats_3d"
+        style="display:block; width:100%; max-width:100%; height:470px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -10801,9 +11037,9 @@ Flatten                            └─ ReLU
 </pre></div>
 <p>How can we loop over <code>hc</code>? What are the different values of <code>h</code>?</p>
 <hr/>
-<h2 id="Short-Answer">Short Answer<a class="anchor-link" href="#Short-Answer">¶</a></h2><p>Each <code>h</code> is a <strong><code>Hook</code> object</strong> — one per <code>nn.Conv2d</code> layer in the model. Since <code>cnn_layers()</code> creates 5 Conv2d layers (but only 4 have ReLU and pass the filter during training with activations), iterating over <code>hc</code> yields individual <code>Hook</code> objects, each holding the activation statistics for one convolutional layer.</p>
+<h2 id="Short-Answer">Short Answer<a class="anchor-link" href="#Short-Answer">¶</a></h2><p>Each <code>h</code> is a <strong><code>Hook</code> object</strong> &mdash; one per <code>nn.Conv2d</code> layer in the model. Since <code>cnn_layers()</code> creates 5 Conv2d layers (but only 4 have ReLU and pass the filter during training with activations), iterating over <code>hc</code> yields individual <code>Hook</code> objects, each holding the activation statistics for one convolutional layer.</p>
 <hr/>
-<h2 id="The-Full-Chain-%E2%80%94-Traced-Through-the-Notebook's-Actual-Code">The Full Chain — Traced Through the Notebook's Actual Code<a class="anchor-link" href="#The-Full-Chain-%E2%80%94-Traced-Through-the-Notebook's-Actual-Code">¶</a></h2><h3 id="Step-1:-HooksCallback.__iter__-Makes-hc-Iterable">Step 1: <code>HooksCallback.__iter__</code> Makes <code>hc</code> Iterable<a class="anchor-link" href="#Step-1:-HooksCallback.__iter__-Makes-hc-Iterable">¶</a></h3><p>From <strong>Cell 40</strong> of the notebook:</p>
+<h2 id="The-Full-Chain-%E2%80%94-Traced-Through-the-Notebook's-Actual-Code">The Full Chain &mdash; Traced Through the Notebook's Actual Code<a class="anchor-link" href="#The-Full-Chain-%E2%80%94-Traced-Through-the-Notebook's-Actual-Code">¶</a></h2><h3 id="Step-1:-HooksCallback.__iter__-Makes-hc-Iterable">Step 1: <code>HooksCallback.__iter__</code> Makes <code>hc</code> Iterable<a class="anchor-link" href="#Step-1:-HooksCallback.__iter__-Makes-hc-Iterable">¶</a></h3><p>From <strong>Cell 40</strong> of the notebook:</p>
 <div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">HooksCallback</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
     <span class="c1"># ...</span>
     <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -10827,12 +11063,12 @@ Flatten                            └─ ReLU
 <ol>
 <li><p><strong><code>mods</code></strong> is built by filtering <code>learn.model.modules()</code> with <code>self.mod_filter</code>. Since we set <code>mod_filter=lambda m: isinstance(m, nn.Conv2d)</code>, this collects <strong>only the <code>nn.Conv2d</code> layers</strong> from the model.</p>
 </li>
-<li><p><strong><code>self.hooks</code></strong> is assigned a <code>Hooks(mods, ...)</code> object — a <code>Hooks</code> instance constructed from those filtered modules.</p>
+<li><p><strong><code>self.hooks</code></strong> is assigned a <code>Hooks(mods, ...)</code> object &mdash; a <code>Hooks</code> instance constructed from those filtered modules.</p>
 </li>
 </ol>
 <p>So <code>self.hooks</code> is a <code>Hooks</code> object. Now the question is: <strong>what does iterating over a <code>Hooks</code> object yield?</strong></p>
 <hr/>
-<h3 id="Step-3:-The-Hooks-Class-%E2%80%94-A-List-of-Hook-Objects">Step 3: The <code>Hooks</code> Class — A List of <code>Hook</code> Objects<a class="anchor-link" href="#Step-3:-The-Hooks-Class-%E2%80%94-A-List-of-Hook-Objects">¶</a></h3><p>From <strong>Cell 37</strong> of the notebook:</p>
+<h3 id="Step-3:-The-Hooks-Class-%E2%80%94-A-List-of-Hook-Objects">Step 3: The <code>Hooks</code> Class &mdash; A List of <code>Hook</code> Objects<a class="anchor-link" href="#Step-3:-The-Hooks-Class-%E2%80%94-A-List-of-Hook-Objects">¶</a></h3><p>From <strong>Cell 37</strong> of the notebook:</p>
 <div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Hooks</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ms</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""</span>
@@ -10847,12 +11083,12 @@ Flatten                            └─ ReLU
 </pre></div>
 <p><strong>This is the critical line that answers the question.</strong> The <code>Hooks</code> class:</p>
 <ul>
-<li><strong>Inherits from <code>list</code></strong> — so it's literally a Python list</li>
-<li>In <code>__init__</code>, it calls <code>super().__init__([Hook(m, f) for m in ms])</code> — this populates itself with a <strong>list comprehension that creates one <code>Hook</code> object per module</strong></li>
+<li><strong>Inherits from <code>list</code></strong> &mdash; so it's literally a Python list</li>
+<li>In <code>__init__</code>, it calls <code>super().__init__([Hook(m, f) for m in ms])</code> &mdash; this populates itself with a <strong>list comprehension that creates one <code>Hook</code> object per module</strong></li>
 </ul>
-<p>Since <code>Hooks</code> inherits from <code>list</code>, iterating over it yields the individual items in the list — which are <code>Hook</code> objects. There is no custom <code>__iter__</code> needed; Python's built-in <code>list.__iter__</code> handles it.</p>
+<p>Since <code>Hooks</code> inherits from <code>list</code>, iterating over it yields the individual items in the list &mdash; which are <code>Hook</code> objects. There is no custom <code>__iter__</code> needed; Python's built-in <code>list.__iter__</code> handles it.</p>
 <hr/>
-<h3 id="Step-4:-The-Hook-Class-%E2%80%94-What-Each-h-Actually-Is">Step 4: The <code>Hook</code> Class — What Each <code>h</code> Actually Is<a class="anchor-link" href="#Step-4:-The-Hook-Class-%E2%80%94-What-Each-h-Actually-Is">¶</a></h3><p>From <strong>Cell 29</strong> of the notebook:</p>
+<h3 id="Step-4:-The-Hook-Class-%E2%80%94-What-Each-h-Actually-Is">Step 4: The <code>Hook</code> Class &mdash; What Each <code>h</code> Actually Is<a class="anchor-link" href="#Step-4:-The-Hook-Class-%E2%80%94-What-Each-h-Actually-Is">¶</a></h3><p>From <strong>Cell 29</strong> of the notebook:</p>
 <div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Hook</span><span class="p">:</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
         <span class="c1"># Register the hook, passing self as first argument to f</span>
@@ -10899,22 +11135,22 @@ Flatten                            └─ ReLU
 │     super().__init__([Hook(m, f) for m in ms])   # A list of Hook objects!
 │
 └─ Yields on each iteration:
-   Hook_0 (for Conv2d 1→8)    ← h.stats = ([mean1, mean2, ...], [std1, std2, ...])
-   Hook_1 (for Conv2d 8→16)   ← h.stats = ([mean1, mean2, ...], [std1, std2, ...])
-   Hook_2 (for Conv2d 16→32)  ← h.stats = ([mean1, mean2, ...], [std1, std2, ...])
-   Hook_3 (for Conv2d 32→64)  ← h.stats = ([mean1, mean2, ...], [std1, std2, ...])
-   Hook_4 (for Conv2d 64→10)  ← h.stats = ([mean1, mean2, ...], [std1, std2, ...])
+   Hook_0 (for Conv2d 1&rarr;8)    ← h.stats = ([mean1, mean2, ...], [std1, std2, ...])
+   Hook_1 (for Conv2d 8&rarr;16)   ← h.stats = ([mean1, mean2, ...], [std1, std2, ...])
+   Hook_2 (for Conv2d 16&rarr;32)  ← h.stats = ([mean1, mean2, ...], [std1, std2, ...])
+   Hook_3 (for Conv2d 32&rarr;64)  ← h.stats = ([mean1, mean2, ...], [std1, std2, ...])
+   Hook_4 (for Conv2d 64&rarr;10)  ← h.stats = ([mean1, mean2, ...], [std1, std2, ...])
 </code></pre>
 <hr/>
 <h2 id="Which-Conv2d-Layers-Are-These?">Which Conv2d Layers Are These?<a class="anchor-link" href="#Which-Conv2d-Layers-Are-These?">¶</a></h2><p>From <code>cnn_layers()</code> in <strong>Cell 10</strong>:</p>
 <div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">cnn_layers</span><span class="p">():</span>
     <span class="k">return</span> <span class="p">[</span>
-        <span class="n">conv</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="n">ks</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span>        <span class="c1"># Conv2d #0: 1→8 channels, 28→14 spatial</span>
-        <span class="n">conv</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span>             <span class="c1"># Conv2d #1: 8→16, 14→7</span>
-        <span class="n">conv</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>            <span class="c1"># Conv2d #2: 16→32, 7→4</span>
-        <span class="n">conv</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span>            <span class="c1"># Conv2d #3: 32→64, 4→2</span>
-        <span class="n">conv</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="c1"># Conv2d #4: 64→10, 2→1 (no ReLU)</span>
-        <span class="n">nn</span><span class="o">.</span><span class="n">Flatten</span><span class="p">()</span>             <span class="c1"># Not a Conv2d — filtered out!</span>
+        <span class="n">conv</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="n">ks</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span>        <span class="c1"># Conv2d #0: 1&rarr;8 channels, 28&rarr;14 spatial</span>
+        <span class="n">conv</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span>             <span class="c1"># Conv2d #1: 8&rarr;16, 14&rarr;7</span>
+        <span class="n">conv</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>            <span class="c1"># Conv2d #2: 16&rarr;32, 7&rarr;4</span>
+        <span class="n">conv</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span>            <span class="c1"># Conv2d #3: 32&rarr;64, 4&rarr;2</span>
+        <span class="n">conv</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">act</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="c1"># Conv2d #4: 64&rarr;10, 2&rarr;1 (no ReLU)</span>
+        <span class="n">nn</span><span class="o">.</span><span class="n">Flatten</span><span class="p">()</span>             <span class="c1"># Not a Conv2d &mdash; filtered out!</span>
     <span class="p">]</span>
 </pre></div>
 <p>Note that <code>conv()</code> wraps some Conv2d layers inside <code>nn.Sequential(Conv2d, ReLU)</code>. But <code>model.modules()</code> recursively walks into sub-modules, so the filter <code>isinstance(m, nn.Conv2d)</code> catches the <strong>raw Conv2d layers</strong> inside those Sequential wrappers. The <code>nn.Flatten()</code> and <code>nn.ReLU()</code> layers are excluded by the filter.</p>
@@ -10941,7 +11177,7 @@ Flatten                            └─ ReLU
 <tr>
 <td><code>[Hook(m, f) for m in ms]</code></td>
 <td><code>Hooks.__init__</code> (Cell 37)</td>
-<td><strong>Creates one <code>Hook</code> per Conv2d layer</strong> — this is the line that determines what <code>h</code> is</td>
+<td><strong>Creates one <code>Hook</code> per Conv2d layer</strong> &mdash; this is the line that determines what <code>h</code> is</td>
 </tr>
 <tr>
 <td>Each <code>h</code></td>
@@ -10964,7 +11200,7 @@ Flatten                            └─ ReLU
         <span class="n">mods</span> <span class="o">=</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">modules</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mod_filter</span><span class="p">(</span><span class="n">m</span><span class="p">)]</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">hooks</span> <span class="o">=</span> <span class="n">Hooks</span><span class="p">(</span><span class="n">mods</span><span class="p">,</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_hookfunc</span><span class="p">,</span> <span class="n">learn</span><span class="p">))</span>
 </pre></div>
-<p>The word <code>mods</code> is short for <strong>modules</strong> — meaning PyTorch <code>nn.Module</code> objects (i.e., layers in the neural network). The variable <code>mods</code> is ultimately a <strong>list of specific layers</strong> that we want to attach hooks to.</p>
+<p>The word <code>mods</code> is short for <strong>modules</strong> &mdash; meaning PyTorch <code>nn.Module</code> objects (i.e., layers in the neural network). The variable <code>mods</code> is ultimately a <strong>list of specific layers</strong> that we want to attach hooks to.</p>
 <p>But there are <strong>two ways</strong> to get that list, and the <code>if/else</code> decides which way to use.</p>
 <hr/>
 <h2 id="Two-Ways-to-Choose-Which-Layers-to-Hook">Two Ways to Choose Which Layers to Hook<a class="anchor-link" href="#Two-Ways-to-Choose-Which-Layers-to-Hook">¶</a></h2><h3 id="Way-1:-You-Provide-the-Layers-Directly-(self.mods)">Way 1: You Provide the Layers Directly (<code>self.mods</code>)<a class="anchor-link" href="#Way-1:-You-Provide-the-Layers-Directly-(self.mods)">¶</a></h3><p>When creating <code>HooksCallback</code>, there's an optional <code>mods</code> parameter:</p>
@@ -10993,9 +11229,9 @@ Flatten                            └─ ReLU
 </pre></div>
 <p>This line does three things:</p>
 <ol>
-<li><strong><code>learn.model.modules()</code></strong> — walks through <strong>every module</strong> in the model recursively</li>
-<li><strong><code>self.mod_filter(m)</code></strong> — tests each module with the filter function</li>
-<li><strong>The list comprehension</strong> — keeps only the modules that pass the filter</li>
+<li><strong><code>learn.model.modules()</code></strong> &mdash; walks through <strong>every module</strong> in the model recursively</li>
+<li><strong><code>self.mod_filter(m)</code></strong> &mdash; tests each module with the filter function</li>
+<li><strong>The list comprehension</strong> &mdash; keeps only the modules that pass the filter</li>
 </ol>
 <hr/>
 <h2 id="What-Does-learn.model.modules()-Return?">What Does <code>learn.model.modules()</code> Return?<a class="anchor-link" href="#What-Does-learn.model.modules()-Return?">¶</a></h2><p>Given the model built from <code>cnn_layers()</code>:</p>
@@ -11018,25 +11254,25 @@ Module                          │ isinstance(m, Conv2d)?
 ──────────────────────────────────────────────────────
 Sequential (the whole model)    │ ✗
 ├─ Sequential(Conv2d, ReLU)     │ ✗
-│  ├─ Conv2d(1→8)              │ ✓  ← KEPT
+│  ├─ Conv2d(1&rarr;8)              │ ✓  ← KEPT
 │  └─ ReLU()                   │ ✗
 ├─ Sequential(Conv2d, ReLU)     │ ✗
-│  ├─ Conv2d(8→16)             │ ✓  ← KEPT
+│  ├─ Conv2d(8&rarr;16)             │ ✓  ← KEPT
 │  └─ ReLU()                   │ ✗
 ├─ Sequential(Conv2d, ReLU)     │ ✗
-│  ├─ Conv2d(16→32)            │ ✓  ← KEPT
+│  ├─ Conv2d(16&rarr;32)            │ ✓  ← KEPT
 │  └─ ReLU()                   │ ✗
 ├─ Sequential(Conv2d, ReLU)     │ ✗
-│  ├─ Conv2d(32→64)            │ ✓  ← KEPT
+│  ├─ Conv2d(32&rarr;64)            │ ✓  ← KEPT
 │  └─ ReLU()                   │ ✗
-├─ Conv2d(64→10)               │ ✓  ← KEPT
+├─ Conv2d(64&rarr;10)               │ ✓  ← KEPT
 └─ Flatten()                   │ ✗
 ──────────────────────────────────────────────────────
 </code></pre>
 <p>After filtering, <code>mods</code> = <strong>a list of 5 <code>Conv2d</code> objects</strong>:</p>
-<div class="highlight"><pre><span></span><span class="n">mods</span> <span class="o">=</span> <span class="p">[</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="err">→</span><span class="mi">8</span><span class="p">),</span> <span class="n">Conv2d</span><span class="p">(</span><span class="mi">8</span><span class="err">→</span><span class="mi">16</span><span class="p">),</span> <span class="n">Conv2d</span><span class="p">(</span><span class="mi">16</span><span class="err">→</span><span class="mi">32</span><span class="p">),</span> <span class="n">Conv2d</span><span class="p">(</span><span class="mi">32</span><span class="err">→</span><span class="mi">64</span><span class="p">),</span> <span class="n">Conv2d</span><span class="p">(</span><span class="mi">64</span><span class="err">→</span><span class="mi">10</span><span class="p">)]</span>
+<div class="highlight"><pre><span></span><span class="n">mods</span> <span class="o">=</span> <span class="p">[</span><span class="n">Conv2d</span><span class="p">(</span><span class="mi">1</span><span class="err">&rarr;</span><span class="mi">8</span><span class="p">),</span> <span class="n">Conv2d</span><span class="p">(</span><span class="mi">8</span><span class="err">&rarr;</span><span class="mi">16</span><span class="p">),</span> <span class="n">Conv2d</span><span class="p">(</span><span class="mi">16</span><span class="err">&rarr;</span><span class="mi">32</span><span class="p">),</span> <span class="n">Conv2d</span><span class="p">(</span><span class="mi">32</span><span class="err">&rarr;</span><span class="mi">64</span><span class="p">),</span> <span class="n">Conv2d</span><span class="p">(</span><span class="mi">64</span><span class="err">&rarr;</span><span class="mi">10</span><span class="p">)]</span>
 </pre></div>
-<p>These 5 modules are then passed to <code>Hooks(mods, ...)</code>, which creates one <code>Hook</code> per module — exactly what we traced in the previous section.</p>
+<p>These 5 modules are then passed to <code>Hooks(mods, ...)</code>, which creates one <code>Hook</code> per module &mdash; exactly what we traced in the previous section.</p>
 <hr/>
 <h2 id="The-Big-Picture:-Why-Two-Options?">The Big Picture: Why Two Options?<a class="anchor-link" href="#The-Big-Picture:-Why-Two-Options?">¶</a></h2><pre><code>                    HooksCallback.__init__
                     ┌────────────────────────┐
@@ -11081,12 +11317,12 @@ Sequential (the whole model)    │ ✗
 <tr>
 <td><code>self.mods</code></td>
 <td>Optional pre-selected list of modules</td>
-<td>Passed to <code>HooksCallback.__init__(mods=...)</code> — <code>None</code> by default</td>
+<td>Passed to <code>HooksCallback.__init__(mods=...)</code> &mdash; <code>None</code> by default</td>
 </tr>
 <tr>
 <td><code>self.mod_filter</code></td>
 <td>A function that returns <code>True/False</code> for each module</td>
-<td>Passed to <code>__init__(mod_filter=...)</code> — e.g., <code>lambda m: isinstance(m, nn.Conv2d)</code></td>
+<td>Passed to <code>__init__(mod_filter=...)</code> &mdash; e.g., <code>lambda m: isinstance(m, nn.Conv2d)</code></td>
 </tr>
 <tr>
 <td><code>learn.model.modules()</code></td>
@@ -11101,7 +11337,7 @@ Sequential (the whole model)    │ ✗
 <tr>
 <td><code>self.hooks</code></td>
 <td><code>Hooks</code> object (list of <code>Hook</code> objects)</td>
-<td>Created from <code>mods</code> — one <code>Hook</code> per module in the list</td>
+<td>Created from <code>mods</code> &mdash; one <code>Hook</code> per module in the list</td>
 </tr>
 </tbody>
 </table>
@@ -11132,7 +11368,66 @@ Sequential (the whole model)    │ ✗
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%8E%AE-Interactive:-building-the-color_dim-heatmap-step-by-step">🎮 Interactive: building the <code>color_dim</code> heatmap step by step<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-building-the-color_dim-heatmap-step-by-step">¶</a></h2><p><code>color_dim()</code> is the most informative &mdash; and most confusing &mdash; plot here. Each <strong>column</strong> is one training batch; each <strong>row</strong> is an activation-magnitude bin (0 at the bottom); <strong>brightness</strong> is how many activations land there. The widget below rebuilds the image in four stages: a single batch's histogram &rarr; stacking every batch &rarr; transposing into an image &rarr; <code>log1p</code> + color. Switch the <strong>regime</strong> to compare healthy training against dead ReLUs and exploding activations, and press <strong>Play training</strong> to sweep through the batches.</p>
+<p>After you've played with it, run the next cell to see the <em>real</em> <code>color_dim()</code> on the model you just trained.</p>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. Loads ./interactive_viz/color_dim_explorer.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># The widget broadcasts its own content height, so the frame auto-wraps with</span>
+<span class="c1"># no empty space below it. To use the published copy instead, swap the src for:</span>
+<span class="c1">#   https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/color_dim_explorer.html</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s1">'''</span>
+<span class="s1">&lt;iframe id="color_dim_explorer-frame"</span>
+<span class="s1">        src="interactive_viz/color_dim_explorer.html"</span>
+<span class="s1">        title="color_dim heatmap explorer"</span>
+<span class="s1">        loading="lazy"</span>
+<span class="s1">        style="width:100%; height:640px; border:1px solid #dde5f2;</span>
+<span class="s1">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12);</span>
+<span class="s1">               display:block;"&gt;&lt;/iframe&gt;</span>
+<span class="s1">&lt;script&gt;</span>
+<span class="s1">(function(){</span>
+<span class="s1">  function onMsg(e){</span>
+<span class="s1">    if(e.data &amp;&amp; e.data.type==="viz-height" &amp;&amp; e.data.id==="color_dim_explorer"){</span>
+<span class="s1">      var f=document.getElementById("color_dim_explorer-frame");</span>
+<span class="s1">      if(f) f.style.height=(e.data.height)+"px";   // wrap height to content</span>
+<span class="s1">    }</span>
+<span class="s1">  }</span>
+<span class="s1">  window.addEventListener("message", onMsg);</span>
+<span class="s1">})();</span>
+<span class="s1">&lt;/script&gt;</span>
+<span class="s1">'''</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe id="color_dim_explorer-frame" src="interactive_viz/color_dim_explorer.html" loading="lazy" title="color_dim_explorer"
+        style="display:block; width:100%; max-width:100%; height:640px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -11177,6 +11472,64 @@ Sequential (the whole model)    │ ✗
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%8E%AE-Interactive:-the-hook-class-ladder">🎮 Interactive: the hook class ladder<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-hook-class-ladder">¶</a></h2><p>We built four classes, each wrapping the one below it and adding <strong>one</strong> convenience: <code>Hook</code> &rarr; <code>Hooks</code> &rarr; <code>HooksCallback</code> &rarr; <code>ActivationStats</code>. Click any rung to see what it adds and the exact code, and trace how we went from manually placing a single hook to one-line network monitoring.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. Loads ./interactive_viz/hook_class_hierarchy.html</span>
+<span class="c1"># in an isolated &lt;iframe&gt; (its CSS/JS can't leak into the notebook).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># The widget broadcasts its own content height, so the frame auto-wraps with</span>
+<span class="c1"># no empty space below it. To use the published copy instead, swap the src for:</span>
+<span class="c1">#   https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/hook_class_hierarchy.html</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+<span class="n">HTML</span><span class="p">(</span><span class="s1">'''</span>
+<span class="s1">&lt;iframe id="hook_class_hierarchy-frame"</span>
+<span class="s1">        src="interactive_viz/hook_class_hierarchy.html"</span>
+<span class="s1">        title="Hook class hierarchy"</span>
+<span class="s1">        loading="lazy"</span>
+<span class="s1">        style="width:100%; height:430px; border:1px solid #dde5f2;</span>
+<span class="s1">               border-radius:12px; box-shadow:0 8px 24px rgba(123,92,214,.12);</span>
+<span class="s1">               display:block;"&gt;&lt;/iframe&gt;</span>
+<span class="s1">&lt;script&gt;</span>
+<span class="s1">(function(){</span>
+<span class="s1">  function onMsg(e){</span>
+<span class="s1">    if(e.data &amp;&amp; e.data.type==="viz-height" &amp;&amp; e.data.id==="hook_class_hierarchy"){</span>
+<span class="s1">      var f=document.getElementById("hook_class_hierarchy-frame");</span>
+<span class="s1">      if(f) f.style.height=(e.data.height)+"px";   // wrap height to content</span>
+<span class="s1">    }</span>
+<span class="s1">  }</span>
+<span class="s1">  window.addEventListener("message", onMsg);</span>
+<span class="s1">})();</span>
+<span class="s1">&lt;/script&gt;</span>
+<span class="s1">'''</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe id="hook_class_hierarchy-frame" src="interactive_viz/hook_class_hierarchy.html" loading="lazy" title="hook_class_hierarchy"
+        style="display:block; width:100%; max-width:100%; height:430px; border:1px solid #dde5f2;
+               border-radius:12px; box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -11276,6 +11629,22 @@ Sequential (the whole model)    │ ✗
 </div>
 </div>
 </div>
+<script id="ce-viz-resize">
+(function(){
+  var BUF=18;  // small buffer so the iframe never shows an inner scrollbar from sub-pixel rounding/margins
+  function fitDirect(f){ try{ var d=f.contentDocument; if(d&&d.body){ var h=Math.ceil(d.body.scrollHeight)+BUF; if(h>120){ f.style.height=h+"px"; return true; } } }catch(e){} return false; }
+  function all(){ document.querySelectorAll(".ce-fullbleed iframe").forEach(fitDirect); }
+  window.addEventListener("message", function(e){
+    if(!e.data || e.data.type!=="viz-height" || !(e.data.height>120)) return;
+    var f = e.data.id ? document.getElementById(e.data.id+"-frame") : null;
+    if(f){ f.style.height=(e.data.height+BUF)+"px"; return; }
+    var ifr=document.querySelectorAll(".ce-fullbleed iframe");
+    for(var i=0;i<ifr.length;i++){ if(ifr[i].contentWindow===e.source){ ifr[i].style.height=(e.data.height+BUF)+"px"; break; } }
+  });
+  document.querySelectorAll(".ce-fullbleed iframe").forEach(function(f){ f.addEventListener("load", function(){ fitDirect(f); setTimeout(function(){fitDirect(f);},400); setTimeout(function(){fitDirect(f);},1200); }); });
+  window.addEventListener("resize", all); setInterval(all,1500); all();
+})();
+</script>
 </main>
 </div>
 </body>

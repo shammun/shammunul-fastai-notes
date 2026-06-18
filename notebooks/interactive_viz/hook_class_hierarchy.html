@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hook class hierarchy</title>
+<style>
+  :root{
+    --ink:#25324a; --soft:#5a6b86; --line:#dde5f2;
+    --in:#f6921e; --out:#16a3a3; --ac:#7b5cd6; --bg:#eef3fb;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);
+       padding:14px;overflow-x:hidden;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 12px;max-width:660px;line-height:1.45;}
+
+  /* two columns: ladder (left) + detail (right). Stacks on narrow screens. */
+  .layout{display:grid;grid-template-columns:minmax(250px,340px) 1fr;gap:16px;
+          max-width:1000px;margin:0 auto;align-items:start;}
+  @media(max-width:720px){.layout{grid-template-columns:1fr;}}
+
+  .ladder{display:flex;flex-direction:column;gap:0;align-items:stretch;}
+  .card{background:#fff;border:2px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;
+        box-shadow:0 5px 14px rgba(123,92,214,.07);transition:.16s;display:flex;align-items:center;gap:11px;}
+  .card:hover{transform:translateY(-1px);box-shadow:0 9px 18px rgba(123,92,214,.15);}
+  .card.on{border-color:var(--ac);box-shadow:0 10px 22px rgba(123,92,214,.2);}
+  .badge{width:34px;height:34px;border-radius:9px;flex:0 0 34px;display:flex;align-items:center;justify-content:center;
+         color:#fff;font-weight:800;font-size:13px;}
+  .card h3{margin:0;font-size:14px;}
+  .card .tag{margin:1px 0 0;font-size:11.5px;color:var(--soft);line-height:1.3;}
+  .arrowlbl{font-size:10.5px;color:var(--ac);text-align:center;margin:0;font-weight:600;
+            padding:3px 0;display:flex;align-items:center;justify-content:center;gap:5px;}
+  .arrowlbl::before{content:"\25B2";font-size:9px;}
+
+  .detail{background:#fff;border:1px solid var(--line);border-radius:13px;
+          box-shadow:0 7px 20px rgba(123,92,214,.09);padding:14px 16px;min-width:0;}
+  .detail h2{margin:0 0 3px;font-size:15px;}
+  .detail .role{font-size:11.5px;color:var(--soft);margin:0 0 10px;line-height:1.4;}
+  .adds{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px;}
+  .chip{background:#f4f7fd;border:1px solid var(--line);border-radius:7px;padding:5px 9px;font-size:11px;line-height:1.3;}
+  .chip b{color:var(--ac);}
+  pre{margin:0;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.55;
+      background:#1f2740;color:#e7ecf7;border-radius:9px;padding:12px;
+      overflow-x:auto;white-space:pre;}
+  .kw{color:#c98bff;}.fn{color:#62d0d0;}.st{color:#ffb877;}.cm{color:#7e8db0;}.nu{color:#ff9eb5;}
+  .why{margin-top:11px;font-size:12px;line-height:1.5;color:var(--ink);background:#f4f7fd;border-radius:8px;padding:10px 12px;}
+  .why b{color:var(--out);}
+  code{background:#eef2fb;padding:1px 4px;border-radius:4px;font-size:11px;}
+</style></head>
+<body>
+<h1>The hook class ladder</h1>
+<p class="sub">Each class wraps the one below it and adds <b>one new convenience</b>: <code>Hook</code> &rarr; <code>Hooks</code> &rarr; <code>HooksCallback</code> &rarr; <code>ActivationStats</code>. Click any rung to see what it adds and the exact code.</p>
+
+<div class="layout">
+  <div class="ladder" id="ladder">
+    <div class="card on" data-k="as">
+      <div class="badge" style="background:var(--out)">4</div>
+      <div><h3>ActivationStats</h3><div class="tag">one line to monitor + plot</div></div></div>
+    <div class="arrowlbl">adds visualization methods</div>
+    <div class="card" data-k="hc">
+      <div class="badge" style="background:var(--ac)">3</div>
+      <div><h3>HooksCallback</h3><div class="tag">plugs hooks into the training loop</div></div></div>
+    <div class="arrowlbl">adds lifecycle + auto-discovery</div>
+    <div class="card" data-k="hs">
+      <div class="badge" style="background:var(--in)">2</div>
+      <div><h3>Hooks</h3><div class="tag">many hooks at once, auto-cleanup</div></div></div>
+    <div class="arrowlbl">adds the context manager</div>
+    <div class="card" data-k="hk">
+      <div class="badge" style="background:#5a6b86">1</div>
+      <div><h3>Hook</h3><div class="tag">one hook on one layer</div></div></div>
+  </div>
+
+  <div class="detail" id="detail"></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const DATA={
+  hk:{title:'Hook', color:'#5a6b86', role:'Manages a single forward hook on a single layer.',
+    adds:['<b>self</b> as storage \u2014 the hook fn can write <code>hook.stats</code>','<b>__del__</b> auto-removes the hook (no memory leak)'],
+    code:`<span class="kw">class</span> <span class="fn">Hook</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, m, f):
+        <span class="cm"># f is called as f(self, mod, inp, outp)</span>
+        self.hook = m.<span class="fn">register_forward_hook</span>(
+            partial(f, self))
+    <span class="kw">def</span> <span class="fn">remove</span>(self): self.hook.<span class="fn">remove</span>()
+    <span class="kw">def</span> <span class="fn">__del__</span>(self): self.<span class="fn">remove</span>()`,
+    why:'The key trick: <b>self</b> is passed as the first arg to the hook function, so each hook carries its own little notebook (<code>hook.stats</code>) to scribble results onto.'},
+  hs:{title:'Hooks', color:'#f6921e', role:'A list of Hook objects you can use with a <code>with</code> block.',
+    adds:['Builds <b>one Hook per module</b> in a single line','<b>__enter__/__exit__</b> remove ALL hooks automatically'],
+    code:`<span class="kw">class</span> <span class="fn">Hooks</span>(list):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, ms, f):
+        <span class="kw">super</span>().<span class="fn">__init__</span>(
+            [Hook(m, f) <span class="kw">for</span> m <span class="kw">in</span> ms])
+    <span class="kw">def</span> <span class="fn">__enter__</span>(self, *a): <span class="kw">return</span> self
+    <span class="kw">def</span> <span class="fn">__exit__</span> (self, *a): self.<span class="fn">remove</span>()
+    <span class="kw">def</span> <span class="fn">remove</span>(self):
+        <span class="kw">for</span> h <span class="kw">in</span> self: h.<span class="fn">remove</span>()`,
+    why:'Now you write <code>with Hooks(model, fn) as hooks:</code> and never worry about forgetting to clean up \u2014 <b>__exit__</b> runs even if training crashes.'},
+  hc:{title:'HooksCallback', color:'#7b5cd6', role:'A Callback so the Learner manages hooks for you, at the right times.',
+    adds:['<b>before_fit</b> creates hooks; <b>after_fit</b> removes them','<b>mod_filter</b> auto-finds layers (e.g. all Conv2d)','Train/valid <b>gating</b> \u2014 record only when you want'],
+    code:`<span class="kw">class</span> <span class="fn">HooksCallback</span>(Callback):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, hookfunc,
+            mod_filter=fc.noop, on_train=<span class="kw">True</span>,
+            on_valid=<span class="kw">False</span>, mods=<span class="kw">None</span>):
+        fc.<span class="fn">store_attr</span>()
+    <span class="kw">def</span> <span class="fn">before_fit</span>(self, learn):
+        mods = self.mods <span class="kw">or</span> fc.<span class="fn">filter_ex</span>(
+            learn.model.<span class="fn">modules</span>(), self.mod_filter)
+        self.hooks = Hooks(mods,
+            partial(self._hookfunc, learn))
+    <span class="kw">def</span> <span class="fn">after_fit</span>(self, learn):
+        self.hooks.<span class="fn">remove</span>()`,
+    why:'You no longer place hooks by hand or wrap training in a <code>with</code>. You just pass the callback to <code>fit()</code> and it hooks the layers <b>at the moment the model exists on the device</b>.'},
+  as:{title:'ActivationStats', color:'#16a3a3', role:'Hardcodes append_stats and adds ready-made plots.',
+    adds:['<b>append_stats</b> built in \u2014 never pass it','<b>color_dim()</b> distribution heatmaps','<b>dead_chart()</b> dead-ReLU fraction','<b>plot_stats()</b> mean &amp; std lines'],
+    code:`<span class="kw">class</span> <span class="fn">ActivationStats</span>(HooksCallback):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, mod_filter=fc.noop):
+        <span class="kw">super</span>().<span class="fn">__init__</span>(append_stats, mod_filter)
+    <span class="kw">def</span> <span class="fn">color_dim</span> (self): <span class="cm"># histograms</span>
+    <span class="kw">def</span> <span class="fn">dead_chart</span>(self): <span class="cm"># near-zero frac</span>
+    <span class="kw">def</span> <span class="fn">plot_stats</span>(self): <span class="cm"># means & stds</span>
+
+<span class="cm"># usage \u2014 the whole point:</span>
+astats = <span class="fn">ActivationStats</span>(
+    mod_filter=<span class="kw">lambda</span> m: isinstance(m, nn.Conv2d))
+<span class="fn">fit</span>(model, xtra_cbs=[astats])
+astats.<span class="fn">color_dim</span>()`,
+    why:'The payoff. Monitoring a network is now three steps: <b>create it, pass it to fit(), call a plot</b>. Everything below this rung happens invisibly.'}
+};
+
+function show(k){
+  document.querySelectorAll('#ladder .card').forEach(c=>c.classList.toggle('on',c.dataset.k===k));
+  const d=DATA[k];
+  $('detail').innerHTML=
+    `<h2 style="color:${d.color}">${d.title}</h2><p class="role">${d.role}</p>`+
+    `<div class="adds">${d.adds.map(a=>`<span class="chip">${a}</span>`).join('')}</div>`+
+    `<pre>${d.code}</pre>`+
+    `<div class="why">${d.why}</div>`;
+  report();
+}
+document.querySelectorAll('#ladder .card').forEach(c=>c.onclick=()=>show(c.dataset.k));
+show('as');
+
+// ---- report content height to the notebook iframe (no scaling, ever) ----
+var __vid="hook_class_hierarchy";
+function report(){
+  parent.postMessage({type:'viz-height',id:__vid,height:document.body.scrollHeight},'*');
+}
+new ResizeObserver(report).observe(document.body);
+window.addEventListener('load',report);
+setTimeout(report,120);setTimeout(report,400);
+</script>
+</body>
+</html>

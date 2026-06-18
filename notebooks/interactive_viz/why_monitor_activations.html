@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why monitor activations</title>
+<style>
+  :root{
+    --ink:#25324a; --soft:#5a6b86; --line:#dde5f2;
+    --in:#f6921e; --out:#16a3a3; --ac:#7b5cd6; --bg:#eef3fb;
+    --good:#16a3a3; --bad:#e0556e; --warn:#f6921e;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:16px;;overflow-x:hidden;}
+  h1{font-size:18px;margin:0 0 3px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12.5px;margin:0 auto 14px;max-width:680px;line-height:1.5;}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:14px;
+         box-shadow:0 8px 22px rgba(123,92,214,.09);padding:16px;max-width:920px;margin:0 auto;}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;margin-bottom:14px;}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#f7faff;}
+  .seg button{border:0;background:transparent;padding:8px 14px;font-size:12.5px;font-weight:600;color:var(--soft);
+              cursor:pointer;transition:.15s;}
+  .seg button.on{background:var(--ac);color:#fff;}
+  .seg button:hover:not(.on){background:#eef1fb;}
+  .row{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--soft);}
+  input[type=range]{accent-color:var(--in);width:150px;}
+  canvas{display:block;width:100%;height:auto;background:#fbfdff;border:1px solid var(--line);border-radius:10px;}
+  .legend{display:flex;gap:16px;justify-content:center;margin-top:10px;font-size:12px;color:var(--soft);flex-wrap:wrap;}
+  .dot{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px;}
+  .verdict{margin-top:12px;border-radius:10px;padding:11px 14px;font-size:13px;line-height:1.55;text-align:center;}
+  .verdict b{font-weight:700;}
+  .play{background:var(--ac);color:#fff;border:0;border-radius:9px;padding:8px 16px;font-size:12.5px;
+        font-weight:600;cursor:pointer;}
+  .play:hover{filter:brightness(1.07);}
+  code{background:#f4f7fd;padding:1px 5px;border-radius:5px;font-size:12px;}
+</style></head>
+<body>
+<h1>Why we monitor activations</h1>
+<p class="sub">As a signal flows through many layers, it can quietly <b>shrink to nothing</b> (vanish) or <b>blow up</b> (explode). Pick a regime and watch how the mean &amp; spread of the activations change layer by layer. This is exactly what hooks let us measure.</p>
+
+<div class="panel">
+  <div class="controls">
+    <div class="seg" id="regime">
+      <button data-r="vanish">Vanishing</button>
+      <button data-r="healthy" class="on">Healthy</button>
+      <button data-r="explode">Exploding</button>
+    </div>
+    <div class="row">init&nbsp;scale&nbsp;<input id="scale" type="range" min="0.2" max="2.4" step="0.05" value="1.0"><span id="scalev" style="font-family:monospace;color:var(--in);font-weight:700;width:34px">1.00</span></div>
+    <button class="play" id="play">&#9654; Animate flow</button>
+  </div>
+
+  <canvas id="cv" width="880" height="340"></canvas>
+
+  <div class="legend">
+    <span><span class="dot" style="background:var(--in)"></span>activation spread (std)</span>
+    <span><span class="dot" style="background:var(--out)"></span>healthy band</span>
+    <span><span class="dot" style="background:var(--ac)"></span>layer output sample</span>
+  </div>
+
+  <div class="verdict" id="verdict"></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'), ctx=cv.getContext('2d');
+const NL=7;                       // number of layers shown
+let regime='healthy', scale=1.0, t=0, anim=null, playing=false;
+
+// gain per layer for each regime (how std multiplies each layer)
+function baseGain(){
+  if(regime==='vanish') return 0.55;
+  if(regime==='explode') return 1.7;
+  return 1.0;
+}
+// compute std at each layer
+function stds(){
+  const g=baseGain()*scale;
+  let s=1.0, arr=[s];
+  for(let i=1;i<=NL;i++){ s=s*g; arr.push(s); }
+  return arr;
+}
+
+function draw(progress){
+  const W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const padL=58,padR=24,padT=28,padB=46;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const xs=[], colW=plotW/NL;
+  for(let i=0;i<=NL;i++) xs.push(padL+i*colW);
+
+  // log-scale y for std so we can see both tiny and huge
+  const sd=stds();
+  const ymin=0.02, ymax=40;
+  const Y=v=>{v=Math.max(ymin,Math.min(ymax,v));
+    return padT+plotH-(Math.log(v)-Math.log(ymin))/(Math.log(ymax)-Math.log(ymin))*plotH;};
+
+  // healthy band (std roughly 0.5..2)
+  ctx.fillStyle='rgba(22,163,163,.10)';
+  ctx.fillRect(padL,Y(2),plotW,Y(0.5)-Y(2));
+  ctx.strokeStyle='rgba(22,163,163,.4)';ctx.setLineDash([5,4]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(padL,Y(1));ctx.lineTo(padL+plotW,Y(1));ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#0e8a8a';ctx.font='11px Segoe UI';ctx.fillText('healthy zone',padL+6,Y(2)+14);
+
+  // axis labels
+  ctx.fillStyle='#7d8db0';ctx.font='11px monospace';
+  [0.02,0.1,1,10,40].forEach(v=>{
+    ctx.fillStyle='#aab8d4';ctx.fillText(v.toString().padStart(4),6,Y(v)+4);
+    ctx.strokeStyle='#eef2fa';ctx.beginPath();ctx.moveTo(padL,Y(v));ctx.lineTo(padL+plotW,Y(v));ctx.stroke();
+  });
+  ctx.save();ctx.translate(15,padT+plotH/2);ctx.rotate(-Math.PI/2);
+  ctx.fillStyle='#7d8db0';ctx.font='12px Segoe UI';ctx.textAlign='center';
+  ctx.fillText('activation std (log scale)',0,0);ctx.restore();ctx.textAlign='left';
+
+  // how many layers to reveal in animation
+  const shown = Math.min(NL, progress*NL);
+
+  // line of std across layers
+  ctx.strokeStyle='#f6921e';ctx.lineWidth=3;
+  ctx.beginPath();
+  for(let i=0;i<=NL;i++){
+    if(i>shown) break;
+    const x=xs[i],y=Y(sd[i]);
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // layer boxes + activation "cloud" samples
+  for(let i=0;i<=NL;i++){
+    const x=xs[i];
+    // layer separators / labels
+    ctx.fillStyle='#9fb0cc';ctx.font='11px Segoe UI';ctx.textAlign='center';
+    const lab = i===0?'input':('L'+i);
+    ctx.fillText(lab,x,H-padB+22);
+    ctx.textAlign='left';
+    if(i>shown+0.001) continue;
+    // sampled activation dots around the std value (visual cloud)
+    const cx=x, cyBase=Y(sd[i]);
+    ctx.fillStyle='rgba(123,92,214,.55)';
+    const n=14, spread=Math.min(46, 8+sd[i]*6);
+    for(let k=0;k<n;k++){
+      const rnd=(Math.sin(i*12.9+k*78.2+1.3)*43758.5)%1;
+      const off=((rnd<0?rnd+1:rnd)-0.5)*spread*2;
+      ctx.beginPath();ctx.arc(cx, cyBase+off, 2.4,0,7);ctx.fill();
+    }
+    // node
+    ctx.fillStyle='#f6921e';ctx.beginPath();ctx.arc(cx,cyBase,5.5,0,7);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+    // std readout near final-ish
+    if(i>0 && i<=shown){
+      ctx.fillStyle='#5a6b86';ctx.font='10px monospace';ctx.textAlign='center';
+      ctx.fillText(sd[i].toFixed(sd[i]<1?3:2), cx, cyBase- (sd[i]>2?12:-18));
+      ctx.textAlign='left';
+    }
+  }
+  return sd;
+}
+
+function verdict(sd){
+  const last=sd[NL];
+  let cls,msg;
+  if(last<0.1){cls='var(--bad)';msg=`<b style="color:#e0556e">Vanishing.</b> By layer ${NL} the std is <code>${last.toFixed(4)}</code> — the signal has almost disappeared. Gradients will be tiny and the early layers barely learn.`;}
+  else if(last>8){cls='var(--bad)';msg=`<b style="color:#e0556e">Exploding.</b> By layer ${NL} the std is <code>${last.toFixed(2)}</code> — values are blowing up. Training becomes unstable (NaNs, wild loss).`;}
+  else if(last>=0.4 && last<=3){cls='var(--good)';msg=`<b style="color:#0e8a8a">Healthy.</b> The std stays near <code>1</code> (it's <code>${last.toFixed(2)}</code> at layer ${NL}). Signal is preserved across depth — this is what good init aims for.`;}
+  else {cls='var(--warn)';msg=`<b style="color:#c9760f">Borderline.</b> Std at layer ${NL} is <code>${last.toFixed(2)}</code> — drifting from the healthy band. Watch this layer.`;}
+  const v=$('verdict');
+  v.style.background = cls==='var(--good)'?'rgba(22,163,163,.10)':(cls==='var(--warn)'?'rgba(246,146,30,.10)':'rgba(224,85,110,.10)');
+  v.innerHTML=msg;
+}
+
+function render(progress){
+  const sd=draw(progress===undefined?1:progress);
+  verdict(sd);
+}
+
+function play(){
+  if(playing){cancelAnimationFrame(anim);playing=false;$('play').innerHTML='&#9654; Animate flow';return;}
+  playing=true;$('play').innerHTML='&#10073;&#10073; Pause';
+  let p=0;const step=()=>{p+=0.018;if(p>=1){p=1;render(p);playing=false;$('play').innerHTML='&#9654; Replay flow';return;}
+    render(p);anim=requestAnimationFrame(step);};
+  step();
+}
+
+document.querySelectorAll('#regime button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#regime button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');regime=b.dataset.r;render(1);
+});
+$('scale').oninput=e=>{scale=+e.target.value;$('scalev').textContent=scale.toFixed(2);render(1);};
+$('play').onclick=play;
+render(1);
+
+// ---- auto-height broadcast so the notebook iframe wraps content (no empty space) ----
+// ---- report content height to the notebook iframe (no scaling, ever) ----
+var __vid="why_monitor_activations";
+function report(){
+  parent.postMessage({type:'viz-height',id:__vid,height:document.body.scrollHeight},'*');
+}
+new ResizeObserver(report).observe(document.body);
+window.addEventListener('load',report);
+window.addEventListener('resize',report);
+setTimeout(report,150);setTimeout(report,400);
+</script>
+</body>
+</html>

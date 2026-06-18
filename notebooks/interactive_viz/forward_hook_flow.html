@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forward hooks</title>
+<style>
+  :root{
+    --ink:#25324a; --soft:#5a6b86; --line:#dde5f2;
+    --in:#f6921e; --out:#16a3a3; --ac:#7b5cd6; --bg:#eef3fb;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:16px;;overflow-x:hidden;}
+  h1{font-size:18px;margin:0 0 3px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12.5px;margin:0 auto 14px;max-width:680px;line-height:1.5;}
+  .grid{display:grid;grid-template-columns:1.15fr 1fr;gap:14px;max-width:980px;margin:0 auto;}
+  @media(max-width:780px){.grid{grid-template-columns:1fr;}}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:14px;
+         box-shadow:0 8px 22px rgba(123,92,214,.09);padding:16px;}
+  canvas{display:block;width:100%;height:auto;}
+  .stages{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-bottom:12px;}
+  .stages button{border:1px solid var(--line);background:#f7faff;color:var(--soft);
+    border-radius:20px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;}
+  .stages button.on{background:var(--ac);color:#fff;border-color:var(--ac);}
+  .stages button:hover:not(.on){background:#eef1fb;}
+  .ctrlrow{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:12px;flex-wrap:wrap;}
+  .ctrlrow button{background:var(--ac);color:#fff;border:0;border-radius:9px;padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .ctrlrow button.ghost{background:#eef1fb;color:var(--ink);}
+  .ctrlrow .speed{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--soft);}
+  input[type=range]{accent-color:var(--in);width:120px;}
+  .explain{margin-top:12px;border-radius:10px;background:#f4f7fd;padding:11px 14px;font-size:12.8px;line-height:1.55;min-height:64px;}
+  .explain b{color:var(--ac);}
+  pre{margin:0;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.65;
+      background:#1f2740;color:#e7ecf7;border-radius:10px;padding:14px;overflow-x:auto;}
+  pre .ln{display:block;padding:1px 8px;border-radius:5px;transition:.2s;border-left:3px solid transparent;}
+  pre .ln.hot{background:rgba(246,146,30,.18);border-left-color:var(--in);}
+  pre .ln.pyint{opacity:.62;font-style:italic;}
+  pre .ln.pyint.hot{opacity:1;background:rgba(123,92,214,.20);border-left-color:var(--ac);}
+  pre .arg{border-radius:4px;padding:0 2px;transition:.2s;}
+  pre .arg.arghot{background:var(--in);color:#1f2740;font-weight:700;box-shadow:0 0 0 2px rgba(246,146,30,.35);}
+  .cm{color:#7e8db0;}
+  .kw{color:#c98bff;}.fn{color:#62d0d0;}.st{color:#ffb877;}.nu{color:#ff9eb5;}
+  .cardlabel{font-size:11px;font-weight:700;color:var(--soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
+</style></head>
+<body>
+<h1>How a forward hook fires</h1>
+<p class="sub">A hook is a function PyTorch calls <b>automatically</b> right after a layer produces its output. Click a stage (or press Play) to walk through it — the matching line of code lights up on the right.</p>
+
+<div class="grid">
+  <div class="panel">
+    <div class="cardlabel">The forward pass + hook</div>
+    <div class="stages" id="stages">
+      <button data-s="0" class="on">1 · input x</button>
+      <button data-s="1">2 · layer runs</button>
+      <button data-s="2">3 · output</button>
+      <button data-s="3">4 · hook fires</button>
+      <button data-s="4">5 · stats stored</button>
+    </div>
+    <canvas id="cv" width="520" height="300"></canvas>
+    <div class="ctrlrow">
+      <button id="play">&#9654; Play</button>
+      <button class="ghost" id="reset">Reset</button>
+      <span class="speed">speed <input id="speed" type="range" min="0.4" max="2.2" step="0.1" value="1"></span>
+    </div>
+    <div class="explain" id="explain"></div>
+  </div>
+
+  <div class="panel">
+    <div class="cardlabel">Matching code</div>
+    <pre id="code"><span class="ln"><span class="cm"># 1. attach the hook ONCE, before training</span></span><span class="ln" data-l="reg"><span class="kw">for</span> i, m <span class="kw">in</span> enumerate(model):</span><span class="ln" data-l="reg">    m.<span class="fn">register_forward_hook</span>(partial(append_stats, i))</span><span class="ln">&nbsp;</span><span class="ln"><span class="cm"># 2. our hook function (PyTorch calls it for us)</span></span><span class="ln" data-l="sig"><span class="kw">def</span> <span class="fn">append_stats</span>(i, mod, <span class="arg" data-a="inp">inp</span>, <span class="arg" data-a="outp">outp</span>):</span><span class="ln" data-l="store">    act = to_cpu(<span class="arg" data-a="outp">outp</span>)</span><span class="ln" data-l="store">    act_means[i].append(act.<span class="fn">mean</span>().item())</span><span class="ln" data-l="store">    act_stds[i].append(act.<span class="fn">std</span>().item())</span><span class="ln">&nbsp;</span><span class="ln"><span class="cm"># 3. what PyTorch does internally on the forward pass:</span></span><span class="ln pyint" data-l="run">    outp = mod(inp)        <span class="cm"># the layer computes</span></span><span class="ln pyint" data-l="fire">    append_stats(i, mod, inp, outp)  <span class="cm"># hook fired</span></span></pre>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+let stage=0, playing=false, timer=null, speed=1;
+
+const STAGES=[
+  {hot:['reg'], arg:['inp'], text:'<b>Stage 1 — input.</b> A batch <code>x</code> enters the layer. We already attached the hook with <code>register_forward_hook</code> (top), so PyTorch knows to call <code>append_stats</code> later. PyTorch will pass this batch to the hook as its <b>inp</b> argument (highlighted in the signature).'},
+  {hot:['run'], arg:[], text:'<b>Stage 2 — the layer runs.</b> PyTorch executes <code>outp = mod(inp)</code> — the normal forward pass. <b>You write no code for this</b>; the highlighted line is PyTorch&rsquo;s own internal step (shown dimmed).'},
+  {hot:['run'], arg:['outp'], text:'<b>Stage 3 — output produced.</b> The layer returns <code>outp</code> (the activations). This is the value we actually want to measure — it becomes the hook&rsquo;s <b>outp</b> argument.'},
+  {hot:['fire'], arg:[], text:'<b>Stage 4 — the hook fires.</b> Right after the layer finishes, PyTorch automatically calls <code>append_stats(i, mod, inp, outp)</code> for us (highlighted, dimmed = PyTorch internal). We never call it ourselves.'},
+  {hot:['sig','store'], arg:['outp'], text:'<b>Stage 5 — stats stored.</b> Now <b>our</b> function body runs: it reads <code>outp</code>, computes mean &amp; std, and appends them to our lists. The model was never modified — we just peeked.'}
+];
+
+function setHot(keys, args){
+  document.querySelectorAll('#code .ln').forEach(l=>l.classList.remove('hot'));
+  document.querySelectorAll('#code .arg').forEach(a=>a.classList.remove('arghot'));
+  (keys||[]).forEach(k=>document.querySelectorAll('#code .ln[data-l="'+k+'"]').forEach(l=>l.classList.add('hot')));
+  (args||[]).forEach(k=>document.querySelectorAll('#code .arg[data-a="'+k+'"]').forEach(a=>a.classList.add('arghot')));
+}
+
+function drawFlow(s){
+  const W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);
+  const cy=120;
+  // node layout: input -> [LAYER] -> output ; hook box below
+  const xIn=70, xLayer=W/2, xOut=W-70;
+  const active=i=>s>=i;
+
+  // arrow input->layer
+  function arrow(x1,x2,y,on){
+    ctx.strokeStyle=on?'#f6921e':'#cdd8ec';ctx.lineWidth=on?3:2;
+    ctx.beginPath();ctx.moveTo(x1,y);ctx.lineTo(x2-10,y);ctx.stroke();
+    ctx.fillStyle=on?'#f6921e':'#cdd8ec';ctx.beginPath();
+    ctx.moveTo(x2-10,y-6);ctx.lineTo(x2,y);ctx.lineTo(x2-10,y+6);ctx.fill();
+  }
+  arrow(xIn+28,xLayer-58,cy, active(1));
+  arrow(xLayer+58,xOut-26,cy, active(2));
+
+  // input node
+  ctx.fillStyle=active(0)?'#f6921e':'#f0d7b6';
+  ctx.beginPath();ctx.arc(xIn,cy,26,0,7);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 15px Segoe UI';ctx.textAlign='center';ctx.fillText('x',xIn,cy+5);
+  ctx.fillStyle='#5a6b86';ctx.font='11px Segoe UI';ctx.fillText('inp',xIn,cy+44);
+
+  // layer box
+  const lw=116,lh=64;
+  ctx.fillStyle=active(1)?'#7b5cd6':'#d9d0f1';
+  roundRect(xLayer-lw/2,cy-lh/2,lw,lh,12);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 14px Segoe UI';ctx.fillText('Conv2d',xLayer,cy-2);
+  ctx.font='11px Segoe UI';ctx.fillText('mod(inp)',xLayer,cy+15);
+  ctx.fillStyle='#5a6b86';ctx.fillText('module',xLayer,cy+lh/2+20);
+
+  // output node
+  ctx.fillStyle=active(2)?'#16a3a3':'#bfe2e2';
+  ctx.beginPath();ctx.arc(xOut,cy,26,0,7);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 13px Segoe UI';ctx.fillText('out',xOut,cy+5);
+  ctx.fillStyle='#5a6b86';ctx.font='11px Segoe UI';ctx.fillText('outp',xOut,cy+44);
+
+  // hook box below, with dashed connectors from mod, inp, outp
+  const hy=H-46, hx=W/2, hw=240, hh=46;
+  const hookOn=active(3);
+  if(hookOn){
+    ctx.strokeStyle='#16a3a366';ctx.setLineDash([4,4]);ctx.lineWidth=1.5;
+    [[xIn,cy+26],[xLayer,cy+lh/2],[xOut,cy+26]].forEach(p=>{
+      ctx.beginPath();ctx.moveTo(p[0],p[1]);ctx.lineTo(hx,hy-hh/2);ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
+  ctx.fillStyle=hookOn?(active(4)?'#16a3a3':'#7b5cd6'):'#e7ecf6';
+  roundRect(hx-hw/2,hy-hh/2,hw,hh,11);ctx.fill();
+  ctx.fillStyle=hookOn?'#fff':'#9fb0cc';ctx.font='bold 12.5px Segoe UI';
+  ctx.fillText('append_stats(mod, inp, outp)',hx,hy-2);
+  ctx.font='11px Segoe UI';
+  ctx.fillText(active(4)?'\u2713 mean & std saved':'hook function',hx,hy+15);
+  ctx.textAlign='left';
+}
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+function setStage(s){
+  stage=s;
+  document.querySelectorAll('#stages button').forEach(b=>b.classList.toggle('on',+b.dataset.s===s));
+  drawFlow(s);
+  setHot(STAGES[s].hot, STAGES[s].arg);
+  $('explain').innerHTML=STAGES[s].text;
+}
+function play(){
+  if(playing){stop();return;}
+  playing=true;$('play').innerHTML='&#10073;&#10073; Pause';
+  const tick=()=>{
+    if(stage>=STAGES.length-1){setStage(0);} else setStage(stage+1);
+    if(stage>=STAGES.length-1){timer=setTimeout(()=>{stop();},900/speed);}
+    else timer=setTimeout(tick,1100/speed);
+  };
+  setStage(0);timer=setTimeout(tick,1100/speed);
+}
+function stop(){playing=false;$('play').innerHTML='&#9654; Play';clearTimeout(timer);}
+
+document.querySelectorAll('#stages button').forEach(b=>b.onclick=()=>{stop();setStage(+b.dataset.s);});
+$('play').onclick=play;
+$('reset').onclick=()=>{stop();setStage(0);};
+$('speed').oninput=e=>{speed=+e.target.value;};
+setStage(0);
+
+// ---- report content height to the notebook iframe (no scaling, ever) ----
+var __vid="forward_hook_flow";
+function report(){
+  parent.postMessage({type:'viz-height',id:__vid,height:document.body.scrollHeight},'*');
+}
+new ResizeObserver(report).observe(document.body);
+window.addEventListener('load',report);
+window.addEventListener('resize',report);
+setTimeout(report,150);setTimeout(report,400);
+</script>
+</body>
+</html>

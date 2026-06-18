@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D activation landscape</title>
+<style>
+  :root{
+    --ink:#25324a; --soft:#5a6b86; --line:#dde5f2;
+    --in:#f6921e; --out:#16a3a3; --ac:#7b5cd6; --bg:#eef3fb;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);
+       padding:14px;overflow-x:hidden;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 12px;max-width:730px;line-height:1.45;}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:14px;
+         box-shadow:0 8px 22px rgba(123,92,214,.09);padding:14px;max-width:940px;margin:0 auto;}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;margin-bottom:11px;}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#f7faff;}
+  .seg button{border:0;background:transparent;padding:7px 12px;font-size:12px;font-weight:600;color:var(--soft);cursor:pointer;transition:.15s;}
+  .seg button.on{background:var(--ac);color:#fff;}
+  .row{display:flex;gap:7px;align-items:center;font-size:12px;color:var(--soft);}
+  input[type=range]{accent-color:var(--in);width:104px;}
+  .play{background:var(--ac);color:#fff;border:0;border-radius:9px;padding:7px 13px;font-size:12px;font-weight:600;cursor:pointer;}
+  .ghost{background:#eef1fb;color:var(--ink);border:0;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;}
+  .stagewrap{position:relative;}
+  #host{width:100%;height:48vh;min-height:340px;max-height:480px;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+        background:linear-gradient(#fbfdff,#eef4fc);cursor:grab;touch-action:none;position:relative;}
+  #host:active{cursor:grabbing;}
+  /* projected 3D labels (overlaid HTML, follow rotation) */
+  #labels{position:absolute;inset:0;pointer-events:none;}
+  .lab{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;
+       border-radius:7px;background:rgba(255,255,255,.92);box-shadow:0 1px 5px rgba(37,50,74,.22);}
+  .lab.axislab{font-size:12px;font-weight:800;padding:3px 9px;letter-spacing:.01em;}
+  .lab.ticklab{font-size:10.5px;font-weight:700;padding:1px 6px;opacity:.95;
+               background:rgba(255,255,255,.82);}
+  .lab.mag{color:#c9760f;border:1px solid rgba(246,146,30,.35);}
+  .lab.time{color:#0e8a8a;border:1px solid rgba(22,163,163,.35);}
+  .lab.cnt{color:#6a4cc0;border:1px solid rgba(123,92,214,.35);}
+  #batchtag{position:absolute;top:10px;left:12px;background:rgba(31,39,64,.86);color:#fff;
+            font-size:12px;padding:5px 10px;border-radius:8px;font-family:monospace;display:none;line-height:1.35;}
+  #batchtag b{color:#f6b25a;}
+  /* persistent orientation key */
+  .orient{display:flex;gap:14px;justify-content:center;margin-top:10px;font-size:11.5px;flex-wrap:wrap;}
+  .orient span{display:inline-flex;align-items:center;gap:6px;background:#f7faff;border:1px solid var(--line);
+               border-radius:8px;padding:4px 10px;}
+  .swatch{width:22px;height:0;border-top:3px solid;border-radius:2px;}
+  .narrate{margin-top:11px;border-radius:10px;background:#1f2740;color:#e7ecf7;padding:11px 14px;
+           font-size:12.5px;line-height:1.5;min-height:46px;display:flex;align-items:center;gap:10px;}
+  .narrate .dotpulse{flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:#f6921e;}
+  .verdict{margin-top:10px;border-radius:10px;padding:10px 13px;font-size:12.3px;line-height:1.5;text-align:center;}
+  .err{display:none;text-align:center;color:#c0394f;font-size:13px;padding:28px;}
+  code{background:#eef2fb;padding:1px 4px;border-radius:4px;font-size:11px;}
+  b.mag{color:#c9760f;} b.time{color:#0e8a8a;} b.cnt{color:#6a4cc0;}
+</style></head>
+<body>
+<h1>The activation landscape in 3D</h1>
+<p class="sub">This is the <code>color_dim</code> heatmap turned into a 3D terrain. The three directions are: <b class="mag">magnitude</b> (left&rarr;right), <b class="time">training time</b> (front&rarr;back), and <b class="cnt">count / height</b> (up). <b>Drag to rotate.</b></p>
+
+<div class="panel">
+  <div class="controls">
+    <span class="row">regime:</span>
+    <div class="seg" id="regime">
+      <button data-r="healthy" class="on">Healthy</button>
+      <button data-r="dead">Dead ReLUs</button>
+      <button data-r="explode">Exploding</button>
+    </div>
+    <button class="play" id="play">&#9654; Sweep training</button>
+    <button class="ghost" id="resetview">Reset view</button>
+    <span class="row">auto-spin <input id="spin" type="range" min="0" max="1" step="0.01" value="0.16"></span>
+  </div>
+
+  <div class="stagewrap">
+    <div id="host"><div id="labels"></div></div>
+    <div id="batchtag"></div>
+  </div>
+
+  <div class="err" id="err">Could not load three.js (needs an internet connection). The 2D explorer above shows the same idea.</div>
+
+  <!-- always-visible mapping of the three colored axes -->
+  <div class="orient">
+    <span><span class="swatch" style="border-color:#f6921e"></span><b class="mag">magnitude</b> 0&rarr;10 &rarr;</span>
+    <span><span class="swatch" style="border-color:#16a3a3"></span><b class="time">training time</b> early&rarr;late</span>
+    <span><span class="swatch" style="border-color:#7b5cd6"></span><b class="cnt">height</b> = how many activations</span>
+  </div>
+
+  <!-- step-by-step narration, updates live during the sweep -->
+  <div class="narrate" id="narrate"><span class="dotpulse"></span><span id="narratetext"></span></div>
+
+  <div class="verdict" id="verdict"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  var $=function(id){return document.getElementById(id);};
+  var regime='healthy', sweep=false, sweepT=0, spin=0.16, sweepTimer=null;
+  var NB=44, NBIN=40;
+  var SX=26, SZ=28, HY=12;
+  var MAT=null;
+
+  function buildMatrix(){
+    var M=[];
+    for(var b=0;b<NB;b++){
+      var p=b/(NB-1); var row=new Array(NBIN); for(var z=0;z<NBIN;z++)row[z]=0;
+      var center,width,deadFrac;
+      if(regime==='healthy'){center=6-2.2*p;width=5;deadFrac=0.05;}
+      else if(regime==='dead'){center=1.4;width=2.0;deadFrac=0.3+0.5*p;}
+      else{center=4+24*p;width=4+9*p;deadFrac=0.04;}
+      for(var i=0;i<NBIN;i++){var mag=i*(10/NBIN)+0.125;
+        row[i]=Math.exp(-Math.pow((mag-center)/width,2));}
+      row[0]+=deadFrac*1.3;row[1]+=deadFrac*0.5;
+      var mx=0; for(var k=0;k<NBIN;k++)if(row[k]>mx)mx=row[k]; if(mx<1e-6)mx=1e-6;
+      for(var q=0;q<NBIN;q++)row[q]/=mx;
+      M.push(row);
+    }
+    return M;
+  }
+
+  function viridis(t){t=Math.max(0,Math.min(1,t));
+    var s=[[68,1,84],[59,82,139],[33,145,140],[94,201,98],[253,231,37]];
+    var seg=t*(s.length-1),i=Math.floor(seg),f=seg-i,a=s[i],b=s[Math.min(i+1,s.length-1)];
+    return new THREE.Color((a[0]+(b[0]-a[0])*f)/255,(a[1]+(b[1]-a[1])*f)/255,(a[2]+(b[2]-a[2])*f)/255);}
+
+  var scene,camera,renderer,group,raf;
+  var host=$('host'), labelsDiv=$('labels');
+  var yaw=0.7, pitch=-0.6, dragging=false, lastX=0, lastY=0, camR=44;
+
+  // Each label has a world anchor point `p`, plus an outward push direction `push`
+  // (world vector) so the label sits just OUTSIDE the terrain next to its axis.
+  // `kind`:'tick' is an endpoint marker; 'axis' is the axis title (gets an arrow glyph).
+  var ANCH=[
+    // magnitude axis (X, orange): endpoints + a midpoint title
+    {cls:'mag',  kind:'tick', txt:'0',  p:[-SX/2, 0.2, SZ/2],   push:[-1.6,-0.4, 1.6]},
+    {cls:'mag',  kind:'tick', txt:'10', p:[ SX/2, 0.2, SZ/2],   push:[ 1.6,-0.4, 1.6]},
+    {cls:'mag',  kind:'axis', txt:'\u2192 activation magnitude', p:[0, 0.2, SZ/2], push:[0,-0.6,2.6]},
+    // time axis (Z, teal): endpoints + midpoint title
+    {cls:'time', kind:'tick', txt:'batch 0 (early)', p:[-SX/2, 0.2, SZ/2],  push:[-2.6,0,1.2]},
+    {cls:'time', kind:'tick', txt:'batch 43 (late)', p:[-SX/2, 0.2, -SZ/2], push:[-2.6,0,-1.2]},
+    {cls:'time', kind:'axis', txt:'\u2196 training time', p:[-SX/2, 0.2, 0], push:[-3.2,0,0]},
+    // count axis (Y, purple): top title
+    {cls:'cnt',  kind:'axis', txt:'\u2191 count of activations', p:[-SX/2, HY, SZ/2], push:[-1.2,1.8,1.2]}
+  ];
+  var labEls=[];
+  function buildLabels(){
+    labelsDiv.innerHTML='';labEls=[];
+    ANCH.forEach(function(a){
+      var el=document.createElement('div');
+      el.className='lab '+a.cls+(a.kind==='axis'?' axislab':' ticklab');
+      el.innerHTML=a.txt;
+      labelsDiv.appendChild(el);labEls.push(el);
+    });
+  }
+  function projectPt(px,py,pz){
+    var v=new THREE.Vector3(px,py,pz).project(camera);
+    return {x:(v.x*0.5+0.5)*host.clientWidth, y:(-v.y*0.5+0.5)*host.clientHeight, behind:v.z>1};
+  }
+  function updateLabels(){
+    if(!camera||!renderer)return;
+    var boxes=[];
+    for(var n=0;n<ANCH.length;n++){
+      var a=ANCH[n];
+      var base=projectPt(a.p[0],a.p[1],a.p[2]);
+      var off =projectPt(a.p[0]+a.push[0], a.p[1]+a.push[1], a.p[2]+a.push[2]);
+      var el=labEls[n];
+      if(base.behind){el.style.display='none';continue;}
+      el.style.display='block';
+      boxes.push({el:el,x:off.x,y:off.y});
+    }
+    // simple vertical de-overlap within horizontal clusters
+    boxes.sort(function(p,q){return p.y-q.y;});
+    var MINGAP=18;
+    for(var i=1;i<boxes.length;i++){
+      if(boxes[i].y - boxes[i-1].y < MINGAP && Math.abs(boxes[i].x-boxes[i-1].x) < 95)
+        boxes[i].y = boxes[i-1].y + MINGAP;
+    }
+    boxes.forEach(function(b){b.el.style.left=b.x+'px';b.el.style.top=b.y+'px';});
+  }
+
+  function start(){
+    if(typeof THREE==='undefined'){host.style.display='none';$('err').style.display='block';setVerdict();narrate();report();return;}
+    var W=host.clientWidth||600, H=host.clientHeight||400;
+    scene=new THREE.Scene();
+    camera=new THREE.PerspectiveCamera(42,W/H,0.1,400);
+    renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+    renderer.setSize(W,H);renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+    host.insertBefore(renderer.domElement, labelsDiv); // canvas under the labels overlay
+    scene.add(new THREE.AmbientLight(0xffffff,0.82));
+    var d1=new THREE.DirectionalLight(0xffffff,0.48);d1.position.set(16,42,24);scene.add(d1);
+    var d2=new THREE.DirectionalLight(0xffffff,0.2);d2.position.set(-22,18,-16);scene.add(d2);
+
+    MAT=buildMatrix();
+    buildLabels();
+    buildMesh();
+    placeCamera();
+    setVerdict();
+    narrate();
+
+    host.addEventListener('mousedown',function(e){dragging=true;lastX=e.clientX;lastY=e.clientY;});
+    window.addEventListener('mouseup',function(){dragging=false;});
+    window.addEventListener('mousemove',function(e){if(!dragging)return;
+      yaw+=(e.clientX-lastX)*0.008; pitch+=(e.clientY-lastY)*0.006;
+      pitch=Math.max(-1.4,Math.min(-0.05,pitch));
+      lastX=e.clientX;lastY=e.clientY;placeCamera();});
+    host.addEventListener('wheel',function(e){e.preventDefault();
+      camR*=(1+(e.deltaY>0?1:-1)*0.08); camR=Math.max(24,Math.min(85,camR));placeCamera();},{passive:false});
+    host.addEventListener('touchstart',function(e){if(e.touches.length===1){dragging=true;lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;}},{passive:true});
+    host.addEventListener('touchmove',function(e){if(!dragging||e.touches.length!==1)return;
+      yaw+=(e.touches[0].clientX-lastX)*0.01; pitch+=(e.touches[0].clientY-lastY)*0.007;
+      pitch=Math.max(-1.4,Math.min(-0.05,pitch));
+      lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;placeCamera();},{passive:true});
+    host.addEventListener('touchend',function(){dragging=false;});
+
+    function animate(){raf=requestAnimationFrame(animate);
+      if(!dragging&&!sweep){yaw+=spin*0.005;placeCamera();}
+      renderer.render(scene,camera);
+      updateLabels();
+    }
+    animate();
+    window.addEventListener('resize',onResize);setTimeout(onResize,120);setTimeout(onResize,400);
+  }
+
+  function onResize(){if(!renderer)return;
+    var w=host.clientWidth,h=host.clientHeight; if(!w||!h)return;
+    camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);updateLabels();}
+
+  function placeCamera(){
+    var cx=0, cy=HY*0.28, cz=0;
+    camera.position.set(
+      cx + camR*Math.cos(pitch)*Math.sin(yaw),
+      cy + camR*Math.sin(-pitch),
+      cz + camR*Math.cos(pitch)*Math.cos(yaw));
+    camera.lookAt(cx,cy,cz);
+    updateLabels();
+  }
+
+  // colored axis arrows in the scene
+  function addAxes(g){
+    var O=new THREE.Vector3(-SX/2,0.02,SZ/2); // origin at front-left-floor
+    // magnitude (X, orange)
+    g.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0), O, SX, 0xf6921e, 2.2, 1.3));
+    // time (Z, teal) -> points from front to back = -Z
+    g.add(new THREE.ArrowHelper(new THREE.Vector3(0,0,-1), O, SZ, 0x16a3a3, 2.2, 1.3));
+    // count (Y, purple)
+    g.add(new THREE.ArrowHelper(new THREE.Vector3(0,1,0), O, HY+1, 0x7b5cd6, 2.0, 1.2));
+  }
+
+  function buildMesh(){
+    if(group){scene.remove(group);
+      group.traverse(function(o){if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();});}
+    group=new THREE.Group();
+
+    // `front` = index of the newest revealed batch (0..NB-1). Sweep reveals 0,1,2,... over time.
+    var front = sweep? sweepT*(NB-1) : (NB-1);
+
+    var geo=new THREE.PlaneGeometry(SX,SZ,NBIN-1,NB-1);
+    var pos=geo.attributes.position;
+    var colors=[];
+    // Geometry row j sits in world from BACK (j=0) to FRONT (j=NB-1) after rotation.
+    // We want EARLY batches at the FRONT, so geometry row j shows data batch b = (NB-1 - j).
+    for(var j=0;j<NB;j++){
+      var b = NB-1 - j;                    // data batch shown on this geometry row
+      var g=1;
+      if(sweep){ g = b<=front ? 1 : (b<=front+1 ? (front+1-b) : 0); g=Math.max(0,Math.min(1,g)); }
+      var isCurrent = sweep && Math.abs(b-front)<1;   // newest batch -> highlight
+      for(var i=0;i<NBIN;i++){
+        var k=j*NBIN+i;
+        var v=MAT[b][i]*g;
+        pos.setZ(k, v*HY);
+        var col=viridis(MAT[b][i]);
+        var fade= (sweep && g<1)? (0.4+0.6*g) : 1;
+        var r=col.r*fade+(1-fade)*0.93, gg=col.g*fade+(1-fade)*0.95, bb=col.b*fade+(1-fade)*0.99;
+        if(isCurrent){ r=Math.min(1,r*0.5+0.5); gg=Math.min(1,gg*0.4+0.18); bb=Math.min(1,bb*0.4+0.05); }
+        colors.push(r,gg,bb);
+      }
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors,3));
+    geo.computeVertexNormals();
+
+    var mat=new THREE.MeshStandardMaterial({vertexColors:true,side:THREE.DoubleSide,roughness:0.8,metalness:0.04});
+    var mesh=new THREE.Mesh(geo,mat);mesh.rotation.x=-Math.PI/2;group.add(mesh);
+
+    var wire=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x25324a,wireframe:true,transparent:true,opacity:0.05}));
+    wire.rotation.x=-Math.PI/2;group.add(wire);
+
+    var grid=new THREE.GridHelper(Math.max(SX,SZ)+2,14,0xc4d2ea,0xe6ecf6);
+    grid.position.y=-0.05;group.add(grid);
+
+    addAxes(group);
+
+    if(sweep){
+      // current batch `front` sits at world z = +SZ/2 - front*step  (front batch at +Z)
+      var zCur = SZ/2 - (Math.min(front,NB-1)/(NB-1))*SZ;
+      var pts=[new THREE.Vector3(-SX/2,0.12,zCur), new THREE.Vector3(SX/2,0.12,zCur)];
+      group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({color:0xf6921e})));
+    }
+
+    scene.add(group);
+  }
+
+  // ---- narration: explains what's on screen, updates during sweep ----
+  function narrate(){
+    var t=$('narratetext'); if(!t)return;
+    var dot=document.querySelector('.dotpulse');
+    if(!sweep){
+      if(dot)dot.style.background='#16a3a3';
+      t.innerHTML='Each <b class="time">row from front to back</b> is one training batch. Reading a row <b class="mag">left&rarr;right</b> gives that batch\u2019s activation histogram; the <b class="cnt">height</b> is the count in each magnitude bin. Press <b>Sweep training</b> to watch the batches appear one by one.';
+    } else {
+      if(dot)dot.style.background='#f6921e';
+      var bi=Math.round(Math.min(sweepT*(NB-1),NB-1));
+      var pct=Math.round(sweepT*100);
+      var phase;
+      if(regime==='dead'){
+        phase = bi<14? 'Early on, activations are still spread out.' :
+                bi<30? 'Watch the <b class="mag">wall at the left edge</b> (magnitude\u22480) grow taller \u2014 neurons are dying.' :
+                       'The wall at zero now dominates: most neurons output 0 (dead ReLUs).';
+      } else if(regime==='explode'){
+        phase = bi<14? 'The ridge sits at moderate magnitude.' :
+                bi<30? 'The ridge is <b class="mag">marching right</b> \u2014 activation magnitudes are growing.' :
+                       'Magnitudes are very large now: activations are exploding.';
+      } else {
+        phase = bi<14? 'The ridge settles into a healthy low-mid band\u2026' :
+                bi<30? 'It stays put \u2014 the distribution is stable across batches.' :
+                       'Still stable at the end: this is what healthy training looks like.';
+      }
+      t.innerHTML='<b style="color:#f6b25a">Batch '+bi+' / '+(NB-1)+'</b> ('+pct+'% through training). '+
+        'The <b style="color:#f6b25a">orange ridge</b> is the newest batch just added at the <b class="time">back</b>. '+phase;
+    }
+    var bt=$('batchtag');
+    if(sweep){bt.style.display='block';
+      bt.innerHTML='<b>batch '+Math.round(Math.min(sweepT*(NB-1),NB-1))+'</b> / '+(NB-1);
+    } else bt.style.display='none';
+  }
+
+  function setVerdict(){
+    var v=$('verdict');
+    if(regime==='healthy'){v.style.background='rgba(22,163,163,.10)';
+      v.innerHTML='<b style="color:#0e8a8a">Healthy:</b> a steady ridge in the low-mid magnitude range that stays consistent across batches.';}
+    else if(regime==='dead'){v.style.background='rgba(224,85,110,.10)';
+      v.innerHTML='<b style="color:#c0394f">Dead ReLUs:</b> a tall wall at magnitude&approx;0 (the left edge) that grows taller as training proceeds.';}
+    else {v.style.background='rgba(246,146,30,.10)';
+      v.innerHTML='<b style="color:#c9760f">Exploding:</b> the ridge climbs and marches toward high magnitude as training proceeds.';}
+  }
+
+  // ---- controls ----
+  var regBtns=document.querySelectorAll('#regime button');
+  for(var bi=0;bi<regBtns.length;bi++){(function(btn){
+    btn.onclick=function(){
+      for(var x=0;x<regBtns.length;x++)regBtns[x].classList.remove('on');
+      btn.classList.add('on');regime=btn.dataset.r;MAT=buildMatrix();buildMesh();setVerdict();narrate();
+    };
+  })(regBtns[bi]);}
+  $('spin').oninput=function(e){spin=+e.target.value;};
+  $('resetview').onclick=function(){yaw=0.7;pitch=-0.6;camR=44;placeCamera();};
+  $('play').onclick=function(){
+    if(sweep){endSweep(false);return;}
+    sweep=true;sweepT=0;$('play').innerHTML='&#10073;&#10073; Stop';
+    sweepTimer=setInterval(function(){sweepT+=0.018;buildMesh();narrate();
+      if(sweepT>=1){endSweep(true);}},60);
+  };
+  function endSweep(finished){
+    sweep=false;clearInterval(sweepTimer);
+    $('play').innerHTML=finished?'&#9654; Replay sweep':'&#9654; Sweep training';
+    buildMesh();narrate();
+  }
+
+  // ---- robust startup ----
+  function tryStart(attempt){
+    if(typeof THREE!=='undefined'){ start(); return; }
+    if(attempt<40){ setTimeout(function(){tryStart(attempt+1);},100); }
+    else { host.style.display='none';$('err').style.display='block';setVerdict();narrate();report(); }
+  }
+  if(document.readyState==='loading'){window.addEventListener('DOMContentLoaded',function(){tryStart(0);});}
+  else { tryStart(0); }
+
+  function report(){parent.postMessage({type:'viz-height',id:'activation_stats_3d',height:document.body.scrollHeight},'*');}
+  new ResizeObserver(report).observe(document.body);
+  window.addEventListener('load',report);window.addEventListener('resize',report);
+  setTimeout(report,200);setTimeout(report,600);
+})();
+</script>
+</body>
+</html>
