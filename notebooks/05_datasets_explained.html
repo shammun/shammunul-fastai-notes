@@ -7553,9 +7553,6 @@ a.anchor-link {
 <li><strong>Shape the data</strong> - PIL images must become float tensors of the right dtype, range, and axis order before a network will accept them.</li>
 <li><strong>See the data</strong> - the single most effective debugging habit in deep learning is to <em>plot a batch</em> and check it looks right. We build a one-liner for that.</li>
 </ul>
-<blockquote>
-<p><strong>Climate / EO bridge.</strong> This is exactly the workflow you already run on ECOSTRESS or ERA5 tiles: a loader that reads rasters lazily, a transform that normalizes bands and reorders axes to channels-first, and a <code>show_images</code>-style grid to eyeball whether the patches and masks line up before you trust a model's loss. The library here is <code>datasets</code> instead of <code>rioxarray</code>, but the shape of the problem - lazy read &rarr; transform &rarr; batch &rarr; visualize - is identical.</p>
-</blockquote>
 <hr/>
 <h2 id="Prerequisites">Prerequisites<a class="anchor-link" href="#Prerequisites">¶</a></h2><p>You should be comfortable with:</p>
 <ul>
