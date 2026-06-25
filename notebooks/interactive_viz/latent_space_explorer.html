@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Latent Space Explorer</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1080px;margin:0 auto}
+  header h1{font-size:23px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:840px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .grid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:start;margin-top:18px}
+  .grid.is-narrow{grid-template-columns:1fr}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:15px 16px}
+  .card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;justify-content:space-between}
+  #latent{width:100%;height:auto;display:block;background:#fbfdff;border:1px solid var(--line);border-radius:12px;cursor:crosshair;touch-action:none}
+  .legend{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+  .reco{display:flex;flex-direction:column;align-items:center;gap:8px}
+  canvas.recon{width:170px;height:170px;border-radius:12px;border:1px solid var(--line);image-rendering:pixelated;background:#fff}
+  .rlabel{font-weight:800;font-size:15px;color:var(--purple)}
+  .coords{font-family:var(--mono);font-size:12px;color:var(--muted);background:#F6F8FE;border-radius:8px;padding:6px 11px;text-align:center}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+  .chips button{font:inherit;font-size:11px;font-weight:700;border:none;border-radius:999px;padding:5px 11px;cursor:pointer;background:var(--purple-soft);color:var(--purple)}
+  .chips button:hover{background:var(--purple);color:#fff}
+  .explain{color:#33415C;font-size:13.5px;margin-top:12px}
+  .explain p{margin:0 0 8px}
+  .explain b.p{color:var(--purple)}.explain b.t{color:var(--teal)}.explain b.o{color:var(--orange)}
+  .keybox{margin-top:8px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13px}
+  footer{margin-top:16px;color:var(--muted);font-size:12.5px;text-align:center}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Walk through the <span class="hl">latent space</span></h1>
+  <p class="sub">After training, the bottleneck is not random — similar clothes land near each other. This is a 2-D sketch of
+  that compressed space. <b>Drag the purple marker</b> (or click a cluster) and watch the decoder rebuild an image from
+  that point. Move between clusters and the reconstruction <b style="color:var(--purple)">morphs smoothly</b> — proof the
+  code is meaningful, not just memorized.</p>
+</header>
+
+<div class="grid" id="grid">
+  <div class="card">
+    <h2>Latent space (encoder output, 2-D view) <span style="font-family:var(--mono);font-weight:600;color:var(--muted)">drag me</span></h2>
+    <canvas id="latent" width="540" height="420"></canvas>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="card">
+    <h2>Decoder rebuilds from this point</h2>
+    <div class="reco">
+      <canvas class="recon" id="recon" width="28" height="28"></canvas>
+      <div class="rlabel" id="rlabel">—</div>
+      <div class="coords" id="coords">z = (0.00, 0.00)</div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div class="explain">
+      <p>The marker's position is a 2-D stand-in for the <b class="p">256-number latent code</b>. The decoder turns
+      whatever point you pick into a 28×28 image.</p>
+      <p>Land <b>inside a cluster</b> → a clean, confident reconstruction. Land <b>between clusters</b> → a blurry blend,
+      because that region wasn't seen much in training.</p>
+      <div class="keybox">Smooth morphing between clusters is the signature of a well-organized latent space — the whole reason autoencoders are useful for compression and feature learning.</div>
+    </div>
+  </div>
+</div>
+
+<footer>Drag slowly across the gap between two clusters to see one garment dissolve into another.</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const cv=$('latent'), g=cv.getContext('2d');
+
+// cluster prototypes: name, color, center(normalized 0..1), shape-fn key
+const CLUST=[
+  {nm:'T-shirt', c:'#E8821F', x:0.22,y:0.30, kind:'tshirt'},
+  {nm:'Trouser', c:'#6C5CE7', x:0.78,y:0.24, kind:'trouser'},
+  {nm:'Pullover',c:'#0E9C8F', x:0.30,y:0.72, kind:'pullover'},
+  {nm:'Sneaker', c:'#c0468f', x:0.74,y:0.74, kind:'sneaker'},
+  {nm:'Bag',     c:'#3b7dd8', x:0.52,y:0.50, kind:'bag'},
+];
+
+// scatter points around each cluster
+const PTS=[];
+CLUST.forEach((cl,ci)=>{ for(let i=0;i<40;i++){
+  const a=Math.random()*Math.PI*2, r=Math.random()*0.07;
+  PTS.push({x:cl.x+Math.cos(a)*r, y:cl.y+Math.sin(a)*r*1.1, c:cl.c});
+}});
+
+let mz={x:0.22,y:0.30}; // marker (start on T-shirt)
+
+function toPx(p){return [p.x*cv.width, p.y*cv.height];}
+function drawLatent(){
+  g.clearRect(0,0,cv.width,cv.height);
+  // soft cluster halos
+  CLUST.forEach(cl=>{const[px,py]=toPx(cl);
+    const grd=g.createRadialGradient(px,py,4,px,py,70);
+    grd.addColorStop(0,cl.c+'33');grd.addColorStop(1,cl.c+'00');
+    g.fillStyle=grd;g.beginPath();g.arc(px,py,70,0,7);g.fill();});
+  // points
+  PTS.forEach(p=>{const[px,py]=toPx(p);g.fillStyle=p.c+'aa';g.beginPath();g.arc(px,py,3.2,0,7);g.fill();});
+  // cluster labels
+  CLUST.forEach(cl=>{const[px,py]=toPx(cl);g.fillStyle=cl.c;g.font='bold 12px sans-serif';g.textAlign='center';
+    g.fillText(cl.nm,px,py-58);});
+  // marker
+  const[mx,my]=toPx(mz);
+  g.fillStyle='#6C5CE7';g.beginPath();g.arc(mx,my,9,0,7);g.fill();
+  g.strokeStyle='#fff';g.lineWidth=3;g.stroke();
+  g.strokeStyle='#6C5CE7';g.lineWidth=2;g.beginPath();g.arc(mx,my,15,0,7);g.stroke();
+}
+
+// shape generators in [0,1] over a 28x28 grid
+function shapeVal(kind,x,y){
+  const cx=13.5;
+  switch(kind){
+    case 'tshirt':{
+      const body=(y>9&&y<25&&Math.abs(x-cx)<7);
+      const sl=(y>9&&y<15&&(x>2&&x<8||x>20&&x<26));
+      const neck=(y>=9&&y<12&&Math.abs(x-cx)<3);
+      return (body||sl)&&!neck?0.85:0.05;
+    }
+    case 'trouser':{
+      const leg=(y>5&&y<26&&(Math.abs(x-9)<3||Math.abs(x-18)<3));
+      const waist=(y>=5&&y<8&&x>6&&x<22);
+      return (leg||waist)?0.85:0.05;
+    }
+    case 'pullover':{
+      const body=(y>7&&y<25&&Math.abs(x-cx)<8);
+      const sl=(y>7&&y<19&&(x>1&&x<7||x>21&&x<27));
+      return (body||sl)?0.8:0.05;
+    }
+    case 'sneaker':{
+      const sole=(y>19&&y<24&&x>3&&x<25);
+      const top=(y>12&&y<20&&x>3&&x<19 && (y-12)>(x-3)*-0.4);
+      return (sole||top)?0.82:0.05;
+    }
+    case 'bag':{
+      const body=(y>11&&y<25&&x>6&&x<22);
+      const handle=(y>6&&y<13&&(Math.abs(x-10)<1.5||Math.abs(x-18)<1.5));
+      return (body||handle)?0.8:0.05;
+    }
+  }
+  return 0.05;
+}
+// weight of each cluster by inverse distance (for smooth morph)
+function weights(){
+  const w=CLUST.map(cl=>{const dx=cl.x-mz.x,dy=cl.y-mz.y;const d=Math.sqrt(dx*dx+dy*dy);return 1/Math.pow(d+0.02,4);});
+  const s=w.reduce((a,b)=>a+b,0);return w.map(v=>v/s);
+}
+const rc=$('recon').getContext('2d'); rc.imageSmoothingEnabled=false;
+function drawRecon(){
+  const w=weights(); const N=28; const img=rc.createImageData(N,N),d=img.data;
+  let blurAmt=0;
+  // blur grows with how "between" we are (max weight low = ambiguous)
+  const maxw=Math.max(...w); blurAmt = maxw<0.6?1:0;
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    let v=0; CLUST.forEach((cl,ci)=>{v+=w[ci]*shapeVal(cl.kind,x,y);});
+    if(blurAmt){ // crude blend already smooths; add slight noise to read as "uncertain"
+      v+=(Math.random()-0.5)*0.05;
+    }
+    v=Math.max(0,Math.min(1,v));
+    const px=Math.round(255-v*210);
+    d[(y*N+x)*4]=px;d[(y*N+x)*4+1]=px;d[(y*N+x)*4+2]=px;d[(y*N+x)*4+3]=255;
+  }
+  rc.putImageData(img,0,0);
+  // label = dominant cluster, or "blend"
+  const idx=w.indexOf(Math.max(...w));
+  $('rlabel').textContent = maxw>0.62 ? CLUST[idx].nm : 'blend of '+CLUST[idx].nm+' …';
+  $('rlabel').style.color = CLUST[idx].c;
+  $('coords').textContent=`z ≈ (${(mz.x*2-1).toFixed(2)}, ${(1-mz.y*2).toFixed(2)})`;
+}
+function render(){ drawLatent(); drawRecon(); postH(); }
+
+// drag
+function setFromEvent(e){
+  const r=cv.getBoundingClientRect();
+  mz.x=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+  mz.y=Math.max(0,Math.min(1,(e.clientY-r.top)/r.height));
+  render();
+}
+let drag=false;
+cv.addEventListener('pointerdown',e=>{drag=true;cv.setPointerCapture(e.pointerId);setFromEvent(e);});
+cv.addEventListener('pointermove',e=>{if(drag)setFromEvent(e);});
+cv.addEventListener('pointerup',()=>{drag=false;});
+
+// legend + jump chips
+const leg=$('legend'), chips=$('chips');
+CLUST.forEach((cl,i)=>{
+  const s=document.createElement('span');s.innerHTML=`<i class="dot" style="background:${cl.c}"></i>${cl.nm}`;leg.appendChild(s);
+  const b=document.createElement('button');b.textContent=cl.nm;b.onclick=()=>{mz={x:cl.x,y:cl.y};render();};chips.appendChild(b);
+});
+const bb=document.createElement('button');bb.textContent='↦ between';bb.style.background='var(--teal-soft)';bb.style.color='var(--teal)';
+bb.onclick=()=>{mz={x:(CLUST[0].x+CLUST[1].x)/2,y:(CLUST[0].y+CLUST[1].y)/2};render();};chips.appendChild(bb);
+
+const grid=$('grid'), wrap=document.querySelector('.wrap');
+function relayout(){ grid.classList.toggle('is-narrow', window.innerWidth<820); }
+function postH(){ const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window) window.parent.postMessage({type:'ae-frame-height',height:h},'*'); }
+function update(){ relayout(); postH(); }
+window.addEventListener('load',update); window.addEventListener('resize',update);
+if(window.ResizeObserver) new ResizeObserver(postH).observe(wrap||document.body);
+relayout(); render();
+setTimeout(update,200); setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

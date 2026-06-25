@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Same Padding Playground</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2; --zero:#cfe0f7;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1000px;margin:0 auto}
+  header h1{font-size:23px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:780px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 18px;margin:18px 0 16px}
+  .ctl{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:var(--muted)}
+  .ctl input{accent-color:var(--purple);width:120px}
+  .ctl .v{font-family:var(--mono);font-weight:800;color:var(--purple);min-width:28px;text-align:center}
+  .seg{display:inline-flex;background:#EFF3FB;border-radius:11px;padding:3px;gap:3px}
+  .seg button{border:none;background:transparent;font:inherit;font-weight:700;border-radius:9px;padding:6px 13px;cursor:pointer;color:var(--muted)}
+  .seg button.on{background:var(--purple);color:#fff;box-shadow:var(--shadow-sm)}
+
+  .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:start}
+  .grid.is-narrow{grid-template-columns:1fr}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+  .card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  canvas{width:100%;max-width:340px;height:auto;display:block;margin:0 auto;background:#fbfdff;border-radius:10px}
+  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:13px;height:13px;border-radius:3px;display:inline-block}
+  .sw.real{background:#aac4ea}.sw.zero{background:var(--zero);border:1px dashed #7fa8e0}.sw.k{background:rgba(108,92,231,.25);border:2px solid var(--purple)}
+
+  .formula{background:#F6F8FE;border-left:4px solid var(--purple);border-radius:10px;padding:12px 15px;font-family:var(--mono);font-size:13.5px;line-height:1.8;overflow-x:auto}
+  .formula b{color:var(--purple)} .formula .res{font-weight:800}
+  .res.same{color:var(--teal)} .res.shrunk{color:#d6455c}
+  .verdict{margin-top:12px;border-radius:12px;padding:11px 14px;font-weight:700;font-size:14px}
+  .verdict.same{background:var(--teal-soft);color:var(--teal)}
+  .verdict.shrunk{background:#fde8ec;color:#d6455c}
+  .note{color:var(--muted);font-size:12.5px;margin-top:12px;line-height:1.55}
+  .note b{color:var(--purple)}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px;margin-top:12px}
+  th,td{padding:5px 8px;text-align:center;border-bottom:1px solid #eef2f8}
+  th{color:var(--muted);font-weight:700}
+  tr.hl{background:var(--purple-soft)} tr.hl td{color:var(--purple);font-weight:800}
+  footer{margin-top:16px;color:var(--muted);font-size:12.5px;text-align:center}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>"Same" padding: <span class="hl">why padding = ks // 2 keeps the size</span></h1>
+  <p class="sub">A stride-1 convolution normally <i>shrinks</i> an image, because the kernel can't hang off the edge.
+  Adding a border of zeros — <code>padding = ks//2</code> — gives the kernel room to start in the corner, so the output
+  comes out the <b style="color:var(--teal)">same size</b> as the input. Slide the controls and watch the math resolve.</p>
+</header>
+
+<div class="controls">
+  <div class="ctl">input
+    <input type="range" id="inp" min="4" max="10" step="1" value="6"><span class="v" id="inpv">6</span></div>
+  <div class="ctl">kernel
+    <div class="seg" id="ksSeg">
+      <button data-v="3" class="on">3</button>
+      <button data-v="5">5</button>
+    </div>
+  </div>
+  <div class="ctl">padding
+    <input type="range" id="pad" min="0" max="3" step="1" value="1"><span class="v" id="padv">1</span></div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="card">
+    <h2>Padded input + kernel coverage</h2>
+    <canvas id="cv" width="380" height="380"></canvas>
+    <div class="legend">
+      <span><i class="sw real"></i> real pixels</span>
+      <span><i class="sw zero"></i> zero padding</span>
+      <span><i class="sw k"></i> kernel (corner start)</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Output-size formula</h2>
+    <div class="formula" id="formula"></div>
+    <div class="verdict" id="verdict"></div>
+    <div class="note" id="note"></div>
+    <table>
+      <tr><th>kernel</th><th>ks // 2</th><th>result vs input</th></tr>
+      <tr id="r3"><td>3</td><td>1</td><td>same</td></tr>
+      <tr id="r5"><td>5</td><td>2</td><td>same</td></tr>
+      <tr id="r7"><td>7</td><td>3</td><td>same</td></tr>
+    </table>
+  </div>
+</div>
+
+<footer>Set padding to 0 to see the output shrink; set it to <code>ks // 2</code> (1 for a 3×3 kernel) to get the size back exactly.</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+let N=6, KS=3, PAD=1;
+
+function out(){ return Math.floor((N+2*PAD-KS)/1)+1; }
+function draw(){
+  const cv=$('cv'),g=cv.getContext('2d');
+  const tot=N+2*PAD; const S=cv.width/Math.max(tot,1);
+  g.clearRect(0,0,cv.width,cv.height);
+  for(let y=0;y<tot;y++)for(let x=0;x<tot;x++){
+    const isZero = x<PAD||y<PAD||x>=PAD+N||y>=PAD+N;
+    g.fillStyle = isZero ? '#dcebff' : '#aac4ea';
+    g.fillStyle = isZero ? 'var(--zero)' : '#aac4ea';
+    g.fillStyle = isZero ? getComputedStyle(document.documentElement).getPropertyValue('--zero') : '#aac4ea';
+    g.fillRect(x*S,y*S,S,S);
+    if(isZero){ g.fillStyle='rgba(70,110,170,.55)';g.font=`bold ${Math.min(16,S*0.5)}px monospace`;g.textAlign='center';g.textBaseline='middle';g.fillText('0',x*S+S/2,y*S+S/2);}
+  }
+  // grid
+  g.strokeStyle='rgba(120,140,180,.25)';g.lineWidth=1;
+  for(let i=0;i<=tot;i++){g.beginPath();g.moveTo(i*S,0);g.lineTo(i*S,cv.height);g.stroke();g.beginPath();g.moveTo(0,i*S);g.lineTo(cv.width,i*S);g.stroke();}
+  // real-region border
+  g.strokeStyle='#7fa8e0';g.lineWidth=2;g.strokeRect(PAD*S,PAD*S,N*S,N*S);
+  // kernel starting in the corner (covers padded top-left)
+  g.fillStyle='rgba(108,92,231,.20)';g.fillRect(0,0,KS*S,KS*S);
+  g.strokeStyle='#6C5CE7';g.lineWidth=3;g.strokeRect(0,0,KS*S,KS*S);
+}
+
+function render(){
+  const O=out(); const same=(O===N);
+  $('formula').innerHTML=
+    `output = ⌊(input + 2·<b>pad</b> − <b>kernel</b>) / stride⌋ + 1<br>`+
+    `&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ⌊(${N} + 2·<b>${PAD}</b> − <b>${KS}</b>) / 1⌋ + 1<br>`+
+    `&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ${N+2*PAD-KS} + 1 = <span class="res ${same?'same':'shrunk'}">${O}</span>`;
+  const v=$('verdict');
+  if(same){ v.className='verdict same'; v.textContent=`✓ Output ${O}×${O} = input ${N}×${N}. Size preserved!`; }
+  else if(O<N){ v.className='verdict shrunk'; v.textContent=`✗ Output ${O}×${O} < input ${N}×${N}. The image shrank by ${N-O}.`; }
+  else { v.className='verdict shrunk'; v.textContent=`Output ${O}×${O} > input — too much padding.`; }
+  $('note').innerHTML = (PAD===KS>>1)
+    ? `You picked <b>padding = ks//2 = ${KS>>1}</b>, the magic value. The zeros exactly compensate for the kernel eating into the edges, so a stride-1 conv keeps the spatial size identical — which is exactly what the refine-step inside <code>deconv</code> relies on.`
+    : `Try <b>padding = ks//2 = ${KS>>1}</b> for this kernel to land back on the same size.`;
+  // highlight the matching row in the table
+  ['r3','r5','r7'].forEach(r=>$(r).classList.remove('hl'));
+  if(KS===3)$('r3').classList.add('hl'); if(KS===5)$('r5').classList.add('hl');
+  draw(); postH();
+}
+
+$('inp').addEventListener('input',()=>{ N=+$('inp').value; $('inpv').textContent=N; render(); });
+$('pad').addEventListener('input',()=>{ PAD=+$('pad').value; $('padv').textContent=PAD; render(); });
+$('ksSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;KS=+b.dataset.v;
+  document.querySelectorAll('#ksSeg button').forEach(x=>x.classList.toggle('on',x===b));render();});
+
+const grid=$('grid'), wrap=document.querySelector('.wrap');
+function relayout(){ grid.classList.toggle('is-narrow', window.innerWidth<780); }
+function postH(){ const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window) window.parent.postMessage({type:'ae-frame-height',height:h},'*'); }
+function update(){ relayout(); postH(); }
+window.addEventListener('load',update); window.addEventListener('resize',update);
+if(window.ResizeObserver) new ResizeObserver(postH).observe(wrap||document.body);
+relayout(); render();
+setTimeout(update,200); setTimeout(update,700);
+})();
+</script>
+</body>
+</html>
