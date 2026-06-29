@@ -11983,38 +11983,61 @@ Blue  ──────► [kernel_B] ─┘
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=9b077bcc">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=20f32e27">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="Seeing-the-Channels-in-Action:-Two-Teaching-Examples">Seeing the Channels in Action: Two Teaching Examples<a class="anchor-link" href="#Seeing-the-Channels-in-Action:-Two-Teaching-Examples">¶</a></h3><p>To build intuition for how an RGB image is really just <strong>three stacked grayscale images</strong>, it helps to run the <em>same</em> channel-splitting code on two very different inputs:</p>
+<ul>
+<li><strong>Example 1 — a real photograph</strong> (a grizzly bear). The channels carry natural colour: brown fur, green foliage, a hint of sky. This is what real model inputs look like.</li>
+<li><strong>Example 2 — a synthetic image we build by hand.</strong> We set Red to increase top→bottom, Green left→right, and Blue to a constant. Because <em>we</em> defined every pixel, we know exactly what each channel must contain — a perfect sanity check that we're reading the channels correctly.</li>
+</ul>
+<blockquote>
+<p>Both blocks below exist purely for <strong>understanding</strong>: the same visualisation code, run on two images — one messy and real, one clean and controlled. In an actual network the "channels" are simply the first dimension of the input tensor.</p>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a8b46045">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h4 id="Example-1-%E2%80%94-A-real-photograph-(grizzly-bear)">Example 1 — A real photograph (grizzly bear)<a class="anchor-link" href="#Example-1-%E2%80%94-A-real-photograph-(grizzly-bear)">¶</a></h4><p>We read the photo <strong>straight from GitHub</strong> (with <code>decode_image</code> on the downloaded bytes) so the exact same code works locally and on Colab — no local <code>images/</code> folder required.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=10e08372">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [73]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># =====================================================</span>
-<span class="c1"># LOADING A COLOR IMAGE</span>
+<span class="c1"># EXAMPLE 1 - LOAD A REAL PHOTO (read directly from GitHub)</span>
 <span class="c1"># =====================================================</span>
 
-<span class="k">try</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">torchvision.io</span> <span class="kn">import</span> <span class="n">read_image</span>
+<span class="kn">from</span> <span class="nn">torchvision.io</span> <span class="kn">import</span> <span class="n">decode_image</span>
+<span class="kn">import</span> <span class="nn">torch</span><span class="o">,</span> <span class="nn">urllib.request</span>
 
-    <span class="c1"># Load a color image</span>
-    <span class="n">im</span> <span class="o">=</span> <span class="n">read_image</span><span class="p">(</span><span class="s1">'images/grizzly.jpg'</span><span class="p">)</span>
+<span class="c1"># The grizzly photo lives in the GitHub repo, so we read it straight from there</span>
+<span class="c1"># instead of relying on a local 'images/' folder (which Colab does not have).</span>
+<span class="n">GRIZZLY_URL</span> <span class="o">=</span> <span class="s1">'https://raw.githubusercontent.com/shammun/shammunul-fastai-notes/main/notebooks/images/grizzly.jpg'</span>
+<span class="n">raw_bytes</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">GRIZZLY_URL</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">decode_image</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">(</span><span class="n">raw_bytes</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">uint8</span><span class="p">))</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Image shape: </span><span class="si">{</span><span class="n">im</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  - </span><span class="si">{</span><span class="n">im</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> color channels (RGB)"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  - </span><span class="si">{</span><span class="n">im</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> pixels height"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  - </span><span class="si">{</span><span class="n">im</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2"> pixels width"</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">Pixel value range: </span><span class="si">{</span><span class="n">im</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">im</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-<span class="k">except</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">"Image file not found. Creating a sample RGB image for demonstration."</span><span class="p">)</span>
-    <span class="c1"># Create a sample 100x100 RGB image with gradients</span>
-    <span class="n">im</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
-        <span class="n">im</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">255</span> <span class="o">*</span> <span class="n">i</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>  <span class="c1"># Red gradient top to bottom</span>
-        <span class="n">im</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">255</span> <span class="o">*</span> <span class="n">i</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>  <span class="c1"># Green gradient left to right</span>
-        <span class="n">im</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="mi">128</span>                  <span class="c1"># Constant blue</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Image shape:"</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">im</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"  -"</span><span class="p">,</span> <span class="n">im</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">"color channels (RGB)"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"  -"</span><span class="p">,</span> <span class="n">im</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s2">"pixels height"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"  -"</span><span class="p">,</span> <span class="n">im</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="s2">"pixels width"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Pixel value range:"</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">im</span><span class="o">.</span><span class="n">min</span><span class="p">()),</span> <span class="s2">"to"</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">im</span><span class="o">.</span><span class="n">max</span><span class="p">()))</span>
 </pre></div>
 </div>
 </div>
@@ -12027,22 +12050,26 @@ Blue  ──────► [kernel_B] ─┘
 <div class="jp-OutputArea-child">
 <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Image file not found. Creating a sample RGB image for demonstration.
-</pre>
+<pre>Image shape: (3, 1000, 846)
+  - 3 color channels (RGB)
+  - 1000 pixels height
+  - 846 pixels width
+Pixel value range: 0 to 255</pre>
 </div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=aef1d03e">
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=c3b818c6">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [74]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># =====================================================</span>
-<span class="c1"># DISPLAYING COLOR IMAGE</span>
+<span class="c1"># DISPLAY THE COLOR IMAGE</span>
 <span class="c1"># =====================================================</span>
 
 <span class="c1"># PyTorch stores images as (C, H, W) but matplotlib expects (H, W, C)</span>
@@ -12071,16 +12098,17 @@ Blue  ──────► [kernel_B] ─┘
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=9168dade">
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=378511b4">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [75]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># =====================================================</span>
-<span class="c1"># VISUALIZING INDIVIDUAL COLOR CHANNELS</span>
+<span class="c1"># VISUALIZE THE INDIVIDUAL COLOR CHANNELS</span>
 <span class="c1"># =====================================================</span>
 
 <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
@@ -12089,8 +12117,7 @@ Blue  ──────► [kernel_B] ─┘
 <span class="n">cmaps</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'Reds'</span><span class="p">,</span> <span class="s1">'Greens'</span><span class="p">,</span> <span class="s1">'Blues'</span><span class="p">]</span>
 
 <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">cmap</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">channels</span><span class="p">,</span> <span class="n">cmaps</span><span class="p">)):</span>
-    <span class="c1"># im[i] gets the i-th channel</span>
-    <span class="c1"># 255 - im[i] inverts so darker = more of that color</span>
+    <span class="c1"># im[i] gets the i-th channel; 255 - im[i] inverts so darker = more of that color</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="mi">255</span> <span class="o">-</span> <span class="n">im</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2"> Channel"</span><span class="p">)</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">'off'</span><span class="p">)</span>
@@ -12116,6 +12143,140 @@ Blue  ──────► [kernel_B] ─┘
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4c6cfefc">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h4 id="Example-2-%E2%80%94-A-synthetic-image-we-build-ourselves">Example 2 — A synthetic image we build ourselves<a class="anchor-link" href="#Example-2-%E2%80%94-A-synthetic-image-we-build-ourselves">¶</a></h4><p>No file needed — we construct every pixel directly. Because the gradients are known in advance, the three channel panels below should look exactly as designed: <strong>Red</strong> brightest at the bottom, <strong>Green</strong> brightest on the right, <strong>Blue</strong> a flat mid-grey everywhere. It's the same channel-visualisation code as above, just pointed at a different image.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=25a3a85b">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># =====================================================</span>
+<span class="c1"># EXAMPLE 2 - BUILD A SYNTHETIC RGB IMAGE BY HAND</span>
+<span class="c1"># =====================================================</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
+
+<span class="c1"># We define every pixel ourselves so we know exactly what each channel holds:</span>
+<span class="c1">#   Red   increases from top to bottom</span>
+<span class="c1">#   Green increases from left to right</span>
+<span class="c1">#   Blue  is constant everywhere</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+    <span class="n">im</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">255</span> <span class="o">*</span> <span class="n">i</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>   <span class="c1"># Red gradient (rows)</span>
+    <span class="n">im</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">255</span> <span class="o">*</span> <span class="n">i</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span>   <span class="c1"># Green gradient (cols)</span>
+<span class="n">im</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="mi">128</span>                       <span class="c1"># Constant blue</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Image shape:"</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">im</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Pixel value range:"</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">im</span><span class="o">.</span><span class="n">min</span><span class="p">()),</span> <span class="s2">"to"</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">im</span><span class="o">.</span><span class="n">max</span><span class="p">()))</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Image shape: (3, 100, 100)
+Pixel value range: 0 to 252</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=c0143b1b">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># =====================================================</span>
+<span class="c1"># DISPLAY THE SYNTHETIC COLOR IMAGE</span>
+<span class="c1"># =====================================================</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">im</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">"Synthetic Image (RGB)"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">'off'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedImage jp-OutputArea-output" tabindex="0">
+<img alt="No description has been provided for this image" class="" src="data:image/png;base64,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"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=31b8504d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># =====================================================</span>
+<span class="c1"># VISUALIZE THE SYNTHETIC IMAGE'S RGB CHANNELS</span>
+<span class="c1"># =====================================================</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+
+<span class="n">channels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'Red'</span><span class="p">,</span> <span class="s1">'Green'</span><span class="p">,</span> <span class="s1">'Blue'</span><span class="p">]</span>
+<span class="n">cmaps</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'Reds'</span><span class="p">,</span> <span class="s1">'Greens'</span><span class="p">,</span> <span class="s1">'Blues'</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">cmap</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">channels</span><span class="p">,</span> <span class="n">cmaps</span><span class="p">)):</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="mi">255</span> <span class="o">-</span> <span class="n">im</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2"> Channel"</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">'off'</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedImage jp-OutputArea-output" tabindex="0">
+<img alt="No description has been provided for this image" class="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABBoAAAFeCAYAAAArLXyCAAAAOXRFWHRTb2Z0d2FyZQBNYXRwbG90bGliIHZlcnNpb24zLjkuMiwgaHR0cHM6Ly9tYXRwbG90bGliLm9yZy8hTgPZAAAACXBIWXMAAArEAAAKxAFmbYLUAAAUDElEQVR4nO3dXYicZ9kH8GtmdhNNNptN1japblAoNSIWPRBiqXSRWr+q/SBYbSH2IJG+VaMHLWL6YWNDFSJ+YIO8VcRqbDwogdrGBHpghLYeRIJRcmI9iG5JE7spZrvN7tpmc78HJdOZ6e4meeaCFya/HxR25vnYe6blZvn3up4rClT07ne/uwwMDJSlS5eWiCg333xzmZqaKqWUcscdd5SHHnqoee7s7GwZGBgoL7zwQnn00UfL6Oho89ipU6dKf39/eeaZZ97yO3bu3FlWrVp1znXs3r27+frWW28t3//+9+c89+677y533XVXKaWUX/7yl+XKK69sHvv73/9eli5d2nwdEeXgwYPN11dddVV5/PHHSymlrF27tjz33HPNYwcOHCiXX355KaWU/fv3N38GWMjOnTvL6tWr295btWpVWb58eVm8eHHzvYgof/rTn5qvP/nJT5bHHnus+fqll14qixYtKrOzs+V73/te+fKXv9x2z/e///3NPXahva3VM888UyKiTE9Pz7v+0dHR8oMf/KD5esuWLeWrX/3qnOfu2LGjrF+/vpTyxj45ODhYzpw5U0opZWZmpkREGR8fL6UsvK8v9NmPHDlSGo3GvOsFaHX2b9nly5eXer1e1q5dW44fP952/Ozeefvtt5dt27Y1j+3cubP59+y59t1WGzduLF/4whfmXdORI0dKRJSXX365+d5ll11W/vznP895/oc//OHy1FNPNde4efPm5rFHHnmkXH/99aWUhffdY8eOlSVLlpTXXnutee327dvLxo0bSymlPPDAA82f4XzVA7qwb9++mJycjCeffDL++te/xvT0dEREjI2NxUMPPRRDQ0MxNDQUK1eujNOnT8fRo0fj2LFjsWbNmuY9lixZEsPDw3Pef3h4OE6cOBGnT59ecB2XXnpp2/1effXViIg4evRo3HzzzbF69epYvnx57NixI15++eV5rzt16tR53XdsbCw+/elPNz/fxz/+8RgfH19wjQCdzu5xs7OzzfeOHz8ehw8fjv/+979t546MjDR/HhsbizvuuKO5B11xxRVRq9XipZdeirGxsdi5c2fz2NDQUBw5ciRefPHF5vXz7W2dazu7noXMd6/Jycn40pe+FCMjIzE4OBjf/OY32/bfSy65JGq1WkRELF68OBqNRts6Ftp/5/vsABdq3759cfLkyZiamoqbbroprr/++gu+x/nsu2cNDw+fc19tNBqxcuXK5uvWPfDZZ5+Nq6++OlauXBlDQ0Nx6NChBf+2bd1X59t3x8bGYmZmJi655JLm+h988MH497//fcHfBZwlaKBrtVotPve5z8XHPvax2LZtW0S88Qfxgw8+GCdPnmz+Mz09HevWrYvLLrssXnjhheb109PTbRtkq6uuuioWLVoUv//97yut7b777osVK1bE888/HxMTE/G1r30tSimV7tVqZGQk/vCHPzQ/28TERExMTHR9X+Di8pGPfCT6+vpi79695zz37B+HEW/sQY8++mjbHjszMxOrV6+OkZGR2LRpU9uxqampuOWWWy5obWvXro13vetd8bvf/e6CP1dExA9/+MMYHx+PQ4cOxSuvvBLbt29P23/n++wAVS1evDg2bNgQBw8ejBMnTrzl+NKlS2Nqaqr5ujUsuJB999prr40DBw7EsWPHKq1zw4YNcfvtt8fx48fj5MmT8aEPfajrvXVkZCQGBgbiP//5T3P9k5OT8dRTT3V1Xy5uggbS3H333fHzn/88xsfHY+PGjbFjx474y1/+EqWUmJiYiN27d0dExGc+85k4ePBg7N27N1577bX4zne+E2fOnJnznkNDQ3H//ffHV77yldi3b1/MzMzEzMxMPPbYY/Hwww+fc02Tk5OxbNmyGBgYiMOHD8dvf/vblM+6adOmuPfee5tJ9dGjR+Ppp59OuTdw8VixYkXcc889ceedd8bevXtjeno6Zmdn48CBAwtet2nTpvjud78b//jHPyIiYnx8PJ588smIiLjtttti9+7d8cc//jHOnDkTp06dij179rylYutc6vV6bN++PR544IHYtWtXvPrqq3H69OnYs2dPbN269ZzXT05OxpIlS2L58uXxr3/9K372s59d0O+fz0KfHaCq119/PXbt2hWXXnrpnJW2H/zgB2PPnj0xMTER//znP+MXv/hF89iF7LvXXXddXHPNNbF+/fr429/+FmfOnIkTJ07E1q1b49lnnz3nOicnJ2N4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"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cd2c263c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
