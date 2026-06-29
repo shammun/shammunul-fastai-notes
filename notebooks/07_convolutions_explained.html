@@ -8379,6 +8379,17 @@ $$\text{output} = \sum_{i=1}^{9} a_i \cdot k_i = a_1 k_1 + a_2 k_2 + ... + a_9 k
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3>A Worked Example (from the fastbook)</h3><p>Here&rsquo;s the input &mdash; a small patch of pixel values:</p><p><img alt="The image" width="75" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/att_00032.png"/></p><p>Here&rsquo;s our kernel &mdash; the small weight matrix we slide over it:</p><p><img alt="The kernel" width="55" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/att_00033.png"/></p><p>Since the filter fits in the image four times, we get four output activations:</p><p><img alt="The activations" width="52" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/att_00034.png"/></p><p>Applying the kernel at one position &mdash; element-wise multiply, then sum:</p><p><img alt="Applying the kernel" width="366" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/att_00035.png"/></p><p>Written as an equation, a single output cell is just a weighted sum of the nine inputs:</p><p><img alt="The equation" width="436" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/att_00036.png"/></p>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=57f5315d">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9783,7 +9794,18 @@ tensor([[-1.,  0.,  1.],
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=e7acf30f">
+</div><div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3>Visualizing the Convolution</h3><p>Applying a kernel across a grid &mdash; the kernel slides over every position:</p><p><img alt="Applying a kernel across a grid" width="400" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/chapter9_nopadconv.svg"/></p><p>Here&rsquo;s the result of applying a 3&times;3 kernel to a 4&times;4 image (animation courtesy of Vincent Dumoulin and Francesco Visin):</p><p><img alt="Result of applying a 3x3 kernel to a 4x4 image" width="782" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/att_00028.png"/></p><p><strong>The im2col trick.</strong> Rather than looping in Python, we lay every sliding window out as a <em>column</em> of a matrix; convolution then collapses into a single matrix multiply:</p><p><img alt="im2col laid out as a matrix multiply" width="700" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/att_conv_cell38.png"/></p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=e7acf30f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10696,6 +10718,17 @@ Output is 2x2 (roughly half in each dimension)
 
 </code></pre>
 <hr/>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3>Padding and Stride, Visually</h3><p>With appropriate padding we can keep the output the same size as the input:</p><p><img alt="A convolution with padding" width="600" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/chapter9_padconv.svg"/></p><p>A 4&times;4 kernel with a 5&times;5 input and 2 pixels of padding gives a 6&times;6 activation map (courtesy of Vincent Dumoulin and Francesco Visin):</p><p><img alt="A 4x4 kernel with 5x5 input and 2 pixels of padding" width="783" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/att_00029.png"/></p><p>A <em>stride-2</em> convolution &mdash; a 3&times;3 kernel on a 5&times;5 input with 1 pixel of padding &mdash; moves two pixels at a time, roughly halving the output:</p><p><img alt="A 3x3 kernel with 5x5 input, stride-2, and 1 pixel of padding" width="774" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/att_00030.png"/></p>
 </div>
 </div>
 </div>
@@ -11855,6 +11888,17 @@ Bias shape: torch.Size([4])
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3>Tracing the Receptive Field in a Spreadsheet</h3><p>If you trace the <em>precedents</em> of one cell in the second conv layer, you see the cells that fed it directly &mdash; its immediate precedents:</p><p><img alt="Immediate precedents of conv2 layer" width="308" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/att_00068.png"/></p><p>Trace one level further back and a 7&times;7 area of the <strong>input</strong> turns out to influence that single deep activation &mdash; that area is its receptive field:</p><p><img alt="Secondary precedents of conv2 layer" width="601" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/att_00069.png"/></p>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=696b4c63">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -11928,7 +11972,18 @@ Blue  ──────► [kernel_B] ─┘
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=9b077bcc">
+</div><div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3>Convolution Over an RGB Image</h3><p>A colour picture is a rank-3 tensor; the kernel gains a matching depth so it spans all three channels at once:</p><p><img alt="Convolution over an RGB image" width="550" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/chapter9_rgbconv.svg"/></p><p>The three per-channel results are then added together to produce a single number for each grid location, for each output feature:</p><p><img alt="Adding the RGB filters" width="500" style="max-width:100%;height:auto;display:block;margin:0.5em auto;" src="images/chapter9_rgb_conv_stack.svg"/></p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=9b077bcc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
