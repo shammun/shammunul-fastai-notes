@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Callback System</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:16px;}
+  h1{font-size:18px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12.5px;margin:0 auto 14px;max-width:700px;line-height:1.5;}
+  .layout{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;justify-content:center;}
+  .col{flex:1 1 300px;min-width:300px;max-width:430px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .card h2{font-size:13px;margin:0 0 10px;color:var(--soft);text-transform:uppercase;letter-spacing:.04em;}
+  /* loop spine */
+  .hook{display:flex;align-items:center;gap:9px;padding:8px 10px;margin:5px 0;border-radius:9px;border:1px solid var(--line);
+        background:#f6f8fc;font-size:12.5px;cursor:pointer;transition:.18s;position:relative;}
+  .hook:hover{border-color:var(--ac);}
+  .hook code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;}
+  .hook .pin{width:10px;height:10px;border-radius:50%;background:#c7d2e4;flex:none;transition:.2s;}
+  .hook.active{background:#fff;border-color:var(--in);box-shadow:0 4px 12px rgba(246,146,30,.2);}
+  .hook.active .pin{background:var(--in);box-shadow:0 0 0 4px rgba(246,146,30,.18);}
+  .hook.work{background:#f0fbfb;border-style:dashed;color:var(--soft);font-style:italic;}
+  /* callbacks */
+  .cb{border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0;transition:.2s;background:#fff;}
+  .cb .top{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;}
+  .cb .ord{font-size:10.5px;font-family:ui-monospace,monospace;background:#eef0f6;color:var(--soft);border-radius:5px;padding:1px 6px;}
+  .cb .methods{margin-top:6px;display:flex;gap:5px;flex-wrap:wrap;}
+  .cb .m{font-size:10.5px;font-family:ui-monospace,monospace;border:1px solid var(--line);border-radius:6px;padding:2px 6px;color:var(--soft);background:#f8fafd;transition:.15s;}
+  .cb.fire{border-color:var(--in);box-shadow:0 6px 16px rgba(246,146,30,.22);transform:translateX(4px);}
+  .cb .m.on{background:var(--in);color:#fff;border-color:var(--in);}
+  .cb .dotc{width:10px;height:10px;border-radius:50%;}
+  .controls{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:14px 0 6px;}
+  button{font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:7px 13px;cursor:pointer;transition:.15s;}
+  button:hover{border-color:var(--ac);color:var(--ac);}
+  button:disabled{opacity:.45;cursor:default;}
+  button.primary{background:var(--ac);color:#fff;border-color:var(--ac);}
+  button.primary:hover{background:#6a4cc4;color:#fff;}
+  .speed{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--soft);}
+  .speed input{width:90px;accent-color:var(--ac);}
+  .progwrap{height:7px;background:#e7edf7;border-radius:6px;margin:12px auto 4px;overflow:hidden;max-width:760px;}
+  .prog{height:100%;width:0;background:linear-gradient(90deg,var(--ac),var(--in));transition:width .3s;}
+  .panel{background:#f4f7fd;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.6;margin:0 auto;max-width:760px;min-height:58px;}
+  .panel b{color:var(--ink);} .panel code{background:#e9eef7;border-radius:4px;padding:1px 4px;font-size:12px;}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin:12px auto 0;max-width:680px;line-height:1.5;}
+  .cancelbtn{margin-top:6px;}
+</style>
+</head>
+<body>
+<h1>The Callback System: Hooks Firing in Order</h1>
+<p class="sub">At each <b>hook point</b> the Learner calls <code>run_cbs(cbs, "before_batch")</code>, which loops over every callback <b>sorted by <code>.order</code></b> and runs its matching method — <i>if it has one</i>. Step through to watch each hook fire the right callback methods. Click a hook to jump there.</p>
+
+<div class="layout">
+  <div class="col">
+    <div class="card">
+      <h2>The loop & its hook points</h2>
+      <div class="hook" data-i="0"><span class="pin"></span><code>before_fit</code></div>
+      <div class="hook" data-i="1"><span class="pin"></span><code>before_epoch</code></div>
+      <div class="hook" data-i="2"><span class="pin"></span><code>before_batch</code></div>
+      <div class="hook work"><span class="pin" style="background:transparent"></span>predict → get_loss → backward → step</div>
+      <div class="hook" data-i="3"><span class="pin"></span><code>after_batch</code></div>
+      <div class="hook" data-i="4"><span class="pin"></span><code>after_epoch</code></div>
+      <div class="hook" data-i="5"><span class="pin"></span><code>after_fit</code></div>
+      <button id="cancel" class="cancelbtn">⚠ Raise CancelBatchException at next batch</button>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card">
+      <h2>Callbacks (run in <code>order</code>)</h2>
+      <div class="cb" data-cb="DeviceCB">
+        <div class="top"><span class="dotc" style="background:#2f7fd6"></span>DeviceCB <span class="ord">order 0</span></div>
+        <div class="methods"><span class="m" data-h="before_fit">before_fit</span><span class="m" data-h="before_batch">before_batch</span></div>
+      </div>
+      <div class="cb" data-cb="TrainCB">
+        <div class="top"><span class="dotc" style="background:#16a3a3"></span>TrainCB <span class="ord">order 0</span></div>
+        <div class="methods"><span class="m" data-h="predict">predict</span><span class="m" data-h="get_loss">get_loss</span><span class="m" data-h="backward">backward</span></div>
+      </div>
+      <div class="cb" data-cb="MetricsCB">
+        <div class="top"><span class="dotc" style="background:#7b5cd6"></span>MetricsCB <span class="ord">order 0</span></div>
+        <div class="methods"><span class="m" data-h="before_fit">before_fit</span><span class="m" data-h="before_epoch">before_epoch</span><span class="m" data-h="after_batch">after_batch</span><span class="m" data-h="after_epoch">after_epoch</span></div>
+      </div>
+      <div class="cb" data-cb="ProgressCB">
+        <div class="top"><span class="dotc" style="background:#f6921e"></span>ProgressCB <span class="ord">order 1</span></div>
+        <div class="methods"><span class="m" data-h="before_fit">before_fit</span><span class="m" data-h="before_epoch">before_epoch</span><span class="m" data-h="after_batch">after_batch</span><span class="m" data-h="after_fit">after_fit</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin:14px auto 0;max-width:780px;">
+  <div class="panel" id="panel">Press <b>Step ▶</b>. Watch how one hook name lights up the matching method in <i>several</i> callbacks at once.</div>
+  <div class="controls">
+    <button id="reset">↺ Reset</button>
+    <button id="step" class="primary">Step ▶</button>
+    <button id="auto">⏩ Auto</button>
+    <span class="speed">slow <input id="speed" type="range" min="400" max="1800" step="100" value="1000"> fast</span>
+  </div>
+  <div class="progwrap"><div class="prog" id="prog"></div></div>
+</div>
+<p class="note">This is the whole trick: the Learner never imports or knows any callback. It just shouts a hook name; <code>run_cbs</code> delivers it to whoever is listening, lowest <code>order</code> first. A callback can even shout back by <b>raising a Cancel exception</b> to skip the rest of a batch, epoch, or the whole fit.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const hooks=[
+ {h:'before_fit', d:'<b>before_fit</b> fires. Three callbacks have this method: <code>DeviceCB</code> moves the model to GPU, <code>MetricsCB</code> resets its accumulators, <code>ProgressCB</code> builds the bar. <code>TrainCB</code> has no <code>before_fit</code>, so it is silently skipped.'},
+ {h:'before_epoch', d:'<b>before_epoch</b> fires. <code>MetricsCB</code> clears per-epoch stats; <code>ProgressCB</code> starts a new bar for this epoch. Others have no matching method.'},
+ {h:'before_batch', d:'<b>before_batch</b> fires. Only <code>DeviceCB</code> reacts — it moves this batch onto the GPU so it sits with the model.'},
+ {h:'after_batch', d:'<b>after_batch</b> fires. <code>MetricsCB</code> records the batch loss/accuracy; <code>ProgressCB</code> nudges the bar forward. The actual forward/backward work happened in between (handled by <code>TrainCB</code>).'},
+ {h:'after_epoch', d:'<b>after_epoch</b> fires. <code>MetricsCB</code> computes the epoch average and the table row is built.'},
+ {h:'after_fit', d:'<b>after_fit</b> fires. <code>ProgressCB</code> closes the bar. Training done — and the Learner never had to know any of these callbacks existed.'},
+];
+// which callbacks (in order) implement each hook
+const impl={
+ before_fit:['DeviceCB','MetricsCB','ProgressCB'],
+ before_epoch:['MetricsCB','ProgressCB'],
+ before_batch:['DeviceCB'],
+ after_batch:['MetricsCB','ProgressCB'],
+ after_epoch:['MetricsCB'],
+ after_fit:['ProgressCB'],
+};
+let phase=-1, timer=null, cancelArmed=false, cancelled=false;
+const hookEls=[...document.querySelectorAll('.hook[data-i]')];
+function clearFire(){
+  document.querySelectorAll('.cb').forEach(c=>c.classList.remove('fire'));
+  document.querySelectorAll('.m').forEach(m=>m.classList.remove('on'));
+  hookEls.forEach(h=>h.classList.remove('active'));
+}
+function paint(){
+  clearFire();
+  if(phase<0){$('panel').innerHTML='Press <b>Step ▶</b>. Watch how one hook name lights up the matching method in <i>several</i> callbacks at once.';$('prog').style.width='0';$('step').textContent='Step ▶';$('step').disabled=false;broadcast();return;}
+  const hk=hooks[phase];
+  hookEls[phase].classList.add('active');
+  // cancel interception
+  if(cancelArmed && hk.h==='before_batch' && !cancelled){
+    cancelled=true; cancelArmed=false;
+    $('panel').innerHTML='<b>CancelBatchException raised inside before_batch!</b> The <code>with_cbs</code> wrapper catches it, so the model\'s forward/backward for this batch is <b>skipped entirely</b> — but <code>after_batch</code> still runs (it is in a <code>finally</code>). This is how <code>SingleBatchCB</code> stops after one batch.';
+    $('cancel').textContent='⚠ CancelBatch fired (reset to re-arm)';
+    impl[hk.h].forEach(name=>{
+      const cb=document.querySelector('.cb[data-cb="'+name+'"]');cb.classList.add('fire');
+      cb.querySelectorAll('.m').forEach(m=>{if(m.dataset.h===hk.h)m.classList.add('on');});
+    });
+    $('prog').style.width=((phase+1)/hooks.length*100)+'%';broadcast();return;
+  }
+  $('panel').innerHTML=hk.d;
+  impl[hk.h].forEach(name=>{
+    const cb=document.querySelector('.cb[data-cb="'+name+'"]');cb.classList.add('fire');
+    cb.querySelectorAll('.m').forEach(m=>{if(m.dataset.h===hk.h)m.classList.add('on');});
+  });
+  $('prog').style.width=((phase+1)/hooks.length*100)+'%';
+  $('step').textContent=phase>=hooks.length-1?'Done':'Step ▶';
+  $('step').disabled=phase>=hooks.length-1;
+  broadcast();
+}
+function step(){if(phase<hooks.length-1){phase++;paint();}else stopAuto();}
+function stopAuto(){clearInterval(timer);timer=null;$('auto').textContent='⏩ Auto';}
+function startAuto(){if(timer){stopAuto();return;}if(phase>=hooks.length-1)phase=-1;$('auto').textContent='⏸ Pause';timer=setInterval(()=>{step();if(phase>=hooks.length-1)stopAuto();},+$('speed').value);}
+hookEls.forEach((e,k)=>e.onclick=()=>{stopAuto();phase=k;paint();});
+$('step').onclick=()=>{stopAuto();step();};
+$('auto').onclick=startAuto;
+$('reset').onclick=()=>{stopAuto();phase=-1;cancelArmed=false;cancelled=false;$('cancel').textContent='⚠ Raise CancelBatchException at next batch';paint();};
+$('speed').oninput=()=>{if(timer){stopAuto();startAuto();}};
+$('cancel').onclick=()=>{cancelArmed=true;cancelled=false;$('cancel').textContent='⚠ Armed — step to before_batch to see it';};
+function broadcast(){parent.postMessage({type:'viz-height',id:'callback_system',height:document.body.scrollHeight},'*');}
+paint();
+addEventListener('load',broadcast);addEventListener('resize',broadcast);
+new ResizeObserver(broadcast).observe(document.body);
+</script>
+</body>
+</html>

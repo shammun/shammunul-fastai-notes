@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weighted Metrics</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#d9534f;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:16px;}
+  h1{font-size:18px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12.5px;margin:0 auto 14px;max-width:700px;line-height:1.5;}
+  .sub code{background:#e9eef7;border-radius:4px;padding:1px 4px;font-size:12px;}
+  .layout{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;justify-content:center;}
+  .col{flex:1 1 360px;min-width:320px;max-width:540px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .card h2{font-size:13px;margin:0 0 12px;color:var(--soft);text-transform:uppercase;letter-spacing:.04em;}
+  canvas{display:block;width:100%;height:auto;background:#fbfdff;border:1px solid var(--line);border-radius:9px;}
+  /* batch chips */
+  .batches{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  .chip{border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-size:11.5px;background:#f8fafd;cursor:pointer;transition:.18s;text-align:center;}
+  .chip:hover{border-color:var(--ac);}
+  .chip.active{border-color:var(--in);box-shadow:0 4px 12px rgba(246,146,30,.2);background:#fff;}
+  .chip .v{font-weight:700;font-size:13px;color:var(--out);}
+  .chip .n{color:var(--soft);font-family:ui-monospace,monospace;}
+  .readout{background:#f4f7fd;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.9;font-family:ui-monospace,Menlo,monospace;}
+  .readout .w{color:var(--in);font-weight:700;}.readout .g{color:var(--out);font-weight:700;}.readout .b{color:var(--bad);font-weight:700;}
+  .controls{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:14px 0 6px;}
+  button{font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:7px 13px;cursor:pointer;transition:.15s;}
+  button:hover{border-color:var(--ac);color:var(--ac);}
+  button:disabled{opacity:.45;cursor:default;}
+  button.primary{background:var(--ac);color:#fff;border-color:var(--ac);}
+  button.primary:hover{background:#6a4cc4;color:#fff;}
+  .speed{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--soft);}
+  .speed input{width:90px;accent-color:var(--ac);}
+  .progwrap{height:7px;background:#e7edf7;border-radius:6px;margin:12px 0 4px;overflow:hidden;}
+  .prog{height:100%;width:0;background:linear-gradient(90deg,var(--ac),var(--out));transition:width .3s;}
+  .panel{background:#f4f7fd;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.6;min-height:62px;margin-bottom:10px;}
+  .panel b{color:var(--ink);}.panel code{background:#e9eef7;border-radius:4px;padding:1px 4px;font-size:12px;}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin:12px auto 0;max-width:680px;line-height:1.5;}
+  .legend{display:flex;gap:16px;justify-content:center;font-size:11.5px;color:var(--soft);margin-top:8px;flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .sw{width:14px;height:3px;border-radius:2px;display:inline-block;}
+</style>
+</head>
+<body>
+<h1>Why Metrics Use a <i>Weighted</i> Running Average</h1>
+<p class="sub">Each batch reports a loss and a <b>count</b> of samples. To get the true epoch loss you can't just average the batch losses — a batch of 2 shouldn't count as much as a batch of 1024. The <code>Metric</code> class keeps a running <b>total ÷ total-count</b>. Step through to add batches and compare the <b style="color:var(--out)">correct weighted</b> mean against the <b style="color:var(--bad)">naive</b> simple mean.</p>
+
+<div class="layout">
+  <div class="col">
+    <div class="card">
+      <h2>Batches arriving (click to jump)</h2>
+      <div class="batches" id="batches"></div>
+      <div class="readout" id="readout"></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--out)"></i>weighted running mean (correct)</span>
+        <span><i class="sw" style="background:var(--bad)"></i>simple mean of batch losses (wrong)</span>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card">
+      <h2>Running average, batch by batch</h2>
+      <canvas id="cv" width="460" height="260"></canvas>
+    </div>
+  </div>
+</div>
+
+<div style="margin:14px auto 0;max-width:780px;">
+  <div class="panel" id="panel">Press <b>Step ▶</b> to feed in the first batch.</div>
+  <div class="controls">
+    <button id="reset">↺ Reset</button>
+    <button id="step" class="primary">Step ▶</button>
+    <button id="auto">⏩ Auto</button>
+    <span class="speed">slow <input id="speed" type="range" min="400" max="1700" step="100" value="950"> fast</span>
+  </div>
+  <div class="progwrap"><div class="prog" id="prog"></div></div>
+</div>
+<p class="note">In code: <code>add(val, n)</code> does <code>self.vals += [val]; self.ns += [n]</code>, and the metric is <code>(vals·ns).sum() / ns.sum()</code> — values weighted by their sample counts. That last small batch barely moves the correct average, but it yanks the naive one around.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+// (loss, n)  — deliberately mixed batch sizes incl. a tiny final batch
+const BATCH=[
+ {loss:1.20, n:1024}, {loss:0.95, n:1024}, {loss:0.80, n:1024},
+ {loss:0.72, n:1024}, {loss:0.68, n:1024}, {loss:1.60, n:32},
+];
+let phase=-1, timer=null;
+function buildChips(){
+  $('batches').innerHTML=BATCH.map((b,i)=>
+    `<div class="chip" data-i="${i}"><div>batch ${i+1}</div><div class="v">${b.loss.toFixed(2)}</div><div class="n">n=${b.n}</div></div>`).join('');
+  [...document.querySelectorAll('.chip')].forEach(c=>c.onclick=()=>{stopAuto();phase=+c.dataset.i;paint();});
+}
+function stats(upto){
+  let wsum=0,nsum=0,ssum=0,sc=0;
+  for(let i=0;i<=upto;i++){wsum+=BATCH[i].loss*BATCH[i].n;nsum+=BATCH[i].n;ssum+=BATCH[i].loss;sc++;}
+  return {weighted:wsum/nsum, simple:ssum/sc, nsum};
+}
+function draw(upto){
+  const cv=$('cv'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height,pad=34;
+  ctx.clearRect(0,0,W,H);
+  const xmax=BATCH.length, ymin=0.5, ymax=1.7;
+  const X=i=>pad+(i+0.5)/xmax*(W-1.6*pad);
+  const Y=v=>H-pad-(v-ymin)/(ymax-ymin)*(H-1.8*pad);
+  // grid
+  ctx.strokeStyle='#eef2f9';ctx.lineWidth=1;ctx.fillStyle='#9fb0cc';ctx.font='10px ui-monospace';
+  for(let g=0.6;g<=1.6;g+=0.2){const y=Y(g);ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad*0.6,y);ctx.stroke();ctx.fillText(g.toFixed(1),4,y+3);}
+  // bars = per-batch loss, width ~ n
+  for(let i=0;i<=upto;i++){
+    const bw=6+BATCH[i].n/1024*20;
+    ctx.fillStyle='rgba(123,92,214,.18)';
+    ctx.fillRect(X(i)-bw/2, Y(BATCH[i].loss), bw, H-pad-Y(BATCH[i].loss));
+    ctx.fillStyle='#7b5cd6';ctx.font='9px ui-monospace';
+    ctx.fillText('n='+BATCH[i].n, X(i)-14, H-pad+12);
+  }
+  // lines
+  function line(key,color){
+    ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.beginPath();
+    for(let i=0;i<=upto;i++){const v=stats(i)[key];const x=X(i),y=Y(v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+    ctx.stroke();
+    for(let i=0;i<=upto;i++){const v=stats(i)[key];ctx.fillStyle=color;ctx.beginPath();ctx.arc(X(i),Y(v),3.5,0,7);ctx.fill();}
+  }
+  if(upto>=0){line('simple','#d9534f');line('weighted','#16a3a3');}
+}
+function paint(){
+  [...document.querySelectorAll('.chip')].forEach((c,k)=>{
+    c.classList.toggle('active',k===phase);
+    c.style.opacity = (k<=phase)?'1':'0.4';
+  });
+  if(phase<0){
+    $('panel').innerHTML='Press <b>Step ▶</b> to feed in the first batch.';
+    $('readout').innerHTML='<span style="color:var(--soft)">No batches yet. total = 0, count = 0.</span>';
+    draw(-1);$('prog').style.width='0';$('step').textContent='Step ▶';$('step').disabled=false;broadcast();return;
+  }
+  const s=stats(phase),b=BATCH[phase];
+  $('readout').innerHTML=
+    `added batch ${phase+1}: loss=<span class="w">${b.loss.toFixed(2)}</span>, n=<span class="w">${b.n}</span><br>`+
+    `Σ(loss·n) / Σn  →  <span class="g">${s.weighted.toFixed(4)}</span>  ← weighted (correct)<br>`+
+    `mean of ${phase+1} batch losses  →  <span class="b">${s.simple.toFixed(4)}</span>  ← naive (wrong)<br>`+
+    `total samples so far = <span class="w">${s.nsum}</span>`;
+  let msg;
+  if(phase<5) msg=`<b>Batch ${phase+1} added.</b> Both averages roughly agree so far because every batch has the same size (n=1024). The weighting doesn't matter <i>yet</i>.`;
+  else msg=`<b>The tiny last batch (n=32) arrives.</b> Its loss is high (1.60). The <b style="color:var(--bad)">naive</b> mean jumps a lot because it treats this 32-sample batch like a full 1024-sample one. The <b style="color:var(--out)">weighted</b> mean barely moves — exactly right, since 32 samples shouldn't outvote thousands.`;
+  $('panel').innerHTML=msg;
+  draw(phase);
+  $('prog').style.width=((phase+1)/BATCH.length*100)+'%';
+  $('step').textContent=phase>=BATCH.length-1?'Done':'Step ▶';
+  $('step').disabled=phase>=BATCH.length-1;
+  broadcast();
+}
+function step(){if(phase<BATCH.length-1){phase++;paint();}else stopAuto();}
+function stopAuto(){clearInterval(timer);timer=null;$('auto').textContent='⏩ Auto';}
+function startAuto(){if(timer){stopAuto();return;}if(phase>=BATCH.length-1)phase=-1;$('auto').textContent='⏸ Pause';timer=setInterval(()=>{step();if(phase>=BATCH.length-1)stopAuto();},+$('speed').value);}
+$('step').onclick=()=>{stopAuto();step();};
+$('auto').onclick=startAuto;
+$('reset').onclick=()=>{stopAuto();phase=-1;paint();};
+$('speed').oninput=()=>{if(timer){stopAuto();startAuto();}};
+function broadcast(){parent.postMessage({type:'viz-height',id:'weighted_metrics',height:document.body.scrollHeight},'*');}
+buildChips();paint();
+addEventListener('load',broadcast);addEventListener('resize',broadcast);
+new ResizeObserver(broadcast).observe(document.body);
+</script>
+</body>
+</html>

@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LR Finder 3D</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--bad:#d9534f;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:16px;}
+  h1{font-size:18px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12.5px;margin:0 auto 14px;max-width:740px;line-height:1.5;}
+  .sub code{background:#e9eef7;border-radius:4px;padding:1px 4px;font-size:12px;}
+  .layout{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;justify-content:center;}
+  .col{flex:1 1 380px;min-width:330px;max-width:560px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .card h2{font-size:13px;margin:0 0 10px;color:var(--soft);text-transform:uppercase;letter-spacing:.04em;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .card h2 .tg{font-size:10px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--soft);background:#f0f3fa;border:1px solid var(--line);border-radius:6px;padding:2px 7px;}
+  #scene{width:100%;height:320px;border-radius:9px;border:1px solid var(--line);background:#0f1320;overflow:hidden;position:relative;}
+  #scene .hint{position:absolute;bottom:6px;right:9px;font-size:10px;color:#8090b0;pointer-events:none;}
+  canvas.plot{display:block;width:100%;height:auto;background:#fbfdff;border:1px solid var(--line);border-radius:9px;}
+  .readout{background:#f4f7fd;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.85;font-family:ui-monospace,Menlo,monospace;margin-top:10px;}
+  .readout .w{color:var(--in);font-weight:700;}.readout .g{color:var(--out);font-weight:700;}.readout .b{color:var(--bad);font-weight:700;}.readout .p{color:var(--ac);font-weight:700;}
+  .controls{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:14px 0 6px;}
+  button{font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:7px 13px;cursor:pointer;transition:.15s;}
+  button:hover{border-color:var(--ac);color:var(--ac);}
+  button:disabled{opacity:.45;cursor:default;}
+  button.primary{background:var(--ac);color:#fff;border-color:var(--ac);}
+  button.primary:hover{background:#6a4cc4;color:#fff;}
+  button.play{background:var(--out);color:#fff;border-color:var(--out);}
+  button.play:hover{background:#0f8c8c;color:#fff;}
+  .speed{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--soft);}
+  .speed input{width:90px;accent-color:var(--ac);}
+  .progwrap{height:7px;background:#e7edf7;border-radius:6px;margin:12px 0 4px;overflow:hidden;}
+  .prog{height:100%;width:0;background:linear-gradient(90deg,var(--ac),var(--in));transition:width .12s;}
+  .panel{background:#f4f7fd;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.6;min-height:66px;margin-bottom:10px;}
+  .panel b{color:var(--ink);}.panel code{background:#e9eef7;border-radius:4px;padding:1px 4px;font-size:12px;}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin:12px auto 0;max-width:720px;line-height:1.5;}
+  .fallback{color:#cdd6e6;font-size:12px;padding:20px;text-align:center;}
+  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:11px;color:var(--soft);margin-top:8px;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .sw{width:14px;height:3px;border-radius:2px;display:inline-block;}
+  .sw.d{height:0;border-top:2px dashed;}
+</style>
+</head>
+<body>
+<h1>The Learning Rate Finder — in 3D</h1>
+<p class="sub">The LR Finder trains for one batch at a time, <b>multiplying the learning rate by ~1.3 after every batch</b>. Each batch does a real gradient-descent step <code>w ← w − lr·∇L</code> on the loss surface below — so the <b>step size literally grows with the LR</b>. Watch the ball: nearly frozen at tiny LRs, descending cleanly in the sweet spot, then <b>overshooting and bouncing</b> until the loss diverges. Drag to orbit the surface; use <b>Play</b> to auto-step.</p>
+
+<div class="layout">
+  <div class="col">
+    <div class="card">
+      <h2>Loss surface <span class="tg">ball = weights · real gradient descent</span></h2>
+      <div id="scene"><div class="hint">drag to orbit · scroll to zoom</div></div>
+      <div class="readout" id="readout3d"></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card">
+      <h2>smoothed loss vs. learning rate <span class="tg">log&nbsp;x</span></h2>
+      <canvas id="plot" class="plot" width="470" height="300"></canvas>
+      <div class="legend">
+        <span><i class="sw" style="background:#7b5cd6"></i>smoothed loss (EWMA)</span>
+        <span><i class="sw" style="background:#c9b8ee"></i>raw batch loss</span>
+        <span><i class="sw d" style="border-color:#16a3a3"></i>steepest point</span>
+        <span><i class="sw d" style="border-color:#f6921e"></i>min&nbsp;loss&nbsp;/&nbsp;10</span>
+      </div>
+      <div class="readout" id="readout2d"></div>
+    </div>
+  </div>
+</div>
+
+<div style="margin:14px auto 0;max-width:840px;">
+  <div class="panel" id="panel">Press <b>Step ▶</b> for one batch, or <b>▶ Play</b> to run the whole sweep automatically.</div>
+  <div class="controls">
+    <button id="reset">↺ Reset</button>
+    <button id="step" class="primary">Step ▶</button>
+    <button id="play" class="play">▶ Play</button>
+    <button id="pick">📍 Suggest LR</button>
+    <span class="speed">slow <input id="speed" type="range" min="60" max="600" step="20" value="260"> fast</span>
+  </div>
+  <div class="progwrap"><div class="prog" id="prog"></div></div>
+</div>
+<p class="note">Two standard ways to read the curve: the <b style="color:var(--out)">steepest-descent point</b> (fast.ai's default — where the smoothed loss falls fastest) and the <b style="color:var(--in)">minimum-loss ÷ 10</b> heuristic (Smith 2017). Both sit safely left of the divergence. In <code>LRFinderCB</code>, <code>after_batch</code> raises <code>CancelFitException</code> once the smoothed loss exceeds ~3× its best value — which is exactly where the ball here starts blowing up.</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+
+// ============================================================================
+// SCIENTIFIC MODEL
+// ----------------------------------------------------------------------------
+// One explicit loss surface L(x,z). The ball is the weight vector. Every
+// "batch" performs a genuine SGD step:  w <- w - lr * grad L(w).
+// The LR grows geometrically:  lr <- lr * mult, sweeping ~1e-5 .. ~10.
+// The plotted loss IS the loss the ball sits at -> 3D and 2D agree exactly.
+// Smoothing is fast.ai's EWMA:  s = beta*s + (1-beta)*loss, plotted debiased.
+// Divergence is EMERGENT: when lr*|grad| overshoots the valley the ball lands
+// higher on the far wall, loss climbs and runs away -- nothing is scripted.
+// ============================================================================
+
+// Quadratic bowl  L = a·x² + b·z² + floor  (the canonical textbook loss basin).
+// Curvature a sets the *stability threshold*: gradient descent on a quadratic
+// DIVERGES once  lr > 2/(2a) = 1/a  — a real result from optimization theory.
+// Here a=3 ⇒ threshold lr≈0.33, so the explosion in the plot is genuine physics,
+// not a scripted effect: past that LR each step overshoots farther than the last.
+const A=3.0, B=1.0, FLOOR=0.05;
+function L(x,z){ return A*x*x + B*z*z + FLOOR; }
+function gradL(x,z){ return [2*A*x, 2*B*z]; }
+const LR_THRESHOLD = 1/A;               // ≈0.33 — where overshoot begins
+
+const startX=-0.78, startZ=0.6;         // start partway up the bowl (loss≈2.2)
+const lr0=1e-4, mult=1.34, N=44;        // exponential schedule 1e-4 .. ~30
+const beta=0.82;                        // fast.ai-style EWMA momentum
+const LOSS_CAP=8;                       // clamp display so the explosion stays readable
+
+function simulate(){
+  let x=startX, z=startZ, lr=lr0, avg=0, sim=[];
+  const noise=k=>0.010*Math.sin(k*2.1);                 // deterministic minibatch jitter
+  let best=Infinity, diverged=false, divAt=N;
+  for(let i=0;i<N;i++){
+    const loss=Math.min(LOSS_CAP, Math.max(0.02, L(x,z)+noise(i)));
+    avg = beta*avg + (1-beta)*loss;
+    const smooth = avg/(1-Math.pow(beta,i+1));          // bias-corrected EWMA
+    sim.push({i, lr, x, z, loss, smooth});
+    best=Math.min(best,smooth);
+    if(!diverged && smooth>3*best && i>4){diverged=true; divAt=i;}
+    const g=gradL(x,z);
+    x -= lr*g[0]; z -= lr*g[1];                          // <-- the real SGD update
+    x=Math.max(-30,Math.min(30,x)); z=Math.max(-30,Math.min(30,z)); // overflow guard only
+    lr*=mult;
+  }
+  return {sim, divAt};
+}
+const {sim, divAt}=simulate();
+const lrs=sim.map(s=>s.lr), losses=sim.map(s=>s.loss), smooths=sim.map(s=>s.smooth);
+
+// suggestions: (a) fast.ai steepest descent of SMOOTHED loss vs log10(lr)
+let steepIdx=1, steepest=Infinity;
+for(let i=1;i<divAt;i++){
+  const slope=(smooths[i]-smooths[i-1])/(Math.log10(lrs[i])-Math.log10(lrs[i-1]));
+  if(slope<steepest){steepest=slope; steepIdx=i;}
+}
+const lrSteep=lrs[steepIdx];
+// (b) Smith: lr at minimum smoothed loss / 10
+let minIdx=0,minVal=Infinity;
+for(let i=0;i<divAt;i++){ if(smooths[i]<minVal){minVal=smooths[i];minIdx=i;} }
+const lrMin10=lrs[minIdx]/10;
+
+// ============================================================================
+// three.js scene
+// ============================================================================
+let renderer,scene,camera,ball,trail,raf,hasGL=true,startMark;
+let dragging=false,lastX,lastY,theta=0.95,phi=0.95,radius=8.5;
+const SURF=6.0;                         // surface half-extent in world units
+const MX=1.25;                          // visible model-x half-range shown on surface
+const MZ=1.25;                          // visible model-z half-range
+const SX=v=> Math.max(-SURF,Math.min(SURF, v*(SURF/MX)));   // model -> world (clamped to plate)
+const SZ=v=> Math.max(-SURF,Math.min(SURF, v*(SURF/MZ)));
+const HEIGHT=0.85;                      // loss -> vertical world units
+const SY=v=> v*HEIGHT;
+
+function initGL(){
+  const el=$('scene'), w=el.clientWidth, h=el.clientHeight;
+  if(!window.THREE){el.innerHTML='<div class="fallback">three.js CDN unavailable — the 2D plot still works fully.</div>';return;}
+  try{ renderer=new THREE.WebGLRenderer({antialias:true}); }catch(e){hasGL=false;}
+  if(!hasGL){el.innerHTML='<div class="fallback">WebGL not available — the 2D plot still works fully.</div>';return;}
+  renderer.setSize(w,h); renderer.setPixelRatio(Math.min(2,devicePixelRatio));
+  el.appendChild(renderer.domElement);
+  scene=new THREE.Scene(); scene.background=new THREE.Color(0x0f1320);
+  camera=new THREE.PerspectiveCamera(45,w/h,0.1,200);
+
+  const seg=80, geo=new THREE.PlaneGeometry(SURF*2,SURF*2,seg,seg);
+  const pos=geo.attributes.position; const cols=[];
+  for(let i=0;i<pos.count;i++){
+    const wx=pos.getX(i), wz=pos.getY(i);
+    const mx=wx/(SURF/MX), mz=wz/(SURF/MZ);
+    const loss=Math.min(LOSS_CAP,L(mx,mz));
+    pos.setZ(i, SY(loss));                  // height above the (rotated) plane
+    const t=Math.min(1,loss/LOSS_CAP);
+    const c=new THREE.Color().setHSL(0.5-0.42*t,0.55,0.30+0.13*t);  // teal(low)->orange(high)
+    cols.push(c.r,c.g,c.b);
+  }
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+  geo.computeVertexNormals();
+  const surf=new THREE.Mesh(geo,new THREE.MeshPhongMaterial({vertexColors:true,shininess:18,side:THREE.DoubleSide,transparent:true,opacity:0.97}));
+  surf.rotation.x=-Math.PI/2; scene.add(surf);
+  const wf=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:0x3b4a78,wireframe:true,transparent:true,opacity:0.22}));
+  wf.rotation.x=-Math.PI/2; scene.add(wf);
+
+  scene.add(new THREE.AmbientLight(0x90a0c8,0.75));
+  const d=new THREE.DirectionalLight(0xffffff,0.85); d.position.set(5,9,6); scene.add(d);
+  const p=new THREE.PointLight(0xf6921e,0.45); p.position.set(-4,5,-3); scene.add(p);
+
+  ball=new THREE.Mesh(new THREE.SphereGeometry(0.26,28,28),
+        new THREE.MeshPhongMaterial({color:0xf6921e,emissive:0x5a3000,shininess:90}));
+  scene.add(ball);
+  startMark=new THREE.Mesh(new THREE.RingGeometry(0.30,0.40,28),
+        new THREE.MeshBasicMaterial({color:0x16a3a3,side:THREE.DoubleSide}));
+  const sp=worldOf(0); startMark.position.set(sp.x,sp.y+0.02,sp.z); startMark.rotation.x=-Math.PI/2; scene.add(startMark);
+  trail=new THREE.Group(); scene.add(trail);
+  updateCam(); animate();
+}
+function worldOf(i){
+  const s=sim[i];
+  // clamp model coords to the visible plate so a diverging ball climbs the wall
+  // instead of flying out of frame; height uses the loss AT the clamped point.
+  const cx=Math.max(-MX,Math.min(MX,s.x)), cz=Math.max(-MZ,Math.min(MZ,s.z));
+  const loss=Math.min(LOSS_CAP,L(cx,cz));
+  return {x:SX(s.x), y:SY(loss)+0.26, z:SZ(s.z)};
+}
+function updateCam(){ if(!camera)return;
+  camera.position.set(radius*Math.sin(phi)*Math.cos(theta),radius*Math.cos(phi)+1.8,radius*Math.sin(phi)*Math.sin(theta));
+  camera.lookAt(0,1.4,0);
+}
+function disposeGroup(g){
+  while(g.children.length){
+    const c=g.children[0];
+    if(c.geometry)c.geometry.dispose();
+    if(c.material)c.material.dispose();
+    g.remove(c);
+  }
+}
+function placeTrailUpTo(k){
+  if(!trail)return;
+  disposeGroup(trail);                       // clear previous path completely
+  if(k<=0)return;
+  // 1) a thin connected line through every visited point (the trajectory)
+  const pts=[];
+  for(let i=0;i<=k;i++){const w=worldOf(i);pts.push(new THREE.Vector3(w.x,w.y,w.z));}
+  const lg=new THREE.BufferGeometry().setFromPoints(pts);
+  const line=new THREE.Line(lg,new THREE.LineBasicMaterial({color:0x16a3a3,transparent:true,opacity:0.8}));
+  trail.add(line);
+  // 2) small flat breadcrumb markers at past points only (NOT at the current ball)
+  for(let i=0;i<k;i++){
+    const w=worldOf(i), diverging=i>=divAt;
+    const dot=new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8),
+        new THREE.MeshBasicMaterial({color: diverging?0xd9534f:0x16a3a3, transparent:true, opacity:0.55}));
+    dot.position.set(w.x,w.y,w.z); trail.add(dot);
+  }
+}
+function placeBall(i){
+  if(!ball)return; const w=worldOf(i); ball.position.set(w.x,w.y,w.z);
+  const t=Math.max(0,Math.min(1,(i-divAt+3)/6));
+  ball.material.color.setHSL(0.08*(1-t),0.92,0.55);
+  ball.material.emissive.setHSL(0.05,0.9,0.12+0.12*t);
+}
+function animate(){raf=requestAnimationFrame(animate); if(renderer&&scene&&camera)renderer.render(scene,camera);}
+function bindDrag(){
+  const el=$('scene');
+  el.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;});
+  addEventListener('pointerup',()=>dragging=false);
+  addEventListener('pointermove',e=>{if(!dragging)return;theta+=(e.clientX-lastX)*0.01;phi=Math.max(0.2,Math.min(1.5,phi+(e.clientY-lastY)*0.01));lastX=e.clientX;lastY=e.clientY;updateCam();});
+  el.addEventListener('wheel',e=>{e.preventDefault();radius=Math.max(4.5,Math.min(16,radius+Math.sign(e.deltaY)*0.7));updateCam();},{passive:false});
+}
+
+// ============================================================================
+// 2D plot
+// ============================================================================
+function drawPlot(upto,showPick){
+  const cv=$('plot'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height,padL=46,padR=16,padT=14,padB=30;
+  ctx.clearRect(0,0,W,H);
+  const lx=v=>Math.log10(v);
+  const xmin=lx(lrs[0]), xmax=lx(lrs[N-1]);
+  let vis=smooths.slice(0,upto+1).concat(losses.slice(0,upto+1));
+  const ymin=Math.max(0, Math.min(...vis)-0.1);
+  const ymax=Math.min(4.0, Math.max(...vis.concat([minVal*2.2]))+0.1);
+  const X=v=>padL+(lx(v)-xmin)/(xmax-xmin)*(W-padL-padR);
+  const Y=v=>H-padB-(Math.min(v,ymax)-ymin)/(ymax-ymin)*(H-padT-padB);
+  ctx.strokeStyle='#eef2f9';ctx.fillStyle='#9fb0cc';ctx.font='10px ui-monospace';ctx.lineWidth=1;
+  for(let e=-5;e<=1;e++){const xv=Math.pow(10,e); if(lx(xv)<xmin-0.01||lx(xv)>xmax+0.01)continue; const x=X(xv);ctx.beginPath();ctx.moveTo(x,padT);ctx.lineTo(x,H-padB);ctx.stroke();ctx.fillText('1e'+e,x-10,H-padB+13);}
+  for(let g=Math.ceil(ymin*5)/5; g<=ymax; g+=0.5){const y=Y(g);ctx.strokeStyle='#f2f5fb';ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke();ctx.fillStyle='#9fb0cc';ctx.fillText(g.toFixed(1),6,y+3);}
+  ctx.fillStyle='#7a8aa8';ctx.font='11px "Segoe UI"';ctx.fillText('loss',6,padT+2);ctx.fillText('learning rate',W-96,H-padB+24);
+  ctx.strokeStyle='#c9b8ee';ctx.lineWidth=1.4;ctx.beginPath();
+  for(let i=0;i<=upto;i++){const x=X(lrs[i]),y=Y(losses[i]);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+  ctx.stroke();
+  ctx.strokeStyle='#7b5cd6';ctx.lineWidth=2.6;ctx.beginPath();
+  for(let i=0;i<=upto;i++){const x=X(lrs[i]),y=Y(smooths[i]);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+  ctx.stroke();
+  if(upto>=0){const x=X(lrs[upto]),y=Y(smooths[upto]);ctx.fillStyle='#f6921e';ctx.beginPath();ctx.arc(x,y,5,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();}
+  if(showPick){
+    function vline(lrv,color,label,labY){
+      if(lx(lrv)<xmin||lx(lrv)>xmax)return;
+      const x=X(lrv);ctx.strokeStyle=color;ctx.setLineDash([5,4]);ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(x,padT);ctx.lineTo(x,H-padB);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=color;ctx.font='bold 10.5px ui-monospace';ctx.fillText(label,x+4,labY);
+    }
+    vline(lrSteep,'#16a3a3','steepest '+lrSteep.toExponential(1),padT+12);
+    vline(lrMin10,'#f6921e','min/10 '+lrMin10.toExponential(1),padT+28);
+  }
+}
+
+// ============================================================================
+// driver / controls
+// ============================================================================
+let phase=-1,timer=null;
+function regionMsg(i){
+  if(i<steepIdx-2) return '<b>Tiny learning rate.</b> The update <code>lr·∇L</code> is microscopic, so the ball barely moves and the loss stays high and flat. Nothing is being learned yet.';
+  if(i<=minIdx-1)  return '<b>Sweet spot — steep descent.</b> The LR is now big enough to make real progress but small enough to stay stable. The ball slides cleanly toward the valley floor and the smoothed loss drops fastest here.';
+  if(i<divAt)      return '<b>Near the minimum.</b> Loss is about as low as it gets. Push the LR any higher and steps start overshooting the valley.';
+  if(i<divAt+3)    return '<b>Overshooting.</b> Each step is now so large that <code>w − lr·∇L</code> jumps <i>past</i> the minimum and lands further up the opposite wall. The smoothed loss turns upward.';
+  return '<b>Divergence (explosion).</b> Steps overshoot worse each batch, flinging the ball up the steep wall — loss runs away. <code>LRFinderCB</code> raises <code>CancelFitException</code> right about here to stop the sweep.';
+}
+function paint(){
+  if(phase>=0){placeTrailUpTo(phase);placeBall(phase);}
+  else if(trail){disposeGroup(trail); if(ball){const w=worldOf(0);ball.position.set(w.x,w.y,w.z);placeBall(0);} }
+  if(phase<0){
+    $('panel').innerHTML='Press <b>Step ▶</b> for one batch, or <b>▶ Play</b> to run the whole sweep automatically.';
+    $('readout3d').innerHTML='<span style="color:var(--soft)">Ball at the start, high on the slope. No batches run.</span>';
+    $('readout2d').innerHTML='<span style="color:var(--soft)">Curve appears as batches run. Two suggested LRs reveal at the end.</span>';
+    drawPlot(-1,false);$('prog').style.width='0';$('step').textContent='Step ▶';$('step').disabled=false;broadcast();return;
+  }
+  const s=sim[phase];
+  const div = smooths[phase] > 3*minVal && phase>=divAt;
+  $('readout3d').innerHTML =
+    `batch <span class="w">${phase+1}</span> / ${N} &nbsp; lr = <span class="w">${s.lr.toExponential(2)}</span><br>`+
+    `raw loss = ${s.loss.toFixed(3)} &nbsp; smoothed = ${div?'<span class="b">':'<span class="g">'}${s.smooth.toFixed(3)}</span><br>`+
+    `step size ∝ lr·|∇L| = <span class="p">${(s.lr*Math.hypot(gradL(s.x,s.z)[0],gradL(s.x,s.z)[1])).toExponential(2)}</span>`;
+  $('readout2d').innerHTML =
+    `best smoothed loss = <span class="g">${Math.min(...smooths.slice(0,phase+1)).toFixed(3)}</span><br>`+
+    `steepest-point lr ≈ <span class="g">${lrSteep.toExponential(1)}</span><br>`+
+    `min-loss / 10 lr ≈ <span class="w">${lrMin10.toExponential(1)}</span>`;
+  $('panel').innerHTML=regionMsg(phase);
+  drawPlot(phase, phase>=N-1);
+  $('prog').style.width=((phase+1)/N*100)+'%';
+  $('step').textContent=phase>=N-1?'Done':'Step ▶';
+  $('step').disabled=phase>=N-1;
+  broadcast();
+}
+function step(){if(phase<N-1){phase++;paint();}else stopPlay();}
+function stopPlay(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+function startPlay(){
+  if(timer){stopPlay();return;}
+  if(phase>=N-1)phase=-1;
+  $('play').textContent='⏸ Pause';
+  timer=setInterval(()=>{step();if(phase>=N-1)stopPlay();},+$('speed').value);
+}
+$('step').onclick=()=>{stopPlay();step();};
+$('play').onclick=startPlay;
+$('reset').onclick=()=>{stopPlay();phase=-1;paint();};
+$('pick').onclick=()=>{
+  drawPlot(Math.max(phase,N-1),true);
+  $('panel').innerHTML=`<b>Two standard picks.</b> <span style="color:var(--out)">Steepest-descent</span> ≈ <b>${lrSteep.toExponential(1)}</b> (fast.ai default — fastest drop in smoothed loss). <span style="color:var(--in)">Min-loss ÷ 10</span> ≈ <b>${lrMin10.toExponential(1)}</b> (Smith 2017). Both lie safely left of the divergence; a value between them is usually excellent.`;
+  broadcast();
+};
+$('speed').oninput=()=>{if(timer){stopPlay();startPlay();}};
+function broadcast(){parent.postMessage({type:'viz-height',id:'lr_finder_3d',height:document.body.scrollHeight},'*');}
+window.addEventListener('load',()=>{ initGL(); if(window.THREE&&hasGL)bindDrag(); paint(); broadcast(); });
+addEventListener('resize',broadcast);
+new ResizeObserver(broadcast).observe(document.body);
+</script>
+</body>
+</html>

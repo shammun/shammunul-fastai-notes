@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Training Loop Anatomy</title>
+<style>
+  :root{
+    --ink:#25324a; --soft:#5a6b86; --line:#dde5f2;
+    --in:#f6921e; --out:#16a3a3; --ac:#7b5cd6; --bg:#eef3fb;
+    --fit:#7b5cd6; --epoch:#2f7fd6; --batch:#16a3a3; --step:#f6921e;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:16px;}
+  h1{font-size:18px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12.5px;margin:0 auto 14px;max-width:680px;line-height:1.5;}
+  .layout{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;justify-content:center;}
+  .left{flex:1 1 420px;min-width:330px;max-width:560px;}
+  .right{flex:1 1 360px;min-width:320px;max-width:520px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;
+        box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  /* nested boxes */
+  .box{border:2px solid var(--line);border-radius:10px;padding:10px 10px 12px;margin:8px 0;position:relative;transition:.25s;}
+  .box .tag{position:absolute;top:-10px;left:12px;background:#fff;padding:0 7px;font-size:11px;font-weight:700;border-radius:6px;}
+  .box.fit{border-color:var(--fit);} .box.fit>.tag{color:var(--fit);}
+  .box.epoch{border-color:var(--epoch);} .box.epoch>.tag{color:var(--epoch);}
+  .box.batch{border-color:var(--batch);} .box.batch>.tag{color:var(--batch);}
+  .stage{display:flex;align-items:center;gap:8px;padding:6px 9px;margin:5px 0;border-radius:8px;
+         background:#f6f8fc;border:1px solid var(--line);font-size:12.5px;cursor:pointer;transition:.18s;}
+  .stage:hover{border-color:var(--ac);background:#f0ecfb;}
+  .stage .dot{width:9px;height:9px;border-radius:50%;background:#c7d2e4;flex:none;transition:.18s;}
+  .stage code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;}
+  .stage.active{background:#fff;border-color:var(--step);box-shadow:0 4px 12px rgba(246,146,30,.22);transform:translateX(3px);}
+  .stage.active .dot{background:var(--step);box-shadow:0 0 0 4px rgba(246,146,30,.18);}
+  .stage.done .dot{background:var(--out);}
+  .hook{font-size:10.5px;color:var(--soft);font-style:italic;}
+  .controls{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:14px 0 6px;}
+  button{font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);
+          border-radius:9px;padding:7px 13px;cursor:pointer;transition:.15s;}
+  button:hover{border-color:var(--ac);color:var(--ac);}
+  button:disabled{opacity:.45;cursor:default;}
+  button.primary{background:var(--ac);color:#fff;border-color:var(--ac);}
+  button.primary:hover{background:#6a4cc4;color:#fff;}
+  .speed{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--soft);}
+  .speed input{width:90px;accent-color:var(--ac);}
+  .progwrap{height:7px;background:#e7edf7;border-radius:6px;margin:12px 0 4px;overflow:hidden;}
+  .prog{height:100%;width:0;background:linear-gradient(90deg,var(--ac),var(--batch));transition:width .3s;}
+  .panel{background:#f4f7fd;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.6;min-height:64px;}
+  .panel b{color:var(--ink);}
+  .codebox{background:#1f2533;border-radius:10px;padding:12px 14px;margin-top:10px;overflow:auto;}
+  .codebox pre{margin:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.65;color:#cdd6e6;white-space:pre;}
+  .codebox .hl{display:block;background:rgba(246,146,30,.18);border-left:3px solid var(--step);margin-left:-14px;padding-left:11px;}
+  .kw{color:#c792ea;} .fn{color:#82aaff;} .st{color:#c3e88d;} .cm{color:#637777;} .nm{color:#f78c6c;}
+  .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;font-size:11.5px;color:var(--soft);margin-top:10px;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .sw{width:11px;height:11px;border-radius:3px;display:inline-block;}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin:12px auto 0;max-width:640px;line-height:1.5;}
+  .badge{font-size:10px;background:#eef0f6;color:var(--soft);border-radius:5px;padding:1px 6px;margin-left:auto;font-family:ui-monospace,monospace;}
+</style>
+</head>
+<body>
+<h1>Anatomy of the Training Loop</h1>
+<p class="sub">A <code>Learner</code> runs three nested loops: <b style="color:var(--fit)">fit</b> over epochs, each <b style="color:var(--epoch)">epoch</b> over batches, each <b style="color:var(--batch)">batch</b> doing 5 steps. Press <b>Step&nbsp;▶</b> to advance one stage, click any stage to jump there, or hit <b>Auto</b>. The matching code line highlights on the right.</p>
+
+<div class="layout">
+  <div class="left">
+    <div class="card">
+      <div class="box fit"><span class="tag">fit(n_epochs=2)</span>
+        <div class="stage" data-i="0"><span class="dot"></span><code>before_fit</code><span class="hook">— hook: setup, move model to device</span></div>
+        <div class="box epoch"><span class="tag">for each epoch (×2)</span>
+          <div class="stage" data-i="1"><span class="dot"></span><code>before_epoch</code><span class="hook">— train mode on</span></div>
+          <div class="box batch"><span class="tag">for each batch in dl</span>
+            <div class="stage" data-i="2"><span class="dot"></span><code>before_batch</code><span class="hook">— move batch to GPU</span></div>
+            <div class="stage" data-i="3"><span class="dot"></span>1. <code>predict()</code><span class="badge">forward</span></div>
+            <div class="stage" data-i="4"><span class="dot"></span>2. <code>get_loss()</code><span class="badge">compare</span></div>
+            <div class="stage" data-i="5"><span class="dot"></span>3. <code>backward()</code><span class="badge">grads</span></div>
+            <div class="stage" data-i="6"><span class="dot"></span>4. <code>step()</code><span class="badge">update w</span></div>
+            <div class="stage" data-i="7"><span class="dot"></span>5. <code>zero_grad()</code><span class="badge">reset</span></div>
+            <div class="stage" data-i="8"><span class="dot"></span><code>after_batch</code><span class="hook">— log metrics</span></div>
+          </div>
+        </div>
+        <div class="stage" data-i="9"><span class="dot"></span><code>after_fit</code><span class="hook">— final summary</span></div>
+      </div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--fit)"></i>fit level</span>
+        <span><i class="sw" style="background:var(--epoch)"></i>epoch level</span>
+        <span><i class="sw" style="background:var(--batch)"></i>batch level</span>
+        <span><i class="sw" style="background:var(--step)"></i>current stage</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="card">
+      <div class="panel" id="panel">Press <b>Step ▶</b> to begin walking through one training run.</div>
+      <div class="codebox"><pre id="code"></pre></div>
+    </div>
+    <div class="controls">
+      <button id="reset">↺ Reset</button>
+      <button id="step" class="primary">Step ▶</button>
+      <button id="auto">⏩ Auto</button>
+      <span class="speed">slow <input id="speed" type="range" min="300" max="1600" step="100" value="900"> fast</span>
+    </div>
+    <div class="progwrap"><div class="prog" id="prog"></div></div>
+  </div>
+</div>
+<p class="note">Notice the <b>training-only</b> steps (backward, step, zero_grad) are skipped during validation — that is exactly what <code>if self.model.training:</code> guards in the real code. Callbacks fire at every <code>before_/after_</code> hook without the loop ever knowing what they do.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const stages=[
+ {n:'before_fit', d:'<b>before_fit hook.</b> The Learner announces "I am about to start." Callbacks react: <code>DeviceCB</code> moves the model to the GPU, <code>ProgressCB</code> creates a progress bar. The loop itself does nothing special here.', line:1},
+ {n:'before_epoch', d:'<b>Start an epoch.</b> One full pass over the dataset. We switch the model to <b>train mode</b> (<code>model.train()</code>) so layers like dropout behave correctly.', line:2},
+ {n:'before_batch', d:'<b>Grab one batch.</b> e.g. 1024 images + labels. <code>DeviceCB.before_batch</code> moves this batch onto the GPU so it sits next to the model.', line:4},
+ {n:'predict()', d:'<b>Step 1 — Forward pass.</b> Feed inputs through the model to get predictions: <code>self.preds = model(self.batch[0])</code>. No learning yet, just a guess.', line:5},
+ {n:'get_loss()', d:'<b>Step 2 — Measure error.</b> Compare predictions to the true labels: <code>self.loss = loss_func(self.preds, self.batch[1])</code>. One scalar telling us how wrong we are.', line:6},
+ {n:'backward()', d:'<b>Step 3 — Backprop.</b> <code>self.loss.backward()</code> fills every parameter\'s <code>.grad</code> with ∂loss/∂param. <i>Training only.</i>', line:8},
+ {n:'step()', d:'<b>Step 4 — Update weights.</b> <code>opt.step()</code> nudges each parameter downhill: <code>w -= lr · w.grad</code>. <i>Training only.</i>', line:9},
+ {n:'zero_grad()', d:'<b>Step 5 — Reset grads.</b> <code>opt.zero_grad()</code> wipes the gradients so the next batch starts clean (PyTorch <i>accumulates</i> grads otherwise). <i>Training only.</i>', line:10},
+ {n:'after_batch', d:'<b>after_batch hook.</b> <code>MetricsCB</code> records this batch\'s loss & accuracy; <code>ProgressCB</code> advances the bar. Then we loop back for the next batch.', line:12},
+ {n:'after_fit', d:'<b>after_fit hook.</b> All epochs done. <code>MetricsCB</code> prints the final table, <code>ProgressCB</code> closes the bar. Training is complete! 🎉', line:14},
+];
+const CODE=[
+ {t:'def one_batch(self):',cls:'kw'},
+ {t:'    self.callback("before_fit")        # hook',i:0},
+ {t:'    for self.epoch in range(n_epochs): # before_epoch',i:1},
+ {t:'      self.model.train()',i:1},
+ {t:'      for self.batch in self.dl:       # before_batch',i:2},
+ {t:'        self.preds = self.model(xb)    # 1 predict',i:3},
+ {t:'        self.loss  = loss_func(preds,yb) # 2 get_loss',i:4},
+ {t:'        if self.model.training:',i:5},
+ {t:'          self.loss.backward()         # 3 backward',i:5},
+ {t:'          self.opt.step()              # 4 step',i:6},
+ {t:'          self.opt.zero_grad()         # 5 zero_grad',i:7},
+ {t:'        # after_batch -> log metrics',i:8},
+ {t:'        self.callback("after_batch")',i:8},
+ {t:'    # all epochs done',cls:'cm'},
+ {t:'    self.callback("after_fit")         # summary',i:9},
+];
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function renderCode(active){
+  $('code').innerHTML = CODE.map(c=>{
+    const on=(active>=0 && c.i===active);
+    let line=esc(c.t)
+      .replace(/\b(def|for|in|range|if)\b/g,'<span class="kw">$1</span>')
+      .replace(/(#.*)$/,'<span class="cm">$1</span>')
+      .replace(/(self\.[A-Za-z_]+)/g,'<span class="nm">$1</span>');
+    return on?'<span class="hl">'+line+'</span>':line;
+  }).join('\n');
+}
+let phase=-1, timer=null;
+const els=[...document.querySelectorAll('.stage')];
+function paint(){
+  els.forEach((e,k)=>{e.classList.toggle('active',k===phase);e.classList.toggle('done',k<phase);});
+  if(phase<0){$('panel').innerHTML='Press <b>Step ▶</b> to begin walking through one training run.';renderCode(-1);}
+  else{$('panel').innerHTML=stages[phase].d;renderCode(phase);}
+  $('prog').style.width=((phase+1)/stages.length*100)+'%';
+  $('step').textContent=phase>=stages.length-1?'Done':'Step ▶';
+  $('step').disabled=phase>=stages.length-1;
+  broadcast();
+}
+function step(){if(phase<stages.length-1){phase++;paint();}else stopAuto();}
+function stopAuto(){clearInterval(timer);timer=null;$('auto').textContent='⏩ Auto';}
+function startAuto(){
+  if(timer){stopAuto();return;}
+  if(phase>=stages.length-1)phase=-1;
+  $('auto').textContent='⏸ Pause';
+  const iv=()=>{step();if(phase>=stages.length-1)stopAuto();};
+  timer=setInterval(iv, +$('speed').value);
+}
+els.forEach((e,k)=>e.onclick=()=>{stopAuto();phase=k;paint();});
+$('step').onclick=()=>{stopAuto();step();};
+$('auto').onclick=startAuto;
+$('reset').onclick=()=>{stopAuto();phase=-1;paint();};
+$('speed').oninput=()=>{if(timer){stopAuto();startAuto();}};
+function broadcast(){
+  const h=document.body.scrollHeight;
+  parent.postMessage({type:'viz-height',id:'training_loop_anatomy',height:h},'*');
+}
+paint();
+addEventListener('load',broadcast); addEventListener('resize',broadcast);
+new ResizeObserver(broadcast).observe(document.body);
+</script>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>with_cbs decorator</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(900px 400px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:16px;}
+  h1{font-size:18px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12.5px;margin:0 auto 14px;max-width:700px;line-height:1.5;}
+  .sub code{background:#e9eef7;border-radius:4px;padding:1px 4px;font-size:12px;}
+  .layout{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;justify-content:center;}
+  .col{flex:1 1 360px;min-width:320px;max-width:520px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .card h2{font-size:13px;margin:0 0 12px;color:var(--soft);text-transform:uppercase;letter-spacing:.04em;}
+  /* wrapper diagram: concentric layers */
+  .layers{position:relative;}
+  .lyr{border:2px solid var(--line);border-radius:12px;padding:12px;margin:0;transition:.25s;position:relative;}
+  .lyr .lbl{font-size:11.5px;font-family:ui-monospace,Menlo,monospace;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:7px;}
+  .lyr .lbl .pin{width:9px;height:9px;border-radius:50%;background:#c7d2e4;transition:.2s;}
+  .lyr.active{box-shadow:0 6px 18px rgba(246,146,30,.22);}
+  .lyr.active>.lbl>.pin{background:var(--in);box-shadow:0 0 0 4px rgba(246,146,30,.18);}
+  .L-try.active{border-color:var(--ac);} .L-try.active>.lbl{color:var(--ac);}
+  .L-before.active{border-color:#2f7fd6;} .L-before.active>.lbl{color:#2f7fd6;}
+  .L-core.active{border-color:var(--out);} .L-core.active>.lbl{color:var(--out);}
+  .L-after.active{border-color:#2f7fd6;} .L-after.active>.lbl{color:#2f7fd6;}
+  .L-except.active{border-color:#d9534f;} .L-except.active>.lbl{color:#d9534f;}
+  .inner{margin:8px 0 0;}
+  .core{background:#f0fbfb;border:1px dashed var(--out);border-radius:9px;padding:10px;font-size:12.5px;color:var(--ink);}
+  .codebox{background:#1f2533;border-radius:10px;padding:12px 14px;overflow:auto;}
+  .codebox pre{margin:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.7;color:#cdd6e6;white-space:pre;}
+  .codebox .hl{display:block;background:rgba(246,146,30,.18);border-left:3px solid var(--in);margin-left:-14px;padding-left:11px;}
+  .kw{color:#c792ea;}.fn{color:#82aaff;}.st{color:#c3e88d;}.cm{color:#637777;}.nm{color:#f78c6c;}
+  .controls{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:14px 0 6px;}
+  button{font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:9px;padding:7px 13px;cursor:pointer;transition:.15s;}
+  button:hover{border-color:var(--ac);color:var(--ac);}
+  button:disabled{opacity:.45;cursor:default;}
+  button.primary{background:var(--ac);color:#fff;border-color:var(--ac);}
+  button.primary:hover{background:#6a4cc4;color:#fff;}
+  .toggle{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;}
+  .toggle button{border:0;border-radius:0;padding:7px 12px;}
+  .toggle button.sel{background:var(--in);color:#fff;}
+  .speed{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--soft);}
+  .speed input{width:90px;accent-color:var(--ac);}
+  .progwrap{height:7px;background:#e7edf7;border-radius:6px;margin:12px 0 4px;overflow:hidden;}
+  .prog{height:100%;width:0;background:linear-gradient(90deg,var(--ac),var(--in));transition:width .3s;}
+  .panel{background:#f4f7fd;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.6;min-height:70px;}
+  .panel b{color:var(--ink);}.panel code{background:#e9eef7;border-radius:4px;padding:1px 4px;font-size:12px;}
+  .note{text-align:center;font-size:11.5px;color:var(--soft);margin:12px auto 0;max-width:680px;line-height:1.5;}
+</style>
+</head>
+<body>
+<h1>How <code style="font-size:.85em">@with_cbs('batch')</code> Wraps a Method</h1>
+<p class="sub">The decorator turns one line — your <code>_one_batch</code> — into a sandwich: fire <code>before_batch</code>, run your code, fire <code>after_batch</code>, and if a <code>CancelBatchException</code> pops out, swallow it quietly. Step through to watch control flow through the layers. Try the <b>Normal</b> vs <b>Cancel</b> run.</p>
+
+<div class="layout">
+  <div class="col">
+    <div class="card">
+      <h2>Control flow through the wrapper</h2>
+      <div class="layers">
+        <div class="lyr L-try" id="L-try"><div class="lbl"><span class="pin"></span>try:</div>
+          <div class="inner">
+            <div class="lyr L-before" id="L-before"><div class="lbl"><span class="pin"></span>self.callback(f'before_batch')</div></div>
+            <div class="lyr L-core" id="L-core"><div class="lbl"><span class="pin"></span>the real method runs</div>
+              <div class="core" id="coreTxt">predict → get_loss → backward → step → zero_grad</div>
+            </div>
+            <div class="lyr L-after" id="L-after"><div class="lbl"><span class="pin"></span>self.callback(f'after_batch')</div></div>
+          </div>
+        </div>
+        <div class="lyr L-except" id="L-except"><div class="lbl"><span class="pin"></span>except CancelBatchException: pass</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card">
+      <h2>The decorator code</h2>
+      <div class="codebox"><pre id="code"></pre></div>
+    </div>
+  </div>
+</div>
+
+<div style="margin:14px auto 0;max-width:780px;">
+  <div class="panel" id="panel">Choose a scenario, then press <b>Step ▶</b>.</div>
+  <div class="controls">
+    <span class="toggle"><button id="mNorm" class="sel">Normal run</button><button id="mCancel">Cancel run</button></span>
+    <button id="reset">↺ Reset</button>
+    <button id="step" class="primary">Step ▶</button>
+    <button id="auto">⏩ Auto</button>
+    <span class="speed">slow <input id="speed" type="range" min="400" max="1700" step="100" value="1000"> fast</span>
+  </div>
+  <div class="progwrap"><div class="prog" id="prog"></div></div>
+</div>
+<p class="note">Why a decorator and not a context manager? Because <code>contextlib.contextmanager</code> can't cleanly let a callback cancel <i>before</i> the <code>yield</code>. The decorator version catches the matching <code>Cancel…Exception</code> by name, so each loop level (batch / epoch / fit) can be stopped independently.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const CODE=[
+ {t:"class with_cbs:",c:0},
+ {t:"    def __init__(self, nm): self.nm = nm",c:0},
+ {t:"    def __call__(self, f):",c:0},
+ {t:"        def _f(o, *args, **kwargs):",c:0},
+ {t:"            try:",c:1},
+ {t:"                o.callback(f'before_{self.nm}')",c:2},
+ {t:"                f(o, *args, **kwargs)   # real method",c:3},
+ {t:"                o.callback(f'after_{self.nm}')",c:4},
+ {t:"            except globals()[",c:5},
+ {t:"                f'Cancel{self.nm.title()}Exception']: pass",c:5},
+ {t:"        return _f",c:0},
+];
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function renderCode(active){
+  $('code').innerHTML=CODE.map(l=>{
+    const on=(active>=0 && l.c===active && active!==0);
+    let s=esc(l.t)
+      .replace(/\b(class|def|try|except|return|pass)\b/g,'<span class="kw">$1</span>')
+      .replace(/(#.*)$/,'<span class="cm">$1</span>')
+      .replace(/(f'[^']*')/g,'<span class="st">$1</span>');
+    return on?'<span class="hl">'+s+'</span>':s;
+  }).join('\n');
+}
+// steps map -> {layer id to activate, code section c, text}
+const normal=[
+ {ly:'L-try', c:1, d:"<b>Enter the try block.</b> Everything below is now protected: if a CancelBatchException is thrown anywhere inside, we will catch it at the bottom."},
+ {ly:'L-before', c:2, d:"<b>Fire before_batch.</b> <code>o.callback('before_batch')</code> runs every callback's <code>before_batch</code> (e.g. DeviceCB moves the batch to GPU)."},
+ {ly:'L-core', c:3, d:"<b>Run the real method.</b> Your original <code>_one_batch</code> executes: predict → get_loss → backward → step → zero_grad. The decorator wrapped it but didn't change it."},
+ {ly:'L-after', c:4, d:"<b>Fire after_batch.</b> <code>o.callback('after_batch')</code> runs — MetricsCB logs results, ProgressCB advances the bar."},
+ {ly:'', c:-1, d:"<b>Done — no exception.</b> The <code>except</code> block is skipped entirely. Control returns to the epoch loop, which fetches the next batch. ✅"},
+];
+const cancelRun=[
+ {ly:'L-try', c:1, d:"<b>Enter the try block.</b> Protected region begins."},
+ {ly:'L-before', c:2, d:"<b>Fire before_batch.</b> But this time a callback (say <code>SingleBatchCB</code>) decides we're done after one batch and <b>raises CancelBatchException</b> right here!"},
+ {ly:'L-except', c:5, d:"<b>Jump straight to except.</b> The real method and after_batch are <b>never reached</b> — Python unwinds to the matching handler. <code>except CancelBatchException: pass</code> swallows it silently."},
+ {ly:'', c:-1, d:"<b>Done — gracefully stopped.</b> No crash, no traceback. The batch was cancelled but the program continues. This same pattern at the <i>epoch</i> and <i>fit</i> levels powers early stopping & the LR finder. ✅"},
+];
+let mode='normal', seq=normal, phase=-1, timer=null;
+function setMode(m){
+  mode=m; seq=(m==='normal')?normal:cancelRun;
+  $('mNorm').classList.toggle('sel',m==='normal');
+  $('mCancel').classList.toggle('sel',m==='cancel');
+  $('coreTxt').textContent = m==='normal' ? 'predict → get_loss → backward → step → zero_grad' : '(skipped — exception raised before this runs)';
+  reset();
+}
+function clearLy(){['L-try','L-before','L-core','L-after','L-except'].forEach(x=>$(x).classList.remove('active'));}
+function paint(){
+  clearLy();
+  if(phase<0){$('panel').innerHTML='Choose a scenario, then press <b>Step ▶</b>.';renderCode(0);$('prog').style.width='0';$('step').textContent='Step ▶';$('step').disabled=false;broadcast();return;}
+  const s=seq[phase];
+  if(s.ly)$(s.ly).classList.add('active');
+  // keep try-parent highlighted while inside it
+  if(['L-before','L-core','L-after'].includes(s.ly))$('L-try').classList.add('active');
+  $('panel').innerHTML=s.d;
+  renderCode(s.c);
+  $('prog').style.width=((phase+1)/seq.length*100)+'%';
+  $('step').textContent=phase>=seq.length-1?'Done':'Step ▶';
+  $('step').disabled=phase>=seq.length-1;
+  broadcast();
+}
+function step(){if(phase<seq.length-1){phase++;paint();}else stopAuto();}
+function stopAuto(){clearInterval(timer);timer=null;$('auto').textContent='⏩ Auto';}
+function startAuto(){if(timer){stopAuto();return;}if(phase>=seq.length-1)phase=-1;$('auto').textContent='⏸ Pause';timer=setInterval(()=>{step();if(phase>=seq.length-1)stopAuto();},+$('speed').value);}
+function reset(){stopAuto();phase=-1;paint();}
+$('step').onclick=()=>{stopAuto();step();};
+$('auto').onclick=startAuto;
+$('reset').onclick=reset;
+$('mNorm').onclick=()=>setMode('normal');
+$('mCancel').onclick=()=>setMode('cancel');
+$('speed').oninput=()=>{if(timer){stopAuto();startAuto();}};
+function broadcast(){parent.postMessage({type:'viz-height',id:'with_cbs_decorator',height:document.body.scrollHeight},'*');}
+renderCode(0);paint();
+addEventListener('load',broadcast);addEventListener('resize',broadcast);
+new ResizeObserver(broadcast).observe(document.body);
+</script>
+</body>
+</html>
