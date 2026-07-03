@@ -1,0 +1,197 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Augmentation Machine — pad, crop, flip</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .dice{background:var(--in);color:#fff;}
+  input[type=range]{width:100px;accent-color:var(--ac);vertical-align:middle;}
+  .sv{font-family:monospace;font-weight:700;color:var(--ac);min-width:30px;display:inline-block;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  canvas.px{image-rendering:pixelated;border-radius:6px;display:block;margin:0 auto;}
+  #padwrap{position:relative;display:inline-block;}
+  #padwrap canvas{cursor:crosshair;}
+  .arrow{align-self:center;font-size:22px;color:var(--soft);font-weight:700;padding:0 2px;}
+  .flipcoin{text-align:center;font-size:12px;color:var(--soft);margin-top:6px;min-height:18px;}
+  .flipcoin b{color:var(--ac);}
+  .gallery{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px;}
+  .gallery .g{border:1px solid var(--line);border-radius:6px;padding:2px;background:#fff;}
+  .gcap{text-align:center;font-size:11px;color:var(--soft);margin-top:8px;font-weight:700;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.65;max-width:860px;margin:12px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>The Augmentation Machine — RandomCrop(padding) + RandomHorizontalFlip</h1>
+<p class="sub">Every training batch, each image goes through the same pipeline:
+<b style="color:var(--in)">① pad</b> the 28×28 image with zeros →
+<b style="color:var(--ac)">② pick a random top-left corner</b> →
+<b style="color:var(--ac)">③ crop 28×28 back out</b> →
+<b style="color:var(--out)">④ maybe flip left↔right</b>.
+The model never sees exactly the same pixels twice. Click stage chips, <b>click the padded image</b> to choose the crop corner yourself, or press Play to watch endless variants stream out.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① Pad with zeros</button>
+  <button class="chip" id="st1">② Pick random corner</button>
+  <button class="chip" id="st2">③ Crop 28×28</button>
+  <button class="chip" id="st3">④ Flip (maybe)</button>
+</div>
+
+<div class="selrow">
+  padding <input id="pad" type="range" min="0" max="4" step="1" value="4"><span class="sv" id="padv">4</span>
+  &nbsp;·&nbsp; flip&nbsp;p <input id="fp" type="range" min="0" max="1" step="0.25" value="0.5"><span class="sv" id="fpv">0.5</span>
+  &nbsp;·&nbsp; speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="sv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="dice" id="dice">🎲 New random draw</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" style="color:var(--in)">Original <small id="origsz">28×28</small></div>
+    <canvas id="cOrig" class="px"></canvas>
+  </div>
+  <div class="arrow">→</div>
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">Padded <small id="padsz">36×36 · click to place the crop window</small></div>
+    <div id="padwrap"><canvas id="cPad" class="px"></canvas></div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="card">
+    <div class="cap" style="color:var(--out)">Augmented output <small id="outsub">what the model actually trains on</small></div>
+    <canvas id="cOut" class="px"></canvas>
+    <div class="flipcoin" id="coin"></div>
+  </div>
+</div>
+
+<div class="gcap">Recent augmented variants — all from the <span style="color:var(--in)">same original image</span>:</div>
+<div class="gallery" id="gal"></div>
+
+<div class="code" id="code"></div>
+<p class="legend"><b class="i">orange = input / crop window</b> · <b class="a">purple = random choices</b> · <b class="o">teal = augmented output</b>. With padding=4 there are 9×9 = 81 crop positions × 2 flips = <b>162 variants of every image</b> — before the model can memorize one, it sees another.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=28; // logical image size
+// --- 28x28 sneaker-ish pixel art (procedural, grayscale 0..1) ---
+const IMG=(()=>{const a=Array.from({length:N},()=>Array(N).fill(0));
+ const put=(r,c,v)=>{if(r>=0&&r<N&&c>=0&&c<N)a[r][c]=Math.max(a[r][c],v);};
+ for(let c=3;c<25;c++)for(let r=17;r<21;r++)put(r,c,.95);            // sole
+ for(let c=4;c<24;c++)put(21,c,.55);                                  // sole shadow
+ for(let c=3;c<20;c++)for(let r=13;r<17;r++)put(r,c,.8);              // body
+ for(let c=10;c<19;c++)put(12-Math.floor((c-10)/3),c,.8);             // instep
+ for(let c=3;c<9;c++)for(let r=9;r<13;r++)put(r,c,.85);               // ankle
+ for(let c=4;c<8;c++)put(8,c,.6);                                     // collar
+ for(let k=0;k<4;k++){put(10+k,9+k*2,.35);put(11+k,9+k*2,.3);}        // laces
+ for(let c=19;c<24;c++)put(16,c,.7);put(16,24,.5);                    // toe
+ return a;})();
+let pad=4, dy=2, dx=6, flip=true, phase=0, timer=null, speed=1;
+const CS=7; // css px per pixel-cell
+function px(cv,S){cv.width=S;cv.height=S;cv.style.width=(S*CS)+'px';cv.style.height=(S*CS)+'px';return cv.getContext('2d');}
+function padded(){const S=N+2*pad,g=Array.from({length:S},()=>Array(S).fill(0));
+ for(let r=0;r<N;r++)for(let c=0;c<N;c++)g[r+pad][c+pad]=IMG[r][c];return g;}
+function cropped(){const P=padded(),o=Array.from({length:N},()=>Array(N).fill(0));
+ for(let r=0;r<N;r++)for(let c=0;c<N;c++)o[r][c]=P[r+dy][c+dx];
+ if(flip&&phase>=3)o.forEach(row=>row.reverse());return o;}
+function draw(ctx,g,S){for(let r=0;r<S;r++)for(let c=0;c<S;c++){const v=g[r][c];
+ ctx.fillStyle=v===0?'#f2f5fb':`rgb(${Math.round(250-215*v)},${Math.round(250-210*v)},${Math.round(252-195*v)})`;
+ ctx.fillRect(c,r,1,1);}}
+function render(){
+ const S=N+2*pad;
+ draw(px($('cOrig'),N),IMG,N);
+ const pc=px($('cPad'),S);draw(pc,padded(),S);
+ // pad ring tint (stage>=0)
+ pc.fillStyle='rgba(246,146,30,.16)';
+ for(let r=0;r<S;r++)for(let c=0;c<S;c++)if(r<pad||r>=S-pad||c<pad||c>=S-pad)pc.fillRect(c,r,1,1);
+ if(phase>=1&&pad>0){ // crop window
+  pc.strokeStyle='#f6921e';pc.lineWidth=.6;pc.strokeRect(dx+.3,dy+.3,N-.6,N-.6);
+  pc.fillStyle='#7b5cd6';pc.fillRect(dx,dy,1.6,1.6);}
+ const oc=px($('cOut'),N);
+ if(phase>=2){draw(oc,cropped(),N);}
+ else{oc.fillStyle='#f7f9fd';oc.fillRect(0,0,N,N);}
+ $('padsz').textContent=pad?`${S}×${S} · click to place the crop window`:`padding=0 → nothing to shift (identity crop)`;
+ $('coin').innerHTML=phase>=3?(flip?`coin &lt; p → <b>flipped ⇋</b>`:`coin ≥ p → <b>kept as-is</b>`):'&nbsp;';
+ code();
+ ['st0','st1','st2','st3'].forEach((id,i)=>$(id).classList.toggle('on',i===phase));
+}
+function code(){
+ const m=2*pad;
+ const L=[
+  `<span class="cm"># the notebook's pipeline — expanded into what really happens per image:</span>`,
+  `<span class="cm"># ① pad by ${pad} zeros on every side: 28×28 → ${N+2*pad}×${N+2*pad}</span>`,
+  `padded = F.<span class="fn">pad</span>(x, (<span class="num">${pad}</span>,<span class="num">${pad}</span>,<span class="num">${pad}</span>,<span class="num">${pad}</span>))`,
+  `<span class="cm"># ② pick a random top-left corner — here dy=${dy}, dx=${dx}</span>`,
+  `dy, dx = <span class="fn">randint</span>(<span class="num">0</span>,<span class="num">${m}</span>), <span class="fn">randint</span>(<span class="num">0</span>,<span class="num">${m}</span>)`,
+  `<span class="cm"># ③ crop the 28×28 window back out — the image content shifts</span>`,
+  `x = padded[..., dy:dy+<span class="num">28</span>, dx:dx+<span class="num">28</span>]`,
+  `<span class="cm"># ④ flip left↔right with probability p=${$('fp').value} — coin said: ${flip?'flip!':'keep'}</span>`,
+  `<span class="fn">if</span> random() &lt; <span class="num">${$('fp').value}</span>: x = x.<span class="fn">flip</span>(-<span class="num">1</span>)`];
+ const hlMap={0:[1,2],1:[3,4],2:[5,6],3:[7,8]};const hl=hlMap[phase];
+ $('code').innerHTML=L.map((t,i)=>hl.includes(i)?`<span class="hl">${t}</span>`:t).join('\n')
+  +`\n<span class="cm"># = transforms.RandomCrop(28, padding=${pad}) + transforms.RandomHorizontalFlip()  ← the notebook's tfms</span>`;
+}
+function newDraw(final){
+ const m=2*pad;dy=Math.floor(Math.random()*(m+1));dx=Math.floor(Math.random()*(m+1));
+ flip=Math.random()<parseFloat($('fp').value);
+ if(final){phase=3;addGal();}
+ render();
+}
+function addGal(){
+ const g=$('gal');const cv=document.createElement('canvas');cv.className='px';
+ const ctx=cv.getContext('2d');cv.width=N;cv.height=N;cv.style.width='56px';cv.style.height='56px';cv.style.imageRendering='pixelated';
+ const savePhase=phase;phase=3;draw(ctx,cropped(),N);phase=savePhase;
+ const w=document.createElement('div');w.className='g';w.appendChild(cv);
+ g.insertBefore(w,g.firstChild);while(g.children.length>10)g.removeChild(g.lastChild);
+}
+function stepF(){if(phase<3){phase++;}else{newDraw(false);phase=0;}render();if(phase===3)addGal();}
+function play(){if(timer){stop();return;}$('play').textContent='⏸ Pause';
+ timer=setInterval(()=>{stepF();},700/speed);}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+$('cPad').parentElement.addEventListener('click',e=>{
+ const cv=$('cPad'),r=cv.getBoundingClientRect(),S=N+2*pad,m=2*pad;
+ const cx=Math.floor((e.clientX-r.left)/r.width*S),cy=Math.floor((e.clientY-r.top)/r.height*S);
+ dx=Math.max(0,Math.min(m,cx-Math.floor(N/2)));
+ dy=Math.max(0,Math.min(m,cy-Math.floor(N/2)));
+ if(phase<2)phase=2;stop();render();});
+['st0','st1','st2','st3'].forEach((id,i)=>$(id).onclick=()=>{phase=i;stop();render();});
+$('pad').oninput=e=>{pad=+e.target.value;$('padv').textContent=pad;const m=2*pad;dy=Math.min(dy,m);dx=Math.min(dx,m);render();};
+$('fp').oninput=e=>{$('fpv').textContent=e.target.value;render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+$('dice').onclick=()=>{stop();newDraw(true);};
+$('play').onclick=play;
+$('fwd').onclick=()=>{stop();stepF();};
+$('reset').onclick=()=>{stop();phase=0;dy=2;dx=6;flip=false;$('gal').innerHTML='';render();};
+render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

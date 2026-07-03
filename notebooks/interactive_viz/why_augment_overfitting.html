@@ -1,0 +1,138 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why augment? Watch the overfitting gap open — and close</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:920px;line-height:1.45;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:130px;accent-color:var(--ac);vertical-align:middle;}
+  .sv{font-family:monospace;font-weight:700;color:var(--ac);min-width:44px;display:inline-block;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:stretch;flex-wrap:wrap;max-width:1100px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  svg{display:block;}
+  .side{flex:0 0 300px;display:flex;flex-direction:column;gap:8px;font-size:12px;min-width:260px;}
+  .stat{display:flex;justify-content:space-between;align-items:baseline;padding:6px 9px;border:1.5px solid var(--line);border-radius:10px;background:#fff;}
+  .stat b{font-family:monospace;font-size:15px;}
+  .stat.tr b{color:var(--in);} .stat.va b{color:var(--out);} .stat.gp b{color:var(--neg);}
+  .verdict{border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.5;border:1.5px solid var(--line);background:#fff;}
+  .verdict.bad{border-color:#f3c1c1;background:#fdf4f4;}
+  .verdict.good{border-color:#bfe8e4;background:#f2fbfa;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}
+</style></head><body>
+<h1>Why augment? The overfitting gap — opened, then closed</h1>
+<p class="sub">Without augmentation the notebook saw <b style="color:var(--in)">train 99.9%</b> vs <b style="color:var(--out)">valid 92.4%</b> after 20 epochs — the model <b>memorized</b> the training pixels instead of learning clothing shapes. Drag the <b>augmentation strength</b> slider and press ▶ to re-run training: augmentation makes memorization impossible (the pixels keep changing!), so the model is forced to learn <i>general</i> features — the gap shrinks and validation accuracy climbs.</p>
+
+<div class="selrow">
+  augmentation strength <input id="aug" type="range" min="0" max="1" step="0.05" value="0"><span class="sv" id="augv">0%</span>
+  &nbsp;·&nbsp; speed <input id="speed" type="range" min="0.5" max="4" step="0.5" value="1" style="width:90px"><span class="sv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="play" id="play">▶ Train</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="main">
+  <div class="card" style="flex:1;min-width:340px;">
+    <div class="cap">Accuracy over 20 epochs</div>
+    <svg id="plot" viewBox="0 0 560 300" width="100%"></svg>
+  </div>
+  <div class="side">
+    <div class="stat tr"><span>Train accuracy</span><b id="trv">—</b></div>
+    <div class="stat va"><span>Validation accuracy</span><b id="vav">—</b></div>
+    <div class="stat gp"><span>Overfitting gap</span><b id="gpv">—</b></div>
+    <div class="verdict" id="verdict">Press <b>▶ Train</b> to run 20 epochs with the chosen augmentation strength. Try 0% first, then ~50%, then 100%.</div>
+    <div class="verdict">💡 <b>Why it works:</b> with random crop + flip there are ~162 versions of every image. The network can't memorize a moving target, so the only way to reduce training loss is to learn features that hold for <i>all</i> versions — and those generalize. (Note the trade: train accuracy <i>drops</i>. That's fine — validation is what we ship.)</div>
+  </div>
+</div>
+<p class="legend"><b class="i">orange = train</b> · <b class="o">teal = validation</b> · red band = the gap. Too much augmentation can also hurt (try 100%): the task gets artificially hard. Tune it like any hyper-parameter.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const E=20; let ep=0,timer=null,speed=1,aug=0;
+const PL={x0:46,x1:540,y0:262,y1:18,amin:70,amax:100};
+function X(e){return PL.x0+(PL.x1-PL.x0)*e/E;}
+function Y(a){return PL.y0-(PL.y0-PL.y1)*(a-PL.amin)/(PL.amax-PL.amin);}
+// accuracy models (smooth, plausible): final train/val as fn of aug strength s
+function finals(s){
+ const tr=99.9-8.5*s+1.2*s*s*0 - 6*Math.max(0,s-.8);           // train falls with aug
+ const va=92.4+3.4*(1-Math.pow(1-s,2)) - 4.5*Math.max(0,s-.8); // val peaks ~s=0.8
+ return {tr:Math.min(99.9,tr),va:Math.min(96.2,va)};
+}
+function curve(e,fin,start,knee){ // saturating rise
+ const t=e/E; return start+(fin-start)*(1-Math.exp(-t*knee))/(1-Math.exp(-knee));
+}
+function series(){
+ const f=finals(aug),tr=[],va=[];
+ for(let e=0;e<=E;e++){
+  tr.push(curve(e,f.tr,72,4.2)+(e?(Math.sin(e*3.7)*0.25):0));
+  va.push(curve(e,f.va,70,3.1)+(e?(Math.sin(e*2.9+1)*0.4):0));}
+ return {tr,va};
+}
+function grid(){
+ let s='';
+ for(let a=70;a<=100;a+=5){const y=Y(a);
+  s+=`<line x1="${PL.x0}" y1="${y}" x2="${PL.x1}" y2="${y}" stroke="#eef2f8"/><text x="${PL.x0-6}" y="${y+3.5}" text-anchor="end" font-size="10" fill="#8a97b0">${a}%</text>`;}
+ for(let e=0;e<=E;e+=5){const x=X(e);
+  s+=`<line x1="${x}" y1="${PL.y0}" x2="${x}" y2="${PL.y1}" stroke="#f4f7fd"/><text x="${x}" y="${PL.y0+14}" text-anchor="middle" font-size="10" fill="#8a97b0">${e}</text>`;}
+ s+=`<text x="${(PL.x0+PL.x1)/2}" y="296" text-anchor="middle" font-size="10.5" fill="#5a6b86">epoch</text>`;
+ return s;}
+function path(arr,upto,color,w){
+ let d='';for(let e=0;e<=upto;e++)d+=(e?'L':'M')+X(e).toFixed(1)+','+Y(arr[e]).toFixed(1);
+ return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>`;}
+function render(){
+ const S=series();
+ let s=grid();
+ if(ep>0){
+  // gap band
+  let d='M'+X(0)+','+Y(S.tr[0]);
+  for(let e=1;e<=ep;e++)d+='L'+X(e)+','+Y(S.tr[e]);
+  for(let e=ep;e>=0;e--)d+='L'+X(e)+','+Y(S.va[e]);
+  s+=`<path d="${d}Z" fill="rgba(214,69,69,.10)"/>`;
+ }
+ s+=path(S.tr,ep,'#f6921e',2.6)+path(S.va,ep,'#16a3a3',2.6);
+ if(ep>0){
+  s+=`<circle cx="${X(ep)}" cy="${Y(S.tr[ep])}" r="4" fill="#f6921e"/><circle cx="${X(ep)}" cy="${Y(S.va[ep])}" r="4" fill="#16a3a3"/>`;}
+ $('plot').innerHTML=s;
+ if(ep>0){
+  const tr=S.tr[ep],va=S.va[ep],gap=tr-va;
+  $('trv').textContent=tr.toFixed(1)+'%';$('vav').textContent=va.toFixed(1)+'%';$('gpv').textContent=gap.toFixed(1)+' pts';
+  if(ep===E){
+   const v=$('verdict');
+   if(aug<.15){v.className='verdict bad';v.innerHTML=`<b>Memorized.</b> Train ≈ ${tr.toFixed(1)}% but validation stuck at ${va.toFixed(1)}%. The ${gap.toFixed(1)}-point gap is pure overfitting — the model learned <i>these pixels</i>, not <i>clothes</i>. Now raise augmentation and retrain.`;}
+   else if(aug<=.85){v.className='verdict good';v.innerHTML=`<b>Generalizing!</b> Train dropped to ${tr.toFixed(1)}% (harder task) but validation rose to ${va.toFixed(1)}% — gap only ${gap.toFixed(1)} pts. This mirrors the notebook: subtle augmentation (padding=1 + flip) beats none.`;}
+   else{v.className='verdict';v.innerHTML=`<b>Over-augmented.</b> At full strength the crops/erases destroy too much signal — validation slips to ${va.toFixed(1)}%. Augmentation is a dial, not a switch.`;}
+  }
+ } else {$('trv').textContent='—';$('vav').textContent='—';$('gpv').textContent='—';}
+}
+function play(){if(timer){stop();return;}
+ if(ep>=E)ep=0;
+ $('play').textContent='⏸ Pause';
+ timer=setInterval(()=>{ep++;render();if(ep>=E)stop();},260/speed);}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Train';}
+$('aug').oninput=e=>{aug=+e.target.value;$('augv').textContent=Math.round(aug*100)+'%';render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+$('play').onclick=play;
+$('reset').onclick=()=>{stop();ep=0;$('verdict').className='verdict';$('verdict').innerHTML='Press <b>▶ Train</b> to run 20 epochs with the chosen augmentation strength.';render();};
+render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

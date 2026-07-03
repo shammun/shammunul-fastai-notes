@@ -1,0 +1,226 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dropout — random silence, scaled honesty</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:5px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  #explain{text-align:center;font-size:12.5px;max-width:880px;margin:0 auto 7px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 12px;box-shadow:0 4px 12px rgba(123,92,214,.07);line-height:1.5;}
+  #explain b.k{color:var(--out);} #explain b.d{color:var(--neg);} #explain b.a{color:var(--ac);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .dice{background:var(--in);color:#fff;}
+  .seg{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden;background:#fff;}
+  .seg button{border:none;background:transparent;color:var(--soft);font-weight:700;font-size:11.5px;padding:4px 12px;cursor:pointer;border-radius:0;}
+  .seg button.on{background:var(--ac);color:#fff;}
+  input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+  .sv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .main{display:flex;gap:12px;justify-content:center;align-items:stretch;flex-wrap:wrap;max-width:1220px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .ngrid{display:grid;grid-template-columns:repeat(8,38px);gap:4px;}
+  .nc{height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:"SF Mono",Consolas,monospace;font-size:10.5px;font-weight:700;border:1px solid #eef2f8;transition:all .2s;position:relative;cursor:pointer;}
+  .nc.dead{background:#f1f3f8 !important;color:#c3cbdc !important;text-decoration:line-through;}
+  .nc.boost::after{content:"×"attr(data-s);position:absolute;bottom:-1px;right:2px;font-size:7.5px;color:var(--ac);}
+  .meter{min-width:240px;max-width:270px;font-size:11.5px;}
+  .meter .row{display:flex;justify-content:space-between;font-family:monospace;border-bottom:1px dashed var(--line);padding:3px 0;}
+  .meter .ok{color:var(--out);font-weight:700;}
+  .meter .warn{color:var(--neg);font-weight:700;}
+  .meter p{font-family:"Segoe UI",system-ui,sans-serif;font-size:11px;color:var(--soft);line-height:1.5;margin:6px 0 0;}
+  .ttd{margin-top:8px;}
+  .ttdbars{display:flex;align-items:flex-end;gap:3px;height:52px;margin-top:4px;}
+  .ttdbars .b{flex:1;background:#c9d4e8;border-radius:3px 3px 0 0;position:relative;}
+  .ttdbars .b.mean{background:var(--out);}
+  .ttdcap{font-size:10px;color:var(--soft);text-align:center;margin-top:2px;}
+  .codecard{flex:0 1 470px;min-width:330px;display:flex;flex-direction:column;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 11px;font-family:"SF Mono",Consolas,monospace;font-size:11px;line-height:1.7;overflow-x:auto;white-space:pre;flex:1;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 3px;}
+  .code .dim{opacity:.45;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>Dropout — randomly silence neurons, scale up the survivors</h1>
+<p class="sub">Each training pass, every activation is kept with probability <b>1−p</b> and zeroed with probability <b>p</b> — so no neuron can become indispensable. Survivors are scaled by <b style="color:var(--ac)">1/(1−p)</b> so the layer's <b>average output stays the same</b>. Press <b>▶ Play</b> to watch full passes run stage by stage — the code on the right highlights the exact line being executed. <b>Click any neuron</b> to drop/revive it by hand.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① Activations x arrive</button>
+  <button class="chip" id="st1">② Sample Bernoulli mask</button>
+  <button class="chip" id="st2">③ x = x × mask</button>
+  <button class="chip" id="st3">④ Scale × 1/(1−p)</button>
+</div>
+<div id="explain"></div>
+<div class="selrow">
+  p <input id="p" type="range" min="0" max="0.7" step="0.05" value="0.2"><span class="sv" id="pv">0.20</span>
+  &nbsp;·&nbsp; mode:
+  <span class="seg"><button id="mtrain" class="on">training</button><button id="meval">eval / inference</button></span>
+  &nbsp;·&nbsp; speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1" style="width:80px"><span class="sv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="dice" id="dice">🎲 New mask</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap">One layer's activations (8×5 = 40 neurons) <small id="gridsub">click a neuron to drop/revive it</small></div>
+    <div class="ngrid" id="grid"></div>
+  </div>
+  <div class="card codecard">
+    <div class="cap">Dropout.forward — the line running <b style="color:var(--ac)">now</b></div>
+    <div class="code" id="code"></div>
+  </div>
+  <div class="card meter">
+    <div class="cap">The expectation meter</div>
+    <div class="row"><span>p (drop prob)</span><span id="mp">0.20</span></div>
+    <div class="row"><span>dropped this pass</span><span id="mdrop">—</span></div>
+    <div class="row"><span>mean(x) before</span><span id="mb">—</span></div>
+    <div class="row"><span>mean(output) this pass</span><span id="ma">—</span></div>
+    <div class="row"><span>avg over <span id="npass">0</span> passes</span><span id="mavg">—</span></div>
+    <p id="verd">One pass wobbles around mean(x); the <b>average over many passes converges to mean(x)</b>. That is what "the expectation is preserved" means — and it's exactly what ×1/(1−p) buys.</p>
+    <div class="ttd">
+      <div class="cap" style="margin:0">Bonus: Test-Time Dropout <small>keep dropout ON in eval → passes differ → spread = uncertainty</small></div>
+      <div class="ttdbars" id="ttdbars"></div>
+      <div class="ttdcap">grey = single-pass means · teal = their running mean</div>
+    </div>
+  </div>
+</div>
+<p class="legend">Stage ② outlines: <b style="color:var(--out)">teal = keep (prob 1−p)</b>, <b style="color:var(--neg)">red = will be dropped (prob p)</b>. In <b>eval mode</b> forward returns x untouched — flip the toggle and stages ②–④ grey out in the code. The notebook's TTD_CB deliberately re-enables training mode on Dropout layers during validation.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const NN=40;
+let x=[],mask=[],p=.2,phase=0,timer=null,speed=1,training=true;
+let passSum=0,passN=0,ttd=[];
+function newX(){x=Array.from({length:NN},()=>+(Math.random()*2).toFixed(1));}
+function newMask(){mask=x.map(()=>Math.random()<(1-p)?1:0);}
+function meanX(){return x.reduce((a,b)=>a+b,0)/NN;}
+function meanMasked(){return x.map((v,i)=>v*mask[i]).reduce((a,b)=>a+b,0)/NN;}
+function meanOut(){if(!training)return meanX();
+ return x.map((v,i)=>v*mask[i]*(1/(1-p))).reduce((a,b)=>a+b,0)/NN;}
+function heat(v){const t=Math.min(1,v/2);
+ return `rgb(${Math.round(255-25*t)},${Math.round(244-98*t)},${Math.round(235-205*t)})`;}
+/* ---------- explainer ---------- */
+function explain(){
+ if(!training){$('explain').innerHTML=`<b class="a">Eval mode:</b> <code>self.training</code> is False, so forward hits <b>return x</b> on line 2 — the activations pass through <b>completely untouched</b>. Dropout only exists during training.`;return;}
+ const dr=mask.filter(m=>!m).length,sc=(1/(1-p)).toFixed(2);
+ const t=[
+  `<b>①</b> The layer just produced <b>40 activation values</b> (darker orange = bigger). Right now mean(x) = <b>${meanX().toFixed(3)}</b>. Nothing has been dropped yet.`,
+  `<b>②</b> A coin is flipped for <i>every</i> neuron: <b class="k">teal outline = keep</b> (prob 1−p = ${(1-p).toFixed(2)}), <b class="d">red outline = drop</b> (prob p = ${p.toFixed(2)}). This pass the coin chose <b>${dr}/${NN}</b> to drop.`,
+  `<b>③</b> Multiply x by the 0/1 mask → red-flagged neurons become <b class="d">0</b> (grey, struck out). Notice the layer's mean just <b class="d">shrank</b> to ${meanMasked().toFixed(3)} — smaller than mean(x)!`,
+  `<b>④</b> Fix the shrinkage: survivors are multiplied by <b class="a">1/(1−p) = ${sc}</b> (see the ×${sc} badges) → mean(output) = <b class="k">${meanOut().toFixed(3)}</b> ≈ mean(x) = ${meanX().toFixed(3)}. Balance restored, on average.`];
+ $('explain').innerHTML=t[phase];}
+/* ---------- code panel ---------- */
+function code(){
+ const sc=p<1?(1/(1-p)).toFixed(2):'∞';
+ const L=[
+  `<span class="fn">def</span> forward(self, x):                 <span class="cm"># ① x arrives: 40 activations</span>`,
+  `    <span class="fn">if not</span> self.training: <span class="fn">return</span> x   <span class="cm"># eval → identity, skip everything</span>`,
+  `    dist = Binomial(probs=<span class="num">1</span> - self.p) <span class="cm"># ② keep-prob = ${(1-p).toFixed(2)}</span>`,
+  `    mask = dist.<span class="fn">sample</span>(x.size())      <span class="cm"># ② coin per neuron: 1=keep 0=drop</span>`,
+  `    x = x * mask                     <span class="cm"># ③ dropped neurons → 0</span>`,
+  `    <span class="fn">return</span> x * <span class="num">1</span>/(<span class="num">1</span> - self.p)       <span class="cm"># ④ boost ×${sc} so E[out]=E[x]</span>`];
+ let hl,dim=[];
+ if(!training){hl=[1];dim=[2,3,4,5];}
+ else hl={0:[0],1:[2,3],2:[4],3:[5]}[phase];
+ $('code').innerHTML=L.map((t,i)=>
+   hl.includes(i)?`<span class="hl">${t}</span>`:(dim.includes(i)?`<span class="dim">${t}</span>`:t)).join('\n')
+  +`\n\n<span class="cm"># why it works: E[x·mask·1/(1-p)] = x·(1-p)·1/(1-p) = x</span>`;}
+/* ---------- render ---------- */
+function render(){
+ const g=$('grid');g.innerHTML='';
+ const sc=(1/(1-p)).toFixed(2);
+ x.forEach((v,i)=>{
+  const d=document.createElement('div');d.className='nc';
+  const dead=training&&phase>=2&&mask[i]===0;
+  const boost=training&&phase>=3&&mask[i]===1&&p>0;
+  let shown=v;
+  if(training&&phase>=2)shown=v*mask[i];
+  if(boost)shown=v*mask[i]/(1-p);
+  d.textContent=shown.toFixed(1);
+  d.style.background=heat(v);
+  if(dead)d.classList.add('dead');
+  if(boost){d.classList.add('boost');d.dataset.s=sc;d.style.outline='2px solid rgba(123,92,214,.5)';d.style.outlineOffset='-2px';}
+  if(training&&phase===1){d.style.outline=mask[i]?'2px solid #16a3a3':'2px solid #d64545';d.style.outlineOffset='-2px';}
+  d.onclick=()=>{mask[i]=1-mask[i];if(phase<2)phase=2;stop();render();};
+  g.appendChild(d);});
+ const dr=mask.filter(m=>!m).length;
+ $('mp').textContent=p.toFixed(2);
+ $('mdrop').textContent=training&&phase>=1?`${dr}/${NN} (~${Math.round(p*100)}% expected)`:(training?'—':'— (eval: none)');
+ $('mb').textContent=meanX().toFixed(3);
+ let ma='—';
+ if(!training)ma=meanX().toFixed(3);
+ else if(phase===2)ma=meanMasked().toFixed(3)+' ⚠ too small!';
+ else if(phase>=3)ma=meanOut().toFixed(3);
+ $('ma').textContent=ma;
+ $('ma').className=(training&&phase===2)?'warn':(phase>=3||!training?'ok':'');
+ $('mavg').textContent=passN?(passSum/passN).toFixed(3):'—';
+ $('npass').textContent=passN;
+ $('gridsub').textContent=training?'click a neuron to drop/revive it':'eval mode: forward returns x unchanged';
+ ttdRender();code();explain();
+ ['st0','st1','st2','st3'].forEach((id,i)=>$(id).classList.toggle('on',training&&i===phase));
+}
+function ttdRender(){
+ const el=$('ttdbars');el.innerHTML='';
+ const all=[...ttd];const mean=all.length?all.reduce((a,b)=>a+b,0)/all.length:0;
+ const mx=Math.max(1.4,...all,mean);
+ all.slice(-14).forEach(v=>{const b=document.createElement('div');b.className='b';b.style.height=(v/mx*100)+'%';el.appendChild(b);});
+ if(all.length){const b=document.createElement('div');b.className='b mean';b.style.height=(mean/mx*100)+'%';el.appendChild(b);}
+}
+/* ---------- stepping: every path walks ① → ② → ③ → ④ ---------- */
+function advance(){ // one sub-stage forward; records the pass when ④ is reached
+ if(!training){render();return;}
+ if(phase===0){phase=1;newMask();}
+ else if(phase===1)phase=2;
+ else if(phase===2){phase=3;recordPass();}
+ else {phase=1;newMask();} // wrap: start a fresh pass with a new coin-flip
+ render();}
+function recordPass(){
+ const m=meanOut();passSum+=m;passN++;ttd.push(m);if(ttd.length>60)ttd.shift();}
+function play(){
+ if(timer){stop();return;}
+ if(!training)return;
+ $('play').textContent='⏸ Pause';
+ timer=setInterval(advance,750/speed);}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+['st0','st1','st2','st3'].forEach((id,i)=>$(id).onclick=()=>{
+ stop();
+ if(!training){training=true;$('mtrain').classList.add('on');$('meval').classList.remove('on');}
+ phase=i;if(i>=1&&!mask.length)newMask();
+ if(i===3&&passN===0)recordPass();
+ render();});
+$('p').oninput=e=>{p=+e.target.value;$('pv').textContent=p.toFixed(2);passSum=0;passN=0;ttd=[];newMask();render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+$('mtrain').onclick=()=>{training=true;$('mtrain').classList.add('on');$('meval').classList.remove('on');render();};
+$('meval').onclick=()=>{training=false;stop();phase=0;$('meval').classList.add('on');$('mtrain').classList.remove('on');render();};
+$('dice').onclick=()=>{stop();newMask();if(phase<1)phase=1;render();};
+$('play').onclick=play;
+$('fwd').onclick=()=>{stop();advance();};
+$('reset').onclick=()=>{stop();phase=0;passSum=0;passN=0;ttd=[];newX();newMask();render();};
+newX();newMask();render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  @media (max-width:760px){.ngrid{grid-template-columns:repeat(8,30px);}.nc{height:30px;font-size:9px;}}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global Average Pooling in 3D — each map becomes one number</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.5;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:5px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  #explain{text-align:center;font-size:12.5px;max-width:860px;margin:0 auto 7px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 12px;box-shadow:0 4px 12px rgba(123,92,214,.07);line-height:1.5;}
+  #explain b{color:var(--ac);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:100px;accent-color:var(--ac);vertical-align:middle;}
+  .sv{font-family:monospace;font-weight:700;color:var(--ac);min-width:30px;display:inline-block;}
+  .mainrow{display:flex;gap:12px;width:100%;max-width:1200px;margin:0 auto;align-items:stretch;flex-wrap:wrap;}
+  #scene{flex:1;min-width:340px;height:430px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);position:relative;cursor:grab;overflow:hidden;}
+  #scene:active{cursor:grabbing;}
+  #fallback{display:none;position:absolute;inset:0;align-items:center;justify-content:center;text-align:center;color:var(--soft);font-size:13px;padding:24px;line-height:1.7;}
+  .hint3d{position:absolute;right:10px;bottom:8px;font-size:11px;color:#9aa8c4;pointer-events:none;}
+  .rightcol{flex:0 0 400px;min-width:310px;display:flex;flex-direction:column;gap:8px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);font-size:12px;}
+  .card h3{margin:0 0 6px;font-size:12.5px;}
+  .mathwrap{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;}
+  .mgrid{display:grid;grid-template-columns:repeat(4,44px);gap:3px;}
+  .mcell{height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:"SF Mono",Consolas,monospace;font-size:10.5px;font-weight:700;border:1px solid #f2e3cf;}
+  .msum{font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.9;text-align:left;}
+  .msum b{color:var(--out);font-size:14px;}
+  .mhint{color:#9aa8c4;font-size:11.5px;text-align:center;padding:10px 4px;}
+  .vec{font-family:"SF Mono",Consolas,monospace;font-size:12.5px;letter-spacing:.3px;line-height:1.8;word-break:break-all;}
+  .vec b{color:var(--out);} .vec .ph{color:#c3cdde;}
+  .vs{display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center;}
+  .vs .col{border:1.5px solid var(--line);border-radius:10px;padding:6px;}
+  .vs .col.win{border-color:var(--out);background:#f2fbfa;}
+  .vs .big{font-family:monospace;font-weight:700;font-size:15px;}
+  .vs .lab{font-size:10.5px;color:var(--soft);}
+  .vs .flat .big{color:var(--neg);} .vs .gap .big{color:var(--out);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.65;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>Global Average Pooling — every feature map is squeezed into ONE number</h1>
+<p class="sub">After the last ResBlock, <b>x</b> is a <b>stack of C tiny images</b> ("feature maps"), one per channel — in the real notebook <b>[512 channels × 2 × 2]</b> (here C is small and maps are 4×4 so you can see them). GAP simply <b>averages the 16 pixels of each map into a single number</b>, turning the whole stack into a short vector of C numbers — the perfect input for a small <b>Linear(C, 10)</b> classifier.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① The input: C feature maps</button>
+  <button class="chip" id="st1">② Average each map → 1 number</button>
+  <button class="chip" id="st2">③ C numbers → Linear → 10 scores</button>
+</div>
+<div id="explain"></div>
+<div class="selrow">
+  channels C <input id="nc" type="range" min="3" max="8" step="1" value="5"><span class="sv" id="ncv">5</span>
+  &nbsp;·&nbsp; speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="sv" id="spv">1×</span>
+  &nbsp;·&nbsp;
+  <button class="play" id="play">▶ Play all</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="mainrow">
+  <div id="scene">
+    <div id="fallback">three.js could not load (this view needs internet access for the CDN).<br>
+      Concept: each channel's H×W map is averaged into a single value,<br>so [C, H, W] → [C]. That C-vector feeds Linear(C, 10).</div>
+    <div class="hint3d">drag = rotate · wheel = zoom · click an orange map = average it</div>
+  </div>
+  <div class="rightcol">
+    <div class="card">
+      <h3 id="mathtitle">The arithmetic (click an orange map, or press ▶)</h3>
+      <div class="mathwrap" id="math"><div class="mhint">Each orange plane is one channel's 4×4 map of numbers.<br>Averaging = add up its 16 values, divide by 16.</div></div>
+    </div>
+    <div class="card">
+      <h3>The output vector — <span style="font-family:monospace">x.mean((-2,-1))</span></h3>
+      <div class="vec" id="vec"></div>
+    </div>
+    <div class="card">
+      <h3>Classifier parameter bill (real notebook numbers)</h3>
+      <div class="vs">
+        <div class="col flat"><div class="lab">Flatten → Linear(2048, 10)</div><div class="big">20,480</div><div class="lab">512·2·2 = 2048 inputs × 10</div></div>
+        <div class="col gap win"><div class="lab">GAP → Linear(512, 10)</div><div class="big">5,120</div><div class="lab">512 inputs × 10 · <b>4× fewer</b></div></div>
+      </div>
+    </div>
+    <div class="code" id="code"></div>
+  </div>
+</div>
+<p class="legend"><span style="color:var(--in)">■ orange planes</span> = input feature maps · <span style="color:var(--ac)">■ purple beams</span> = the averaging in flight · <span style="color:var(--out)">■ teal cubes</span> = the pooled numbers · <span style="color:var(--ac)">■ tall purple slab</span> = Linear(C,10) · small cubes = the 10 class scores. Bonus: mean() works for <i>any</i> H×W, so a GAP network accepts any input image size.</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let C=5,G=4,phase=0,timer=null,speed=1,chaining=false,busy=false;
+let collapsed=new Set(),chanVals=[],chanMeans=[],curMath=-1;
+function genData(){chanVals=[];chanMeans=[];
+ for(let k=0;k<C;k++){const p=[];let s=0;
+  for(let i=0;i<G*G;i++){const v=Math.random();p.push(v);s+=v;}
+  chanVals.push(p);chanMeans.push(s/(G*G));}}
+/* ---------- right-panel cards ---------- */
+function heatCSS(v){const t=v;return `rgb(255,${Math.round(244-98*t)},${Math.round(235-205*t)})`;}
+function showMath(k){curMath=k;
+ $('mathtitle').innerHTML=`The arithmetic for <b style="color:var(--in)">channel ${k}</b>`;
+ const cells=chanVals[k].map(v=>`<div class="mcell" style="background:${heatCSS(v)}">${v.toFixed(2)}</div>`).join('');
+ const s=chanVals[k].reduce((a,b)=>a+b,0);
+ $('math').innerHTML=`<div class="mgrid">${cells}</div>
+  <div class="msum">sum of 16 values = ${s.toFixed(2)}<br>÷ 16 pixels<br>mean = <b>${chanMeans[k].toFixed(2)}</b> ← the ONE number<br>this channel contributes</div>`;}
+function updateVec(){
+ let h='[ ';
+ for(let k=0;k<C;k++){h+=collapsed.has(k)?`<b>${chanMeans[k].toFixed(2)}</b>`:'<span class="ph">·??</span>';if(k<C-1)h+=', ';}
+ h+=' ]';
+ $('vec').innerHTML=h+`<span style="color:var(--soft);font-family:'Segoe UI',sans-serif;font-size:11px"> — ${collapsed.size}/${C} channels averaged${collapsed.size===C?' ✓ shape is now [C] = ['+C+']':''}</span>`;}
+function explain(){
+ const t=[
+  `A stack of <b>${C} feature maps</b> (orange), each a 4×4 grid of activation values — darker = bigger. Shape: <b>[${C}, 4, 4]</b>. <b>Click any map</b> to average it.`,
+  `Averaging in progress: a map's 16 pixels <b>merge into their mean</b>, which flies (purple beam) to the output column as a <b>teal cube</b>. No weights, no learning — just a mean.`,
+  `All ${C} maps are now ${C} numbers — shape <b>[${C}]</b>. They feed the purple <b>Linear(${C},10)</b> slab, which mixes them into <b>10 class scores</b>. That's the whole classifier head.`];
+ $('explain').innerHTML=t[phase];}
+function codeHTML(){
+ const L=[
+  `<span class="cm"># ① after the ResBlocks:  x.shape = [batch, C, 4, 4]   (a stack of tiny maps)</span>`,
+  `<span class="cm"># ② GAP = mean over the two spatial dims — the entire GlobalAvgPool.forward:</span>`,
+  `x = x.<span class="fn">mean</span>((-<span class="num">2</span>, -<span class="num">1</span>))            <span class="cm"># [batch, C, 4, 4] → [batch, C]</span>`,
+  `<span class="cm"># ③ one number per channel → a small Linear finishes the job:</span>`,
+  `x = nn.<span class="fn">Linear</span>(C, <span class="num">10</span>)(x)      <span class="cm"># 10 class scores. 512→10 costs 5,120 params, not 20,480</span>`];
+ const hl={0:[0],1:[1,2],2:[3,4]}[phase];
+ $('code').innerHTML=L.map((t,i)=>hl.includes(i)?`<span class="hl">${t}</span>`:t).join('\n');}
+function syncChips(){['st0','st1','st2'].forEach((id,i)=>$(id).classList.toggle('on',i===phase));explain();codeHTML();updateVec();}
+/* ---------- three.js ---------- */
+let renderer,scene,camera,planes=[],pooled=[],meanLabels=[],outBar=null,logits=[],lin2bar=[],ok=false;
+let labStack=null,labVec=null,labLin=null,labScores=null;
+let rotY=.62,rotX=.30,dist=14.5,drag=false,lx=0,ly=0,tweens=[];
+const CUBE_X=4.3,BAR_X=6.4,LOG_X=7.9;
+function heat(v){return new THREE.Color(1,.95-.55*v,.85-.75*v);}
+function makeText(txt,color,h){
+ const cv=document.createElement('canvas');const c2=cv.getContext('2d');
+ c2.font='bold 46px Segoe UI,sans-serif';
+ cv.width=Math.ceil(c2.measureText(txt).width)+26;cv.height=62;
+ const c3=cv.getContext('2d');c3.font='bold 46px Segoe UI,sans-serif';
+ c3.fillStyle=color;c3.textBaseline='middle';c3.fillText(txt,13,33);
+ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true}));
+ sp.scale.set(h*cv.width/cv.height,h,1);return sp;}
+function ease(u){return u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;}
+function tween(dur,fn,done){tweens.push({t0:performance.now(),dur,fn,done});}
+function beamMesh(a,b){
+ const len=a.distanceTo(b);
+ const m=new THREE.Mesh(new THREE.BoxGeometry(.07,.07,len),
+  new THREE.MeshBasicMaterial({color:0x7b5cd6,transparent:true,opacity:0}));
+ m.position.copy(a).lerp(b,.5);m.lookAt(b);return m;}
+function build(){
+ if(typeof THREE==='undefined'){$('fallback').style.display='flex';return;}
+ ok=true;const el=$('scene');
+ renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+ renderer.setSize(el.clientWidth,el.clientHeight);renderer.setPixelRatio(devicePixelRatio||1);
+ el.appendChild(renderer.domElement);
+ scene=new THREE.Scene();
+ camera=new THREE.PerspectiveCamera(42,el.clientWidth/el.clientHeight,.1,100);
+ scene.add(new THREE.AmbientLight(0xffffff,.9));
+ const dl=new THREE.DirectionalLight(0xffffff,.45);dl.position.set(4,7,6);scene.add(dl);
+ rebuild();
+ el.addEventListener('mousedown',e=>{drag=false;lx=e.clientX;ly=e.clientY;
+  const mv=e2=>{if(Math.abs(e2.clientX-lx)+Math.abs(e2.clientY-ly)>3)drag=true;
+   rotY+=(e2.clientX-lx)*.008;rotX+=(e2.clientY-ly)*.006;rotX=Math.max(-1.2,Math.min(1.2,rotX));lx=e2.clientX;ly=e2.clientY;};
+  const up=()=>{removeEventListener('mousemove',mv);removeEventListener('mouseup',up);};
+  addEventListener('mousemove',mv);addEventListener('mouseup',up);});
+ el.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(8,Math.min(24,dist+e.deltaY*.01));},{passive:false});
+ el.addEventListener('click',onClick);
+ animate();}
+function clearAll(){
+ [...planes.map(p=>p.g),...pooled,...meanLabels,...logits,...lin2bar].forEach(o=>o&&scene.remove(o));
+ [outBar,labStack,labVec,labLin,labScores].forEach(o=>o&&scene.remove(o));
+ planes=[];pooled=[];meanLabels=[];logits=[];lin2bar=[];outBar=null;labVec=null;labLin=null;labScores=null;tweens=[];busy=false;}
+function rebuild(){
+ if(!ok)return;clearAll();
+ const gapZ=1.2,cell=.42,half=(G-1)/2;
+ for(let k=0;k<C;k++){
+  const g=new THREE.Group();g.position.z=(k-(C-1)/2)*gapZ;
+  for(let i=0;i<G;i++)for(let j=0;j<G;j++){
+   const v=chanVals[k][i*G+j];
+   const m=new THREE.Mesh(new THREE.BoxGeometry(cell,cell,.1),
+     new THREE.MeshLambertMaterial({color:heat(v),transparent:true}));
+   m.position.set((j-half)*(cell+.06),(half-i)*(cell+.06),0);
+   m.userData.o=m.position.clone();g.add(m);}
+  const edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(G*(cell+.06),G*(cell+.06),.12)),
+   new THREE.LineBasicMaterial({color:0xf6921e}));g.add(edge);
+  const cl=makeText('ch '+k,'#f6921e',.42);cl.position.set(-1.55,1.05,0);g.add(cl);
+  scene.add(g);planes.push({g,k});
+  const pm=new THREE.Mesh(new THREE.BoxGeometry(.52,.52,.52),
+   new THREE.MeshLambertMaterial({color:0x16a3a3,transparent:true,opacity:0}));
+  pm.position.set(CUBE_X,0,g.position.z);pm.scale.set(.01,.01,.01);scene.add(pm);pooled.push(pm);
+  meanLabels.push(null);}
+ labStack=makeText('input x  ['+C+', 4, 4]','#f6921e',.5);labStack.position.set(0,2.8,0);scene.add(labStack);
+ outBar=new THREE.Mesh(new THREE.BoxGeometry(.38,3.6,.38),
+  new THREE.MeshLambertMaterial({color:0x7b5cd6,transparent:true,opacity:0}));
+ outBar.position.set(BAR_X,0,0);scene.add(outBar);
+ for(let i=0;i<10;i++){
+  const s=new THREE.Mesh(new THREE.BoxGeometry(.26,.26,.26),
+   new THREE.MeshLambertMaterial({color:0xb9a6ee,transparent:true,opacity:0}));
+  s.position.set(LOG_X,0,(i-4.5)*.5);scene.add(s);logits.push(s);}
+ syncChips();}
+function addMeanLabel(k){
+ if(meanLabels[k])return;
+ const l=makeText(chanMeans[k].toFixed(2),'#16a3a3',.4);
+ l.position.set(CUBE_X,0.72,pooled[k].position.z);scene.add(l);meanLabels[k]=l;}
+function ensureVecLabel(){
+ if(labVec||!ok)return;
+ labVec=makeText('means  ['+C+']','#16a3a3',.48);labVec.position.set(CUBE_X,2.8,0);scene.add(labVec);}
+function collapseOne(k,cb){
+ if(collapsed.has(k)||busy){if(cb)cb();return;}
+ busy=true;collapsed.add(k);if(phase<1)phase=1;
+ showMath(k);syncChips();ensureVecLabel();
+ const gr=planes[k].g,cells=gr.children.filter(c=>c.userData&&c.userData.o);
+ const D1=650/speed,D2=520/speed;
+ tween(D1,u=>{const e=ease(u);
+   cells.forEach(c=>{c.position.lerpVectors(c.userData.o,new THREE.Vector3(0,0,0),e);
+    const s=1-.92*e;c.scale.set(s,s,s);if(c.material.opacity!==undefined)c.material.opacity=1-.3*e;});},
+  ()=>{gr.visible=false;
+   const a=new THREE.Vector3(0,0,gr.position.z),b=pooled[k].position.clone();
+   const bm=beamMesh(a,b);scene.add(bm);
+   tween(D2,u=>{const e=ease(u);
+     bm.material.opacity=Math.sin(Math.PI*u)*.9;
+     const s=.01+.99*e;pooled[k].scale.set(s,s,s);pooled[k].material.opacity=e;},
+    ()=>{scene.remove(bm);addMeanLabel(k);busy=false;updateVec();
+     if(cb)cb();});});}
+function nextUncollapsed(){for(let k=0;k<C;k++)if(!collapsed.has(k))return k;return null;}
+function chainCollapse(){
+ if(!chaining)return;
+ const k=nextUncollapsed();
+ if(k==null){goStage2(true);return;}
+ collapseOne(k,()=>setTimeout(chainCollapse,140/speed));}
+function goStage2(animated){
+ chaining=false;
+ const fin=nextUncollapsed();
+ if(fin!=null){ // instantly finish any remaining
+  for(let k=0;k<C;k++)if(!collapsed.has(k)){collapsed.add(k);planes[k].g.visible=false;
+   pooled[k].scale.set(1,1,1);pooled[k].material.opacity=1;addMeanLabel(k);}
+  ensureVecLabel();}
+ phase=2;syncChips();
+ if(!ok){stopT();return;}
+ if(!labLin){labLin=makeText('Linear('+C+',10)','#7b5cd6',.46);labLin.position.set(BAR_X,2.5,0);scene.add(labLin);}
+ if(!labScores){labScores=makeText('10 class scores','#8a76c9',.4);labScores.position.set(LOG_X,2.0,0);scene.add(labScores);}
+ lin2bar.forEach(b=>scene.remove(b));lin2bar=[];
+ for(let k=0;k<C;k++){
+  const bm=beamMesh(pooled[k].position.clone(),new THREE.Vector3(BAR_X,0,0));
+  scene.add(bm);lin2bar.push(bm);}
+ const D=animated?800/speed:1;
+ tween(D,u=>{const e=ease(u);
+  outBar.material.opacity=e;
+  lin2bar.forEach(b=>b.material.opacity=.55*e);
+  logits.forEach((s,i)=>{const uu=Math.max(0,Math.min(1,(u*10-i)/2));s.material.opacity=uu;});},
+  ()=>{stopT();});}
+function animate(){
+ requestAnimationFrame(animate);
+ const now=performance.now();
+ tweens=tweens.filter(t=>{
+  const u=Math.min(1,(now-t.t0)/t.dur);
+  t.fn(u);
+  if(u>=1){if(t.done)t.done();return false;}
+  return true;});
+ camera.position.set(Math.sin(rotY)*Math.cos(rotX)*dist,Math.sin(rotX)*dist,Math.cos(rotY)*Math.cos(rotX)*dist);
+ camera.position.x+=2.6;camera.lookAt(2.6,0,0);
+ renderer.render(scene,camera);}
+function onClick(e){
+ if(!ok||drag||busy)return;
+ const el=$('scene'),r=el.getBoundingClientRect();
+ const mouse=new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1,-((e.clientY-r.top)/r.height)*2+1);
+ const rc=new THREE.Raycaster();rc.setFromCamera(mouse,camera);
+ for(const p of planes){
+  if(!p.g.visible)continue;
+  const hit=rc.intersectObjects(p.g.children.filter(c=>c.isMesh),false);
+  if(hit.length){stopT();chaining=false;collapseOne(p.k,()=>{if(nextUncollapsed()==null)goStage2(true);});return;}}}
+/* ---------- controls ---------- */
+function stopT(){chaining=false;if(timer){clearInterval(timer);timer=null;}$('play').textContent='▶ Play all';}
+function playAll(){
+ if(chaining){stopT();return;}
+ if(phase===2||nextUncollapsed()==null){resetAll();}
+ $('play').textContent='⏸ Pause';chaining=true;
+ if(phase===0)phase=1;
+ syncChips();chainCollapse();}
+function resetAll(){stopT();collapsed.clear();curMath=-1;phase=0;genData();
+ $('mathtitle').textContent='The arithmetic (click an orange map, or press ▶)';
+ $('math').innerHTML='<div class="mhint">Each orange plane is one channel\'s 4×4 map of numbers.<br>Averaging = add up its 16 values, divide by 16.</div>';
+ if(ok)rebuild();else syncChips();}
+$('st0').onclick=()=>{stopT();collapsed.clear();phase=0;
+ $('mathtitle').textContent='The arithmetic (click an orange map, or press ▶)';
+ $('math').innerHTML='<div class="mhint">Each orange plane is one channel\'s 4×4 map of numbers.<br>Averaging = add up its 16 values, divide by 16.</div>';
+ if(ok)rebuild();else syncChips();};
+$('st1').onclick=()=>{stopT();if(phase===2){collapsed.clear();phase=1;if(ok)rebuild();}
+ phase=Math.max(phase,1);syncChips();chaining=true;$('play').textContent='⏸ Pause';chainCollapse();};
+$('st2').onclick=()=>{stopT();goStage2(true);};
+$('nc').oninput=e=>{C=+e.target.value;$('ncv').textContent=C;stopT();collapsed.clear();phase=0;genData();
+ if(ok)rebuild();else syncChips();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('play').onclick=playAll;
+$('reset').onclick=resetAll;
+genData();build();syncChips();
+addEventListener('resize',()=>{if(!ok)return;const el=$('scene');
+ renderer.setSize(el.clientWidth,el.clientHeight);
+ camera.aspect=el.clientWidth/el.clientHeight;camera.updateProjectionMatrix();});
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  @media (max-width:920px){.rightcol{flex:1 1 100%;}}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

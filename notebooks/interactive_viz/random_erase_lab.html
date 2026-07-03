@@ -1,0 +1,187 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Random Erase — hide a patch, force the model to look everywhere</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .dice{background:var(--in);color:#fff;}
+  input[type=range]{width:100px;accent-color:var(--ac);vertical-align:middle;}
+  .sv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  canvas.px{image-rendering:pixelated;border-radius:6px;display:block;margin:0 auto;cursor:crosshair;}
+  .stats{font-size:11.5px;font-family:monospace;line-height:1.8;min-width:230px;}
+  .stats .row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--line);}
+  .stats .ok{color:var(--out);font-weight:700;}
+  .stats .why{font-family:"Segoe UI",system-ui,sans-serif;font-size:11px;color:var(--soft);margin-top:6px;line-height:1.5;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.65;max-width:900px;margin:12px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>Random Erase (Cutout) — the model can't rely on any single region</h1>
+<p class="sub">A rectangle of the image is destroyed and refilled with <b style="color:var(--ac)">gaussian noise that has the same mean &amp; std as the data</b> — so the image "looks statistically normal" to BatchNorm, but the sneaker's toe (or collar, or heel) is gone. If the model was leaning on that one region, it now has to learn the others too. Each stage below is <b>one line of the notebook's <code>_rand_erase1</code></b>. <b>Click the image</b> to place the patch yourself.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① Size from pct</button>
+  <button class="chip" id="st1">② Random position</button>
+  <button class="chip" id="st2">③ Fill with noise</button>
+  <button class="chip" id="st3">④ Clamp to range</button>
+  <button class="chip" id="st4">⑤ Repeat 0…max_num×</button>
+</div>
+<div class="selrow">
+  pct <input id="pct" type="range" min="0.1" max="0.5" step="0.05" value="0.2"><span class="sv" id="pctv">0.20</span>
+  &nbsp;·&nbsp; max_num <input id="mn" type="range" min="1" max="4" step="1" value="4" style="width:70px"><span class="sv" id="mnv">4</span>
+  &nbsp;·&nbsp; speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1" style="width:80px"><span class="sv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="dice" id="dice">🎲 New draw</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" style="color:var(--in)">Before <small>x — one training image</small></div>
+    <canvas id="cIn" class="px"></canvas>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--out)">After <small>click anywhere to place the patch there</small></div>
+    <canvas id="cOut" class="px"></canvas>
+  </div>
+  <div class="card">
+    <div class="cap">Why noise, not black? <small>the statistics stay matched</small></div>
+    <div class="stats" id="stats"></div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<p class="legend">Erasing with <b>zeros</b> would shift the batch statistics (mean drops, BatchNorm gets confused). Erasing with <b>data-matched noise</b> keeps mean/std ≈ unchanged — the notebook computes xm, xs, mn, mx from the batch for exactly this reason.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=28,CS=8;
+const IMG=(()=>{const a=Array.from({length:N},()=>Array(N).fill(0));
+ const put=(r,c,v)=>{if(r>=0&&r<N&&c>=0&&c<N)a[r][c]=Math.max(a[r][c],v);};
+ for(let c=3;c<25;c++)for(let r=17;r<21;r++)put(r,c,.95);
+ for(let c=4;c<24;c++)put(21,c,.55);
+ for(let c=3;c<20;c++)for(let r=13;r<17;r++)put(r,c,.8);
+ for(let c=10;c<19;c++)put(12-Math.floor((c-10)/3),c,.8);
+ for(let c=3;c<9;c++)for(let r=9;r<13;r++)put(r,c,.85);
+ for(let c=4;c<8;c++)put(8,c,.6);
+ for(let k=0;k<4;k++){put(10+k,9+k*2,.35);put(11+k,9+k*2,.3);}
+ for(let c=19;c<24;c++)put(16,c,.7);put(16,24,.5);
+ return a;})();
+let pct=.2,maxNum=4,phase=0,timer=null,speed=1;
+let patches=[],num=1,noise=[]; // noise: cached NxN gaussian field
+function stats(g){let s=0,n=0;g.forEach(r=>r.forEach(v=>{s+=v;n++;}));const m=s/n;
+ let v=0;g.forEach(r=>r.forEach(x=>v+=(x-m)*(x-m)));return {m,sd:Math.sqrt(v/n)};}
+const BASE=stats(IMG);
+function gauss(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();
+ return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function newPatches(){
+ num=Math.floor(Math.random()*(maxNum+1));
+ patches=[];const sz=Math.floor(pct*N);
+ for(let i=0;i<Math.max(1,num);i++){
+  patches.push({stx:Math.floor(Math.random()*(1-pct)*N),sty:Math.floor(Math.random()*(1-pct)*N)});}
+ if(num===0)patches=[patches[0]]; // keep one for stages 1-4 demo even if repeat rolls 0
+ noise=Array.from({length:N},()=>Array.from({length:N},()=>BASE.m+BASE.sd*gauss()));
+}
+function erased(){
+ const g=IMG.map(r=>r.slice());const sz=Math.floor(pct*N);
+ const k=phase>=4?Math.max(num,0):1;
+ if(phase>=2){
+  const use=phase>=4?patches.slice(0,num):[patches[0]];
+  for(const p of use)for(let r=p.stx;r<p.stx+sz;r++)for(let c=p.sty;c<p.sty+sz;c++){
+   let v=noise[r][c];
+   if(phase>=3)v=Math.max(0,Math.min(1,v)); // clamp stage
+   g[r][c]=v;}}
+ return g;}
+function draw(cv,g,marks){const ctx=cv.getContext('2d');cv.width=N;cv.height=N;
+ cv.style.width=(N*CS)+'px';cv.style.height=(N*CS)+'px';
+ for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=Math.max(0,Math.min(1,g[r][c]));
+  ctx.fillStyle=v===0?'#f2f5fb':`rgb(${Math.round(250-215*v)},${Math.round(250-210*v)},${Math.round(252-195*v)})`;
+  ctx.fillRect(c,r,1,1);}
+ if(marks){const sz=Math.floor(pct*N);
+  const use=phase>=4?patches.slice(0,num):[patches[0]];
+  ctx.strokeStyle=phase>=2?'#7b5cd6':'#f6921e';ctx.lineWidth=.5;
+  if(phase>=1)for(const p of use)ctx.strokeRect(p.sty+.25,p.stx+.25,sz-.5,sz-.5);}}
+function render(){
+ draw($('cIn'),IMG,false);
+ const g=erased();draw($('cOut'),g,true);
+ const st=stats(g),sz=Math.floor(pct*N);
+ const shown=phase>=4?num:(phase>=2?1:0);
+ $('stats').innerHTML=`
+  <div class="row"><span>szx = szy = int(${pct.toFixed(2)}·28)</span><span>= ${sz}</span></div>
+  <div class="row"><span>patches applied</span><span>${shown} ${phase>=4?`(rolled ${num} of 0…${maxNum})`:''}</span></div>
+  <div class="row"><span>mean before</span><span>${BASE.m.toFixed(3)}</span></div>
+  <div class="row"><span>mean after</span><span class="${Math.abs(st.m-BASE.m)<.03?'ok':''}">${st.m.toFixed(3)}</span></div>
+  <div class="row"><span>std before</span><span>${BASE.sd.toFixed(3)}</span></div>
+  <div class="row"><span>std after</span><span class="${Math.abs(st.sd-BASE.sd)<.05?'ok':''}">${st.sd.toFixed(3)}</span></div>
+  <div class="why">Noise is drawn as 𝒩(xm, xs) then clamped to [mn, mx] — statistics ≈ preserved (teal = still matching), unlike zero-fill which would drag the mean down.</div>`;
+ code(sz);
+ ['st0','st1','st2','st3','st4'].forEach((id,i)=>$(id).classList.toggle('on',i===phase));
+}
+function code(sz){
+ const p=patches[0];
+ const L=[
+  `<span class="cm"># ① how big is the hole? pct of each side</span>`,
+  `szx = <span class="fn">int</span>(pct * x.shape[-<span class="num">2</span>])   <span class="cm"># int(${pct.toFixed(2)}·28) = ${sz}</span>`,
+  `szy = <span class="fn">int</span>(pct * x.shape[-<span class="num">1</span>])   <span class="cm"># = ${sz}</span>`,
+  `<span class="cm"># ② where? random top-left, kept inside the image by the (1-pct) factor</span>`,
+  `stx = <span class="fn">int</span>(random.random() * (<span class="num">1</span>-pct) * x.shape[-<span class="num">2</span>])   <span class="cm"># = ${p.stx}</span>`,
+  `sty = <span class="fn">int</span>(random.random() * (<span class="num">1</span>-pct) * x.shape[-<span class="num">1</span>])   <span class="cm"># = ${p.sty}</span>`,
+  `<span class="cm"># ③ destroy it — overwrite with gaussian noise matching the data stats</span>`,
+  `init.<span class="fn">normal_</span>(x[:, :, stx:stx+szx, sty:sty+szy], mean=xm, std=xs)`,
+  `<span class="cm"># ④ noise can overshoot → clamp back into the valid pixel range</span>`,
+  `x.<span class="fn">clamp_</span>(mn, mx)`,
+  `<span class="cm"># ⑤ rand_erase: roll num = randint(0, ${maxNum}) and call the above num times (rolled ${num})</span>`,
+  `<span class="fn">for</span> i <span class="fn">in</span> range(num): _rand_erase1(x, pct, xm, xs, mn, mx)`];
+ const hlMap={0:[1,2],1:[4,5],2:[7],3:[9],4:[11]};const hl=hlMap[phase];
+ $('code').innerHTML=L.map((t,i)=>hl.includes(i)?`<span class="hl">${t}</span>`:t).join('\n');}
+function stepF(){if(phase<4){phase++;}else{newPatches();phase=0;}render();}
+function play(){if(timer){stop();return;}$('play').textContent='⏸ Pause';
+ timer=setInterval(stepF,800/speed);}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+$('cOut').addEventListener('click',e=>{
+ const r=$('cOut').getBoundingClientRect(),sz=Math.floor(pct*N);
+ let c=Math.floor((e.clientX-r.left)/r.width*N),rr=Math.floor((e.clientY-r.top)/r.height*N);
+ patches[0]={stx:Math.max(0,Math.min(N-sz,rr-(sz>>1))),sty:Math.max(0,Math.min(N-sz,c-(sz>>1)))};
+ if(phase<2)phase=2;stop();render();});
+['st0','st1','st2','st3','st4'].forEach((id,i)=>$(id).onclick=()=>{stop();phase=i;render();});
+$('pct').oninput=e=>{pct=+e.target.value;$('pctv').textContent=pct.toFixed(2);newPatches();render();};
+$('mn').oninput=e=>{maxNum=+e.target.value;$('mnv').textContent=maxNum;newPatches();render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+$('dice').onclick=()=>{stop();newPatches();phase=Math.max(phase,2);render();};
+$('play').onclick=play;$('fwd').onclick=()=>{stop();stepF();};
+$('reset').onclick=()=>{stop();phase=0;newPatches();render();};
+newPatches();render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

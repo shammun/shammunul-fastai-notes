@@ -1,0 +1,185 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test-Time Augmentation — two looks, one better answer</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  select{font-family:inherit;font-size:12px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:4px 7px;background:#fff;cursor:pointer;}
+  input[type=range]{width:100px;accent-color:var(--ac);vertical-align:middle;}
+  .sv{font-family:monospace;font-weight:700;color:var(--ac);min-width:30px;display:inline-block;}
+  .main{display:flex;gap:12px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:1200px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);opacity:.35;transition:opacity .25s;}
+  .card.act{opacity:1;}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  canvas.px{image-rendering:pixelated;border-radius:6px;display:block;margin:0 auto 6px;}
+  .bars{width:190px;}
+  .brow{display:flex;align-items:center;gap:5px;margin:2px 0;font-size:10px;}
+  .brow .lb{width:52px;text-align:right;color:var(--soft);font-weight:600;}
+  .brow .tk{flex:1;height:11px;background:#f2f5fb;border-radius:5px;overflow:hidden;}
+  .brow .fl{height:100%;border-radius:5px;transition:width .3s;}
+  .brow .pv{width:32px;font-family:monospace;font-size:9.5px;color:var(--soft);}
+  .brow.top .lb{color:var(--ink);font-weight:800;}
+  .pred{text-align:center;font-size:11.5px;margin-top:4px;font-weight:700;min-height:16px;}
+  .pred.ok{color:var(--out);} .pred.bad{color:var(--neg);}
+  .opsym{align-self:center;font-size:22px;color:var(--soft);font-weight:700;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.65;max-width:900px;margin:12px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>Test-Time Augmentation — ask the model twice, average the answers</h1>
+<p class="sub">The model was <b>trained</b> on flipped images, so a flipped test image is just as "normal" to it. TTA exploits this: predict the <b style="color:var(--in)">original</b>, predict the <b style="color:var(--ac)">flipped copy</b>, then <b style="color:var(--out)">average the two probability vectors</b> and take the argmax. Two noisy opinions average into one better one — <b>no retraining needed</b>. Step through the stages, or pick a scenario to see when TTA rescues a wrong answer (and when it can't).</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① Predict original</button>
+  <button class="chip" id="st1">② Predict flipped</button>
+  <button class="chip" id="st2">③ Stack &amp; mean</button>
+  <button class="chip" id="st3">④ Argmax → label</button>
+</div>
+<div class="selrow">
+  scenario: <select id="scen">
+    <option value="0">TTA fixes it — original is wrong, flip is confident</option>
+    <option value="1">Both agree — TTA just adds confidence</option>
+    <option value="2">TTA can't help — both views fooled</option>
+  </select>
+  &nbsp;·&nbsp; speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="sv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="main">
+  <div class="card act" id="c0">
+    <div class="cap" style="color:var(--in)">① Original image <small>ap1 = learn.capture_preds()</small></div>
+    <canvas id="im0" class="px"></canvas>
+    <div class="bars" id="b0"></div>
+    <div class="pred" id="p0"></div>
+  </div>
+  <div class="card" id="c1">
+    <div class="cap" style="color:var(--ac)">② Flipped image <small>ap2 = capture_preds(cbs=[ttacb])</small></div>
+    <canvas id="im1" class="px"></canvas>
+    <div class="bars" id="b1"></div>
+    <div class="pred" id="p1"></div>
+  </div>
+  <div class="opsym">→</div>
+  <div class="card" id="c2">
+    <div class="cap" style="color:var(--out)">③④ Averaged <small>torch.stack([ap1,ap2]).mean(0)</small></div>
+    <canvas id="im2" class="px" style="visibility:hidden"></canvas>
+    <div class="bars" id="b2"></div>
+    <div class="pred" id="p2"></div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<p class="legend">True label in every scenario: <b>Shirt</b>. Fashion-MNIST's hard cases (shirt vs pullover vs coat) are exactly where a second viewpoint helps — the notebook measured ~0.5–1% accuracy gained for free.</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const CLS=['T-shirt','Trouser','Pullover','Dress','Coat','Sandal','Shirt','Sneaker','Bag','Boot'];
+const TRUE=6; // Shirt
+// probability vectors per scenario: [original, flipped]
+const SC=[
+ {o:[.06,.01,.34,.03,.14,.01,.31,.01,.08,.01], f:[.05,.01,.14,.03,.10,.01,.55,.01,.09,.01],
+  note:'Original leans Pullover (0.34) — wrong. The flipped view sees the asymmetric collar better: Shirt 0.55. Average: Shirt wins.'},
+ {o:[.04,.01,.10,.02,.08,.01,.62,.01,.10,.01], f:[.05,.01,.12,.02,.10,.01,.58,.01,.09,.01],
+  note:'Both views already say Shirt — averaging just firms up the confidence. TTA never hurts a good prediction much.'},
+ {o:[.05,.01,.41,.03,.16,.01,.24,.01,.07,.01], f:[.06,.01,.38,.03,.18,.01,.22,.01,.09,.01],
+  note:'Both views are fooled by the boxy silhouette → Pullover. Averaging two wrong opinions is still wrong. TTA reduces variance, not bias.'}];
+let scen=0,phase=0,timer=null,speed=1;
+// 16x16 shirt pixel art
+const N=16;
+const SHIRT=(()=>{const a=Array.from({length:N},()=>Array(N).fill(0));
+ const put=(r,c,v)=>{if(r>=0&&r<N&&c>=0&&c<N)a[r][c]=v;};
+ for(let r=3;r<14;r++)for(let c=4;c<12;c++)put(r,c,.8);       // torso
+ for(let r=3;r<7;r++){put(r,3,.7);put(r,2,.6);put(r,12,.7);put(r,13,.6);} // sleeves
+ for(let c=6;c<10;c++)put(2,c,.5);                             // collar
+ put(3,7,.35);put(4,7,.35);put(5,7,.35);                       // placket (asymmetric cue)
+ put(4,5,.55);put(4,6,.55);                                    // pocket left
+ return a;})();
+function drawImg(cv,flip){const ctx=cv.getContext('2d');cv.width=N;cv.height=N;
+ cv.style.width='96px';cv.style.height='96px';
+ for(let r=0;r<N;r++)for(let c=0;c<N;c++){const cc=flip?N-1-c:c,v=SHIRT[r][cc];
+  ctx.fillStyle=v===0?'#f2f5fb':`rgb(${Math.round(250-215*v)},${Math.round(250-210*v)},${Math.round(252-195*v)})`;
+  ctx.fillRect(c,r,1,1);}}
+function bars(el,probs,color,reveal){
+ const mx=Math.max(...probs);
+ el.innerHTML=probs.map((p,i)=>`
+  <div class="brow${p===mx?' top':''}">
+   <div class="lb">${CLS[i]}</div>
+   <div class="tk"><div class="fl" style="width:${reveal?Math.round(p*100/ .7):0}%;background:${p===mx?color:'#c9d4e8'}"></div></div>
+   <div class="pv">${reveal?p.toFixed(2):'—'}</div></div>`).join('');}
+function avg(){const s=SC[scen];return s.o.map((v,i)=>(v+s.f[i])/2);}
+function render(){
+ const s=SC[scen];
+ drawImg($('im0'),false);drawImg($('im1'),true);
+ $('c0').classList.toggle('act',phase>=0);
+ $('c1').classList.toggle('act',phase>=1);
+ $('c2').classList.toggle('act',phase>=2);
+ bars($('b0'),s.o,'#f6921e',phase>=0);
+ bars($('b1'),s.f,'#7b5cd6',phase>=1);
+ const a=avg();bars($('b2'),a,'#16a3a3',phase>=2);
+ const pk=arr=>arr.indexOf(Math.max(...arr));
+ const set=(el,arr,on)=>{if(!on){el.textContent='';return;}
+  const k=pk(arr),ok=k===TRUE;el.className='pred '+(ok?'ok':'bad');
+  el.textContent=`argmax → ${CLS[k]} ${ok?'✓ correct':'✗ (true: Shirt)'}`;};
+ set($('p0'),s.o,phase>=0);set($('p1'),s.f,phase>=1);set($('p2'),a,phase>=3);
+ if(phase===2){$('p2').className='pred';$('p2').textContent='…averaged, now take argmax →';}
+ ['st0','st1','st2','st3'].forEach((id,i)=>$(id).classList.toggle('on',i===phase));
+ code();
+}
+function code(){
+ const s=SC[scen],a=avg(),pk=arr=>arr.indexOf(Math.max(...arr));
+ const L=[
+  `<span class="cm"># ① normal validation pass — probabilities for the ORIGINAL images</span>`,
+  `ap1, at = learn.<span class="fn">capture_preds</span>()                       <span class="cm"># top: ${CLS[pk(s.o)]} ${s.o[pk(s.o)].toFixed(2)}</span>`,
+  `<span class="cm"># ② same pass, but a callback flips every image first</span>`,
+  `ttacb = BatchTransformCB(partial(tfm_batch, tfm_x=TF.hflip), on_val=<span class="num">True</span>)`,
+  `ap2, at = learn.<span class="fn">capture_preds</span>(cbs=[ttacb])            <span class="cm"># top: ${CLS[pk(s.f)]} ${s.f[pk(s.f)].toFixed(2)}</span>`,
+  `<span class="cm"># ③ stack → (2, n, 10), then mean over the 2 versions → (n, 10)</span>`,
+  `ap = torch.<span class="fn">stack</span>([ap1, ap2]).<span class="fn">mean</span>(<span class="num">0</span>)`,
+  `<span class="cm"># ④ final answer = highest averaged probability</span>`,
+  `pred = ap.<span class="fn">argmax</span>(dim=<span class="num">1</span>)                             <span class="cm"># → ${CLS[pk(a)]} ${a[pk(a)].toFixed(2)}</span>`];
+ const hlMap={0:[0,1],1:[2,3,4],2:[5,6],3:[7,8]};const hl=hlMap[phase];
+ $('code').innerHTML=L.map((t,i)=>hl.includes(i)?`<span class="hl">${t}</span>`:t).join('\n')
+  +`\n<span class="cm"># ${SC[scen].note}</span>`;}
+function stepF(){phase=(phase+1)%4;render();}
+function stepB(){phase=(phase+3)%4;render();}
+function play(){if(timer){stop();return;}$('play').textContent='⏸ Pause';
+ timer=setInterval(()=>{if(phase>=3){stop();return;}stepF();},1000/speed);}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+['st0','st1','st2','st3'].forEach((id,i)=>$(id).onclick=()=>{stop();phase=i;render();});
+$('scen').onchange=e=>{scen=+e.target.value;stop();phase=0;render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+$('play').onclick=play;$('fwd').onclick=()=>{stop();stepF();};$('back').onclick=()=>{stop();stepB();};
+$('reset').onclick=()=>{stop();phase=0;render();};
+render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

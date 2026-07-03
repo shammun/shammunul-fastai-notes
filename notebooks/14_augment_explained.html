@@ -2,8 +2,8 @@
 
 <html lang="en">
 <head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
 <title>14_augment_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
@@ -7512,52 +7512,21 @@ a.anchor-link {
 <body class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
 <div class="ce-container">
 <header class="ce-breadcrumb">
-  <a href="../index.html">&larr; All notes</a>
+  <a href="../index.html">← All notes</a>
   <span class="ce-source">Source: <code>14_augment_explained.ipynb</code></span>
 </header>
 <div class="ce-actions">
   <span class="ce-actions-label">Get the notebook</span>
   <a class="ce-action-btn" href="14_augment_explained.ipynb" download>
-    <span class="ce-action-icon">&darr;</span> Download .ipynb
+    <span class="ce-action-icon">↓</span> Download .ipynb
   </a>
   <a class="ce-action-btn ce-action-colab" href="https://colab.research.google.com/github/shammun/shammunul-fastai-notes/blob/main/notebooks/14_augment_explained_colab.ipynb" target="_blank" rel="noopener">
-    <span class="ce-action-icon">&#9654;</span> Open in Colab
+    <span class="ce-action-icon">▶</span> Open in Colab
   </a>
 </div>
 <main>
-<div class="ce-interactive">
-  <h3>Interactive: Augmentation pipeline &mdash; see what each transform does</h3>
-  <p class="ce-interactive-hint">Pick augmentations to apply to a sample image, drag their parameter sliders, and watch the output. Each click of <strong>Resample</strong> draws a fresh random transformation &mdash; that's the same thing that happens at every training batch, which is why a model sees a new "version" of each image every epoch.</p>
-  <div class="aug-widget">
-    <div class="aug-toggles">
-      <label><input type="checkbox" data-aug="crop" checked> RandomCrop</label>
-      <label><input type="checkbox" data-aug="flip" checked> HorizontalFlip</label>
-      <label><input type="checkbox" data-aug="blur"> GaussianBlur</label>
-      <label><input type="checkbox" data-aug="erase"> RandomErasing</label>
-    </div>
-    <div class="aug-canvases">
-      <div>
-        <div class="aug-label">Original</div>
-        <canvas id="aug-orig" width="120" height="120" style="image-rendering:pixelated; background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
-      </div>
-      <div class="aug-arrow">&rarr;</div>
-      <div>
-        <div class="aug-label">Augmented (training input)</div>
-        <canvas id="aug-out" width="120" height="120" style="image-rendering:pixelated; background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
-      </div>
-    </div>
-    <div class="ms-controls">
-      <button id="aug-resample" class="ms-btn">Resample augmentation</button>
-      <button id="aug-newimg" class="ms-btn ms-secondary">New input image</button>
-    </div>
-    <div class="ms-controls">
-      <label>Blur sigma: <span id="aug-blur-val" class="ms-val">1.0</span></label>
-      <input id="aug-blur" type="range" min="0.5" max="3.0" step="0.1" value="1.0">
-      <label>Erase area: <span id="aug-erase-val" class="ms-val">0.20</span></label>
-      <input id="aug-erase" type="range" min="0.05" max="0.5" step="0.01" value="0.20">
-    </div>
-  </div>
-</div>
+
+<main>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7595,7 +7564,6 @@ a.anchor-link {
 <pre><code>Training accuracy:   99.9%
 Validation accuracy: 92.4%  ← Big gap = overfitting!
 </code></pre>
-
 <h3 id="Augmentation-Techniques-We'll-Cover">Augmentation Techniques We'll Cover<a class="anchor-link" href="#Augmentation-Techniques-We'll-Cover">¶</a></h3><ol>
 <li><strong>Going Wider</strong> - Wider ResNet models</li>
 <li><strong>Global Average Pooling</strong> - Reduce parameters</li>
@@ -7698,6 +7666,44 @@ Validation accuracy: 92.4%  ← Big gap = overfitting!
 <span class="n">torch</span><span class="o">.</span><span class="n">set_printoptions</span><span class="p">(</span><span class="n">precision</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">140</span><span class="p">,</span> <span class="n">sci_mode</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 <span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">'image.cmap'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'gray'</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE VISUALIZATIONS -- setup (run this cell ONCE).</span>
+<span class="c1"># Each "🎮 Interactive" cell below loads a standalone HTML file from the</span>
+<span class="c1"># published copy on GitHub Pages, in an isolated &lt;iframe&gt; (its CSS/JS can't leak</span>
+<span class="c1"># into the notebook). It is shown FULL WIDTH and auto-fits its content height.</span>
+<span class="c1"># No local files needed -- the visualizations are read from GitHub.</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+
+<span class="k">def</span> <span class="nf">show_viz</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"600px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Embed an interactive visualization full width; it auto-fits its height.</span>
+<span class="sd">    `path` may be a bare 'interactive_viz/&lt;file&gt;.html' (resolved to the GitHub</span>
+<span class="sd">    Pages copy) or a full https URL."""</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="s2">"https://shammun.github.io/shammunul-fastai-notes/notebooks/"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"http"</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">path</span>
+    <span class="k">return</span> <span class="n">HTML</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'&lt;iframe src="</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">" loading="lazy" allowfullscreen '</span>
+        <span class="sa">f</span><span class="s1">'style="width:100%;height:</span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s1">;border:1px solid #dde5f2;border-radius:12px;'</span>
+        <span class="sa">f</span><span class="s1">'box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"&gt;&lt;/iframe&gt;'</span>
+        <span class="s1">'&lt;script&gt;addEventListener("message",function(e){'</span>
+        <span class="s1">'if(e.data&amp;&amp;e.data.type==="ce-frame-height"&amp;&amp;e.data.height&gt;50){'</span>
+        <span class="s1">'var fs=document.querySelectorAll("iframe");for(var i=0;i&lt;fs.length;i++){'</span>
+        <span class="s1">'if(fs[i].contentWindow===e.source){fs[i].style.height=e.data.height+"px";break;}}}});&lt;/script&gt;'</span>
+    <span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -7934,6 +7940,29 @@ Linear(2048, 10)                    Linear(512, 10)
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/gap_3d_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># 3D: watch each channel's H&times;W plane collapse to ONE number (drag to rotate,</span>
+<span class="c1"># click a plane to average it) &mdash; and see why GAP needs 4&times; fewer classifier params.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/gap_3d_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"660px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/gap_3d_explorer.html" style="display:block;width:100%;max-width:100%;height:660px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8645,6 +8674,29 @@ Validation accuracy: 92.4%  ← Doesn't generalize well
 <div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/why_augment_overfitting.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># WHY augment: re-run 20 epochs at different augmentation strengths and watch</span>
+<span class="c1"># the train/valid overfitting gap open (0%) and close (~50-80%).</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/why_augment_overfitting.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"560px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/why_augment_overfitting.html" style="display:block;width:100%;max-width:100%;height:560px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
 </pre></div>
 </div>
@@ -9209,6 +9261,29 @@ PHASE 2: INFERENCE / DEPLOYMENT (where TTA lives)
 <div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/augmentation_playground.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># The full RandomCrop+Flip pipeline: pad &rarr; pick a corner (CLICK the padded</span>
+<span class="c1"># image!) &rarr; crop &rarr; coin-flip. Press Play to stream endless variants of one image.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/augmentation_playground.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/augmentation_playground.html" style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1">#| export</span>
 <span class="nd">@fc</span><span class="o">.</span><span class="n">patch</span>
 <span class="nd">@fc</span><span class="o">.</span><span class="n">delegates</span><span class="p">(</span><span class="n">show_images</span><span class="p">)</span>
@@ -9329,6 +9404,29 @@ PHASE 2: INFERENCE / DEPLOYMENT (where TTA lives)
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/tta_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># TTA step by step: predict original &rarr; predict flipped &rarr; stack &amp; mean &rarr; argmax.</span>
+<span class="c1"># Try the scenario where the original prediction is WRONG and TTA rescues it.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/tta_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"740px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/tta_explorer.html" style="display:block;width:100%;max-width:100%;height:740px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10130,32 +10228,12 @@ PHASE 2: INFERENCE / DEPLOYMENT (where TTA lives)
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Test-Time Augmentation &mdash; ensemble for free</h3>
-  <p class="ce-interactive-hint">At inference time, we don't get a single prediction &mdash; we get one prediction <em>per augmented copy</em> of the test image, then average them. Click <strong>Generate</strong> to draw N augmented copies and watch the per-augmentation predictions average into a more confident answer.</p>
-  <div class="tta-widget">
-    <div class="tta-row" id="tta-row"></div>
-    <div class="tta-final">
-      <div class="tta-bars" id="tta-bars"></div>
-      <div class="tta-verdict" id="tta-verdict"></div>
-    </div>
-    <div class="ms-controls">
-      <label>Augmented copies (N): <span id="tta-n-val" class="ms-val">6</span></label>
-      <input id="tta-n" type="range" min="1" max="12" step="1" value="6">
-      <button id="tta-go" class="ms-btn">Generate</button>
-    </div>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Why TTA works:</strong> each augmented copy hits the model from a slightly different angle. Noise in individual predictions averages out, and the consensus is more reliable than any single forward pass &mdash; same logic as bagging in classical ML. Costs you N model evaluations per test image, but typically buys 1&ndash;2% accuracy.
-  </p>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-
 <h1 id="Test-Time-Augmentation-(TTA)">Test Time Augmentation (TTA)<a class="anchor-link" href="#Test-Time-Augmentation-(TTA)">¶</a></h1><h2 id="The-Problem:-Our-Model-Only-Sees-One-Version-of-Each-Image">The Problem: Our Model Only Sees One Version of Each Image<a class="anchor-link" href="#The-Problem:-Our-Model-Only-Sees-One-Version-of-Each-Image">¶</a></h2><p>After training, when we evaluate our model on the test/validation set, we feed each image through the model <strong>exactly once</strong> and get a prediction. But think about this &mdash; if we slightly modify the image (say, flip it horizontally), the model might give a <strong>slightly different prediction</strong>. Sometimes that different prediction is actually <strong>more correct</strong>.</p>
 <p>A T-shirt is still a T-shirt whether it's facing left or facing right. But our model might be slightly more confident about one orientation than the other, just because of the random patterns it happened to learn during training.</p>
 <p><strong>What if we could get predictions from multiple versions of the same image and combine them?</strong></p>
@@ -10359,6 +10437,29 @@ with the highest averaged score. This is the final predicted class.
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/random_erase_lab.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Random Erase, one stage per line of _rand_erase1: size &rarr; position &rarr; gaussian</span>
+<span class="c1"># fill &rarr; clamp &rarr; repeat. CLICK the image to place the patch; watch mean/std stay put.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/random_erase_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/random_erase_lab.html" style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10957,7 +11058,7 @@ with the highest averaged score. This is the final predicted class.
 <span class="c1">#</span>
 <span class="c1">#   WHAT HAPPENS VISUALLY:</span>
 <span class="c1">#   Each pixel in the 5x5 region gets replaced by a random value drawn</span>
-<span class="c1">#   from N(xm, xs<sup>2</sup>). The result looks like TV static/grain in that region.</span>
+<span class="c1">#   from N(xm, xs²). The result looks like TV static/grain in that region.</span>
 <span class="c1">#</span>
 <span class="c1">#   The semicolon ; at the end suppresses the output in Jupyter notebooks.</span>
 <span class="c1">#   Without it, Jupyter would print the return value of init.normal_()</span>
@@ -11054,7 +11155,7 @@ with the highest averaged score. This is the final predicted class.
     <span class="c1"># in the batch and ALL channels (see detailed explanation in Part 1 above).</span>
     <span class="c1">#</span>
     <span class="c1"># init.normal_(...) fills this region in-place with values drawn from</span>
-    <span class="c1"># a normal distribution N(xm, xs<sup>2</sup>).</span>
+    <span class="c1"># a normal distribution N(xm, xs²).</span>
     <span class="c1">#</span>
     <span class="n">init</span><span class="o">.</span><span class="n">normal_</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">stx</span><span class="p">:</span><span class="n">stx</span> <span class="o">+</span> <span class="n">szx</span><span class="p">,</span> <span class="n">sty</span><span class="p">:</span><span class="n">sty</span> <span class="o">+</span> <span class="n">szy</span><span class="p">],</span> <span class="n">mean</span><span class="o">=</span><span class="n">xm</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="n">xs</span><span class="p">)</span>
 
@@ -11743,6 +11844,29 @@ Our tensor <code>xbt</code> has shape <code>(16, 1, 28, 28)</code> meaning <code
 <div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/random_copy_lab.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Random Copy (_rand_copy1): CLICK once for the source patch, again for the</span>
+<span class="c1"># destination &mdash; and see why copying preserves image statistics EXACTLY.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/random_copy_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/random_copy_lab.html" style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1">#|export</span>
 <span class="k">def</span> <span class="nf">_rand_copy1</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">pct</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
@@ -11899,6 +12023,29 @@ Our tensor <code>xbt</code> has shape <code>(16, 1, 28, 28)</code> meaning <code
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/dropout_lab.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Dropout: sample the Bernoulli mask &rarr; multiply &rarr; scale by 1/(1-p). Click</span>
+<span class="c1"># neurons to drop them, flip train/eval mode, and watch E[output] stay equal to E[x].</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/dropout_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"740px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/dropout_lab.html" style="display:block;width:100%;max-width:100%;height:740px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -12465,265 +12612,15 @@ Step 4: model = ...
 </div>
 </div>
 </div>
-<style>
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--ce-purple, #6c5ce7); height: 6px; touch-action: manipulation; }
-.ce-interactive input[type="checkbox"] { accent-color: var(--ce-purple, #6c5ce7); }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 50px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactive .ms-btn.ms-secondary { background: transparent; color: var(--ce-purple, #6c5ce7); border: 1px solid var(--ce-purple, #6c5ce7); box-shadow: none; }
-
-/* Augmentation widget */
-.aug-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.aug-toggles { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; font-size: 0.9em; }
-.aug-canvases { display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
-.aug-label { font-family: var(--ce-font-heading, serif); text-align: center; font-weight: 600; color: var(--ce-purple-dark, #4f3dd0); margin-bottom: 4px; font-size: 0.88em; }
-.aug-arrow { font-size: 1.6em; color: var(--ce-text-muted, #697386); }
-
-/* TTA widget */
-.tta-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.tta-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; justify-content: center; }
-.tta-row .tta-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.tta-row canvas { background: white; border: 1px solid #d1d5db; border-radius: 4px; }
-.tta-row .tta-pred { font-family: var(--ce-font-mono, monospace); font-size: 0.78em; color: var(--ce-text-muted, #697386); }
-.tta-final { background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 14px; margin-top: 8px; }
-.tta-bars { display: grid; grid-template-columns: 60px 1fr 60px; gap: 4px 12px; align-items: center; font-family: var(--ce-font-mono, monospace); font-size: 0.85em; }
-.tta-bars .lbl { color: var(--ce-text-soft, #3c4257); text-align: right; }
-.tta-bars .pct { color: var(--ce-purple-dark, #4f3dd0); text-align: right; }
-.tta-bars .bar { background: linear-gradient(90deg, var(--ce-purple, #6c5ce7), #06b6d4); height: 14px; border-radius: 3px; }
-.tta-verdict { margin-top: 12px; padding: 8px 12px; background: rgba(15, 185, 177, 0.12); color: #0f766e; border-radius: 6px; text-align: center; font-weight: 600; }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-// ============================================================================
-// Interactive 1: Augmentation pipeline
-// ============================================================================
-(function augPipe() {
-  var widget = document.querySelector('.aug-widget');
-  if (!widget) return;
-  var origCv = document.getElementById('aug-orig');
-  var outCv = document.getElementById('aug-out');
-
-  var SZ = 28;
-  var IMAGES = [];
-  // build a few simple "digit-like" shapes
-  IMAGES.push(makeShape(function(i, j) {
-    var cx = 14, cy = 14;
-    var dx = j - cx, dy = i - cy;
-    var d = Math.sqrt(dx*dx + dy*dy);
-    return d > 9 && d < 13 ? 0.92 : 0;
-  }));
-  IMAGES.push(makeShape(function(i, j) {
-    if (j === 13 || j === 14) return 0.92;
-    if (i === 6 && j > 7 && j < 16) return 0.92;
-    return 0;
-  }));
-  IMAGES.push(makeShape(function(i, j) {
-    if (i === 6 || i === 14 || i === 22) return j > 5 && j < 22 ? 0.92 : 0;
-    return 0;
-  }));
-  function makeShape(fn) {
-    var img = [];
-    for (var i = 0; i < SZ; i++) {
-      var row = [];
-      for (var j = 0; j < SZ; j++) row.push(fn(i, j));
-      img.push(row);
-    }
-    return img;
-  }
-
-  var current = 0;
-  var seed = { tx: 0, ty: 0, flip: false, blur: 1.0, eraseX: 0, eraseY: 0, eraseW: 0, eraseH: 0 };
-
-  function activeSet() {
-    var act = {};
-    document.querySelectorAll('[data-aug]').forEach(function(cb) { act[cb.dataset.aug] = cb.checked; });
-    return act;
-  }
-
-  function resample() {
-    seed.tx = Math.floor(Math.random() * 6 - 3);
-    seed.ty = Math.floor(Math.random() * 6 - 3);
-    seed.flip = Math.random() < 0.5;
-    var eraseFrac = parseFloat(document.getElementById('aug-erase').value);
-    seed.eraseW = Math.floor(Math.sqrt(eraseFrac) * SZ);
-    seed.eraseH = seed.eraseW;
-    seed.eraseX = Math.floor(Math.random() * (SZ - seed.eraseW));
-    seed.eraseY = Math.floor(Math.random() * (SZ - seed.eraseH));
-  }
-
-  function applyTransforms(img) {
-    var act = activeSet();
-    var out = [];
-    for (var i = 0; i < SZ; i++) out.push(new Array(SZ).fill(0));
-    for (var i = 0; i < SZ; i++) {
-      for (var j = 0; j < SZ; j++) {
-        var si = i, sj = j;
-        if (act.crop) { si = i + seed.ty; sj = j + seed.tx; }
-        if (act.flip && seed.flip) { sj = SZ - 1 - sj; }
-        if (si >= 0 && si < SZ && sj >= 0 && sj < SZ) out[i][j] = img[si][sj];
-      }
-    }
-    if (act.blur) {
-      var sigma = parseFloat(document.getElementById('aug-blur').value);
-      out = gaussBlur(out, sigma);
-    }
-    if (act.erase) {
-      for (var i = seed.eraseY; i < seed.eraseY + seed.eraseH && i < SZ; i++) {
-        for (var j = seed.eraseX; j < seed.eraseX + seed.eraseW && j < SZ; j++) {
-          out[i][j] = Math.random();
-        }
-      }
-    }
-    return out;
-  }
-
-  function gaussBlur(img, sigma) {
-    var rad = Math.max(1, Math.round(sigma * 2));
-    var kw = 2 * rad + 1;
-    var kern = new Array(kw);
-    var norm = 0;
-    for (var i = 0; i < kw; i++) {
-      var d = i - rad;
-      kern[i] = Math.exp(-d * d / (2 * sigma * sigma));
-      norm += kern[i];
-    }
-    for (var i = 0; i < kw; i++) kern[i] /= norm;
-    function blur1D(src, axis) {
-      var out = [];
-      for (var i = 0; i < SZ; i++) out.push(new Array(SZ).fill(0));
-      for (var i = 0; i < SZ; i++) {
-        for (var j = 0; j < SZ; j++) {
-          var s = 0;
-          for (var k = 0; k < kw; k++) {
-            var di = axis === 'h' ? 0 : k - rad;
-            var dj = axis === 'h' ? k - rad : 0;
-            var si = i + di, sj = j + dj;
-            if (si >= 0 && si < SZ && sj >= 0 && sj < SZ) s += src[si][sj] * kern[k];
-          }
-          out[i][j] = s;
-        }
-      }
-      return out;
-    }
-    return blur1D(blur1D(img, 'h'), 'v');
-  }
-
-  function drawImg(canvas, img) {
-    var ctx = canvas.getContext('2d');
-    var W = canvas.width, H = canvas.height;
-    var cellW = W / SZ, cellH = H / SZ;
-    for (var i = 0; i < SZ; i++) {
-      for (var j = 0; j < SZ; j++) {
-        var g = Math.round(Math.max(0, Math.min(1, img[i][j])) * 255);
-        ctx.fillStyle = 'rgb(' + g + ',' + g + ',' + g + ')';
-        ctx.fillRect(j * cellW, i * cellH, Math.ceil(cellW), Math.ceil(cellH));
-      }
-    }
-  }
-
-  function render() {
-    drawImg(origCv, IMAGES[current]);
-    drawImg(outCv, applyTransforms(IMAGES[current]));
-  }
-
-  document.getElementById('aug-resample').addEventListener('click', function() { resample(); render(); });
-  document.getElementById('aug-newimg').addEventListener('click', function() {
-    current = (current + 1) % IMAGES.length;
-    render();
-  });
-  document.getElementById('aug-blur').addEventListener('input', function(e) {
-    document.getElementById('aug-blur-val').textContent = parseFloat(e.target.value).toFixed(1);
-    render();
-  });
-  document.getElementById('aug-erase').addEventListener('input', function(e) {
-    document.getElementById('aug-erase-val').textContent = parseFloat(e.target.value).toFixed(2);
-    resample(); render();
-  });
-  document.querySelectorAll('[data-aug]').forEach(function(cb) {
-    cb.addEventListener('change', render);
-  });
-
-  resample();
-  render();
-})();
-
-// ============================================================================
-// Interactive 2: TTA
-// ============================================================================
-(function ttaEnsemble() {
-  var row = document.getElementById('tta-row');
-  if (!row) return;
-  var bars = document.getElementById('tta-bars');
-  var verdict = document.getElementById('tta-verdict');
-
-  var CLASSES = ['cat', 'dog', 'bird', 'fish'];
-  var trueClass = 0;
-
-  function generate() {
-    var N = parseInt(document.getElementById('tta-n').value);
-    row.innerHTML = '';
-    var probsList = [];
-    for (var i = 0; i < N; i++) {
-      var item = document.createElement('div');
-      item.className = 'tta-item';
-      var c = document.createElement('canvas');
-      c.width = 64; c.height = 64;
-      var ctx = c.getContext('2d');
-      ctx.fillStyle = 'hsl(' + (200 + Math.random() * 30) + ', 30%, 80%)';
-      ctx.fillRect(0, 0, 64, 64);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-      ctx.font = 'bold 24px sans-serif';
-      ctx.fillText('img', 14, 38);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-      var n = 8 + Math.random() * 8;
-      for (var k = 0; k < n; k++) {
-        ctx.fillRect(Math.random() * 64, Math.random() * 64, 4, 4);
-      }
-      item.appendChild(c);
-      var p = new Array(4).fill(0);
-      // True class gets a noisy boost
-      for (var k = 0; k < 4; k++) {
-        p[k] = Math.random() * 0.5;
-      }
-      p[trueClass] += 0.6 + Math.random() * 0.4;
-      var sum = p.reduce(function(a, b) { return a + b; }, 0);
-      for (var k = 0; k < 4; k++) p[k] /= sum;
-      probsList.push(p);
-      var top = p.indexOf(Math.max.apply(null, p));
-      var pred = document.createElement('div');
-      pred.className = 'tta-pred';
-      pred.textContent = '&rarr; ' + CLASSES[top];
-      pred.innerHTML = '&rarr; ' + CLASSES[top];
-      item.appendChild(pred);
-      row.appendChild(item);
-    }
-    // Average
-    var avg = new Array(4).fill(0);
-    probsList.forEach(function(p) { for (var k = 0; k < 4; k++) avg[k] += p[k] / N; });
-    var html = '';
-    var topAvg = avg.indexOf(Math.max.apply(null, avg));
-    for (var i = 0; i < 4; i++) {
-      html += '<span class="lbl">' + CLASSES[i] + '</span>';
-      html += '<div class="bar" style="width:' + Math.max(2, avg[i] * 100) + '%;"></div>';
-      html += '<span class="pct">' + (avg[i] * 100).toFixed(1) + '%</span>';
-    }
-    bars.innerHTML = html;
-    verdict.textContent = 'Averaged prediction: ' + CLASSES[topAvg] + (topAvg === trueClass ? ' ✓' : ' (was ' + CLASSES[trueClass] + ')');
-  }
-
-  document.getElementById('tta-n').addEventListener('input', function(e) {
-    document.getElementById('tta-n-val').textContent = e.target.value;
-  });
-  document.getElementById('tta-go').addEventListener('click', generate);
-  generate();
-})();
-
+<script id="ce-fullbleed-resize">
+(function(){
+  function fit(f){ try{var d=f.contentDocument; if(d&&d.body){var h=Math.ceil(Math.max(d.body.scrollHeight,d.body.offsetHeight)); if(h>50){f.style.height=h+"px";return true;}}}catch(e){} return false; }
+  function all(){ document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(fit); }
+  addEventListener("message",function(e){ if(!e.data||e.data.type!=="ce-frame-height"||!(e.data.height>50))return;
+    var ifr=document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)");
+    for(var i=0;i<ifr.length;i++){ if(ifr[i].contentWindow===e.source){ ifr[i].style.height=e.data.height+"px"; break; } } });
+  document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(function(f){ f.addEventListener("load",function(){fit(f);setTimeout(function(){fit(f);},400);setTimeout(function(){fit(f);},1200);}); });
+  addEventListener("resize",all); setInterval(all,1500); all();
 })();
 </script>
 </main>
