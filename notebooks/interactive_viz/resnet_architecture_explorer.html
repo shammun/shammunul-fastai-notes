@@ -1,0 +1,322 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ResNet Architecture Explorer</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:980px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  #arch{display:block;width:100%;}
+  .detail{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+  .detail .card{flex:1 1 300px;}
+  .cap{font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  table{border-collapse:collapse;font-size:11.5px;width:100%;}
+  th,td{border:1px solid var(--line);padding:3px 7px;text-align:left;}
+  th{background:#f4f7fd;font-size:10.5px;}
+  td.num{font-family:"SF Mono",Consolas,monospace;text-align:right;}
+  tr.hot td{background:#f1ecfd;}
+  .calc{font-family:"SF Mono",Consolas,monospace;font-size:11.5px;background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;line-height:1.75;overflow-x:auto;white-space:pre;}
+  .calc .num{color:#f6b86e;}.calc .fn{color:#7ce0d3;}.calc .cm{color:#7d8db0;}.calc b{color:#fff;}
+  .barrow{display:flex;align-items:center;gap:6px;font-size:11px;margin:2px 0;}
+  .barrow .nm{width:120px;color:var(--soft);font-weight:700;}
+  .bar{height:12px;border-radius:6px;background:var(--ac);min-width:2px;}
+  .bar.hot{background:var(--in);}
+  .barv{font-family:monospace;font-size:10.5px;color:var(--ink);}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+  .code{font-family:"SF Mono",Consolas,monospace;font-size:11.5px;background:#1f2940;color:#dce6f5;border-radius:10px;padding:10px 13px;line-height:1.85;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .kw{color:#c792ea;}.code .fn{color:#7ce0d3;}.code .num{color:#f6b86e;}
+  .code .cl{cursor:pointer;border-radius:4px;}
+  .code .cl:hover:not(.hl){background:rgba(123,92,214,.22);}
+</style></head><body>
+<h1>ResNet Architecture Explorer — 28×28 pixels → 10 logits</h1>
+<p class="sub">The <b>real tensors</b> flowing through our model, drawn to scale: each 3D box is a feature map — its <b style="color:var(--in)">face = the spatial map (H×W)</b>, its <b style="color:var(--out)">depth = the channels</b>. Watch the image get <b>spatially crushed 28→1</b> while channels <b>grow 1→256</b>. <b style="color:var(--ac)">Click any arrow (operation), any tensor, or any line of the code below</b> — or press ▶ — the diagram, code, shapes and live parameter math all stay in sync.</p>
+
+<div class="selrow">
+  inside each conv: <span style="display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden">
+    <button id="nBN" style="border-radius:0;background:var(--out);color:#fff;font-size:12px;padding:5px 12px">BatchNorm2d (bias off)</button><button id="nNone" style="border-radius:0;background:#fff;color:var(--soft);font-size:12px;padding:5px 12px">no norm (bias on)</button></span>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="wrap">
+  <div class="card"><svg id="arch" viewBox="0 0 968 232" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div class="legend"><b class="i">■ input image</b> (a Fashion-MNIST boot) · ■ feature maps · <b class="o">■ output logits</b> · face ∝ H×W, depth ∝ channels (log) · teal dashes under a ResBlock arrow = its internal skip connection · <b class="a">purple = selected op + its in/out tensors</b></div></div>
+
+  <div class="card" style="margin-top:8px"><div class="cap">The code behind it — synced with your selection <small>top: the builder function (purple = the exact line/argument that creates the selected module) · bottom: the expanded <code>nn.Sequential</code> — <b>click any line</b> to select that module, same as clicking the diagram</small></div>
+    <div class="code" id="codepanel"></div></div>
+
+  <div class="detail">
+    <div class="card"><div class="cap" id="dcap">Block details</div><div id="dtable"></div></div>
+    <div class="card"><div class="cap">Where do the parameters come from? <small>live arithmetic for the selected module</small></div><div class="calc" id="calc"></div></div>
+  </div>
+  <div class="card" style="margin-top:8px"><div class="cap">Parameter budget across the model <small>each bar = one module · deeper blocks dominate because params ∝ ni × nf</small></div><div id="bars"></div></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const NS='http://www.w3.org/2000/svg';
+// model: ResBlock(1,8,s1) + 5× ResBlock(ni,nf,s2) + Flatten + Linear(256,10,bias=False) + BatchNorm1d(10)
+const BLOCKS=[
+  {t:'res',ni:1,  nf:8,  s:1, hin:28,hout:28},
+  {t:'res',ni:8,  nf:16, s:2, hin:28,hout:14},
+  {t:'res',ni:16, nf:32, s:2, hin:14,hout:7},
+  {t:'res',ni:32, nf:64, s:2, hin:7, hout:4},
+  {t:'res',ni:64, nf:128,s:2, hin:4, hout:2},
+  {t:'res',ni:128,nf:256,s:2, hin:2, hout:1},
+  {t:'flat'},
+  {t:'lin',ni:256,nf:10},
+  {t:'bn1d',nf:10}
+];
+// the DATA tensors between ops: input + each op's output
+const TENS=[
+  {k:'img', C:1,  H:28},
+  {k:'cub', C:8,  H:28},
+  {k:'cub', C:16, H:14},
+  {k:'cub', C:32, H:7},
+  {k:'cub', C:64, H:4},
+  {k:'cub', C:128,H:2},
+  {k:'cub', C:256,H:1},
+  {k:'vec', n:256, vh:96, lbl:'256-vector'},
+  {k:'vec', n:10,  vh:40, lbl:'10 logits'},
+  {k:'vec', n:10,  vh:40, lbl:'10 logits ✓', outc:true}
+];
+// 14×14 downsampled Fashion-MNIST ankle boot for the input face
+const BOOT=[
+'..............',
+'..............',
+'......####....',
+'......#####...',
+'.......####...',
+'.......####...',
+'.......####...',
+'......#####...',
+'.....######...',
+'...########...',
+'..##########..',
+'..###########.',
+'..###########.',
+'..............'];
+let useBN=true;
+function resParams(b){
+  const cb = useBN?0:b.nf;
+  const conv1=b.ni*b.nf*9+cb, bn1=useBN?2*b.nf:0, conv2=b.nf*b.nf*9+cb, bn2=useBN?2*b.nf:0;
+  const idc=(b.ni!==b.nf)?(b.ni*b.nf*1 + b.nf):0;
+  return {conv1,bn1,conv2,bn2,idc,cb,total:conv1+bn1+conv2+bn2+idc};
+}
+function pcount(b){ if(b.t==='res')return resParams(b).total;
+  if(b.t==='lin')return b.ni*b.nf; if(b.t==='bn1d')return 2*b.nf; return 0; }
+function TOTf(){ return BLOCKS.reduce((a,b)=>a+pcount(b),0); }
+let sel=0, speed=1, timer=null;
+function fmt(n){return n.toLocaleString('en-US');}
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);
+  for(const k in attrs)e.setAttribute(k,attrs[k]); if(parent)parent.appendChild(e); return e;}
+function txt(x,y,s,size,fill,parent,w){const t=el('text',{x,y,'text-anchor':'middle','font-size':size,'font-weight':w||'700',fill},parent);t.textContent=s;return t;}
+const fw=H=>Math.max(8,H*4.2), dep=C=>5+Math.log2(Math.max(1,C))*4.2;
+function cuboid(g,x,base,fwv,fhv,d,cols,hot){
+  const ox=d*0.55, oy=d*0.38;
+  el('path',{d:`M${x},${base-fhv} l${ox},-${oy} h${fwv} l-${ox},${oy} z`,fill:cols.top},g);          // top
+  el('path',{d:`M${x+fwv},${base-fhv} l${ox},-${oy} v${fhv} l-${ox},${oy} z`,fill:cols.side},g);     // side
+  el('rect',{x,y:base-fhv,width:fwv,height:fhv,rx:2,fill:cols.front},g);                             // front
+  if(hot) el('rect',{x:x-2,y:base-fhv-2,width:fwv+4,height:fhv+4,rx:3,fill:'none',stroke:'#7b5cd6','stroke-width':2.4},g);
+  return {ox,oy};
+}
+function drawArch(){
+  const s=$('arch'); s.innerHTML='';
+  el('defs',{},s).innerHTML='<marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#9aa8c4"/></marker><marker id="ahp" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#7b5cd6"/></marker>';
+  const base=196, GAP=50; let x=12;
+  const geo=[];
+  // pass 1: geometry
+  TENS.forEach((t,j)=>{
+    let w,h;
+    if(t.k==='vec'){ w=13; h=t.vh; }
+    else { w=fw(t.H)+dep(t.C)*0.55; h=fw(t.H); }
+    geo.push({x, w, h, faceW: t.k==='vec'?13:fw(t.H)});
+    x += w + (j<TENS.length-1?GAP:0);
+  });
+  // pass 2: draw tensors
+  TENS.forEach((t,j)=>{
+    const gm=geo[j], hot=(j===sel||j===sel+1); // input & output of selected op
+    const g=el('g',{},s); g.style.cursor='pointer';
+    g.addEventListener('click',()=>{stopT(); sel=Math.max(0,Math.min(BLOCKS.length-1, j===0?0:j-1)); renderAll();});
+    if(t.k==='vec'){
+      const cells=Math.min(t.n,12), ch=gm.h/cells;
+      for(let c=0;c<cells;c++)
+        el('rect',{x:gm.x,y:base-gm.h+c*ch+0.6,width:13,height:ch-1.2,rx:2,
+          fill:t.outc?(c%2?'#16a3a3':'#5cc7c7'):(c%2?'#8fb7e8':'#b9d2ef')},g);
+      if(hot) el('rect',{x:gm.x-2.5,y:base-gm.h-2.5,width:18,height:gm.h+5,rx:4,fill:'none',stroke:'#7b5cd6','stroke-width':2.4},g);
+      txt(gm.x+6.5,base+13,t.lbl,8.5,t.outc?'#16a3a3':'#5a6b86',g);
+    } else {
+      const d=dep(t.C), fv=gm.faceW;
+      const cols = t.k==='img' ? {front:'#fdeeda',side:'#e8b578',top:'#fbe0bd'}
+                               : {front:'#b9d2ef',side:'#8fb7e8',top:'#d3e3f7'};
+      cuboid(g,gm.x,base,fv,fv,d,cols,hot);
+      if(t.k==='img'){ // draw the boot
+        const cell=fv/14;
+        BOOT.forEach((row,r)=>{ for(let c=0;c<14;c++) if(row[c]==='#')
+          el('rect',{x:gm.x+c*cell,y:base-fv+r*cell,width:cell,height:cell,fill:'#f6921e',opacity:.88},g); });
+      } else if(t.H>=2 && t.H<=14){ // feature-map cell grid
+        const cell=fv/t.H;
+        for(let i=1;i<t.H;i++){
+          el('path',{d:`M${gm.x+i*cell},${base-fv} v${fv}`,stroke:'#ffffff',opacity:.5,'stroke-width':.7},g);
+          el('path',{d:`M${gm.x},${base-fv+i*cell} h${fv}`,stroke:'#ffffff',opacity:.5,'stroke-width':.7},g);
+        }
+      }
+      txt(gm.x+fv/2,base+13, t.k==='img'?`1@28×28`:`${t.C}@${t.H}×${t.H}`,9, t.k==='img'?'#c46f10':'#5a6b86',g);
+    }
+    s.appendChild(g);
+  });
+  // pass 3: op arrows in the gaps
+  BLOCKS.forEach((b,i)=>{
+    const L=geo[i], R=geo[i+1];
+    const x1=L.x+L.w+3, x2=R.x-3;
+    const yA=base - Math.max(14, Math.min(L.h,R.h)*0.55);
+    const on=(i===sel);
+    const g=el('g',{},s); g.style.cursor='pointer';
+    g.addEventListener('click',()=>{stopT();sel=i;renderAll();});
+    el('rect',{x:x1-4,y:36,width:x2-x1+8,height:base-20,fill:on?'rgba(123,92,214,.07)':'transparent',rx:8},g);
+    el('path',{d:`M${x1},${yA} H${x2}`,stroke:on?'#7b5cd6':'#9aa8c4','stroke-width':on?3:1.6,'marker-end':on?'url(#ahp)':'url(#ah)'},g);
+    if(b.t==='res') // internal skip connection glyph
+      el('path',{d:`M${x1+3},${yA+3} C${x1+12},${yA+16} ${x2-12},${yA+16} ${x2-3},${yA+3}`,fill:'none',
+        stroke:'#16a3a3','stroke-width':1.6,'stroke-dasharray':'3 2',opacity:on?1:.75},g);
+    const c=(x1+x2)/2, col=on?'#7b5cd6':'#5a6b86';
+    if(b.t==='res'){ txt(c,yA-17,'ResBlock',8.5,col,g); txt(c,yA-7,`${b.ni}→${b.nf}${b.s===2?' · s2':''}`,8,col,g); }
+    else if(b.t==='flat'){ txt(c,yA-7,'Flatten',8.5,col,g); }
+    else if(b.t==='lin'){ txt(c,yA-17,'Linear',8.5,col,g); txt(c,yA-7,'256→10',8,col,g); }
+    else { txt(c,yA-17,'Batch',8.5,col,g); txt(c,yA-7,'Norm1d',8.5,col,g); }
+  });
+  // shape ribbon
+  const b=BLOCKS[sel];
+  const rib = b.t==='res' ? `(1024, ${b.ni}, ${b.hin}, ${b.hin})  →  ResBlock  →  (1024, ${b.nf}, ${b.hout}, ${b.hout})`
+    : b.t==='flat' ? '(1024, 256, 1, 1)  →  Flatten  →  (1024, 256)'
+    : b.t==='lin' ? '(1024, 256)  →  Linear  →  (1024, 10)' : '(1024, 10)  →  BatchNorm1d  →  (1024, 10)   normalized logits';
+  txt(484,20,rib,13,'#7b5cd6',s);
+}
+function renderDetail(){
+  const b=BLOCKS[sel];
+  if(b.t==='res'){
+    const p=resParams(b);
+    $('dcap').innerHTML=`ResBlock(${b.ni} → ${b.nf}, stride=${b.s}) <small>input ${b.hin}×${b.hin} → output ${b.hout}×${b.hout} · batch = 1024</small>`;
+    const bnRow = useBN?`<tr><td>2× BatchNorm2d(${b.nf})</td><td>scale γ + shift β, each</td><td class="num">${fmt(p.bn1+p.bn2)}</td></tr>`:'';
+    $('dtable').innerHTML=`<table>
+      <tr><th>Inner module</th><th>What it does</th><th style="text-align:right">params</th></tr>
+      <tr><td>conv1 3×3 (${b.ni}→${b.nf})</td><td>change channels, stride 1${useBN?'':' (+bias)'}</td><td class="num">${fmt(p.conv1)}</td></tr>
+      <tr><td>conv2 3×3 (${b.nf}→${b.nf})</td><td>stride ${b.s}${b.s===2?' — halves the map':''}, no act${useBN?'':' (+bias)'}</td><td class="num">${fmt(p.conv2)}</td></tr>
+      ${bnRow}
+      <tr><td>idconv 1×1 ${b.ni!==b.nf?`(${b.ni}→${b.nf})`:''}</td><td>${b.ni!==b.nf?'channel adapter for the skip (+bias)':'<i>noop — channels already match</i>'}</td><td class="num">${fmt(p.idc)}</td></tr>
+      <tr><td>pool ${b.s===2?'AvgPool2d(2)':''}</td><td>${b.s===2?'downsample the skip — no weights!':'<i>noop</i>'}</td><td class="num">0</td></tr>
+      <tr class="hot"><td colspan="2"><b>Block total</b></td><td class="num"><b>${fmt(p.total)}</b></td></tr></table>`;
+    $('calc').innerHTML=
+`<span class="cm"># conv weight = out_ch × in_ch × k × k${useBN?'   (bias OFF: BatchNorm follows)':'   (bias ON: no norm to absorb it)'}</span>
+conv1 : <span class="num">${b.nf}</span>×<span class="num">${b.ni}</span>×<span class="num">3</span>×<span class="num">3</span>${useBN?'':` + <span class="num">${b.nf}</span> bias`} = <b>${fmt(p.conv1)}</b>
+conv2 : <span class="num">${b.nf}</span>×<span class="num">${b.nf}</span>×<span class="num">3</span>×<span class="num">3</span>${useBN?'':` + <span class="num">${b.nf}</span> bias`} = <b>${fmt(p.conv2)}</b>
+${b.ni!==b.nf?`idconv: <span class="num">${b.nf}</span>×<span class="num">${b.ni}</span>×<span class="num">1</span>×<span class="num">1</span> + <span class="num">${b.nf}</span> bias = <b>${fmt(p.idc)}</b>`:`idconv: <span class="cm">noop → 0 params</span>`}
+${useBN?`2 BNs : 2 × (γ:<span class="num">${b.nf}</span> + β:<span class="num">${b.nf}</span>) = <b>${fmt(p.bn1+p.bn2)}</b>`:`BNs   : <span class="cm">none</span>`}
+<span class="cm"># params grow with ni×nf — NOT with output map size:</span>
+<span class="cm"># this ${b.hout}×${b.hout} block holds ${(p.total/1000).toFixed(1)}k params. Toggle the norm switch</span>
+<span class="cm"># above to see why printed summary() totals shift by a few hundred.</span>`;
+  } else if(b.t==='flat'){
+    $('dcap').innerHTML='nn.Flatten() <small>reshape only</small>';
+    $('dtable').innerHTML='<table><tr><th>In</th><th>Out</th><th style="text-align:right">params</th></tr><tr><td>(1024, 256, 1, 1)</td><td>(1024, 256)</td><td class="num">0</td></tr></table>';
+    $('calc').innerHTML='<span class="cm"># pure reshape — a view of the same numbers.\n# 256 channels × 1 × 1 pixels → a 256-vector per image. Zero parameters.</span>';
+  } else if(b.t==='lin'){
+    $('dcap').innerHTML='nn.Linear(256 → 10, bias=False) <small>the classification head</small>';
+    $('dtable').innerHTML=`<table><tr><th>In</th><th>Out</th><th style="text-align:right">params</th></tr><tr><td>(1024, 256)</td><td>(1024, 10)</td><td class="num">${fmt(2560)}</td></tr></table>`;
+    $('calc').innerHTML='weight: <span class="num">10</span> × <span class="num">256</span> = <b>2,560</b>   <span class="cm"># bias=False — BatchNorm1d right after provides the shift</span>';
+  } else {
+    $('dcap').innerHTML='nn.BatchNorm1d(10) <small>normalize the logits</small>';
+    $('dtable').innerHTML=`<table><tr><th>In</th><th>Out</th><th style="text-align:right">params</th></tr><tr><td>(1024, 10)</td><td>(1024, 10)</td><td class="num">20</td></tr></table>`;
+    $('calc').innerHTML='γ: <span class="num">10</span> + β: <span class="num">10</span> = <b>20</b>   <span class="cm"># keeps logit scale sane at init → smoother training</span>';
+  }
+}
+function renderBars(){
+  const elb=$('bars'); elb.innerHTML='';
+  const TOT=TOTf();
+  BLOCKS.forEach((b,i)=>{
+    const p=pcount(b), w=Math.max(0.4, p/TOT*100);
+    const name= b.t==='res'?`ResBlock ${b.ni}→${b.nf}`: b.t==='flat'?'Flatten': b.t==='lin'?'Linear':'BatchNorm1d';
+    const row=document.createElement('div'); row.className='barrow';
+    row.innerHTML=`<span class="nm">${name}</span><div class="bar ${i===sel?'hot':''}" style="width:${w}%"></div><span class="barv">${fmt(p)}</span>`;
+    row.style.cursor='pointer'; row.onclick=()=>{stopT();sel=i;renderAll();};
+    elb.appendChild(row);
+  });
+  const tot=document.createElement('div'); tot.className='barrow';
+  tot.innerHTML=`<span class="nm"><b>Total</b></span><span class="barv"><b>${fmt(TOT)}</b> — the last two ResBlocks alone hold ${((pcount(BLOCKS[4])+pcount(BLOCKS[5]))/TOT*100).toFixed(0)}%</span>`;
+  elb.appendChild(tot);
+}
+function renderCode(){
+  const hl=(cond,s)=>cond?`<span class="hl">${s}</span>`:s;
+  const normArg = useBN?'nn.BatchNorm2d':'<span class="kw">None</span>';
+  const src =
+`<span class="cm"># ── the builder (notebook cell) ─────────────────────────  purple = what builds your selection</span>
+<span class="kw">def</span> <span class="fn">get_model</span>(act=nn.ReLU, nfs=(<span class="num">8</span>,<span class="num">16</span>,<span class="num">32</span>,<span class="num">64</span>,<span class="num">128</span>,<span class="num">256</span>), norm=${normArg}):
+    layers  = [${hl(sel===0,`ResBlock(<span class="num">1</span>, <span class="num">8</span>, stride=<span class="num">1</span>, act=act, norm=norm)`)}]
+    layers += [${hl(sel>=1&&sel<=5,`ResBlock(nfs[i], nfs[i+<span class="num">1</span>], act=act, norm=norm, stride=<span class="num">2</span>) <span class="kw">for</span> i <span class="kw">in</span> range(len(nfs)-<span class="num">1</span>)`)}]${sel>=1&&sel<=5?`  <span class="cm"># ← i=${sel-1} builds ResBlock(${BLOCKS[sel].ni}, ${BLOCKS[sel].nf})</span>`:''}
+    layers += [${hl(sel===6,`nn.Flatten()`)}, ${hl(sel===7,`nn.Linear(nfs[-<span class="num">1</span>], <span class="num">10</span>, bias=<span class="kw">False</span>)`)}, ${hl(sel===8,`nn.BatchNorm1d(<span class="num">10</span>)`)}]
+    <span class="kw">return</span> nn.Sequential(*layers)`;
+  const lines = BLOCKS.map((bl,i)=>{
+    let body, cm;
+    if(bl.t==='res'){ body=`ResBlock(${String(bl.ni).padStart(3)}, ${String(bl.nf).padStart(3)}, stride=${bl.s})`;
+      cm=`${bl.hin}×${bl.hin} → ${bl.hout}×${bl.hout} · ${fmt(pcount(bl))} params`; }
+    else if(bl.t==='flat'){ body='nn.Flatten(),                  '; cm='(256,1,1) → (256,) · 0 params'; }
+    else if(bl.t==='lin'){ body='nn.Linear(256, 10, bias=False),'; cm=`256 → 10 · ${fmt(pcount(bl))} params`; }
+    else { body='nn.BatchNorm1d(10),            '; cm=`${fmt(pcount(bl))} params`; }
+    if(bl.t==='res') body=body+',';
+    return `<span class="cl ${i===sel?'hl':''}" data-i="${i}">  ${body} <span class="cm"># (${i}) ${cm}</span></span>`;
+  }).join('\n');
+  $('codepanel').innerHTML = src +
+`\n\n<span class="cm"># ── …expanded, this is the nn.Sequential you get. CLICK any line: ───────────────────</span>\nmodel = nn.Sequential(\n${lines}\n)`;
+  $('codepanel').querySelectorAll('.cl').forEach(c=>c.onclick=()=>{stopT(); sel=+c.dataset.i; renderAll();});
+}
+function renderAll(){ drawArch(); renderCode(); renderDetail(); renderBars(); }
+function stopT(){ if(timer){clearInterval(timer);timer=null;$('play').textContent='▶ Play';} }
+$('play').onclick=()=>{ if(timer){stopT();return;}
+  if(sel>=BLOCKS.length-1)sel=0; $('play').textContent='⏸ Pause';
+  timer=setInterval(()=>{ if(sel>=BLOCKS.length-1){stopT();return;} sel++; renderAll(); },1500/speed); renderAll(); };
+$('fwd').onclick=()=>{stopT();sel=Math.min(BLOCKS.length-1,sel+1);renderAll();};
+$('back').onclick=()=>{stopT();sel=Math.max(0,sel-1);renderAll();};
+$('reset').onclick=()=>{stopT();sel=0;renderAll();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×'; if(timer){stopT();$('play').click();}};
+function setBN(v){ useBN=v;
+  $('nBN').style.background=v?'var(--out)':'#fff'; $('nBN').style.color=v?'#fff':'var(--soft)';
+  $('nNone').style.background=v?'#fff':'var(--in)'; $('nNone').style.color=v?'var(--soft)':'#fff';
+  renderAll(); }
+$('nBN').onclick=()=>setBN(true);
+$('nNone').onclick=()=>setBN(false);
+renderAll();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .detail>*{min-width:0}
+  body.ce-narrow .detail{flex-direction:column}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

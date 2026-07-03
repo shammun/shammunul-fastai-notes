@@ -1,0 +1,225 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The ResBlock Machine</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 11px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:4px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  select{font-family:inherit;font-size:12px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:4px 7px;background:#fff;cursor:pointer;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:960px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 10px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  #flow{display:block;width:100%;}
+  .msg{max-width:960px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.5;}
+  .msg b.i{color:var(--in);} .msg b.o{color:var(--out);} .msg b.a{color:var(--ac);} .msg b.n{color:var(--neg);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:960px;margin:8px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .dim{opacity:.45;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}.code .kw{color:#c792ea;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>The ResBlock Machine</h1>
+<p class="sub">A ResBlock computes <b>output = act( convs(x) + shortcut(x) )</b>. The tensor splits into the <b style="color:var(--ac)">conv path</b> (learns the residual F(x)) and the <b style="color:var(--out)">shortcut path</b> (keeps x reachable). Click any stage — the matching line of <code>forward()</code> lights up — or click a box in the diagram to jump there.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-p="0">⓪ Input x</button>
+  <button class="chip" data-p="1">① conv path: conv 1</button>
+  <button class="chip" data-p="2">② conv path: conv 2</button>
+  <button class="chip" data-p="3">③ shortcut: pool</button>
+  <button class="chip" data-p="4">④ shortcut: idconv</button>
+  <button class="chip" data-p="5">⑤ add ⊕</button>
+  <button class="chip" data-p="6">⑥ final act</button>
+</div>
+
+<div class="selrow">
+  scenario: <select id="scen">
+    <option value="same">Case 1 — same dims: ResBlock(64→64, stride=1)</option>
+    <option value="proj" selected>Case 2 — different dims: ResBlock(64→128, stride=2)</option>
+    <option value="first">First block of our model: ResBlock(1→8, stride=1)</option>
+  </select>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="wrap"><div class="card">
+  <svg id="flow" viewBox="0 0 940 330" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div class="legend"><b class="i">■ input tensor</b> · <b class="a">■ conv path (learns F(x))</b> · <b class="o">■ shortcut path</b> · box height ∝ spatial size, box depth ∝ channels</div>
+</div></div>
+
+<div class="msg" id="msg"></div>
+
+<div class="code" id="code"><span class="cm"># ResBlock.forward — follow the purple dot</span>
+<span id="c0"><span class="kw">def</span> <span class="fn">forward</span>(self, x):                                  <span class="cm"># ⓪ x arrives</span></span>
+<span id="c1">    conv_out = self.convs(x)      <span class="cm"># ①② _conv_block: conv(ni→nf,s=1,act) → conv(nf→nf,s=stride, NO act)</span></span>
+<span id="c3">    shortcut = self.pool(x)       <span class="cm"># ③ stride&gt;1 ? AvgPool2d(2, ceil_mode=True) : noop</span></span>
+<span id="c4">    shortcut = self.idconv(shortcut)  <span class="cm"># ④ ni≠nf ? conv(ni→nf, ks=1, act=None) : noop</span></span>
+<span id="c5">    summed = conv_out + shortcut  <span class="cm"># ⑤ shapes MUST match here — that's the whole game</span></span>
+<span id="c6">    <span class="kw">return</span> self.act(summed)       <span class="cm"># ⑥ activation AFTER the add</span></span></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const NS='http://www.w3.org/2000/svg';
+const SCEN={
+  same:{ni:64,nf:64,s:1,hw:14, steps:[
+    {shape:'(B, 64, 14×14)'},{shape:'(B, 64, 14×14)'},{shape:'(B, 64, 14×14)'},
+    {shape:'(B, 64, 14×14)',noop:true},{shape:'(B, 64, 14×14)',noop:true},
+    {shape:'(B, 64, 14×14)'},{shape:'(B, 64, 14×14)'}]},
+  proj:{ni:64,nf:128,s:2,hw:14, steps:[
+    {shape:'(B, 64, 14×14)'},{shape:'(B, 128, 14×14)'},{shape:'(B, 128, 7×7)'},
+    {shape:'(B, 64, 7×7)'},{shape:'(B, 128, 7×7)'},
+    {shape:'(B, 128, 7×7)'},{shape:'(B, 128, 7×7)'}]},
+  first:{ni:1,nf:8,s:1,hw:28, steps:[
+    {shape:'(B, 1, 28×28)'},{shape:'(B, 8, 28×28)'},{shape:'(B, 8, 28×28)'},
+    {shape:'(B, 1, 28×28)',noop:true},{shape:'(B, 8, 28×28)'},
+    {shape:'(B, 8, 28×28)'},{shape:'(B, 8, 28×28)'}]}
+};
+let scen='proj', phase=0, speed=1, timer=null;
+const codeIds=['c0','c1','c1','c3','c4','c5','c6'];
+
+function tensorBox(g,x,y,h,d,color,label,dim){ // pseudo-3D box: h=face size, d=depth (channels)
+  const dep=Math.min(26, 5+d*0.16);
+  const p=document.createElementNS(NS,'path');
+  p.setAttribute('d',`M${x},${y} l${dep},-${dep*0.55} h${h} l-${dep},${dep*0.55} z M${x+h},${y} l${dep},-${dep*0.55} v${h} l-${dep},${dep*0.55} z`);
+  p.setAttribute('fill',color); p.setAttribute('opacity',dim?0.25:0.55); g.appendChild(p);
+  const r=document.createElementNS(NS,'rect');
+  r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',h);r.setAttribute('height',h);
+  r.setAttribute('fill',color);r.setAttribute('opacity',dim?0.4:0.92);r.setAttribute('rx',4); g.appendChild(r);
+  const t=document.createElementNS(NS,'text');
+  t.setAttribute('x',x+h/2);t.setAttribute('y',y+h+14);t.setAttribute('text-anchor','middle');
+  t.setAttribute('font-size','10.5');t.setAttribute('font-weight','700');t.setAttribute('fill',dim?'#b9c4d8':'#25324a');
+  t.textContent=label; g.appendChild(t);
+}
+function opBox(g,x,y,w,label,sub,color,active,idx){
+  const grp=document.createElementNS(NS,'g'); grp.style.cursor='pointer';
+  grp.addEventListener('click',()=>setPhase(idx));
+  const r=document.createElementNS(NS,'rect');
+  r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',w);r.setAttribute('height',40);
+  r.setAttribute('rx',9);r.setAttribute('fill',active?color:'#fff');
+  r.setAttribute('stroke',color);r.setAttribute('stroke-width',active?0:1.6); grp.appendChild(r);
+  const t=document.createElementNS(NS,'text');
+  t.setAttribute('x',x+w/2);t.setAttribute('y',y+17);t.setAttribute('text-anchor','middle');
+  t.setAttribute('font-size','11');t.setAttribute('font-weight','700');
+  t.setAttribute('fill',active?'#fff':color); t.textContent=label; grp.appendChild(t);
+  const s=document.createElementNS(NS,'text');
+  s.setAttribute('x',x+w/2);s.setAttribute('y',y+31);s.setAttribute('text-anchor','middle');
+  s.setAttribute('font-size','9');s.setAttribute('fill',active?'#efeafd':'#5a6b86'); s.textContent=sub; grp.appendChild(s);
+  g.appendChild(grp);
+}
+function arrow(g,x1,y1,x2,y2,color,w,lit){
+  const p=document.createElementNS(NS,'path');
+  p.setAttribute('d',`M${x1},${y1} C${(x1+x2)/2},${y1} ${(x1+x2)/2},${y2} ${x2},${y2}`);
+  p.setAttribute('fill','none');p.setAttribute('stroke',color);p.setAttribute('stroke-width',lit?3:w);
+  p.setAttribute('opacity',lit?1:.45); g.appendChild(p);
+}
+function dot(g,x,y){
+  const c=document.createElementNS(NS,'circle');
+  c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',7);c.setAttribute('fill','#7b5cd6');
+  const c2=document.createElementNS(NS,'circle');
+  c2.setAttribute('cx',x);c2.setAttribute('cy',y);c2.setAttribute('r',12);c2.setAttribute('fill','rgba(123,92,214,.25)');
+  g.appendChild(c2);g.appendChild(c);
+}
+// layout positions
+const POS={ input:[38,120], conv1:[190,52], conv2:[352,52], pool:[190,222], idc:[352,222], add:[560,132], act:[672,122], out:[800,120] };
+const DOT ={0:[70,152],1:[255,72],2:[417,72],3:[255,242],4:[417,242],5:[583,155],6:[737,142]};
+function render(){
+  const S=SCEN[scen], f=$('flow'); f.innerHTML='';
+  const g=document.createElementNS(NS,'g'); f.appendChild(g);
+  const hw0=S.hw===28?64:(S.hw===14?56:44);
+  const hwOut=S.s===2?hw0*0.6:hw0;
+  // arrows: input → conv1, conv1 → conv2, conv2 → add ; input → pool → idconv → add ; add → act → out
+  arrow(g,POS.input[0]+hw0, POS.input[1]+hw0/2, POS.conv1[0], POS.conv1[1]+20, '#7b5cd6',2, phase===1);
+  arrow(g,POS.conv1[0]+130, POS.conv1[1]+20, POS.conv2[0], POS.conv2[1]+20, '#7b5cd6',2, phase===2);
+  arrow(g,POS.conv2[0]+130, POS.conv2[1]+20, POS.add[0], POS.add[1]+10, '#7b5cd6',2, phase===5);
+  arrow(g,POS.input[0]+hw0, POS.input[1]+hw0/2, POS.pool[0], POS.pool[1]+20, '#16a3a3',2, phase===3);
+  arrow(g,POS.pool[0]+130, POS.pool[1]+20, POS.idc[0], POS.idc[1]+20, '#16a3a3',2, phase===4);
+  arrow(g,POS.idc[0]+130, POS.idc[1]+20, POS.add[0], POS.add[1]+30, '#16a3a3',2, phase===5);
+  arrow(g,POS.add[0]+56, POS.add[1]+20, POS.act[0], POS.act[1]+20, '#25324a',2, phase===6);
+  arrow(g,POS.act[0]+92, POS.act[1]+20, POS.out[0], POS.out[1]+hwOut/2, '#16a3a3',2, phase===6);
+  // tensors
+  tensorBox(g,POS.input[0],POS.input[1],hw0,S.ni,'#f6921e',`x  ${S.steps[0].shape}`);
+  tensorBox(g,POS.out[0],POS.out[1],hwOut,S.nf,'#16a3a3', phase===6?`out  ${S.steps[6].shape}`:'output …', phase<6);
+  // op boxes (clickable)
+  opBox(g,POS.conv1[0],POS.conv1[1],130,`conv(${S.ni}→${S.nf}, s=1)`,'+ norm + act','#7b5cd6',phase===1,1);
+  opBox(g,POS.conv2[0],POS.conv2[1],130,`conv(${S.nf}→${S.nf}, s=${S.s})`,'+ norm, NO act','#7b5cd6',phase===2,2);
+  opBox(g,POS.pool[0],POS.pool[1],130, S.s===2?'AvgPool2d(2)':'pool = noop', S.s===2?'halves 14×14 → 7×7':'stride=1 → do nothing','#16a3a3',phase===3,3);
+  opBox(g,POS.idc[0],POS.idc[1],130, S.ni!==S.nf?`idconv 1×1 (${S.ni}→${S.nf})`:'idconv = noop', S.ni!==S.nf?'channel adapter, no act':'ni==nf → do nothing','#16a3a3',phase===4,4);
+  // add node
+  const addG=document.createElementNS(NS,'g'); addG.style.cursor='pointer'; addG.addEventListener('click',()=>setPhase(5));
+  const c=document.createElementNS(NS,'circle');
+  c.setAttribute('cx',POS.add[0]+28);c.setAttribute('cy',POS.add[1]+20);c.setAttribute('r',22);
+  c.setAttribute('fill',phase===5?'#25324a':'#fff');c.setAttribute('stroke','#25324a');c.setAttribute('stroke-width','2');
+  addG.appendChild(c);
+  const pt=document.createElementNS(NS,'text');
+  pt.setAttribute('x',POS.add[0]+28);pt.setAttribute('y',POS.add[1]+27);pt.setAttribute('text-anchor','middle');
+  pt.setAttribute('font-size','20');pt.setAttribute('font-weight','700');pt.setAttribute('fill',phase===5?'#fff':'#25324a');
+  pt.textContent='⊕'; addG.appendChild(pt); g.appendChild(addG);
+  opBox(g,POS.act[0],POS.act[1],92,'act()','GeneralRelu','#25324a',phase===6,6);
+  // shape annotations at pulse
+  if(DOT[phase]){ dot(g,DOT[phase][0],DOT[phase][1]);
+    const lbl=document.createElementNS(NS,'text');
+    lbl.setAttribute('x',DOT[phase][0]);lbl.setAttribute('y',DOT[phase][1]-16);
+    lbl.setAttribute('text-anchor','middle');lbl.setAttribute('font-size','11');lbl.setAttribute('font-weight','700');
+    lbl.setAttribute('fill','#7b5cd6'); lbl.textContent=S.steps[phase].shape + (S.steps[phase].noop?'  (unchanged)':'');
+    g.appendChild(lbl); }
+  // code + chips + message
+  ['c0','c1','c3','c4','c5','c6'].forEach(id=>$(id).className='');
+  $(codeIds[phase]).className='hl';
+  document.querySelectorAll('.chip').forEach(ch=>ch.classList.toggle('on',+ch.dataset.p===phase));
+  const MSGS={
+    0:`<b class="a">⓪ Input.</b> x = <b>${S.steps[0].shape}</b>. It is about to be used <b>twice</b>: once by the conv path, once — untouched — by the shortcut. That reuse is the entire ResNet idea.`,
+    1:`<b class="a">① conv 1.</b> First conv changes <b>channels</b> (${S.ni}→${S.nf}) at stride 1, then norm + activation. Spatial size stays ${S.hw}×${S.hw}. Shape: <b>${S.steps[1].shape}</b>.`,
+    2:`<b class="a">② conv 2.</b> Second conv keeps channels, applies stride=${S.s}${S.s===2?' (halves the map)':''} — and crucially has <b class="n">no activation</b>: the activation must wait until <em>after</em> the add. Shape: <b>${S.steps[2].shape}</b>.`,
+    3: S.s===2?`<b class="o">③ shortcut: pool.</b> The conv path shrank to ${Math.ceil(S.hw/2)}×${Math.ceil(S.hw/2)} — so x must shrink too. <code>AvgPool2d(2, ceil_mode=True)</code> halves it <b>without any parameters</b>. Shape: <b>${S.steps[3].shape}</b>.`
+      :`<b class="o">③ shortcut: pool = noop.</b> stride=1, spatial sizes already agree, so <code>self.pool = fc.noop</code> — literally <code>lambda x: x</code>. Shape unchanged: <b>${S.steps[3].shape}</b>.`,
+    4: S.ni!==S.nf?`<b class="o">④ shortcut: idconv.</b> Channels disagree (${S.ni} vs ${S.nf}), and you cannot add mismatched tensors. A <b>1×1 conv</b> is a learned channel adapter — a linear mix across channels at each pixel, no spatial look, no activation. Shape: <b>${S.steps[4].shape}</b>.`
+      :`<b class="o">④ shortcut: idconv = noop.</b> ni == nf, channels already match, so <code>self.idconv = fc.noop</code>. The shortcut really is the identity. Shape: <b>${S.steps[4].shape}</b>.`,
+    5:`<b class="a">⑤ The add.</b> conv_out ${S.steps[2].shape} ⊕ shortcut ${S.steps[4].shape} — <b>identical shapes</b>, element-wise sum. If F(x) is useless, weights can drive it to ~0 and the block becomes ≈ identity: <b>deeper can no longer hurt</b>.`,
+    6:`<b class="o">⑥ Final activation.</b> Only now does the nonlinearity fire, on the <em>sum</em>. Output: <b>${S.steps[6].shape}</b>. Six of these blocks stacked = our whole ResNet.`};
+  $('msg').innerHTML=MSGS[phase];
+}
+function setPhase(p){ stopT(); phase=p; render(); }
+function stopT(){ if(timer){clearInterval(timer);timer=null;$('play').textContent='▶ Play';} }
+function play(){ if(timer){stopT();return;} if(phase>=6)phase=0;
+  $('play').textContent='⏸ Pause'; render();
+  timer=setInterval(()=>{ if(phase>=6){stopT();return;} phase++; render(); }, 1600/speed); }
+document.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>setPhase(+ch.dataset.p));
+$('play').onclick=play;
+$('fwd').onclick=()=>{stopT(); phase=Math.min(6,phase+1); render();};
+$('back').onclick=()=>{stopT(); phase=Math.max(0,phase-1); render();};
+$('reset').onclick=()=>{stopT(); phase=0; render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×'; if(timer){stopT();play();}};
+$('scen').onchange=e=>{scen=e.target.value; stopT(); phase=0; render();};
+render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

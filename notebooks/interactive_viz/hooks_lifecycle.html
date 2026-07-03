@@ -1,0 +1,204 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyTorch Hooks — Lifecycle</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:940px;line-height:1.45;}
+  /* ---- the 3-step storyline (clickable) ---- */
+  .story{display:flex;gap:6px;justify-content:center;align-items:stretch;flex-wrap:wrap;max-width:960px;margin:0 auto 8px;}
+  .sph{display:flex;gap:9px;align-items:center;background:#fff;border:2px solid var(--line);border-radius:12px;
+       padding:7px 12px;cursor:pointer;flex:1 1 250px;max-width:300px;transition:all .15s;}
+  .sph:hover{border-color:var(--ac);}
+  .sph .n{width:26px;height:26px;border-radius:50%;background:#ece7fb;color:var(--ac);font-weight:800;font-size:13px;
+          display:flex;align-items:center;justify-content:center;flex:none;}
+  .sph b{font-size:12.5px;display:block;}
+  .sph span{font-size:10.5px;color:var(--soft);line-height:1.3;display:block;}
+  .sph.on{border-color:var(--ac);box-shadow:0 5px 14px rgba(123,92,214,.25);}
+  .sph.on .n{background:var(--ac);color:#fff;}
+  .sph.done .n{background:var(--out);color:#fff;}
+  .sarr{align-self:center;color:#9aa8c4;font-weight:800;font-size:15px;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 6px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .modcol{display:flex;flex-direction:column;gap:5px;min-width:270px;}
+  .mod{display:flex;align-items:center;gap:7px;border:1.6px solid var(--line);border-radius:10px;padding:5px 10px;
+       font-size:12px;font-weight:700;background:#fbfdff;transition:all .15s;cursor:pointer;}
+  .mod .idx{color:#9aa8c4;font-size:10px;width:14px;flex:none;}
+  .mod .batch{font-size:13px;display:none;flex:none;}
+  .mod.firing .batch{display:inline;}
+  .mod .bell{margin-left:auto;font-size:14px;opacity:0;transition:opacity .2s, transform .2s;}
+  .mod.hooked{border-color:var(--ac);}
+  .mod.hooked .bell{opacity:1;}
+  .mod.firing{background:var(--ac);color:#fff;border-color:var(--ac);box-shadow:0 4px 14px rgba(123,92,214,.35);}
+  .mod.firing .bell{transform:rotate(-18deg) scale(1.3);}
+  .mod.firing .idx{color:#d9cef7;}
+  .mod .ring{display:none;font-size:9.5px;font-weight:800;background:#fff;color:var(--ac);border-radius:6px;padding:1px 6px;}
+  .mod.firing .ring{display:inline;}
+  .mod.done{border-color:var(--out);}
+  .mod.removed{border-style:dashed;opacity:.55;}
+  .mod .shape{font-weight:400;font-size:9.5px;color:var(--soft);}
+  .mod.firing .shape{color:#efeafd;}
+  .console{background:#1f2940;color:#dce6f5;border-radius:10px;font-family:"SF Mono",Consolas,monospace;font-size:11px;line-height:1.7;padding:9px 12px;min-height:238px;min-width:340px;white-space:pre;}
+  .console .new{background:rgba(123,92,214,.45);border-radius:4px;}
+  .console .dim{color:#7d8db0;}
+  .console .hdr{color:#7ce0d3;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.7;max-width:960px;margin:8px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .fn{color:#7ce0d3;}.code .kw{color:#c792ea;}
+  .msg{max-width:960px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;}
+  .msg b.a{color:var(--ac);} .msg b.o{color:var(--out);} .msg b.n{color:var(--neg);}
+  .analogy{max-width:960px;margin:7px auto 0;text-align:center;font-size:11px;color:var(--soft);line-height:1.5;}
+</style></head><body>
+<h1>PyTorch Hooks — how one line prints every layer's shapes</h1>
+<p class="sub"><code>with Hooks(model, _print_shape) as hooks: learn.fit(1)</code> never calls <code>print</code> on our layers directly. Instead it works like <b>notifications</b>: 🔔 <b>subscribe</b> to every module → get <b>pinged automatically</b> each time a module runs → 🧹 <b>unsubscribe</b> when done. Step through the three phases, or <b>click a module</b> to fast-forward the batch to it.</p>
+
+<div class="story" id="story">
+  <div class="sph on" data-p="0"><div class="n">1</div><div><b>Attach the bells 🔔</b><span>register a tiny listener on each of the 9 modules — nothing runs yet</span></div></div>
+  <div class="sarr">➜</div>
+  <div class="sph" data-p="1"><div class="n">2</div><div><b>Batch 📦 flows, bells ring</b><span>each module computes its output, then its bell fires → one row prints</span></div></div>
+  <div class="sarr">➜</div>
+  <div class="sph" data-p="2"><div class="n">3</div><div><b>Clean up 🧹</b><span>leaving <code>with</code> removes every bell — forget this and they ring forever</span></div></div>
+</div>
+
+<div class="selrow">
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="main">
+  <div class="card"><div class="cap">The model’s 9 modules <small>🔔 = hook attached · 📦 = the batch is here right now · <b style="color:var(--ac)">purple = bell ringing</b></small></div>
+    <div class="modcol" id="mods"></div></div>
+  <div class="card"><div class="cap">The console — what actually gets printed <small>every ring runs <code>_print_shape(hook, mod, inp, outp)</code> once</small></div>
+    <div class="console" id="cons"></div></div>
+</div>
+
+<div class="code" id="code"><span class="cm"># the one-liner, colored by phase:</span>
+<span id="s0">with Hooks(model, _print_shape)</span> as hooks: <span id="s1">learn.fit(1, train=False)</span>  <span id="s2"><span class="cm"># ← dedent = phase ③</span></span>
+
+<span class="cm"># …and the mechanism behind each phase:</span>
+<span id="k0">① <span class="kw">class</span> <span class="fn">Hook</span>: self.hook = m.register_forward_hook(partial(f, self))   <span class="cm"># subscribe</span></span>
+<span id="k1">② outp = module(x) → PyTorch <span class="kw">then</span> calls f(hook, mod, inp, outp)          <span class="cm"># auto-ping</span></span>
+<span id="k2">③ <span class="kw">def</span> <span class="fn">__exit__</span>(self, *args): <span class="kw">for</span> h <span class="kw">in</span> self: h.remove()               <span class="cm"># unsubscribe</span></span></div>
+
+<div class="msg" id="msg"></div>
+<div class="analogy">🧠 Mental model: <b>YouTube notifications</b> — ① hit 🔔 subscribe · ② get pinged automatically on every new video (you never poll the channel) · ③ unsubscribe when done. Forgetting ③ = pinged forever = the classic <b>hook memory leak</b>.</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const MODS=[
+  {n:'ResBlock 1→8',    i:'(1024, 1, 28, 28)',  o:'(1024, 8, 28, 28)'},
+  {n:'ResBlock 8→16',   i:'(1024, 8, 28, 28)',  o:'(1024, 16, 14, 14)'},
+  {n:'ResBlock 16→32',  i:'(1024, 16, 14, 14)', o:'(1024, 32, 7, 7)'},
+  {n:'ResBlock 32→64',  i:'(1024, 32, 7, 7)',   o:'(1024, 64, 4, 4)'},
+  {n:'ResBlock 64→128', i:'(1024, 64, 4, 4)',   o:'(1024, 128, 2, 2)'},
+  {n:'ResBlock 128→256',i:'(1024, 128, 2, 2)',  o:'(1024, 256, 1, 1)'},
+  {n:'Flatten',         i:'(1024, 256, 1, 1)',  o:'(1024, 256)'},
+  {n:'Linear 256→10',   i:'(1024, 256)',        o:'(1024, 10)'},
+  {n:'BatchNorm1d',     i:'(1024, 10)',         o:'(1024, 10)'}
+];
+let phase=0, sub=0, speed=1, timer=null;
+// phase 0: sub = modules hooked (0..9) · phase 1: sub = modules fired · phase 2: sub = modules un-hooked
+function buildMods(){
+  const el=$('mods'); el.innerHTML='';
+  MODS.forEach((m,i)=>{
+    const d=document.createElement('div'); d.className='mod'; d.id='m'+i;
+    d.innerHTML=`<span class="idx">${i+1}</span><span class="batch">📦</span><span>${m.n}</span><span class="ring">rings → prints row ${i+1}</span><span class="shape" id="ms${i}"></span><span class="bell">🔔</span>`;
+    d.onclick=()=>{ stopT(); phase=1; sub=i+1; render(); };
+    el.appendChild(d);
+  });
+}
+function render(){
+  document.querySelectorAll('.sph').forEach(c=>{
+    const p=+c.dataset.p;
+    c.classList.toggle('on',p===phase);
+    c.classList.toggle('done',p<phase);
+  });
+  ['k0','k1','k2'].forEach((id,i)=>$(id).className = i===phase?'hl':'');
+  ['s0','s1','s2'].forEach((id,i)=>$(id).className = i===phase?'hl':'');
+  MODS.forEach((m,i)=>{
+    const d=$('m'+i), s=$('ms'+i);
+    d.classList.remove('hooked','firing','removed','done'); s.textContent='';
+    if(phase===0){ if(i<sub) d.classList.add('hooked'); }
+    if(phase===1){ d.classList.add('hooked');
+      if(i<sub){ s.textContent='out '+m.o; }
+      if(i<sub-1) d.classList.add('done');
+      if(i===sub-1) d.classList.add('firing');
+    }
+    if(phase===2){ if(i<sub) d.classList.add('removed'); else d.classList.add('hooked'); }
+  });
+  const cons=$('cons');
+  const HDR='<span class="hdr">module        In:                    Out:</span>\n';
+  if(phase===1&&sub>0){
+    cons.innerHTML = HDR + MODS.slice(0,sub).map((m,i)=>{
+      const nm=m.n.split(' ')[0].padEnd(12);
+      const line=`${nm} In: ${m.i.padEnd(21)} Out: ${m.o}`;
+      return i===sub-1?`<span class="new">${line}</span>  🖨`:line;
+    }).join('\n');
+  } else if(phase===2){
+    cons.innerHTML = HDR + MODS.map(m=>`${m.n.split(' ')[0].padEnd(12)} In: ${m.i.padEnd(21)} Out: ${m.o}`).join('\n')
+      + `\n<span class="dim"># printing finished. bells still attached: ${MODS.length-sub}${sub===MODS.length?' → model is 100% back to normal ✅':''}</span>`;
+  } else {
+    cons.innerHTML = HDR+`<span class="dim"># (empty — nothing has been printed)\n# hooks never run at attach-time; they only\n# observe the FORWARD pass in phase ②.\n# bells attached so far: ${sub}/${MODS.length}</span>`;
+  }
+  const M={
+    0:`<b class="a">① Attach.</b> <code>Hooks(model, _print_shape)</code> simply loops over the modules and calls <code>m.register_forward_hook(…)</code> on each — a <b>subscription</b>, nothing more. No data has moved, the console is still empty. Bells attached: <b>${sub}/${MODS.length}</b>. ${sub===MODS.length?'All subscribed — ready for the forward pass ➜':''}`,
+    1:`<b class="a">② Ring.</b> <code>learn.fit(1)</code> pushes one batch 📦 downward. Watch the lock-step rhythm: a module <b>finishes computing its output</b> → PyTorch <b>immediately</b> calls our function with <code>(hook, mod, inp, outp)</code> → <b>one row prints</b>. We never call print ourselves — the model pings <em>us</em>. Rows so far: <b>${sub}/${MODS.length}</b>, in exact execution order.`,
+    2:`<b class="a">③ Remove.</b> The <code>with</code> block ends, so Python calls <code>Hooks.__exit__</code>, which calls <code>h.remove()</code> on every hook — the dashed modules are back to normal. <b class="n">Why it matters:</b> a forgotten hook keeps firing on <em>every future forward pass</em> and keeps its captured tensors alive → slow leak. The context manager makes forgetting impossible. Removed: <b>${sub}/${MODS.length}</b>.`};
+  $('msg').innerHTML=M[phase];
+}
+function stopT(){ if(timer){clearInterval(timer);timer=null;$('play').textContent='▶ Play';} }
+function advance(){
+  if(sub<MODS.length){ sub++; }
+  else if(phase<2){ phase++; sub=0; }
+  else { stopT(); }
+  render();
+}
+function retreat(){ if(sub>0){sub--;} else if(phase>0){phase--; sub=MODS.length;} render(); }
+$('play').onclick=()=>{ if(timer){stopT();return;}
+  if(phase===2&&sub>=MODS.length){phase=0;sub=0;}
+  $('play').textContent='⏸ Pause';
+  timer=setInterval(()=>{ if(phase===2&&sub>=MODS.length){stopT();return;} advance(); }, 620/speed); };
+$('fwd').onclick=()=>{stopT();advance();};
+$('back').onclick=()=>{stopT();retreat();};
+$('reset').onclick=()=>{stopT();phase=0;sub=0;render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×'; if(timer){stopT();$('play').click();}};
+document.querySelectorAll('.sph').forEach(c=>c.onclick=()=>{stopT();phase=+c.dataset.p;sub=0;render();});
+buildMods(); render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .main>*{min-width:0}
+  body.ce-narrow .main{flex-direction:column;align-items:center}
+  body.ce-narrow .console{min-width:0;width:100%}
+  body.ce-narrow .story{flex-direction:column;align-items:stretch}
+  body.ce-narrow .story .sph{max-width:none}
+  body.ce-narrow .sarr{display:none}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<760); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

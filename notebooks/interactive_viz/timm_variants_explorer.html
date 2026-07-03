@@ -1,0 +1,261 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>timm ResNet Variants Explorer</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .vtabs{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .vtab{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 13px;cursor:pointer;transition:all .15s;}
+  .vtab:hover{border-color:var(--ac);color:var(--ac);}
+  .vtab.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .wrap{max-width:980px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{font-size:12px;font-weight:700;margin:0 0 6px;}
+  .cap small{font-weight:400;color:var(--soft);font-size:10.5px;display:block;}
+  .stagerow{display:flex;gap:4px;align-items:flex-start;flex-wrap:wrap;justify-content:center;padding:4px 0 2px;}
+  .stagecol{text-align:center;}
+  .stagecol .lbl{font-size:10px;color:var(--soft);font-weight:700;margin-bottom:4px;line-height:1.35;}
+  .stagecol .lbl b{color:var(--ink);}
+  .stagecol .out{font-size:9px;color:var(--soft);font-weight:700;margin-top:4px;font-family:"SF Mono",Consolas,monospace;}
+  .blockstack{display:flex;flex-direction:column;gap:3px;align-items:center;}
+  .blk{width:96px;border-radius:7px;padding:3px 0;font-size:9px;font-weight:700;text-align:center;color:#fff;cursor:pointer;transition:transform .12s, box-shadow .12s;}
+  .blk:hover{transform:translateY(-2px);box-shadow:0 5px 12px rgba(123,92,214,.35);}
+  .blk.basic{background:var(--ac);}
+  .blk.bottle{background:var(--out);}
+  .blk.stem{background:var(--in);}
+  .blk.head{background:#25324a;}
+  .blk.sel{outline:3px solid #25324a;outline-offset:1px;}
+  .flowarr{align-self:center;color:#9aa8c4;font-weight:800;font-size:14px;padding:0 1px;}
+  .detail{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;}
+  .detail>.card{flex:1 1 300px;}
+  #inner{display:block;width:100%;}
+  table{border-collapse:collapse;font-size:11px;width:100%;}
+  th,td{border:1px solid var(--line);padding:3px 7px;text-align:left;}
+  th{background:#f4f7fd;font-size:10.5px;}
+  td.num{font-family:"SF Mono",Consolas,monospace;text-align:right;}
+  .pbar{display:flex;align-items:center;gap:6px;font-size:10.5px;margin:3px 0;}
+  .pbar .nm{width:74px;color:var(--soft);font-weight:700;font-family:"SF Mono",Consolas,monospace;}
+  .pbar .b{height:10px;border-radius:5px;background:#c9bdf0;min-width:2px;}
+  .pbar.on .b{background:var(--ac);}
+  .pbar.on .nm{color:var(--ac);}
+  .pbar .v{font-family:monospace;font-size:10px;}
+  .msg{max-width:980px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.5;}
+  .msg b.i{color:var(--in);} .msg b.o{color:var(--out);} .msg b.a{color:var(--ac);}
+  .codeline{font-family:"SF Mono",Consolas,monospace;font-size:11.5px;background:#1f2940;color:#dce6f5;border-radius:10px;padding:8px 12px;margin-top:8px;overflow-x:auto;white-space:pre;}
+  .codeline .num{color:#f6b86e;}.codeline .str{color:#9ce09c;}.codeline .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>timm ResNet Family — what actually changes between variants?</h1>
+<p class="sub">Every ResNet is the same skeleton: <b style="color:var(--in)">stem</b> ➜ <b>4 stages</b> of residual blocks ➜ <b>head</b> (for a 224×224 image: 224 ➜ 56 ➜ 28 ➜ 14 ➜ 7 ➜ 1). Variants only turn three dials: <b>blocks per stage</b>, <b>block type</b> (<b style="color:var(--ac)">BasicBlock</b> vs <b style="color:var(--out)">Bottleneck</b>), and <b>stem/downsample tricks</b> (the “d”). Pick a variant, then <b>click any box</b> — data flows left ➜ right, and top ➜ bottom inside each stage.</p>
+
+<div class="vtabs">
+  <button class="vtab on" data-v="resnet18">resnet18</button>
+  <button class="vtab" data-v="resnet34">resnet34</button>
+  <button class="vtab" data-v="resnet50">resnet50</button>
+  <button class="vtab" data-v="resnet18d">resnet18d (our pick)</button>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="cap" id="archcap"></div>
+    <div class="stagerow" id="stages"></div>
+    <div class="legend"><b class="i">■ stem</b> · <b class="a">■ BasicBlock</b> (2× 3×3) · <b class="o">■ Bottleneck</b> (1×1→3×3→1×1) · ■ head · <b>↓s2</b> = this block halves H×W · <b>proj</b> = its shortcut needs a 1×1 projection · click a box ↓</div>
+  </div>
+  <div class="detail">
+    <div class="card"><div class="cap" id="icap">Inside the selected block</div><svg id="inner" viewBox="0 0 460 236" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <div class="card"><div class="cap">Variant fact sheet</div><div id="facts"></div></div>
+  </div>
+</div>
+<div class="msg" id="msg"></div>
+<div class="codeline" id="codeline"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const NS='http://www.w3.org/2000/svg';
+const V={
+  resnet18:{layers:[2,2,2,2],block:'basic',stem:'plain',params:11.7,depthName:'depth 18 = 1 (stem) + 2·(2+2+2+2) convs + 1 (fc)',
+    note:'The workhorse. Four stages of BasicBlocks (two 3×3 convs each); stage widths 64→128→256→512.'},
+  resnet34:{layers:[3,4,6,3],block:'basic',stem:'plain',params:21.8,depthName:'depth 34 = 1 + 2·(3+4+6+3) + 1',
+    note:'Same BasicBlock, just more of them — the [3, 4, 6, 3] recipe that resnet50 reuses.'},
+  resnet50:{layers:[3,4,6,3],block:'bottle',stem:'plain',params:25.6,depthName:'depth 50 = 1 + 3·(3+4+6+3) + 1',
+    note:'Switches to Bottleneck blocks (3 convs each): 1×1 squeeze → 3×3 → 1×1 expand ×4. Stage outputs become 256→512→1024→2048 channels.'},
+  resnet18d:{layers:[2,2,2,2],block:'basic',stem:'deep',params:11.7,depthName:'18 layers + “d” tweaks (Bag of Tricks, He et al. 2018)',
+    note:'Our notebook’s pick. Same body as resnet18, plus three nearly-free tricks: deep 3×3 stem, stem_width=32, and AvgPool in the downsampling shortcuts (avg_down).'}
+};
+const PL=[64,128,256,512];   // planes (working width) per stage
+const HW=[56,28,14,7];       // spatial size per stage (224×224 input)
+let vname='resnet18', sel={kind:'stem'};
+const expn=v=>v.block==='bottle'?4:1;
+
+function mkBlk(cls,txt,onclick,seln){
+  const b=document.createElement('div'); b.className='blk '+cls+(seln?' sel':'');
+  b.textContent=txt; b.onclick=onclick; return b;
+}
+function mkLbl(cls,html){ const d=document.createElement('div'); d.className=cls; d.innerHTML=html; return d; }
+function arrow(){ const d=document.createElement('div'); d.className='flowarr'; d.textContent='➜'; return d; }
+
+function build(){
+  const v=V[vname], ex=expn(v), el=$('stages'); el.innerHTML='';
+  $('archcap').innerHTML=`<b>${vname}</b> — layers per stage: [${v.layers.join(', ')}] · ${v.block==='basic'?'BasicBlock':'Bottleneck'} · ~${v.params}M params (ImageNet: 3×224×224 → 1000 classes) <small>${v.depthName}</small>`;
+  // stem column
+  const sc=document.createElement('div'); sc.className='stagecol';
+  sc.appendChild(mkLbl('lbl','<b>stem</b><br>224² ➜ 56²'));
+  const ss=document.createElement('div'); ss.className='blockstack';
+  ss.appendChild(mkBlk('stem', v.stem==='deep'?'3× 3×3 deep stem':'7×7 conv + pool',
+     ()=>{sel={kind:'stem'};render();}, sel.kind==='stem'));
+  sc.appendChild(ss);
+  sc.appendChild(mkLbl('out',`(B, 64, 56, 56)`));
+  el.appendChild(sc); el.appendChild(arrow());
+  // 4 stages
+  v.layers.forEach((n,si)=>{
+    const col=document.createElement('div'); col.className='stagecol';
+    col.appendChild(mkLbl('lbl',`<b>stage ${si+1}</b><br>${HW[si]}×${HW[si]}`));
+    const st=document.createElement('div'); st.className='blockstack';
+    for(let j=0;j<n;j++){
+      const proj = v.block==='bottle' ? j===0 : (j===0 && si>0);
+      const s2   = j===0 && si>0;
+      const label=(v.block==='basic'?'Basic':'Bottleneck')+(s2?' ↓s2':'')+(proj&&!s2?' ·proj':'');
+      const seln = sel.kind==='block'&&sel.stage===si&&sel.idx===j;
+      st.appendChild(mkBlk(v.block==='basic'?'basic':'bottle',label,
+        ()=>{sel={kind:'block',stage:si,idx:j,proj,s2}; render();}, seln));
+    }
+    col.appendChild(st);
+    col.appendChild(mkLbl('out',`(B, ${PL[si]*ex}, ${HW[si]}, ${HW[si]})`));
+    el.appendChild(col); el.appendChild(arrow());
+  });
+  // head column
+  const hc=document.createElement('div'); hc.className='stagecol';
+  hc.appendChild(mkLbl('lbl','<b>head</b><br>7² ➜ classes'));
+  const hs=document.createElement('div'); hs.className='blockstack';
+  hs.appendChild(mkBlk('head','GAP + Linear',()=>{sel={kind:'head'};render();}, sel.kind==='head'));
+  hc.appendChild(hs);
+  hc.appendChild(mkLbl('out',`(B, ${1000})`));
+  el.appendChild(hc);
+}
+function box(g,x,y,w,h,fill,stroke,txt,sub){
+  const r=document.createElementNS(NS,'rect');
+  r.setAttribute('x',x);r.setAttribute('y',y);r.setAttribute('width',w);r.setAttribute('height',h);
+  r.setAttribute('rx',8);r.setAttribute('fill',fill);if(stroke){r.setAttribute('stroke',stroke);r.setAttribute('stroke-width','1.6');}
+  g.appendChild(r);
+  const t=document.createElementNS(NS,'text');
+  t.setAttribute('x',x+w/2);t.setAttribute('y',y+(sub?h/2-1:h/2+4));t.setAttribute('text-anchor','middle');
+  t.setAttribute('font-size','10');t.setAttribute('font-weight','700');t.setAttribute('fill',fill==='#fff'?'#25324a':'#fff');
+  t.textContent=txt;g.appendChild(t);
+  if(sub){const s=document.createElementNS(NS,'text');
+    s.setAttribute('x',x+w/2);s.setAttribute('y',y+h/2+11);s.setAttribute('text-anchor','middle');
+    s.setAttribute('font-size','8.5');s.setAttribute('fill',fill==='#fff'?'#5a6b86':'#e8e3fb');s.textContent=sub;g.appendChild(s);}
+}
+function varrow(g,x,y1,y2,col){const p=document.createElementNS(NS,'path');
+  p.setAttribute('d',`M${x},${y1} L${x},${y2-4}`);p.setAttribute('stroke',col||'#9aa8c4');p.setAttribute('stroke-width','1.7');
+  p.setAttribute('marker-end','url(#va)');g.appendChild(p);}
+function skiparc(g,x1,y1,x2,y2,col){const p=document.createElementNS(NS,'path');
+  p.setAttribute('d',`M${x1},${y1} C${x1},${(y1+y2)/2} ${x2+34},${y2-26} ${x2+4},${y2-2}`);
+  p.setAttribute('fill','none');p.setAttribute('stroke',col);p.setAttribute('stroke-width','2');
+  p.setAttribute('marker-end','url(#va)');g.appendChild(p);}
+function fmtk(n){return n.toLocaleString('en-US');}
+
+function renderInner(){
+  const v=V[vname], s=$('inner');
+  s.innerHTML='<defs><marker id="va" markerWidth="7" markerHeight="7" refX="3.5" refY="6" orient="auto-start-reverse"><path d="M0,0 L7,0 L3.5,7 z" fill="#9aa8c4"/></marker></defs>';
+  const g=document.createElementNS(NS,'g'); s.appendChild(g);
+  if(sel.kind==='stem'){
+    $('icap').innerHTML='Inside the stem <small>the very first thing the image meets — output: (B, 64, 56, 56)</small>';
+    if(v.stem==='plain'){
+      box(g,140,10,180,34,'#f6921e',null,'7×7 conv, 3→64, s=2','BN + ReLU · 224² → 112²'); varrow(g,230,44,64);
+      box(g,140,64,180,34,'#fff','#f6921e','3×3 maxpool, s=2','112² → 56²'); varrow(g,230,98,118);
+      box(g,140,118,180,34,'#fff','#dde5f2','→ stage 1  (B, 64, 56, 56)','');
+      $('msg').innerHTML=`<b class="i">Classic stem.</b> One big 7×7 conv grabs coarse features and (with the maxpool) downsamples 4× before any residual block runs. Cheap, but a single 7×7 is a blunt instrument — the “d” variants replace it with three 3×3s.`;
+    } else {
+      box(g,140,4,180,28,'#f6921e',null,'3×3 conv, 3→32, s=2','224² → 112²'); varrow(g,230,32,44);
+      box(g,140,44,180,28,'#f6921e',null,'3×3 conv, 32→32','112²'); varrow(g,230,72,84);
+      box(g,140,84,180,28,'#f6921e',null,'3×3 conv, 32→64','112²'); varrow(g,230,112,124);
+      box(g,140,124,180,28,'#fff','#f6921e','3×3 maxpool, s=2','112² → 56²'); varrow(g,230,152,164);
+      box(g,140,164,180,28,'#fff','#dde5f2','→ stage 1  (B, 64, 56, 56)','');
+      $('msg').innerHTML=`<b class="i">Deep stem (“d”).</b> Three stacked 3×3 convs replace the 7×7: same receptive field, <b>more nonlinearity, fewer params</b> (<code>stem_width=32</code> keeps the first two thin). The other “d” trick lives in the downsampling shortcuts: <code>avg_down=True</code> puts an AvgPool <em>before</em> the 1×1 conv — click a <b>↓s2</b> block to see it. Exactly the AvgPool trick our own ResBlock uses!`;
+    }
+    $('codeline').innerHTML=`model = timm.create_model(<span class="str">'${vname}'</span>, in_chans=<span class="num">1</span>, num_classes=<span class="num">10</span>)  <span style="color:#7d8db0"># timm rebuilds the stem's first conv for 1-channel input</span>`;
+  } else if(sel.kind==='head'){
+    const c=512*expn(v);
+    $('icap').innerHTML=`Inside the head <small>features → class scores</small>`;
+    box(g,140,20,180,36,'#25324a',null,'GlobalAvgPool',`(B, ${c}, 7, 7) → (B, ${c})`); varrow(g,230,56,80);
+    box(g,140,80,180,36,'#25324a',null,`Linear ${c}→classes`,'num_classes=10 for us');
+    $('msg').innerHTML=`<b>The head.</b> Global average pooling collapses each of the ${c} channel maps to a single number — which is why <em>any</em> input size works — then one Linear maps to class logits. Passing <code>num_classes=10</code> merely swaps this Linear (${c}×1000 → ${c}×10).`;
+    $('codeline').innerHTML=`model = timm.create_model(<span class="str">'${vname}'</span>, in_chans=<span class="num">1</span>, num_classes=<span class="num">10</span>)  <span style="color:#7d8db0"># only the head's Linear is replaced</span>`;
+  } else {
+    const st=sel.stage??0, j=sel.idx??0, proj=sel.proj, s2=sel.s2, pl=PL[st];
+    if(v.block==='basic'){
+      const inCh = proj ? PL[st-1] : pl;    // stage-1 blocks: in = 64 = pl
+      const p1=inCh*pl*9, p2=pl*pl*9, pp=proj?inCh*pl:0;
+      $('icap').innerHTML=`BasicBlock — stage ${st+1}, block ${j+1} <small>${proj?(s2?'first block of the stage: halves H×W and widens channels':'projection shortcut'):'mid-stage block: shape unchanged → identity shortcut'} · out (B, ${pl}, ${HW[st]}, ${HW[st]})</small>`;
+      box(g,30,4,168,14,'#fff','#dde5f2',`in: (B, ${inCh}, ${s2?HW[st]*2:HW[st]}, ${s2?HW[st]*2:HW[st]})`,''); varrow(g,114,18,30);
+      box(g,30,30,168,32,'#7b5cd6',null,`3×3 conv, ${inCh}→${pl}${s2?', s=2':''}`,'BN + ReLU'); varrow(g,114,62,78);
+      box(g,30,78,168,32,'#7b5cd6',null,`3×3 conv, ${pl}→${pl}`,'BN — no ReLU yet!'); varrow(g,114,110,138);
+      box(g,250,44,190,40,'#16a3a3',null,
+          proj?(v.stem==='deep'&&s2?'AvgPool2d(2) → 1×1 conv':'1×1 conv, s='+(s2?2:1)):'shortcut: identity',
+          proj?`${inCh}→${pl} + BN ${v.stem==='deep'&&s2?'(avg_down)':''}`:'a straight wire — 0 params');
+      skiparc(g,345,84,114,140,'#16a3a3');
+      box(g,30,138,168,30,'#fff','#25324a','⊕ add  →  ReLU','activation AFTER the merge');
+      $('msg').innerHTML=`<b class="a">BasicBlock ≈ our ResBlock.</b> Two 3×3 convs on the main path; the second has <b>no ReLU</b> so the addition mixes raw signals, then one ReLU after ⊕. ${proj?(s2?`First block of stage ${st+1}: conv1 does stride 2 <em>and</em> ${inCh}→${pl}, so the shortcut must project too${v.stem==='deep'?' — and in the “d” recipe it AvgPools first instead of using a stride-2 1×1 (which would simply skip 3 of every 4 pixels!)':''}.`:'Its shortcut projects channels.'):'Shapes match, so the shortcut is literally <code>x</code> — the cheapest layer in deep learning.'} Weights: ${fmtk(p1)} + ${fmtk(p2)}${proj?` + ${fmtk(pp)} (proj)`:''} = <b>${fmtk(p1+p2+pp)}</b>${st===1&&proj?' — the same arithmetic as our ResBlock 64→128!':''}`;
+    } else {
+      const outCh=pl*4;
+      const inCh = j===0 ? (st===0?64:PL[st-1]*4) : outCh;
+      const p1=inCh*pl, p2=pl*pl*9, p3=pl*outCh, pp=proj?inCh*outCh:0;
+      $('icap').innerHTML=`Bottleneck — stage ${st+1}, block ${j+1} <small>squeeze → work → expand · out (B, ${outCh}, ${HW[st]}, ${HW[st]})</small>`;
+      box(g,30,2,168,13,'#fff','#dde5f2',`in: (B, ${inCh}, ${s2?HW[st]*2:HW[st]}, ${s2?HW[st]*2:HW[st]})`,''); varrow(g,114,15,26);
+      box(g,30,26,168,28,'#16a3a3',null,`1×1 conv, ${inCh}→${pl}`,'squeeze · BN + ReLU'); varrow(g,114,54,68);
+      box(g,30,68,168,28,'#16a3a3',null,`3×3 conv, ${pl}→${pl}${s2?', s=2':''}`,'the real work · BN + ReLU'); varrow(g,114,96,110);
+      box(g,30,110,168,28,'#16a3a3',null,`1×1 conv, ${pl}→${outCh}`,'expand ×4 · BN — no ReLU'); varrow(g,114,138,166);
+      box(g,250,54,190,40,'#7b5cd6',null, proj?`1×1 conv, ${inCh}→${outCh}${s2?', s=2':''}`:'shortcut: identity', proj?'+ BN (projection)':'a straight wire — 0 params');
+      skiparc(g,345,94,114,168,'#7b5cd6');
+      box(g,30,166,168,28,'#fff','#25324a','⊕ add  →  ReLU','');
+      $('msg').innerHTML=`<b class="o">Bottleneck.</b> The expensive 3×3 conv runs on a <b>squeezed</b> ${pl}-channel tensor, then a 1×1 expands back to ${outCh} — an autoencoder-style trick that lets resnet50/101/152 go deep on a budget. ${j===0&&st===0?`Note: even <em>stage 1's</em> first block needs a projection (64→256) — channels change even though stride is 1.`:''} Weights: ${fmtk(p1)} + ${fmtk(p2)} + ${fmtk(p3)}${proj?` + ${fmtk(pp)} (proj)`:''} = <b>${fmtk(p1+p2+p3+pp)}</b>.`;
+    }
+    $('codeline').innerHTML=`<span class="fn">from</span> timm.models.resnet <span class="fn">import</span> ${v.block==='basic'?'BasicBlock':'Bottleneck'}   <span style="color:#7d8db0"># the class behind every block you just clicked</span>`;
+  }
+  renderFacts();
+}
+function renderFacts(){
+  const v=V[vname];
+  const bars=Object.keys(V).map(k=>{
+    const p=V[k].params, w=p/25.6*100;
+    return `<div class="pbar ${k===vname?'on':''}"><span class="nm">${k}</span><div class="b" style="width:${w}%"></div><span class="v">${p}M</span></div>`;
+  }).join('');
+  $('facts').innerHTML=`<table>
+    <tr><th>Property</th><th>${vname}</th></tr>
+    <tr><td>Blocks per stage</td><td>[${v.layers.join(', ')}]</td></tr>
+    <tr><td>Block type</td><td>${v.block==='basic'?'BasicBlock (2× 3×3)':'Bottleneck (1×1→3×3→1×1)'}</td></tr>
+    <tr><td>Stage output channels</td><td class="num">${PL.map(c=>c*expn(v)).join(' → ')}</td></tr>
+    <tr><td>Stage spatial (224 input)</td><td class="num">${HW.map(h=>h+'²').join(' → ')}</td></tr>
+    <tr><td>Stem</td><td>${v.stem==='deep'?'deep (3× 3×3), stem_width=32':'single 7×7, s=2'}</td></tr>
+    <tr><td>Downsample shortcut</td><td>${v.stem==='deep'?'AvgPool + 1×1 conv (avg_down)':'strided 1×1 conv'}</td></tr>
+  </table>
+  <div style="margin-top:7px">${bars}</div>
+  <div style="font-size:11.5px;color:var(--soft);margin-top:6px;line-height:1.5">${v.note}</div>`;
+}
+function render(){ build(); renderInner();
+  document.querySelectorAll('.vtab').forEach(t=>t.classList.toggle('on',t.dataset.v===vname)); }
+document.querySelectorAll('.vtab').forEach(t=>t.onclick=()=>{vname=t.dataset.v; sel={kind:'stem'}; render();});
+render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .detail>*{min-width:0}
+  body.ce-narrow .detail{flex-direction:column}
+  body.ce-narrow .flowarr{display:none}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<860); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

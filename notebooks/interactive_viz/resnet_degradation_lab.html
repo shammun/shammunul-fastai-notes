@@ -1,0 +1,199 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Degradation Problem Lab</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:920px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv,.depthv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .toggle{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden;}
+  .toggle button{border-radius:0;background:#fff;color:var(--soft);font-size:12px;padding:5px 12px;}
+  .toggle button.on{background:var(--out);color:#fff;}
+  .toggle button.onplain{background:var(--neg);color:#fff;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:stretch;flex-wrap:wrap;margin-top:2px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  #net{display:block;}
+  #curves{display:block;}
+  .msg{max-width:920px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.5;color:var(--ink);}
+  .msg b.i{color:var(--in);} .msg b.o{color:var(--out);} .msg b.a{color:var(--ac);} .msg b.n{color:var(--neg);}
+  .formula{margin:8px auto 0;max-width:920px;background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.7;overflow-x:auto;white-space:pre;}
+  .formula .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .formula .cm{color:#7d8db0;}.formula .num{color:#f6b86e;}.formula .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.n{color:var(--neg);}
+  @media (max-width:980px){.main{flex-direction:column;align-items:center;}}
+</style></head><body>
+<h1>The Degradation Problem Lab</h1>
+<p class="sub">He et al. (2015) found a puzzle: a <b>56-layer</b> plain network trains <b style="color:var(--neg)">worse</b> than a 20-layer one — not overfitting, an <b>optimization failure</b>. Stack layers with the slider, watch the <b style="color:var(--ac)">gradient</b> travel backward, then flip on <b style="color:var(--out)">skip connections</b> and watch the same depth become trainable.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① Stack layers deep</button>
+  <button class="chip" id="st1">② Send the gradient back</button>
+  <button class="chip" id="st2">③ Compare training curves</button>
+</div>
+
+<div class="selrow">
+  depth <input id="depth" type="range" min="4" max="56" step="2" value="20"><span class="depthv" id="dv">20</span>
+  <span class="div"></span>
+  <span class="toggle">
+    <button id="plainBtn" class="onplain">plain net</button><button id="skipBtn">+ skip connections</button>
+  </span>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">Gradient magnitude, layer by layer<small>each bar = one layer · the pulse travels from the loss (right) back to the input (left)</small></div>
+    <canvas id="net" width="560" height="270"></canvas>
+    <div class="legend"><b class="i">■ input side</b> · <b class="a">■ gradient pulse</b> · <b class="o">■ skip highway</b> · gray = layer bar (height = |gradient|)</div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--out)">Training error vs. epoch<small>solid = current depth · dashed = 20-layer reference (replays He et al., Fig. 1)</small></div>
+    <canvas id="curves" width="430" height="270"></canvas>
+    <div class="legend"><b class="n">■ plain, deep</b> · gray dashed = plain, 20 layers · <b class="o">■ same depth with skips</b></div>
+  </div>
+</div>
+
+<div class="msg" id="msg"></div>
+
+<div class="formula" id="code"><span class="cm"># why plain depth hurts: the chain rule multiplies layer-by-layer</span>
+<span id="l0">grad_at_layer_k  ≈  ∏  (local slopes)          <span class="cm"># many factors &lt; 1  →  product → 0 (vanishing)</span></span>
+<span id="l1">plain:   ∂L/∂x = ∂L/∂y · <span class="fn">W₅₆</span>·<span class="fn">W₅₅</span>···<span class="fn">W₁</span>          <span class="cm"># every step can shrink the signal</span></span>
+<span id="l2">resnet:  y = x + F(x)   ⇒   ∂y/∂x = <span class="num">1</span> + ∂F/∂x   <span class="cm"># the "1" is a gradient highway — never vanishes</span></span></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const net=$('net'),nc=net.getContext('2d');
+const cur=$('curves'),cc=cur.getContext('2d');
+let depth=20, skips=false, speed=1, phase=0, t=0, timer=null;
+// t: animation position 0..depth (gradient pulse position, from right/loss to left/input)
+
+function gradAt(k){ // gradient magnitude at layer k (0=input side), depth layers
+  if(skips) return 0.9 - 0.25*(depth-1-k)/56;              // nearly flat highway
+  const decay=Math.pow(0.945, depth-1-k);                   // multiplicative shrink
+  return Math.max(0.02, decay);
+}
+function drawNet(){
+  nc.clearRect(0,0,net.width,net.height);
+  const n=depth, W=net.width-70, x0=42, barW=Math.min(16, W/n*0.7), gap=W/n;
+  const base=210;
+  // skip arcs
+  if(skips){ nc.strokeStyle='#16a3a3'; nc.lineWidth=1.6; nc.globalAlpha=.75;
+    for(let k=0;k+2<=n;k+=2){ const xa=x0+k*gap+barW/2, xb=x0+(k+2)*gap+barW/2;
+      nc.beginPath(); nc.moveTo(xa,base+18); nc.quadraticCurveTo((xa+xb)/2, base+44, xb, base+18); nc.stroke(); }
+    nc.globalAlpha=1; }
+  // pulse position
+  const pk = n-1 - t; // current layer index of the pulse
+  for(let k=0;k<n;k++){
+    const g=gradAt(k), h=g*150+6, x=x0+k*gap;
+    const reached = (n-1-k)<=t;
+    nc.fillStyle = reached ? (skips?'#16a3a3':'#9aa8c4') : '#e3e9f5';
+    if(Math.abs(k-pk)<0.6 && t>0 && t<n){ nc.fillStyle='#7b5cd6'; }
+    nc.fillRect(x, base-h, barW, h);
+    if(Math.abs(k-pk)<0.6 && t>0 && t<n){
+      nc.beginPath(); nc.fillStyle='rgba(123,92,214,.25)';
+      nc.arc(x+barW/2, base-h-12, 10,0,7); nc.fill();
+      nc.fillStyle='#7b5cd6'; nc.beginPath(); nc.arc(x+barW/2, base-h-12, 5,0,7); nc.fill();
+    }
+  }
+  // axis labels
+  nc.fillStyle='#f6921e'; nc.font='700 11px Segoe UI'; nc.textAlign='left';
+  nc.fillText('input', 6, base+14);
+  nc.fillStyle='#25324a'; nc.textAlign='right'; nc.fillText('loss', net.width-6, base+14);
+  nc.fillStyle='#5a6b86'; nc.textAlign='center'; nc.font='11px Segoe UI';
+  nc.fillText(`|gradient| at the input side: ${(gradAt(0)*100).toFixed(skips?0:(gradAt(0)<0.01?2:1))}% of the loss-side signal`, net.width/2, 22);
+}
+function errCurve(d, withSkip){ // training error trajectory, 0..1
+  const pts=[]; const floor = withSkip ? Math.max(0.05, 0.16 - d*0.0016) : (d<=22? 0.10+ (22-d)*0.004 : 0.10 + (d-22)*0.0042);
+  const spd = withSkip ? 0.55 : (d<=22 ? 0.5 : 0.30 - (d-22)*0.002);
+  for(let e=0;e<=60;e++){ pts.push(floor + (0.9-floor)*Math.exp(-spd*e*0.28) + (withSkip?0:(d>22? 0.02*Math.sin(e*0.9)*Math.exp(-e*0.05):0))); }
+  return pts;
+}
+function drawCurves(prog){ // prog 0..1 of curve reveal
+  cc.clearRect(0,0,cur.width,cur.height);
+  const L=44,R=12,T=16,B=34,W=cur.width-L-R,H=cur.height-T-B;
+  cc.strokeStyle='#dde5f2'; cc.lineWidth=1;
+  for(let g=0;g<=4;g++){ const y=T+H*g/4; cc.beginPath(); cc.moveTo(L,y); cc.lineTo(L+W,y); cc.stroke(); }
+  cc.fillStyle='#5a6b86'; cc.font='10px Segoe UI'; cc.textAlign='right';
+  for(let g=0;g<=4;g++){ cc.fillText((90-g*20)+'%', L-5, T+H*g/4+3); }
+  cc.textAlign='center'; cc.fillText('epochs →', L+W/2, cur.height-8);
+  cc.save(); cc.translate(12, T+H/2); cc.rotate(-Math.PI/2); cc.fillText('training error', 0, 0); cc.restore();
+  const toXY=(i,v)=>[L+W*i/60, T+H*(0.9-v)/0.8*(-1)+H]; // map v in 0.1..0.9
+  const plot=(pts,color,dash)=>{ cc.strokeStyle=color; cc.lineWidth=2.2; cc.setLineDash(dash||[]);
+    cc.beginPath(); const upto=Math.max(2,Math.floor(60*prog));
+    for(let i=0;i<=upto;i++){ const v=Math.min(0.9,Math.max(0.1,pts[i])); const x=L+W*i/60, y=T+H*(v-0.1)/0.8; i?cc.lineTo(x,y):cc.moveTo(x,y); }
+    cc.stroke(); cc.setLineDash([]); };
+  plot(errCurve(20,false), '#9aa8c4', [5,4]);                  // 20-layer plain ref
+  plot(errCurve(depth,false), '#d64545');                      // current depth plain
+  if(skips) plot(errCurve(depth,true), '#16a3a3');             // current depth + skips
+}
+function msg(){
+  const m=$('msg');
+  if(phase===0){ m.innerHTML=`<b class="a">① Stack layers.</b> Depth = <b>${depth}</b>. In theory extra layers could just copy their input (<i>identity</i>) and never hurt. But identity is a <b class="n">very specific</b> weight pattern — hard for random init + SGD to find. Drag the slider deeper and move to stage ②.`; }
+  else if(phase===1){ const g=(gradAt(0)*100);
+    m.innerHTML= skips
+      ? `<b class="a">② Gradient, with skips ON.</b> Because <code>y = x + F(x)</code>, every block's local slope is <code>1 + ∂F/∂x</code> — the <b class="o">“1” is a highway</b>. Even at depth ${depth}, the input side still receives ≈ <b class="o">${g.toFixed(0)}%</b> of the signal. Early layers keep learning.`
+      : `<b class="a">② Gradient, plain net.</b> The chain rule <i>multiplies</i> ${depth} local slopes. Many are &lt; 1, so the pulse decays — the input side receives only ≈ <b class="n">${g<0.1?g.toFixed(2):g.toFixed(1)}%</b> of the signal. Early layers barely learn. Now flip on <b class="o">+ skip connections</b>.`; }
+  else { m.innerHTML= skips
+      ? `<b class="a">③ Training curves.</b> With skips, the <b class="o">${depth}-layer</b> net now trains <b class="o">at least as well</b> as the 20-layer one — usually better. Depth becomes an asset, not a liability. This is exactly the paper's result: 152-layer ResNets beating 20-layer plain nets.`
+      : `<b class="a">③ Training curves.</b> ${depth>22? `The plain <b class="n">${depth}-layer</b> curve sits <b class="n">above</b> the 20-layer dashed line — <i>higher training error</i>, so this is not overfitting. It's the optimizer failing. `:`At depth ${depth} plain training is still fine — push past ~22 layers to see degradation. `}Toggle <b class="o">+ skip connections</b> to fix it.`; }
+}
+function codeHL(){ [0,1,2].forEach(i=>{ const el=$('l'+i); el.className = (phase===0&&i===0)||(phase===1&&i===(skips?2:1))||(phase===2&&i===2)?'hl':''; }); }
+function render(){ drawNet(); drawCurves(phase===2?curveProg:1); msg(); codeHL();
+  ['st0','st1','st2'].forEach((id,i)=>$(id).classList.toggle('on',phase===i)); }
+let curveProg=1;
+function stop(){ if(timer){clearInterval(timer);timer=null;$('play').textContent='▶ Play';} }
+function tick(){ if(phase===1){ t+=0.35*speed; if(t>=depth){t=depth; stop();} }
+  else if(phase===2){ curveProg+=0.02*speed; if(curveProg>=1){curveProg=1; stop();} }
+  else { stop(); }
+  render(); }
+function play(){ if(timer){stop();return;} if(phase===0)setPhase(1);
+  if(phase===1&&t>=depth)t=0; if(phase===2&&curveProg>=1)curveProg=0;
+  $('play').textContent='⏸ Pause'; timer=setInterval(tick, 40); }
+function setPhase(p){ stop(); phase=p; if(p===1)t=0; if(p===2)curveProg=0.0001; render(); }
+function stepF(){ if(phase===0){setPhase(1);return;} if(phase===1){ t=Math.min(depth,t+2); if(t>=depth&&false){} } if(phase===2){ curveProg=Math.min(1,curveProg+0.15);} render(); }
+function stepB(){ if(phase===1){ t=Math.max(0,t-2);} if(phase===2){ curveProg=Math.max(0,curveProg-0.15);} render(); }
+$('st0').onclick=()=>setPhase(0); $('st1').onclick=()=>setPhase(1); $('st2').onclick=()=>setPhase(2);
+$('play').onclick=play; $('fwd').onclick=()=>{stop();stepF();}; $('back').onclick=()=>{stop();stepB();};
+$('reset').onclick=()=>{stop();phase=0;t=0;curveProg=1;render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('depth').oninput=e=>{depth=+e.target.value;$('dv').textContent=depth; if(phase===1)t=Math.min(t,depth); render();};
+$('plainBtn').onclick=()=>{skips=false;$('plainBtn').className='onplain';$('skipBtn').className=''; if(phase===1)t=0; render();};
+$('skipBtn').onclick=()=>{skips=true;$('skipBtn').className='on';$('plainBtn').className=''; if(phase===1)t=0; render();};
+render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .main>*{min-width:0}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

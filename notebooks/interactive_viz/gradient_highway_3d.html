@@ -1,0 +1,174 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gradient Highway 3D</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:920px;line-height:1.45;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv,.depthv{font-family:monospace;font-weight:700;color:var(--ac);min-width:30px;display:inline-block;}
+  .toggle{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden;}
+  .toggle button{border-radius:0;background:#fff;color:var(--soft);font-size:12px;padding:5px 12px;}
+  .toggle button.onp{background:var(--neg);color:#fff;}
+  .toggle button.ons{background:var(--out);color:#fff;}
+  .stagewrap{max-width:960px;margin:0 auto;}
+  .stage{position:relative;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);overflow:hidden;}
+  #c3d{display:block;width:100%;height:430px;cursor:grab;}
+  #c3d:active{cursor:grabbing;}
+  .hud{position:absolute;top:8px;left:10px;background:rgba(255,255,255,.88);border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-size:11.5px;line-height:1.5;max-width:270px;}
+  .hud b.o{color:var(--out);} .hud b.n{color:var(--neg);} .hud b.a{color:var(--ac);}
+  .gaugewrap{position:absolute;bottom:10px;left:10px;right:10px;background:rgba(255,255,255,.88);border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-size:11px;}
+  .gauge{height:10px;border-radius:6px;background:#e9eef8;overflow:hidden;margin-top:3px;}
+  .gauge>div{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--neg),var(--in),var(--out));width:100%;transition:width .12s;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.n{color:var(--neg);}
+</style></head><body>
+<h1>Gradient Highway — in 3D</h1>
+<p class="sub"><b>Drag to rotate, scroll to zoom.</b> A tower of conv blocks: the loss sits at the <b>top</b>, the input at the <b>bottom</b>. Press ▶ to send a <b style="color:var(--ac)">gradient pulse</b> downward. In a <b style="color:var(--neg)">plain net</b> it must squeeze through every block and fades; with <b style="color:var(--out)">skip connections</b> the teal off-ramps carry it down at full strength — the <em>gradient highway</em>.</p>
+
+<div class="selrow">
+  depth <input id="depth" type="range" min="6" max="24" step="2" value="12"><span class="depthv" id="dv">12</span>
+  <span class="div"></span>
+  <span class="toggle"><button id="bPlain" class="onp">plain net</button><button id="bSkip">+ skip connections</button></span>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="play" id="play">▶ Play</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="stagewrap"><div class="stage">
+  <canvas id="c3d"></canvas>
+  <div class="hud" id="hud"><b class="a">Ready.</b> Press ▶ Play to backpropagate.</div>
+  <div class="gaugewrap">pulse strength → <span id="gv" style="font-weight:700;color:var(--ac)">100%</span><div class="gauge"><div id="gbar"></div></div></div>
+</div>
+<div class="legend">gray boxes = conv blocks (brightness = how much gradient reached them) · <b class="a">purple sphere = gradient pulse</b> · <b class="o">teal arcs = skip connections</b> · <b class="i">orange slab = input</b></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let depth=12, skips=false, speed=1, playing=false, prog=0; // prog 0..depth
+let scene,camera,renderer,blocks=[],arcs=[],pulse,inputSlab,lossSlab;
+let theta=0.65, phi=0.28, radius=26;
+const cv=$('c3d');
+
+function build(){
+  scene=new THREE.Scene(); scene.background=new THREE.Color(0xf5f8ff);
+  camera=new THREE.PerspectiveCamera(42, cv.clientWidth/cv.clientHeight, 0.1, 200);
+  const amb=new THREE.AmbientLight(0xffffff,0.75); scene.add(amb);
+  const dl=new THREE.DirectionalLight(0xffffff,0.55); dl.position.set(6,10,8); scene.add(dl);
+  blocks=[]; arcs=[];
+  const H=14, dy=H/(depth-1);
+  for(let i=0;i<depth;i++){
+    const geo=new THREE.BoxGeometry(4.4,dy*0.5,4.4);
+    const mat=new THREE.MeshLambertMaterial({color:0xc7d2e8});
+    const m=new THREE.Mesh(geo,mat); m.position.y=-H/2+i*dy; scene.add(m); blocks.push(m);
+  }
+  // skip arcs: every 2 blocks
+  const mkArc=(y1,y2)=>{
+    const mid=(y1+y2)/2;
+    const curve=new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(2.4,y1,2.4), new THREE.Vector3(5.4,mid,5.4), new THREE.Vector3(2.4,y2,2.4));
+    const geo=new THREE.TubeGeometry(curve,20,0.14,8,false);
+    const mat=new THREE.MeshLambertMaterial({color:0x16a3a3,transparent:true,opacity:0.9});
+    const t=new THREE.Mesh(geo,mat); scene.add(t); arcs.push(t); return t;
+  };
+  for(let i=0;i+2<depth;i+=2) mkArc(-H/2+i*dy, -H/2+(i+2)*dy);
+  // input & loss slabs
+  inputSlab=new THREE.Mesh(new THREE.BoxGeometry(6,0.5,6), new THREE.MeshLambertMaterial({color:0xf6921e}));
+  inputSlab.position.y=-H/2-1.2; scene.add(inputSlab);
+  lossSlab=new THREE.Mesh(new THREE.ConeGeometry(1.6,2.2,4), new THREE.MeshLambertMaterial({color:0x25324a}));
+  lossSlab.position.y=H/2+1.6; scene.add(lossSlab);
+  pulse=new THREE.Mesh(new THREE.SphereGeometry(0.9,20,20),
+    new THREE.MeshLambertMaterial({color:0x7b5cd6,emissive:0x7b5cd6,emissiveIntensity:0.6,transparent:true}));
+  scene.add(pulse);
+  updateArcVis();
+}
+function updateArcVis(){ arcs.forEach(a=>a.visible=skips); }
+function strengthAt(p){ // p = how many blocks descended
+  if(skips) return Math.max(0.72, 1-0.012*p);
+  return Math.pow(0.945, p*2.2);
+}
+function camUpdate(){
+  camera.position.set(radius*Math.cos(phi)*Math.sin(theta), radius*Math.sin(phi)+1.5, radius*Math.cos(phi)*Math.cos(theta));
+  camera.lookAt(0,0,0);
+}
+function frame(){
+  requestAnimationFrame(frame);
+  if(playing){ prog+=0.045*speed;
+    if(prog>=depth){ prog=depth; playing=false; $('play').textContent='▶ Play';
+      const s=strengthAt(depth);
+      $('hud').innerHTML = skips
+        ? `<b class="o">Arrived at the input at ${(s*100).toFixed(0)}% strength.</b> Every ∂y/∂x = 1 + ∂F/∂x has a “+1” — the pulse rode the highway. Early layers get a real learning signal, at <b>any</b> depth.`
+        : `<b class="n">Arrived at ${(s*100).toFixed(s<0.01?2:1)}% strength.</b> ${depth} multiplications shrank the pulse — early layers barely learn. Flip on <b class="o">+ skip connections</b> and press ▶ again.`;
+    }
+  }
+  const H=14, dy=H/(depth-1);
+  const y = H/2+1.6 - (prog/depth)*(H+2.8);
+  const s=strengthAt(prog);
+  const onRamp = skips && (Math.floor(prog)%2===1);
+  pulse.position.set(onRamp?3.6:0, y, onRamp?3.6:0);
+  pulse.scale.setScalar(0.4+s*0.9);
+  pulse.material.opacity=0.25+0.75*s;
+  blocks.forEach((b,i)=>{
+    const reachedIdx = depth-1 - Math.floor(prog);
+    if(i>=reachedIdx){ const g=strengthAt(depth-1-i);
+      b.material.color.setHSL(skips?0.48:0.62, skips?0.55:0.25, 0.35+0.45*g); }
+    else b.material.color.set(0xc7d2e8);
+  });
+  $('gv').textContent=(s*100).toFixed(s<0.01?2:0)+'%';
+  $('gbar').style.width=(s*100)+'%';
+  camUpdate();
+  renderer.render(scene,camera);
+}
+function resize(){
+  const w=cv.clientWidth,h=cv.clientHeight;
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+function reset(){ prog=0; playing=false; $('play').textContent='▶ Play';
+  $('hud').innerHTML='<b class="a">Ready.</b> Press ▶ Play to backpropagate.'; }
+renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+build(); resize(); frame();
+addEventListener('resize',resize);
+// manual orbit controls
+let drag=false,lx=0,ly=0;
+cv.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;});
+addEventListener('pointerup',()=>drag=false);
+addEventListener('pointermove',e=>{ if(!drag)return;
+  theta-=(e.clientX-lx)*0.008; phi=Math.max(-1.2,Math.min(1.2,phi+(e.clientY-ly)*0.006));
+  lx=e.clientX; ly=e.clientY; });
+cv.addEventListener('wheel',e=>{e.preventDefault();radius=Math.max(12,Math.min(46,radius+e.deltaY*0.02));},{passive:false});
+$('play').onclick=()=>{ if(playing){playing=false;$('play').textContent='▶ Play';return;}
+  if(prog>=depth)prog=0; playing=true; $('play').textContent='⏸ Pause';
+  $('hud').innerHTML= skips
+    ? '<b class="o">Backprop with skips…</b> watch the pulse take teal off-ramps — each hop multiplies by (1 + ∂F/∂x), and that 1 preserves it.'
+    : '<b class="n">Backprop, plain net…</b> every block multiplies the pulse by its local slope; many slopes &lt; 1 → it shrinks.'; };
+$('reset').onclick=()=>{reset();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('depth').oninput=e=>{depth=+e.target.value;$('dv').textContent=depth;
+  scene.traverse(o=>{if(o.geometry)o.geometry.dispose();});
+  build(); reset(); };
+$('bPlain').onclick=()=>{skips=false;$('bPlain').className='onp';$('bSkip').className='';updateArcVis();reset();};
+$('bSkip').onclick=()=>{skips=true;$('bSkip').className='ons';$('bPlain').className='';updateArcVis();reset();};
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>
