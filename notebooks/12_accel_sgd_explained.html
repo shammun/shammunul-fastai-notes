@@ -2,8 +2,8 @@
 
 <html lang="en">
 <head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
 <title>12_accel_sgd_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
@@ -7512,18 +7512,20 @@ a.anchor-link {
 <body class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
 <div class="ce-container">
 <header class="ce-breadcrumb">
-  <a href="../index.html">&larr; All notes</a>
+  <a href="../index.html">← All notes</a>
   <span class="ce-source">Source: <code>12_accel_sgd_explained.ipynb</code></span>
 </header>
 <div class="ce-actions">
   <span class="ce-actions-label">Get the notebook</span>
   <a class="ce-action-btn" href="12_accel_sgd_explained.ipynb" download>
-    <span class="ce-action-icon">&darr;</span> Download .ipynb
+    <span class="ce-action-icon">↓</span> Download .ipynb
   </a>
   <a class="ce-action-btn ce-action-colab" href="https://colab.research.google.com/github/shammun/shammunul-fastai-notes/blob/main/notebooks/12_accel_sgd_explained_colab.ipynb" target="_blank" rel="noopener">
-    <span class="ce-action-icon">&#9654;</span> Open in Colab
+    <span class="ce-action-icon">▶</span> Open in Colab
   </a>
 </div>
+<main>
+
 <main>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -7780,6 +7782,57 @@ a.anchor-link {
 2. Update parameters based on gradients
 3. Zero out gradients for next iteration
 </code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%9B%A0%EF%B8%8F-Interactive-visualizations-%E2%80%94-one-time-setup">🛠️ Interactive visualizations &mdash; one-time setup<a class="anchor-link" href="#%F0%9F%9B%A0%EF%B8%8F-Interactive-visualizations-%E2%80%94-one-time-setup">¶</a></h2><p>The cells marked <strong>🎮 Interactive</strong> below embed standalone HTML/JS visualizations
+(stored in the <code>interactive_viz/</code> folder next to this notebook) at <strong>full width and
+~full viewport height</strong>. Run the next cell once, then run any 🎮 cell.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE VISUALIZATIONS -- setup (run this cell ONCE).</span>
+<span class="c1"># Each "🎮 Interactive" cell below loads a standalone HTML file from the</span>
+<span class="c1"># published copy on GitHub Pages, in an isolated &lt;iframe&gt; (its CSS/JS can't leak</span>
+<span class="c1"># into the notebook). It is shown FULL WIDTH and auto-fits its content height.</span>
+<span class="c1"># No local files needed -- the visualizations are read from GitHub.</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+
+<span class="k">def</span> <span class="nf">show_viz</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"600px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Embed an interactive visualization full width; it auto-fits its height.</span>
+<span class="sd">    `path` may be a bare 'interactive_viz/&lt;file&gt;.html' (resolved to the GitHub</span>
+<span class="sd">    Pages copy) or a full https URL."""</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="s2">"https://shammun.github.io/shammunul-fastai-notes/notebooks/"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"http"</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">path</span>
+    <span class="k">return</span> <span class="n">HTML</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'&lt;iframe src="</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">" loading="lazy" allowfullscreen '</span>
+        <span class="sa">f</span><span class="s1">'style="width:100%;height:</span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s1">;border:1px solid #dde5f2;border-radius:12px;'</span>
+        <span class="sa">f</span><span class="s1">'box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"&gt;&lt;/iframe&gt;'</span>
+        <span class="s1">'&lt;script&gt;addEventListener("message",function(e){'</span>
+        <span class="s1">'if(e.data&amp;&amp;e.data.type==="ce-frame-height"&amp;&amp;e.data.height&gt;50){'</span>
+        <span class="s1">'var fs=document.querySelectorAll("iframe");for(var i=0;i&lt;fs.length;i++){'</span>
+        <span class="s1">'if(fs[i].contentWindow===e.source){fs[i].style.height=e.data.height+"px";break;}}}});&lt;/script&gt;'</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
 </div>
 </div>
 </div>
@@ -8358,7 +8411,47 @@ weight *= (1 - lr * wd)         # then decay the updated weight
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-anatomy-of-one-SGD-step-%E2%80%94-with-weight-decay">🎮 Interactive: anatomy of one SGD step &mdash; with weight decay<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-anatomy-of-one-SGD-step-%E2%80%94-with-weight-decay">¶</a></h3><p>One <code>opt.step()</code>, dissected on a live loss curve. A single weight walks downhill while you watch <code>reg_step</code> and <code>opt_step</code> fire in order.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Click the stage chips &mdash; <strong>⓪ gradients &rarr; ① reg_step &rarr; ② opt_step &rarr; ③ zero_grad</strong> &mdash; each highlights the matching lines of the <code>SGD</code> class.</li>
+<li>Press <strong>▶ Play</strong> and let it loop: every cycle is one mini-batch, and the hops shrink as the slope flattens.</li>
+<li>Set <strong>wd = 0.1 or 0.3</strong> and watch the ball settle at the dashed teal line, <em>not</em> the loss minimum &mdash; weight decay literally moves the optimum.</li>
+<li>The curve's curvature is 1, so overshoot starts past <strong>lr = 1</strong> and divergence past <strong>lr = 2</strong>: try 1.5 (bouncing), then 2.1 (bounces grow until it slams the edges).</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/sgd_step_anatomy.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/sgd_step_anatomy.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/sgd_step_anatomy.html" style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8417,24 +8510,6 @@ $$v_t = \beta \cdot v_{t-1} + (1-\beta) \cdot g_t$$$$w_{t+1} = w_t - \eta \cdot 
 </div>
 </div>
 </div>
-</div>
-<div class="ce-interactive">
-  <h3>Interactive: Optimizer race on a 2D loss surface</h3>
-  <p class="ce-interactive-hint">Four optimizers chase the same minimum on an elongated ("ravine") quadratic. Plain SGD zig-zags down the steep walls; momentum smooths the zig-zag; RMSProp adapts per-dimension; Adam combines both. <strong>This is why every modern training uses some variant of Adam</strong> &mdash; momentum + adaptive scaling pays for itself many times over.</p>
-  <canvas id="opt-canvas" width="640" height="380"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action:manipulation;"></canvas>
-  <div class="ms-controls">
-    <label>Learning rate: <span id="opt-lr-val" class="ms-val">0.05</span></label>
-    <input id="opt-lr" type="range" min="0.005" max="0.2" step="0.005" value="0.05">
-  </div>
-  <div class="ms-controls">
-    <button id="opt-run" class="ms-btn">Run</button>
-    <button id="opt-reset" class="ms-btn ms-secondary">Reset</button>
-    <span id="opt-iter" class="ms-val">step: 0</span>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Try this:</strong> push LR above 0.12 and watch plain SGD explode out of the ravine while Adam stays stable. The adaptive scaling in RMSProp/Adam divides each gradient by an exponential moving average of its magnitude &mdash; so steep dimensions get small steps automatically, and the user-set LR becomes far less hyperparameter-sensitive.
-  </p>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -8500,7 +8575,6 @@ $$\text{avg}_t = \beta \cdot \text{avg}_{t-1} + (1 - \beta) \cdot y_t$$<p>Where 
 </pre></div>
 <p>At $\beta = 0.5$, the red smoothed line still follows the noise closely. At $\beta = 0.9$, it traces the true underlying curve cleanly. At $\beta = 0.99$, it's so smooth it lags behind and misses the shape. The sweet spot for optimizers is typically $\beta = 0.9$.</p>
 <hr/>
-
 <h2 id="How-Momentum-Uses-EMA">How Momentum Uses EMA<a class="anchor-link" href="#How-Momentum-Uses-EMA">¶</a></h2><p>The Momentum optimizer applies EMA to the <em>gradients</em> instead of using them raw:</p>
 $$v_t = \beta \cdot v_{t-1} + (1 - \beta) \cdot g_t$$$$w_{t+1} = w_t - \eta \cdot v_t$$<p>Where:</p>
 <ul>
@@ -8788,7 +8862,47 @@ $$v_y \approx (1-\beta) \cdot g_y = 0.1 \times (\pm 1.0) \approx \pm 0.1$$<p>The
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-momentum-&amp;-EMA-lab-%E2%80%94-kill-the-zigzag">🎮 Interactive: momentum &amp; EMA lab &mdash; kill the zigzag<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-momentum-&amp;-EMA-lab-%E2%80%94-kill-the-zigzag">¶</a></h3><p>The EMA formula and the ravine problem, side by side and live.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Walk the rail <strong>⓪&rarr;③</strong>: the matching lines of the <code>Momentum</code> class light up on the right.</li>
+<li>Drag <strong>β</strong>: watch the purple EMA get smoother (and laggier) on the noisy signal.</li>
+<li>Press <strong>Race ▶</strong>: SGD (orange) zigzags wall-to-wall while Momentum (purple) glides along the ravine floor.</li>
+<li>The default lr = 0.13 sits just under SGD's stability limit (2/15 &asymp; 0.133). Slide to <strong>0.15</strong> and race again &mdash; SGD diverges, Momentum survives. That's why the notebook trains at lr = 1.5 with momentum vs 0.4 without.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/momentum_ema_lab.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/momentum_ema_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/momentum_ema_lab.html" style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8954,7 +9068,47 @@ Parameter B: Small gradients (0.1, 0.2, 0.1, 0.15, ...)
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-RMSProp-%E2%80%94-a-learning-rate-per-parameter">🎮 Interactive: RMSProp &mdash; a learning rate per parameter<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-RMSProp-%E2%80%94-a-learning-rate-per-parameter">¶</a></h3><p>Exactly the Parameter A / Parameter B story above, running live.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Watch the top bars: with one lr, the steep parameter's SGD step is far larger than the gentle one's. RMSProp's steps come out nearly equal.</li>
+<li>Press <strong>Race ▶</strong> and compare paths: SGD zigzags/crawls, RMSProp cuts almost diagonally to the minimum.</li>
+<li>Check the teal <strong>effective lr</strong> readouts &mdash; this is <code>lr / (&radic;sqr_avg + eps)</code> per axis, updating live.</li>
+<li>Stage <strong>①</strong> explains the notebook's subtle trick: <code>sqr_avg</code> is initialized with <code>grad**2</code>, <em>not</em> zeros &mdash; see what disaster that avoids.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/rmsprop_adaptive_lr.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/rmsprop_adaptive_lr.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/rmsprop_adaptive_lr.html" style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9094,7 +9248,47 @@ With bias correction:
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Adam's-bias-correction-%E2%80%94-why-%C3%B7(1-%E2%88%92-%CE%B2%E1%B5%97)">🎮 Interactive: Adam's bias correction &mdash; why ÷(1 − βᵗ)<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Adam's-bias-correction-%E2%80%94-why-%C3%B7(1-%E2%88%92-%CE%B2%E1%B5%97)">¶</a></h3><p>The table above ("Step 1: avg = 0.1·grad") turned into a scrubbable experiment.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Drag the <strong>t slider</strong>: the raw EMA (orange) reads only 10% of the true gradient at t=1; the corrected estimate (teal) is exact from step 1.</li>
+<li>Flip the <strong>β chip to 0.99</strong> (Adam's second moment): the needed correction starts at &times;100 &mdash; and that buffer sits in a <em>denominator</em>.</li>
+<li>Walk the rail: stages <strong>①&ndash;④</strong> highlight the exact lines of the <code>Adam</code> class, including where <code>self.i</code> (the step counter from <code>SGD</code>) enters.</li>
+<li>Press <strong>▶ Play</strong> to run stages then auto-sweep t.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/adam_bias_correction.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/adam_bias_correction.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/adam_bias_correction.html" style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9153,6 +9347,46 @@ With bias correction:
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-optimizer-race-%E2%80%94-in-3D">🎮 Interactive: the optimizer race &mdash; in 3D<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-optimizer-race-%E2%80%94-in-3D">¶</a></h3><p>All four optimizers from this notebook on the same loss surface, same lr. Surface height = loss; everyone starts on the <strong>orange ring</strong>, the goal is the <strong>teal ring</strong>.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Press <strong>Race ▶</strong> on the <strong>Ravine</strong> &mdash; this is the comparison table above, animated. The log-scale <strong>loss chart</strong> below the surface shows who's winning at a glance, and the leaderboard ranks runners live (🥇🥈🥉).</li>
+<li><strong>Drag to rotate / scroll to zoom</strong>, or use the <strong>¾ / Top / Side</strong> view buttons &mdash; the Top view makes SGD's zigzag unmistakable.</li>
+<li>Switch to <strong>Saddle</strong>: adaptive methods amplify the near-zero ridge gradients and slide off first; toggle <strong>gradient noise</strong> to see mini-batch noise help everyone escape.</li>
+<li>Try <strong>Banana valley</strong>: momentum overshoots the bends, Adam re-aims each turn &mdash; rankings depend on the landscape. Click legend names to hide/show runners; drag the <strong>lr slider</strong> and note SGD needs retuning per surface while RMSProp/Adam barely care.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/optimizer_race_3d.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/optimizer_race_3d.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"940px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/optimizer_race_3d.html" style="display:block;width:100%;max-width:100%;height:940px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9592,24 +9826,45 @@ opt = learn.opt                    # grab the optimizer object for inspection
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Learning rate schedules, side by side</h3>
-  <p class="ce-interactive-hint">Pick one or more schedule shapes, set total steps, and watch how the learning rate evolves. <strong>The cosine schedule has become the default for training transformers and diffusion models</strong> &mdash; smooth, finishes at zero, no hyperparameters beyond start/end. OneCycle (the warm-up + anneal shape) is fastai's signature.</p>
-  <canvas id="sched-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
-  <div class="ms-controls">
-    <label><input type="checkbox" data-s="constant"> Constant</label>
-    <label><input type="checkbox" data-s="linear"> Linear decay</label>
-    <label><input type="checkbox" data-s="cosine" checked> Cosine annealing</label>
-    <label><input type="checkbox" data-s="exp"> Exponential</label>
-    <label><input type="checkbox" data-s="onecycle" checked> OneCycle</label>
-  </div>
-  <div class="ms-controls">
-    <label>Total steps: <span id="sched-T-val" class="ms-val">1000</span></label>
-    <input id="sched-T" type="range" min="100" max="3000" step="100" value="1000">
-    <label>Max LR: <span id="sched-lr-val" class="ms-val">0.10</span></label>
-    <input id="sched-lr" type="range" min="0.01" max="0.5" step="0.01" value="0.10">
-  </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-inside-learn.opt-%E2%80%94-param_groups-&amp;-state">🎮 Interactive: inside <code>learn.opt</code> &mdash; param_groups &amp; state<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-inside-learn.opt-%E2%80%94-param_groups-&amp;-state">¶</a></h3><p>Everything you just printed (<code>opt.param_groups</code>, <code>opt.state</code>, <code>state_dict()</code>), as a clickable diagram.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Click any box in the diagram, or walk the rail &mdash; the matching exploration code from this notebook highlights on the right.</li>
+<li>Watch stage <strong>② &rarr; ③</strong>: <code>opt.state</code> is <em>empty</em> until the first <code>step()</code> &mdash; then <code>momentum_buffer</code> springs into existence (the badge flashes). Same lazy pattern as your hand-built <code>p.grad_avg</code>.</li>
+<li>Stage <strong>④</strong> shows why checkpoints need <code>opt.state_dict()</code> too, not just the model.</li>
+<li>Note the footer: this dict is exactly where <code>sched.step()</code> will write new lr values in the next section.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/optimizer_state_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/optimizer_state_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"740px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/optimizer_state_explorer.html" style="display:block;width:100%;max-width:100%;height:740px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9617,7 +9872,6 @@ opt = learn.opt                    # grab the optimizer object for inspection
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-
 <h3 id="Cosine-Annealing-Scheduler">Cosine Annealing Scheduler<a class="anchor-link" href="#Cosine-Annealing-Scheduler">¶</a></h3><p>One of the most popular schedulers. Smoothly decreases LR following a cosine curve.</p>
 </div>
 </div>
@@ -10388,6 +10642,46 @@ Part 9: 1cycle Training
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-schedule-explorer-%E2%80%94-cosine-&amp;-1cycle,-live">🎮 Interactive: schedule explorer &mdash; cosine &amp; 1cycle, live<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-schedule-explorer-%E2%80%94-cosine-&amp;-1cycle,-live">¶</a></h3><p>The cosine curve above, plus the two schedules coming later &mdash; with the actual <code>opt.step(); sched.step()</code> mechanic.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li><strong>Hover/click the curve</strong> to inspect any step's lr; drag <strong>T_max</strong> and see the shape stretch (T_max must match your <code>sched.step()</code> count!).</li>
+<li>Press the <strong><code>opt.step(); sched.step()</code> ▸</strong> button repeatedly &mdash; the readout is literally <code>get_last_lr()</code> advancing.</li>
+<li>Tab 2 previews <strong>batch-wise vs epoch-wise</strong> stepping (smooth glide vs staircase) &mdash; you'll build those callbacks shortly.</li>
+<li>Tab 3 is <strong>OneCycleLR</strong>: drag <code>pct_start</code> and <code>max_lr</code>, and note momentum running the <em>inverse</em> cycle.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/lr_schedule_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/lr_schedule_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/lr_schedule_explorer.html" style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -12019,6 +12313,46 @@ learn.fit() &rarr; for each training batch:
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-watch-sched.step()-fire-inside-the-training-loop">🎮 Interactive: watch <code>sched.step()</code> fire inside the training loop<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-watch-sched.step()-fire-inside-the-training-loop">¶</a></h3><p>The exact flow described above &mdash; <code>before_fit</code> creates the scheduler, then the callback decides <em>when</em> it ticks.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Press <strong>▶ Play</strong> and follow the highlight through 2 epochs &times; 4 batches; every <code>after_batch</code> flashes the <strong>sched.step()</strong> badge and drops the lr dot down the cosine.</li>
+<li><strong>Click any box</strong> in the loop diagram to jump straight to that moment.</li>
+<li>Switch to <strong>EpochSchedCB</strong> mode: 8 batches pass but only 2 scheduler ticks fire &mdash; the lr becomes a staircase, and T_max means epochs, not batches.</li>
+<li>Note <code>_step</code>'s guard <code>if learn.training:</code> &mdash; without it the lr would decay during validation too.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/scheduler_callback_flow.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/scheduler_callback_flow.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/scheduler_callback_flow.html" style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p>The learning rate smoothly decreases from 0.02 to near 0 over the 3 epochs.</p>
 </div>
 </div>
@@ -12216,6 +12550,46 @@ Mom: high &rarr; low &rarr; high
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-why-1cycle-works-%E2%80%94-escaping-sharp-minima">🎮 Interactive: <em>why</em> 1cycle works &mdash; escaping sharp minima<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-why-1cycle-works-%E2%80%94-escaping-sharp-minima">¶</a></h3><p>The schedule's shape is above; this shows what the shape <em>does</em> to training dynamics.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Press <strong>Train ▶</strong>: during the high-lr phase, the ball's bounces inside the narrow pit grow until it's thrown out &mdash; then annealing settles it into the wide, flat minimum (the kind that generalizes).</li>
+<li>Switch to the <strong>constant small lr</strong> tab and replay: trapped in the sharp pit forever.</li>
+<li>The rail follows the phases automatically and highlights the notebook's actual 1cycle training code; stage <strong>④</strong> explains the inverted momentum cycle.</li>
+<li>Footer has the one-line math: a valley is stable only while lr &lt; 2/curvature (a bit higher with momentum) &mdash; high lr is a filter only sharp minima fail.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/onecycle_dynamics.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/onecycle_dynamics.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe allowfullscreen="" loading="lazy" src="https://shammun.github.io/shammunul-fastai-notes/notebooks/interactive_viz/onecycle_dynamics.html" style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h2><h3 id="Optimizers">Optimizers<a class="anchor-link" href="#Optimizers">¶</a></h3><table>
 <thead>
@@ -12239,7 +12613,7 @@ Mom: high &rarr; low &rarr; high
 <tr>
 <td><strong>RMSProp</strong></td>
 <td>Adapt LR per parameter</td>
-<td><code>s = β*s + (1-β)*grad<sup>2</sup>; w -= lr*grad/&radic;s</code></td>
+<td><code>s = β*s + (1-β)*grad²; w -= lr*grad/&radic;s</code></td>
 </tr>
 <tr>
 <td><strong>Adam</strong></td>
@@ -12348,266 +12722,15 @@ $$w_{t+1} = w_t - \frac{\eta}{\sqrt{\hat{v}_t} + \epsilon} \cdot \hat{m}_t$$</p>
 </div>
 </div>
 </div>
-<style>
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive input[type="range"] { flex: 1; min-width: 160px; accent-color: var(--ce-purple, #6c5ce7); height: 6px; touch-action: manipulation; }
-.ce-interactive input[type="checkbox"] { accent-color: var(--ce-purple, #6c5ce7); }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 70px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactive .ms-btn.ms-secondary { background: transparent; color: var(--ce-purple, #6c5ce7); border: 1px solid var(--ce-purple, #6c5ce7); box-shadow: none; }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-// ============================================================================
-// Interactive 1: Optimizer race
-// ============================================================================
-(function optRace() {
-  var canvas = document.getElementById('opt-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-
-  var lr = 0.05;
-  // Elongated quadratic: f(x,y) = (1/2)(a*x^2 + b*y^2), with a >> b &rarr; "ravine"
-  var aCoef = 12, bCoef = 1;
-  function loss(x, y) { return 0.5 * (aCoef * x * x + bCoef * y * y); }
-  function grad(x, y) { return [aCoef * x, bCoef * y]; }
-
-  function worldToScreen(x, y) {
-    var scale = 100;
-    return [W / 2 + x * scale, H / 2 - y * scale * 2];
-  }
-
-  function drawContours() {
-    ctx.clearRect(0, 0, W, H);
-    var levels = [0.05, 0.2, 0.5, 1, 2, 4, 8];
-    levels.forEach(function(L, i) {
-      ctx.strokeStyle = 'rgba(79, 70, 229, ' + (0.10 + i * 0.04) + ')';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (var t = 0; t <= Math.PI * 2 + 0.05; t += 0.05) {
-        var x = Math.sqrt(2 * L / aCoef) * Math.cos(t);
-        var y = Math.sqrt(2 * L / bCoef) * Math.sin(t);
-        var p = worldToScreen(x, y);
-        if (t === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
-      }
-      ctx.stroke();
-    });
-    // axes through origin
-    ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 1; ctx.setLineDash([4, 3]);
-    ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
-    ctx.setLineDash([]);
-    // minimum
-    ctx.fillStyle = '#0fb9b1'; var p = worldToScreen(0, 0);
-    ctx.beginPath(); ctx.arc(p[0], p[1], 6, 0, Math.PI * 2); ctx.fill();
-  }
-
-  var COLORS = { sgd: '#dc2626', mom: '#f59e0b', rms: '#0fb9b1', adam: '#4f46e5' };
-  var NAMES = { sgd: 'SGD', mom: 'Momentum', rms: 'RMSProp', adam: 'Adam' };
-
-  var paths;     // { sgd: [[x,y]...], mom: ..., rms: ..., adam: ... }
-  var state;
-  var running = false;
-  var rafId = null;
-  var iter = 0;
-
-  function reset() {
-    var x0 = -1.3, y0 = 1.5;
-    paths = { sgd: [[x0, y0]], mom: [[x0, y0]], rms: [[x0, y0]], adam: [[x0, y0]] };
-    state = {
-      sgd:  { x: x0, y: y0 },
-      mom:  { x: x0, y: y0, vx: 0, vy: 0 },
-      rms:  { x: x0, y: y0, sx: 0, sy: 0 },
-      adam: { x: x0, y: y0, mx: 0, my: 0, vx: 0, vy: 0, t: 0 },
-    };
-    iter = 0; running = false;
-    cancelAnimationFrame(rafId);
-    document.getElementById('opt-run').textContent = 'Run';
-    document.getElementById('opt-iter').textContent = 'step: 0';
-    draw();
-  }
-
-  function step() {
-    var beta1 = 0.9, beta2 = 0.999, eps = 1e-8;
-    // SGD
-    var g = grad(state.sgd.x, state.sgd.y);
-    state.sgd.x -= lr * g[0]; state.sgd.y -= lr * g[1];
-    paths.sgd.push([state.sgd.x, state.sgd.y]);
-    // Momentum
-    g = grad(state.mom.x, state.mom.y);
-    state.mom.vx = beta1 * state.mom.vx + g[0];
-    state.mom.vy = beta1 * state.mom.vy + g[1];
-    state.mom.x -= lr * state.mom.vx;
-    state.mom.y -= lr * state.mom.vy;
-    paths.mom.push([state.mom.x, state.mom.y]);
-    // RMSProp
-    g = grad(state.rms.x, state.rms.y);
-    state.rms.sx = beta2 * state.rms.sx + (1 - beta2) * g[0] * g[0];
-    state.rms.sy = beta2 * state.rms.sy + (1 - beta2) * g[1] * g[1];
-    state.rms.x -= lr * g[0] / (Math.sqrt(state.rms.sx) + eps);
-    state.rms.y -= lr * g[1] / (Math.sqrt(state.rms.sy) + eps);
-    paths.rms.push([state.rms.x, state.rms.y]);
-    // Adam
-    state.adam.t++;
-    g = grad(state.adam.x, state.adam.y);
-    state.adam.mx = beta1 * state.adam.mx + (1 - beta1) * g[0];
-    state.adam.my = beta1 * state.adam.my + (1 - beta1) * g[1];
-    state.adam.vx = beta2 * state.adam.vx + (1 - beta2) * g[0] * g[0];
-    state.adam.vy = beta2 * state.adam.vy + (1 - beta2) * g[1] * g[1];
-    var b1c = 1 - Math.pow(beta1, state.adam.t);
-    var b2c = 1 - Math.pow(beta2, state.adam.t);
-    var mhx = state.adam.mx / b1c, mhy = state.adam.my / b1c;
-    var vhx = state.adam.vx / b2c, vhy = state.adam.vy / b2c;
-    state.adam.x -= lr * mhx / (Math.sqrt(vhx) + eps);
-    state.adam.y -= lr * mhy / (Math.sqrt(vhy) + eps);
-    paths.adam.push([state.adam.x, state.adam.y]);
-    iter++;
-  }
-
-  function draw() {
-    drawContours();
-    ['sgd', 'mom', 'rms', 'adam'].forEach(function(k) {
-      ctx.strokeStyle = COLORS[k]; ctx.lineWidth = 2;
-      ctx.beginPath();
-      var path = paths[k];
-      for (var i = 0; i < path.length; i++) {
-        var p = worldToScreen(path[i][0], path[i][1]);
-        if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
-      }
-      ctx.stroke();
-      var p = worldToScreen(path[path.length - 1][0], path[path.length - 1][1]);
-      ctx.fillStyle = COLORS[k];
-      ctx.beginPath(); ctx.arc(p[0], p[1], 4.5, 0, Math.PI * 2); ctx.fill();
-    });
-    // legend
-    var lx = 14, ly = 22;
-    ['sgd', 'mom', 'rms', 'adam'].forEach(function(k, i) {
-      ctx.fillStyle = COLORS[k]; ctx.fillRect(lx, ly + i * 18, 14, 4);
-      ctx.fillStyle = '#374151'; ctx.font = '12px sans-serif';
-      ctx.fillText(NAMES[k], lx + 22, ly + i * 18 + 5);
-    });
-  }
-
-  function tick() {
-    if (!running) return;
-    step();
-    document.getElementById('opt-iter').textContent = 'step: ' + iter;
-    draw();
-    if (iter < 200) rafId = requestAnimationFrame(tick);
-    else { running = false; document.getElementById('opt-run').textContent = 'Run again'; }
-  }
-
-  document.getElementById('opt-lr').addEventListener('input', function(e) {
-    lr = parseFloat(e.target.value);
-    document.getElementById('opt-lr-val').textContent = lr.toFixed(3);
-  });
-  document.getElementById('opt-run').addEventListener('click', function() {
-    if (running) { running = false; document.getElementById('opt-run').textContent = 'Run'; return; }
-    if (iter >= 200) reset();
-    running = true;
-    document.getElementById('opt-run').textContent = 'Pause';
-    tick();
-  });
-  document.getElementById('opt-reset').addEventListener('click', reset);
-  reset();
-})();
-
-// ============================================================================
-// Interactive 2: LR schedules
-// ============================================================================
-(function schedules() {
-  var canvas = document.getElementById('sched-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-
-  var T = 1000, lrMax = 0.10;
-
-  var COLORS = { constant: '#6b7280', linear: '#dc2626', cosine: '#4f46e5', exp: '#f59e0b', onecycle: '#0fb9b1' };
-
-  function schedVal(name, step, T, lrMax) {
-    var frac = step / T;
-    if (name === 'constant') return lrMax;
-    if (name === 'linear')   return lrMax * (1 - frac);
-    if (name === 'cosine')   return lrMax * 0.5 * (1 + Math.cos(Math.PI * frac));
-    if (name === 'exp')      return lrMax * Math.pow(0.001, frac);
-    if (name === 'onecycle') {
-      // Warm-up to lrMax over 30% of training, then cosine anneal to 0
-      if (frac < 0.3) return lrMax * (frac / 0.3);
-      var f2 = (frac - 0.3) / 0.7;
-      return lrMax * 0.5 * (1 + Math.cos(Math.PI * f2));
-    }
-    return 0;
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, W, H);
-    var margin = { l: 56, r: 16, t: 24, b: 40 };
-    var iW = W - margin.l - margin.r, iH = H - margin.t - margin.b;
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-    for (var i = 0; i <= 4; i++) {
-      var y = margin.t + (i / 4) * iH;
-      ctx.beginPath(); ctx.moveTo(margin.l, y); ctx.lineTo(margin.l + iW, y); ctx.stroke();
-    }
-    ctx.fillStyle = '#6b7280'; ctx.font = '11px monospace';
-    for (var i = 0; i <= 4; i++) {
-      var y = margin.t + iH - (i / 4) * iH;
-      ctx.fillText((lrMax * i / 4).toFixed(3), 12, y + 4);
-    }
-    ctx.fillText('step', margin.l + iW / 2 - 12, margin.t + iH + 28);
-    ctx.fillText('LR', 12, margin.t + 12);
-    for (var i = 0; i <= 4; i++) {
-      var x = margin.l + (i / 4) * iW;
-      ctx.fillText((T * i / 4).toFixed(0), x - 14, margin.t + iH + 16);
-    }
-
-    var active = [];
-    document.querySelectorAll('[data-s]').forEach(function(cb) {
-      if (cb.checked) active.push(cb.dataset.s);
-    });
-
-    var lx = 80, ly = 12;
-    active.forEach(function(name, i) {
-      ctx.strokeStyle = COLORS[name]; ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      var N = 200;
-      for (var k = 0; k <= N; k++) {
-        var step = (k / N) * T;
-        var v = schedVal(name, step, T, lrMax);
-        var x = margin.l + (step / T) * iW;
-        var y = margin.t + iH - (v / lrMax) * iH;
-        if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      // legend item
-      ctx.fillStyle = COLORS[name]; ctx.fillRect(lx + i * 100, ly, 12, 4);
-      ctx.fillStyle = '#374151'; ctx.font = '11px sans-serif';
-      ctx.fillText(name, lx + i * 100 + 18, ly + 5);
-    });
-  }
-
-  document.getElementById('sched-T').addEventListener('input', function(e) {
-    T = parseInt(e.target.value);
-    document.getElementById('sched-T-val').textContent = T;
-    draw();
-  });
-  document.getElementById('sched-lr').addEventListener('input', function(e) {
-    lrMax = parseFloat(e.target.value);
-    document.getElementById('sched-lr-val').textContent = lrMax.toFixed(2);
-    draw();
-  });
-  document.querySelectorAll('[data-s]').forEach(function(cb) {
-    cb.addEventListener('change', draw);
-  });
-  draw();
-})();
-
+<script id="ce-fullbleed-resize">
+(function(){
+  function fit(f){ try{var d=f.contentDocument; if(d&&d.body){var h=Math.ceil(Math.max(d.body.scrollHeight,d.body.offsetHeight)); if(h>50){f.style.height=h+"px";return true;}}}catch(e){} return false; }
+  function all(){ document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(fit); }
+  addEventListener("message",function(e){ if(!e.data||e.data.type!=="ce-frame-height"||!(e.data.height>50))return;
+    var ifr=document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)");
+    for(var i=0;i<ifr.length;i++){ if(ifr[i].contentWindow===e.source){ ifr[i].style.height=e.data.height+"px"; break; } } });
+  document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(function(f){ f.addEventListener("load",function(){fit(f);setTimeout(function(){fit(f);},400);setTimeout(function(){fit(f);},1200);}); });
+  addEventListener("resize",all); setInterval(all,1500); all();
 })();
 </script>
 </main>

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optimizer race — 3D loss surface</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:860px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 16px;margin:18px 0 16px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;
+    padding:9px 18px;transition:transform .12s,box-shadow .12s;}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35)}
+  #play:hover{transform:translateY(-1px)}
+  #prev,#next{background:var(--purple-soft);color:var(--purple)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:9px 8px}
+  .stepnum{color:var(--muted);font-size:13px;font-weight:700;min-width:96px}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:120px}
+
+  .rail{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 16px;}
+  .rail .st{background:#fff;border:2px solid var(--line);border-radius:12px;
+    padding:9px 6px;text-align:center;cursor:pointer;transition:.15s;user-select:none;}
+  .rail .st:hover{border-color:var(--purple)}
+  .rail .st .lab{font-size:12px;font-weight:800;}
+  .rail .st .sh{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+  .rail .st.active{background:var(--purple);border-color:var(--purple);box-shadow:var(--shadow)}
+  .rail .st.active .lab,.rail .st.active .sh{color:#fff}
+  .rail .st.done{background:var(--purple-soft);border-color:var(--purple-soft)}
+
+  .grid{display:grid;grid-template-columns:1.22fr .95fr;gap:18px;align-items:start}
+  .grid>*{min-width:0}
+  .grid.is-narrow{grid-template-columns:1fr}
+
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 14px;}
+  .stage-card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  canvas#cv{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+
+  .knobs{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:13px;color:var(--muted);font-weight:600}
+  .knobs input[type=range]{accent-color:var(--orange);width:130px;vertical-align:middle}
+  .chips{display:flex;gap:6px;align-items:center}
+  .chip{background:#fff;border:2px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--teal)}
+  .chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+
+  .counts{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .pill{background:#F6F8FE;border-radius:10px;padding:7px 13px;text-align:center;min-width:96px}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:16px}
+  .pill .t{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .pill.in .n{color:var(--orange)} .pill.mid .n{color:var(--purple)} .pill.out .n{color:var(--teal)}
+
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .panel+.panel{margin-top:14px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .steptitle{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .explain{color:#33415C}
+  .explain p{margin:0 0 8px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.o{color:var(--orange)} .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)}
+  .keybox{margin-top:8px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13.5px}
+  pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:#F6F8FE;border-radius:12px;padding:11px 0;overflow-x:auto;}
+  .cl{padding:0 15px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:4px solid var(--purple);padding-left:11px;font-weight:700}
+  .cl.cm{color:#8A94AC}
+  footer{margin-top:16px;color:var(--muted);font-size:12.5px;text-align:center}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+  /* tabs */
+  .tabbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+  .tab{background:#fff;border:2px solid var(--line);border-radius:999px;padding:6px 15px;
+    font-size:13px;font-weight:800;cursor:pointer;transition:.15s;user-select:none}
+  .tab:hover{border-color:var(--purple)}
+  .tab.on{background:var(--purple);border-color:var(--purple);color:#fff;box-shadow:var(--shadow-sm)}
+  /* canvas defaults */
+  canvas.pane{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+  .cv-title{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px}
+  /* legend rows (3D race etc) */
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .lg{display:flex;align-items:center;gap:8px;background:#F6F8FE;border:2px solid transparent;
+    border-radius:10px;padding:6px 11px;cursor:pointer;user-select:none;transition:.15s}
+  .lg:hover{border-color:var(--line)}
+  .lg.off{opacity:.38}
+  .lg .dot{width:12px;height:12px;border-radius:50%}
+  .lg .nm{font-size:12.5px;font-weight:800}
+  .lg .vl{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  /* flow / tree boxes */
+  .fcol{display:flex;flex-direction:column;gap:7px}
+  .fbox{background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 12px;
+    font-family:var(--mono);font-size:12.5px;transition:.18s;cursor:pointer;position:relative}
+  .fbox .t{font-family:-apple-system,"Segoe UI",Inter,sans-serif;font-size:10.5px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .fbox:hover{border-color:var(--purple)}
+  .fbox.on{border-color:var(--purple);background:var(--purple-soft);box-shadow:var(--shadow-sm)}
+  .fbox.fire{border-color:var(--orange);background:var(--orange-soft)}
+  .fbox.dim{opacity:.45}
+  .badge{position:absolute;top:-9px;right:10px;background:var(--orange);color:#fff;border-radius:999px;
+    font-size:10px;font-weight:800;padding:2px 9px;opacity:0;transition:opacity .2s}
+  .badge.show{opacity:1}
+  .indent1{margin-left:22px}.indent2{margin-left:44px}.indent3{margin-left:66px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Optimizer race — <span class="hl">SGD vs Momentum vs RMSProp vs Adam, in 3D</span></h1>
+  <p class="sub"><b>How to read it:</b> the surface height is the <b style="color:var(--purple)">loss</b>; each ball is one
+  optimizer updating the same two weights (x, y), one <code>opt.step()</code> per tick, all with the <b>same lr</b>.
+  Everyone starts on the <b style="color:var(--orange)">orange ring</b>; the goal is the
+  <b style="color:var(--teal)">teal ring</b> (the minimum). <b>Drag to rotate · scroll to zoom</b>, or use the view
+  buttons. The chart below the surface shows each runner's loss falling — lower is winning — and the leaderboard
+  ranks them live.</p>
+</header>
+
+<div class="controls">
+  <button id="play">Race ▶</button>
+  <button id="stepb">Step +1</button>
+  <span class="stepnum" id="stepnum">step 0</span>
+  <label class="spd" style="margin-left:0">lr <input type="range" id="lr" min="-3" max="-0.7" step="0.05" value="-1.7"><b id="lrv" style="color:var(--orange)">0.020</b></label>
+  <label style="font-size:13px;color:var(--muted);font-weight:600;display:flex;gap:6px;align-items:center">
+    <input type="checkbox" id="noise" style="accent-color:var(--purple);width:16px;height:16px"> gradient noise</label>
+  <label class="spd">speed <input type="range" id="spd" min="1" max="6" step="1" value="3"><span id="spdv">1.0×</span></label>
+  <button id="reset">Reset</button>
+</div>
+
+<div class="rail" id="rail" style="grid-template-columns:repeat(3,1fr)">
+  <div class="st" data-s="ravine"><div class="lab">① Ravine</div><div class="sh">steep across, shallow along</div></div>
+  <div class="st" data-s="saddle"><div class="lab">② Saddle</div><div class="sh">flat ridge to escape</div></div>
+  <div class="st" data-s="banana"><div class="lab">③ Banana valley</div><div class="sh">the good direction keeps turning</div></div>
+</div>
+
+<div class="stage-card">
+  <h2 id="surfname">The surface — drag to rotate, scroll to zoom</h2>
+  <div style="position:relative">
+    <div id="c3d" style="width:100%;height:430px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#FBFCFF;cursor:grab"></div>
+    <div style="position:absolute;top:10px;right:10px;display:flex;gap:6px">
+      <button class="camb" data-c="tq" style="background:#fff;border:2px solid var(--line);color:var(--muted);padding:5px 11px;font-size:11.5px;border-radius:9px">¾ view</button>
+      <button class="camb" data-c="top" style="background:#fff;border:2px solid var(--line);color:var(--muted);padding:5px 11px;font-size:11.5px;border-radius:9px">Top ↓</button>
+      <button class="camb" data-c="side" style="background:#fff;border:2px solid var(--line);color:var(--muted);padding:5px 11px;font-size:11.5px;border-radius:9px">Side →</button>
+    </div>
+  </div>
+  <div class="cv-title">Leaderboard — click a name to hide/show that runner</div>
+  <div class="legend" id="legend"></div>
+  <div class="cv-title">Loss over steps (log scale) — the race chart: lower = winning</div>
+  <canvas id="cvLoss" class="pane" width="680" height="170"></canvas>
+</div>
+
+<div class="panel" style="margin-top:16px">
+  <h2>What to look for on this surface</h2>
+  <div class="explain" id="explain"></div>
+</div>
+<footer>Same lr for everyone is deliberately unfair to SGD — that's the lesson. RMSProp and Adam divide by the typical
+gradient size per parameter, so one lr works everywhere; SGD needs hand-tuning per surface. Turn on gradient noise to
+make it truly <i>stochastic</i> GD and watch momentum's averaging shine.</footer>
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+if(typeof THREE==='undefined'){
+  $('c3d').innerHTML='<div style="padding:40px;text-align:center;color:#64748B;font-weight:600">three.js could not load (needs internet). The rest of the notebook works offline.</div>';
+  return;
+}
+/* ---------------- surfaces ---------------- */
+const SURFS={
+ ravine:{f:(x,y)=>(x*x+12*y*y)/8, g:(x,y)=>[x/4,3*y], start:[-2.2,1.5], mins:[[0,0]],
+  name:'① Ravine — f(x, y) = (x² + 12y²) / 8',
+  txt:`<p><b>The ravine.</b> The classic hard case: steep across the valley (y), shallow along it (x).
+  <b class="o">SGD</b> either zigzags wall-to-wall or crawls, depending on lr; <b class="p">Momentum</b> averages the
+  alternating up/down gradients away; <b style="color:#E84393">RMSProp</b> and <b class="t">Adam</b> rescale each axis
+  by its typical gradient size and cut nearly straight to the teal ring. Check the chart: the adaptive pair's loss
+  usually plummets first. Try the lr slider at both extremes.</p>`},
+ saddle:{f:(x,y)=>(x*x-y*y+y*y*y*y/3.2)/6, g:(x,y)=>[x/3,(-2*y+4*y*y*y/3.2)/6], start:[0.03,0.06],
+  mins:[[0,1.2649],[0,-1.2649]],
+  name:'② Saddle — f(x, y) = (x² − y² + y⁴/3.2) / 6 · two minima at (0, ±1.26)',
+  txt:`<p><b>The saddle.</b> Everyone starts almost exactly on the flat ridge, where gradients are nearly zero — the
+  loss chart is almost flat for a while. <b class="o">SGD</b> inches along; <b style="color:#E84393">RMSProp</b> and
+  <b class="t">Adam</b> <i>amplify</i> the tiny gradients (dividing by a tiny √v̂) and slide off first, toward one of
+  the two teal rings. Toggle <b>gradient noise</b>: a random nudge off the ridge helps everyone — one under-appreciated
+  virtue of mini-batch noise.</p>`},
+ banana:{f:(x,y)=>((1-x)*(1-x)+3.5*(y-x*x/2.2)*(y-x*x/2.2))/7,
+  g:(x,y)=>{const u=y-x*x/2.2;return [(-2*(1-x)-7*u*(2*x/2.2))/7,u];}, start:[-1.9,1.9], mins:[[1,0.4545]],
+  name:'③ Banana valley — curved trench, minimum at (1, 0.45)',
+  txt:`<p><b>The banana valley</b> (Rosenbrock-style). The trench curves, so the good direction keeps <i>changing</i> —
+  yesterday's momentum can steer you into the wall. Watch <b class="p">Momentum</b> overshoot on the bends while
+  <b class="t">Adam</b>'s per-axis scaling keeps steps modest and re-aims each turn. Run it a few times with noise on:
+  there's no single winner every run — optimizer rankings genuinely depend on the landscape.</p>`}
+};
+let surf='ravine';
+/* ------------- optimizers (mirroring the notebook classes) ------------- */
+function makeOpts(){
+  return [
+   {nm:'SGD',      col:0xE8821F,css:'#E8821F',st:{},vis:true,
+    step:(p,g,s,lr)=>{p[0]-=lr*g[0];p[1]-=lr*g[1];}},
+   {nm:'Momentum', col:0x6C5CE7,css:'#6C5CE7',st:{ax:0,ay:0},vis:true,
+    step:(p,g,s,lr)=>{s.ax=.9*s.ax+.1*g[0];s.ay=.9*s.ay+.1*g[1];p[0]-=lr*s.ax;p[1]-=lr*s.ay;}},
+   {nm:'RMSProp',  col:0xE84393,css:'#E84393',st:{sx:null,sy:null},vis:true,
+    step:(p,g,s,lr)=>{if(s.sx===null){s.sx=g[0]*g[0];s.sy=g[1]*g[1];}
+      s.sx=.99*s.sx+.01*g[0]*g[0];s.sy=.99*s.sy+.01*g[1]*g[1];
+      p[0]-=lr*g[0]/(Math.sqrt(s.sx)+1e-5);p[1]-=lr*g[1]/(Math.sqrt(s.sy)+1e-5);}},
+   {nm:'Adam',     col:0x0E9C8F,css:'#0E9C8F',st:{mx:0,my:0,vx:0,vy:0,t:0},vis:true,
+    step:(p,g,s,lr)=>{s.t++;
+      s.mx=.9*s.mx+.1*g[0];s.my=.9*s.my+.1*g[1];
+      s.vx=.99*s.vx+.01*g[0]*g[0];s.vy=.99*s.vy+.01*g[1]*g[1];
+      const bc1=1-Math.pow(.9,s.t),bc2=1-Math.pow(.99,s.t);
+      p[0]-=lr*(s.mx/bc1)/(Math.sqrt(s.vx/bc2)+1e-5);
+      p[1]-=lr*(s.my/bc1)/(Math.sqrt(s.vy/bc2)+1e-5);}}
+  ];
+}
+let opts=makeOpts(), pos=[], steps=0;
+const MAXSTEPS=900;
+function gauss(){let s=0;for(let i=0;i<4;i++)s+=Math.random();return (s-2)*1.7;}
+function fmin(){ // minimum attainable f on this surface (for chart floor)
+  return Math.min.apply(null,SURFS[surf].mins.map(m=>SURFS[surf].f(m[0],m[1])));
+}
+function resetRace(){
+  opts=makeOpts();steps=0;
+  pos=opts.map(()=>SURFS[surf].start.slice());
+  opts.forEach(o=>{o.trailPts=[];o.hist=[];});
+  opts.forEach((o,i)=>o.hist.push(SURFS[surf].f(pos[i][0],pos[i][1])));
+  $('stepnum').textContent='step 0';
+}
+/* ---------------- three.js scene ---------------- */
+const box=$('c3d');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xFBFCFF);
+const camera=new THREE.PerspectiveCamera(46,2,0.1,100);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+box.appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff,0.75));
+const dl=new THREE.DirectionalLight(0xffffff,0.55);dl.position.set(3,6,4);scene.add(dl);
+const grid=new THREE.GridHelper(5.2,20,0xDDE5F2,0xEDF2FB);grid.position.y=-0.4;scene.add(grid);
+const ZS=1.35, R=2.6;
+let surfMesh=null,wireMesh=null,markers=[];
+function world(x,y){return new THREE.Vector3(x,SURFS[surf].f(x,y)*ZS,y);}
+function ring(x,y,color){
+  const m=new THREE.Mesh(new THREE.TorusGeometry(0.16,0.028,10,36),
+    new THREE.MeshLambertMaterial({color}));
+  m.rotation.x=Math.PI/2;
+  const w=world(x,y);m.position.set(w.x,w.y+0.03,w.z);
+  scene.add(m);markers.push(m);
+  return m;
+}
+function buildSurface(){
+  if(surfMesh){scene.remove(surfMesh);scene.remove(wireMesh);}
+  markers.forEach(m=>scene.remove(m));markers=[];
+  const seg=64, geo=new THREE.PlaneGeometry(2*R,2*R,seg,seg);
+  geo.rotateX(-Math.PI/2);
+  const posA=geo.attributes.position, colors=[];
+  let zmin=1e9,zmax=-1e9, zs=[];
+  for(let i=0;i<posA.count;i++){
+    const x=posA.getX(i),y=posA.getZ(i);
+    const z=SURFS[surf].f(x,y)*ZS;zs.push(z);
+    if(z<zmin)zmin=z;if(z>zmax)zmax=z;
+  }
+  const cLow=new THREE.Color(0xEFEBFF),cHigh=new THREE.Color(0x6C5CE7);
+  for(let i=0;i<posA.count;i++){
+    posA.setY(i,zs[i]);
+    const t=Math.pow((zs[i]-zmin)/(zmax-zmin+1e-9),0.6);
+    const c=cLow.clone().lerp(cHigh,t);colors.push(c.r,c.g,c.b);
+  }
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+  geo.computeVertexNormals();
+  surfMesh=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide,transparent:true,opacity:0.96}));
+  scene.add(surfMesh);
+  wireMesh=new THREE.LineSegments(new THREE.WireframeGeometry(geo),
+    new THREE.LineBasicMaterial({color:0x6C5CE7,transparent:true,opacity:0.07}));
+  scene.add(wireMesh);
+  // start + goal markers
+  ring(SURFS[surf].start[0],SURFS[surf].start[1],0xE8821F);
+  SURFS[surf].mins.forEach(m=>ring(m[0],m[1],0x0E9C8F));
+  $('surfname').textContent=SURFS[surf].name+' — drag to rotate, scroll to zoom';
+}
+/* balls + trails */
+const balls=[],trails=[],MAXT=800;
+function buildRunners(){
+  opts.forEach((o)=>{
+    const b=new THREE.Mesh(new THREE.SphereGeometry(0.085,20,20),
+      new THREE.MeshLambertMaterial({color:o.col}));
+    scene.add(b);balls.push(b);
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(MAXT*3),3));
+    g.setDrawRange(0,0);
+    const l=new THREE.Line(g,new THREE.LineBasicMaterial({color:o.col,linewidth:2}));
+    scene.add(l);trails.push(l);
+  });
+}
+function syncRunners(){
+  opts.forEach((o,i)=>{
+    const p=pos[i],w=world(p[0],p[1]);
+    balls[i].position.set(w.x,w.y+0.085,w.z);
+    balls[i].visible=o.vis;trails[i].visible=o.vis;
+    o.trailPts.push([w.x,w.y+0.03,w.z]);
+    if(o.trailPts.length>MAXT)o.trailPts.shift();
+    const arr=trails[i].geometry.attributes.position.array;
+    o.trailPts.forEach((q,k)=>{arr[k*3]=q[0];arr[k*3+1]=q[1];arr[k*3+2]=q[2];});
+    trails[i].geometry.attributes.position.needsUpdate=true;
+    trails[i].geometry.setDrawRange(0,o.trailPts.length);
+  });
+}
+/* orbit controls (custom) + presets + idle rotation */
+let theta=0.85,phi=0.95,rad=6.4,drag=false,px=0,py=0,interacted=false;
+function placeCam(){
+  camera.position.set(rad*Math.sin(phi)*Math.cos(theta),rad*Math.cos(phi),rad*Math.sin(phi)*Math.sin(theta));
+  camera.lookAt(0,0.35,0);
+}
+box.addEventListener('pointerdown',e=>{drag=true;interacted=true;px=e.clientX;py=e.clientY;box.style.cursor='grabbing';});
+window.addEventListener('pointerup',()=>{drag=false;box.style.cursor='grab';});
+window.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  theta+=(e.clientX-px)*0.008;phi=Math.max(0.15,Math.min(1.42,phi-(e.clientY-py)*0.006));
+  px=e.clientX;py=e.clientY;placeCam();
+});
+box.addEventListener('wheel',e=>{e.preventDefault();interacted=true;rad=Math.max(3.2,Math.min(12,rad+e.deltaY*0.004));placeCam();},{passive:false});
+const CAMS={tq:[0.85,0.95,6.4],top:[0.85,0.17,7.2],side:[0.0,1.25,6.4]};
+document.querySelectorAll('.camb').forEach(b=>{
+  b.addEventListener('click',()=>{interacted=true;
+    const c=CAMS[b.dataset.c];theta=c[0];phi=c[1];rad=c[2];placeCam();});
+});
+/* leaderboard */
+const MEDAL=['🥇 1st','🥈 2nd','🥉 3rd','4th'];
+function buildLegend(){
+  const lg=$('legend');lg.innerHTML='';
+  opts.forEach((o,i)=>{
+    const d=document.createElement('div');d.className='lg'+(o.vis?'':' off');d.id='lgrow'+i;
+    d.innerHTML=`<span class="dot" style="background:${o.css}"></span><span class="nm">${o.nm}</span><span class="vl" id="lv${i}">f = —</span>`;
+    d.addEventListener('click',()=>{o.vis=!o.vis;d.classList.toggle('off',!o.vis);});
+    lg.appendChild(d);
+  });
+}
+function updateLegend(){
+  const order=opts.map((o,i)=>[SURFS[surf].f(pos[i][0],pos[i][1]),i]).sort((a,b)=>a[0]-b[0]);
+  order.forEach((e,rank)=>{
+    const i=e[1];
+    $('lv'+i).textContent=MEDAL[rank]+' · f = '+e[0].toFixed(3);
+    $('lgrow'+i).style.borderColor=rank===0?opts[i].css:'transparent';
+  });
+}
+/* loss chart */
+const cvL=$('cvLoss'),cxL=cvL.getContext('2d');
+function drawChart(){
+  const W=cvL.width,H=cvL.height;
+  cxL.clearRect(0,0,W,H);
+  const base=fmin();
+  let hi=1e-6;
+  opts.forEach(o=>o.hist.forEach(v=>{const d=v-base;if(d>hi)hi=d;}));
+  const lo=1e-5, lgLo=Math.log10(lo), lgHi=Math.log10(Math.max(hi,lo*10));
+  const n=Math.max(2,opts[0].hist.length);
+  const X=k=>46+k/(Math.max(n-1,MAXSTEPS*0.05))*(W-64);
+  const Y=v=>{const d=Math.max(v-base,lo);return H-24-((Math.log10(d)-lgLo)/(lgHi-lgLo))*(H-40);};
+  cxL.strokeStyle='#DDE5F2';cxL.beginPath();cxL.moveTo(46,H-24);cxL.lineTo(W-14,H-24);cxL.stroke();
+  cxL.fillStyle='#8A94AC';cxL.font='10px SF Mono,Menlo,monospace';
+  cxL.fillText('high',10,20);cxL.fillText('low',14,H-28);cxL.fillText('steps →',W-58,H-8);
+  opts.forEach((o)=>{
+    if(!o.vis)return;
+    cxL.strokeStyle=o.css;cxL.lineWidth=2.2;cxL.beginPath();
+    o.hist.forEach((v,k)=>{k?cxL.lineTo(Math.min(X(k),W-14),Y(v)):cxL.moveTo(X(0),Y(v));});
+    cxL.stroke();
+    const last=o.hist[o.hist.length-1];
+    cxL.beginPath();cxL.arc(Math.min(X(o.hist.length-1),W-14),Y(last),4,0,7);
+    cxL.fillStyle=o.css;cxL.fill();
+  });
+}
+/* race step */
+function lrVal(){return Math.pow(10,+$('lr').value);}
+function raceStep(){
+  const lr=lrVal(),noisy=$('noise').checked;
+  opts.forEach((o,i)=>{
+    const p=pos[i];let g=SURFS[surf].g(p[0],p[1]);
+    if(noisy){const n=0.25;g=[g[0]+gauss()*n*(Math.abs(g[0])+0.15),g[1]+gauss()*n*(Math.abs(g[1])+0.15)];}
+    o.step(p,g,o.st,lr);
+    p[0]=Math.max(-R,Math.min(R,p[0]));p[1]=Math.max(-R,Math.min(R,p[1]));
+    o.hist.push(SURFS[surf].f(p[0],p[1]));
+    if(o.hist.length>MAXSTEPS+1)o.hist.shift();
+  });
+  steps++;$('stepnum').textContent='step '+steps;
+}
+/* play loop */
+let playing=false,timer=null;
+const speeds=[0.5,0.75,1,1.5,2,3];
+function stopPlay(){playing=false;if(timer)clearTimeout(timer);$('play').textContent='Race ▶';}
+function tick(){
+  if(!playing)return;
+  const per=Math.round(speeds[+$('spd').value-1]*2);
+  for(let k=0;k<per;k++)raceStep();
+  syncRunners();updateLegend();drawChart();
+  if(steps>MAXSTEPS){stopPlay();return;}
+  timer=setTimeout(tick,50);
+}
+$('play').addEventListener('click',()=>{
+  if(playing){stopPlay();return;}
+  if(steps>MAXSTEPS)fullReset();
+  playing=true;$('play').textContent='Pause ⏸';tick();
+});
+$('stepb').addEventListener('click',()=>{stopPlay();raceStep();syncRunners();updateLegend();drawChart();});
+function fullReset(){resetRace();buildLegend();
+  opts.forEach((o,i)=>{trails[i].geometry.setDrawRange(0,0);});
+  syncRunners();updateLegend();drawChart();}
+$('reset').addEventListener('click',()=>{stopPlay();fullReset();});
+$('spd').addEventListener('input',()=>{$('spdv').textContent=speeds[+$('spd').value-1].toFixed(1)+'×';});
+$('lr').addEventListener('input',()=>{$('lrv').textContent=lrVal().toFixed(3);});
+document.querySelectorAll('.rail .st').forEach(el=>{
+  el.addEventListener('click',()=>{
+    document.querySelectorAll('.rail .st').forEach(x=>x.classList.remove('active'));
+    el.classList.add('active');
+    surf=el.dataset.s;stopPlay();buildSurface();fullReset();
+    $('explain').innerHTML=SURFS[surf].txt;postH();
+  });
+});
+document.querySelector('.rail .st').classList.add('active');
+/* render loop + resize */
+function size(){
+  const w=box.clientWidth,h=box.clientHeight;
+  renderer.setSize(w,h,false);renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  camera.aspect=w/h;camera.updateProjectionMatrix();
+}
+function animate(){
+  if(!interacted&&!drag){theta+=0.0016;placeCam();}
+  renderer.render(scene,camera);requestAnimationFrame(animate);
+}
+/* auto-height */
+const wrap=document.querySelector('.wrap');
+function postH(){
+  const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){size();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+/* init */
+buildSurface();resetRace();buildRunners();buildLegend();syncRunners();updateLegend();drawChart();
+$('explain').innerHTML=SURFS[surf].txt;
+placeCam();size();animate();
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

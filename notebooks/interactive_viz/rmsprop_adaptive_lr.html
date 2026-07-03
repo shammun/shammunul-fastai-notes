@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RMSProp — a learning rate per parameter</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:860px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 16px;margin:18px 0 16px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;
+    padding:9px 18px;transition:transform .12s,box-shadow .12s;}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35)}
+  #play:hover{transform:translateY(-1px)}
+  #prev,#next{background:var(--purple-soft);color:var(--purple)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:9px 8px}
+  .stepnum{color:var(--muted);font-size:13px;font-weight:700;min-width:96px}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:120px}
+
+  .rail{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 16px;}
+  .rail .st{background:#fff;border:2px solid var(--line);border-radius:12px;
+    padding:9px 6px;text-align:center;cursor:pointer;transition:.15s;user-select:none;}
+  .rail .st:hover{border-color:var(--purple)}
+  .rail .st .lab{font-size:12px;font-weight:800;}
+  .rail .st .sh{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+  .rail .st.active{background:var(--purple);border-color:var(--purple);box-shadow:var(--shadow)}
+  .rail .st.active .lab,.rail .st.active .sh{color:#fff}
+  .rail .st.done{background:var(--purple-soft);border-color:var(--purple-soft)}
+
+  .grid{display:grid;grid-template-columns:1.22fr .95fr;gap:18px;align-items:start}
+  .grid>*{min-width:0}
+  .grid.is-narrow{grid-template-columns:1fr}
+
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 14px;}
+  .stage-card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  canvas#cv{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+
+  .knobs{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:13px;color:var(--muted);font-weight:600}
+  .knobs input[type=range]{accent-color:var(--orange);width:130px;vertical-align:middle}
+  .chips{display:flex;gap:6px;align-items:center}
+  .chip{background:#fff;border:2px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--teal)}
+  .chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+
+  .counts{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .pill{background:#F6F8FE;border-radius:10px;padding:7px 13px;text-align:center;min-width:96px}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:16px}
+  .pill .t{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .pill.in .n{color:var(--orange)} .pill.mid .n{color:var(--purple)} .pill.out .n{color:var(--teal)}
+
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .panel+.panel{margin-top:14px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .steptitle{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .explain{color:#33415C}
+  .explain p{margin:0 0 8px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.o{color:var(--orange)} .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)}
+  .keybox{margin-top:8px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13.5px}
+  pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:#F6F8FE;border-radius:12px;padding:11px 0;overflow-x:auto;}
+  .cl{padding:0 15px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:4px solid var(--purple);padding-left:11px;font-weight:700}
+  .cl.cm{color:#8A94AC}
+  footer{margin-top:16px;color:var(--muted);font-size:12.5px;text-align:center}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+  /* tabs */
+  .tabbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+  .tab{background:#fff;border:2px solid var(--line);border-radius:999px;padding:6px 15px;
+    font-size:13px;font-weight:800;cursor:pointer;transition:.15s;user-select:none}
+  .tab:hover{border-color:var(--purple)}
+  .tab.on{background:var(--purple);border-color:var(--purple);color:#fff;box-shadow:var(--shadow-sm)}
+  /* canvas defaults */
+  canvas.pane{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+  .cv-title{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px}
+  /* legend rows (3D race etc) */
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .lg{display:flex;align-items:center;gap:8px;background:#F6F8FE;border:2px solid transparent;
+    border-radius:10px;padding:6px 11px;cursor:pointer;user-select:none;transition:.15s}
+  .lg:hover{border-color:var(--line)}
+  .lg.off{opacity:.38}
+  .lg .dot{width:12px;height:12px;border-radius:50%}
+  .lg .nm{font-size:12.5px;font-weight:800}
+  .lg .vl{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  /* flow / tree boxes */
+  .fcol{display:flex;flex-direction:column;gap:7px}
+  .fbox{background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 12px;
+    font-family:var(--mono);font-size:12.5px;transition:.18s;cursor:pointer;position:relative}
+  .fbox .t{font-family:-apple-system,"Segoe UI",Inter,sans-serif;font-size:10.5px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .fbox:hover{border-color:var(--purple)}
+  .fbox.on{border-color:var(--purple);background:var(--purple-soft);box-shadow:var(--shadow-sm)}
+  .fbox.fire{border-color:var(--orange);background:var(--orange-soft)}
+  .fbox.dim{opacity:.45}
+  .badge{position:absolute;top:-9px;right:10px;background:var(--orange);color:#fff;border-radius:999px;
+    font-size:10px;font-weight:800;padding:2px 9px;opacity:0;transition:opacity .2s}
+  .badge.show{opacity:1}
+  .indent1{margin-left:22px}.indent2{margin-left:44px}.indent3{margin-left:66px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>RMSProp — <span class="hl">every parameter gets its own learning rate</span></h1>
+  <p class="sub">One global lr must serve millions of parameters — but some see <b style="color:var(--orange)">huge</b>
+  gradients and some see <b style="color:var(--teal)">tiny</b> ones. RMSProp tracks an EMA of each parameter's
+  <b>squared</b> gradient and divides by its square root: <code>p −= lr · grad / (sqr_avg.sqrt() + eps)</code>.
+  Big-gradient parameters get tamed, small-gradient parameters get amplified. Walk the rail, then press <b>Race ▶</b>.</p>
+</header>
+
+<div class="controls">
+  <button id="prev">← Back</button>
+  <button id="play">Race ▶</button>
+  <button id="next">Next →</button>
+  <span class="stepnum" id="stepnum">Stage 0 / 3</span>
+  <label class="spd">speed <input type="range" id="spd" min="1" max="6" step="1" value="3"><span id="spdv">1.0×</span></label>
+  <button id="reset">Reset</button>
+</div>
+
+<div class="rail" id="rail" style="grid-template-columns:repeat(4,1fr)">
+  <div class="st" data-s="0"><div class="lab">⓪ the problem</div><div class="sh">one lr, unequal grads</div></div>
+  <div class="st" data-s="1"><div class="lab">① init sqr_avg</div><div class="sh">= grad² (not zeros!)</div></div>
+  <div class="st" data-s="2"><div class="lab">② EMA of grad²</div><div class="sh">sqr_mom = 0.99</div></div>
+  <div class="st" data-s="3"><div class="lab">③ divide by √sqr_avg</div><div class="sh">adaptive step</div></div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="stage-card">
+    <h2>Two parameters, one lr — raw step vs RMSProp step</h2>
+    <canvas id="cvB" class="pane" width="680" height="150"></canvas>
+    <div class="cv-title">SGD vs RMSProp in the ravine &nbsp; f(x, y) = ½(x² + 15y²) — x sees small grads, y sees big ones</div>
+    <canvas id="cvR" class="pane" width="680" height="290"></canvas>
+    <div class="knobs">
+      <label>lr <input type="range" id="lr" min="0.005" max="0.12" step="0.005" value="0.05"><b id="lrv" style="color:var(--orange)">0.050</b></label>
+      <span style="color:var(--muted)">effective lr along x: <b id="effx" style="color:var(--teal)">—</b> · along y: <b id="effy" style="color:var(--teal)">—</b></span>
+    </div>
+    <div class="counts">
+      <div class="pill in"><div class="n" id="p-sgd">—</div><div class="t">SGD loss</div></div>
+      <div class="pill out"><div class="n" id="p-rms">—</div><div class="t">RMSProp loss</div></div>
+      <div class="pill mid"><div class="n" id="p-steps">0</div><div class="t">steps</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>What is happening</h2>
+      <div class="steptitle" id="title"></div>
+      <div class="explain" id="explain"></div>
+    </div>
+    <div class="panel">
+      <h2>The code, from this notebook's <span style="text-transform:none">RMSProp</span> class</h2>
+      <pre class="code" id="code"></pre>
+    </div>
+  </div>
+</div>
+<footer>The teal readouts above are the point: RMSProp's <i>effective</i> lr along y (steep) is a fraction of the
+one along x (shallow) — it walks almost straight to the minimum where SGD zigzags or crawls.</footer>
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const cvB=$('cvB'),cxB=cvB.getContext('2d');
+const cvR=$('cvR'),cxR=cvR.getContext('2d');
+const A=15;
+function f(x,y){return .5*(x*x+A*y*y);}
+const start={x:-2.45,y:0.85};
+let sgd,rms,steps;
+function initRace(){
+  sgd={x:start.x,y:start.y,tr:[[start.x,start.y]]};
+  rms={x:start.x,y:start.y,sx:null,sy:null,tr:[[start.x,start.y]]};
+  steps=0;
+}
+initRace();
+const EPS=1e-5,SM=0.99;
+function raceStep(){
+  const lr=+$('lr').value;
+  sgd.x-=lr*sgd.x; sgd.y-=lr*A*sgd.y;
+  sgd.x=Math.max(-3,Math.min(3,sgd.x)); sgd.y=Math.max(-1.5,Math.min(1.5,sgd.y));
+  sgd.tr.push([sgd.x,sgd.y]);
+  const gx=rms.x, gy=A*rms.y;
+  if(rms.sx===null){rms.sx=gx*gx;rms.sy=gy*gy;}     // notebook trick: init WITH grad², not zeros
+  rms.sx=rms.sx*SM+gx*gx*(1-SM);
+  rms.sy=rms.sy*SM+gy*gy*(1-SM);
+  rms.x-=lr*gx/(Math.sqrt(rms.sx)+EPS);
+  rms.y-=lr*gy/(Math.sqrt(rms.sy)+EPS);
+  rms.tr.push([rms.x,rms.y]);
+  if(sgd.tr.length>600)sgd.tr.shift();
+  if(rms.tr.length>600)rms.tr.shift();
+  steps++;
+}
+/* ---------- bar chart: raw vs normalized steps for 2 params ---------- */
+function drawBars(){
+  const lr=+$('lr').value;
+  const gx=Math.abs(rms.x)||0.001, gy=Math.abs(A*rms.y)||0.001;
+  const sx=rms.sx===null?gx*gx:rms.sx, sy=rms.sy===null?gy*gy:rms.sy;
+  const rawX=lr*gx, rawY=lr*gy;
+  const adX=lr*gx/(Math.sqrt(sx)+EPS), adY=lr*gy/(Math.sqrt(sy)+EPS);
+  const W=cvB.width,H=cvB.height;
+  cxB.clearRect(0,0,W,H);
+  const rows=[
+    ['param x  (gentle grads)', rawX, adX],
+    ['param y  (steep grads)',  rawY, adY]];
+  const maxV=Math.max(rawX,rawY,adX,adY,1e-6);
+  rows.forEach((r,i)=>{
+    const y=26+i*58;
+    cxB.fillStyle='#1F2A44';cxB.font='bold 11.5px -apple-system,sans-serif';
+    cxB.fillText(r[0],10,y-6);
+    cxB.fillStyle='#E8821F';
+    cxB.fillRect(150,y-14,Math.max(2,r[1]/maxV*(W-260)),13);
+    cxB.fillStyle='#8A94AC';cxB.font='10.5px SF Mono,Menlo,monospace';
+    cxB.fillText('SGD step '+r[1].toFixed(3),154+Math.max(2,r[1]/maxV*(W-260)),y-3);
+    cxB.fillStyle='#0E9C8F';
+    cxB.fillRect(150,y+3,Math.max(2,r[2]/maxV*(W-260)),13);
+    cxB.fillStyle='#8A94AC';
+    cxB.fillText('RMSProp step '+r[2].toFixed(3),154+Math.max(2,r[2]/maxV*(W-260)),y+14);
+  });
+  $('effx').textContent=(lr/(Math.sqrt(sx)+EPS)).toFixed(3);
+  $('effy').textContent=(lr/(Math.sqrt(sy)+EPS)).toFixed(3);
+}
+/* ---------- ravine ---------- */
+function drawRace(){
+  const W=cvR.width,H=cvR.height,x0=-2.8,x1=2.8,y0=-1.15,y1=1.15;
+  const X=x=>(x-x0)/(x1-x0)*W, Y=y=>H-(y-y0)/(y1-y0)*H;
+  cxR.clearRect(0,0,W,H);
+  cxR.lineWidth=1.2;
+  [0.06,0.25,0.6,1.2,2.2,3.6].forEach((lv,i)=>{
+    const rx=Math.sqrt(2*lv),ry=Math.sqrt(2*lv/A);
+    cxR.strokeStyle='rgba(108,92,231,'+(0.10+i*0.05)+')';
+    cxR.beginPath();cxR.ellipse(X(0),Y(0),rx/(x1-x0)*W,ry/(y1-y0)*H,0,0,7);cxR.stroke();
+  });
+  cxR.fillStyle='#6C5CE7';cxR.beginPath();cxR.arc(X(0),Y(0),4,0,7);cxR.fill();
+  function trail(tr,col){
+    cxR.strokeStyle=col;cxR.lineWidth=2;cxR.beginPath();
+    tr.forEach((p,i)=>i?cxR.lineTo(X(p[0]),Y(p[1])):cxR.moveTo(X(p[0]),Y(p[1])));cxR.stroke();
+    const p=tr[tr.length-1];
+    cxR.beginPath();cxR.arc(X(p[0]),Y(p[1]),6.5,0,7);cxR.fillStyle=col;cxR.fill();
+    cxR.lineWidth=2.5;cxR.strokeStyle='#fff';cxR.stroke();
+  }
+  trail(sgd.tr,'#E8821F');trail(rms.tr,'#0E9C8F');
+  cxR.font='bold 11.5px -apple-system,sans-serif';
+  cxR.fillStyle='#E8821F';cxR.fillText('● SGD',12,18);
+  cxR.fillStyle='#0E9C8F';cxR.fillText('● RMSProp',60,18);
+  $('p-sgd').textContent=f(sgd.x,sgd.y).toFixed(3);
+  $('p-rms').textContent=f(rms.x,rms.y).toFixed(3);
+  $('p-steps').textContent=steps;
+}
+/* ---------- stages ---------- */
+const CODE=[
+ ['class RMSProp(SGD):',''],
+ ['    def __init__(self, params, lr, wd=0.,','g0'],
+ ['                 sqr_mom=0.99, eps=1e-5):','g0'],
+ ['        super().__init__(params, lr=lr, wd=wd)',''],
+ ['        self.sqr_mom = sqr_mom',''],
+ ['        self.eps = eps',''],
+ [''],
+ ['    def opt_step(self, p):',''],
+ ['        if not hasattr(p, "sqr_avg"):','g1'],
+ ['            p.sqr_avg = p.grad ** 2','g1'],
+ [''],
+ ['        p.sqr_avg = (p.sqr_avg * self.sqr_mom','g2'],
+ ['                     + p.grad**2 * (1-self.sqr_mom))','g2'],
+ [''],
+ ['        p -= self.lr * p.grad /','g3'],
+ ['             (p.sqr_avg.sqrt() + self.eps)','g3'],
+];
+const stages=[
+ {title:'⓪ One lr can\u2019t fit all parameters',
+  explain:`<p>In the ravine, the gradient along <b class="t">x</b> is just <code>x</code>, but along
+  <b class="o">y</b> it is <code>15y</code> — fifteen times larger for the same coordinate value. With one global lr,
+  the SGD step along y is fifteen times bigger too (top bars).</p>
+  <p>So you're stuck: an lr small enough to keep y stable makes x painfully slow. Press
+  <b>Race ▶</b> and watch orange either zigzag (big lr) or crawl (small lr).</p>
+  <div class="keybox">What we want: a small lr where gradients are habitually large, a big lr where they are habitually small. "Habitually" is the key word — that's a moving average.</div>`},
+ {title:'① Initialize with grad², not zeros',
+  explain:`<p>Like momentum, RMSProp keeps per-parameter state — but here it's the average of
+  <b>squared</b> gradients, <code>p.sqr_avg</code>.</p>
+  <p>Notice the notebook's subtle choice: it initializes with <code>p.grad ** 2</code> rather than zeros.
+  If it started at zero, <code>√sqr_avg</code> would be ≈ 0 on the first step and the update
+  <code>grad / (√sqr_avg + eps)</code> would be <b class="o">enormous</b> — a training-destroying first jump.
+  Starting at the current grad² makes the first step ≈ lr · sign(grad).</p>
+  <div class="keybox">Adam fixes this same cold-start problem differently — with bias correction. Same disease, two cures.</div>`},
+ {title:'② Track the typical gradient <i>magnitude</i>',
+  explain:`<p><code>sqr_avg ← 0.99·sqr_avg + 0.01·grad²</code>. Squaring throws away the sign —
+  this buffer doesn't care <i>which way</i> the gradient points, only <b>how big it usually is</b>.
+  With sqr_mom = 0.99 it averages over roughly the last 100 gradients.</p>
+  <p>Compare with momentum's buffer, which averages the <i>signed</i> gradients (direction).
+  RMSProp averages the squares (scale). Adam will keep both.</p>
+  <div class="keybox">sqr_avg ≈ (typical gradient size)² — a per-parameter yardstick, updated for free every step.</div>`},
+ {title:'③ Divide — and the scales equalize',
+  explain:`<p>The update divides each gradient by its own yardstick:
+  <code>p −= lr · grad / (√sqr_avg + eps)</code>. If gradients are habitually ±10, we step
+  lr·(grad/10). If habitually ±0.01, we step lr·(grad/0.01). Either way the step is about
+  <b class="p">lr-sized</b> — check the bars: both parameters now take similar steps.</p>
+  <p>The teal readouts show the resulting <i>effective</i> lr per axis. In the race, RMSProp heads
+  almost diagonally to the minimum. (<code>eps</code> just prevents ÷0 when a gradient goes quiet.)</p>
+  <div class="keybox">RMSProp = SGD with a self-tuning, per-parameter learning rate. Because updates are ~lr-sized regardless of gradient scale, the notebook drops lr to 3e-3.</div>`},
+];
+let cur=0;
+function render(){
+  const s=stages[cur];
+  document.querySelectorAll('.rail .st').forEach((el,i)=>{
+    el.classList.toggle('active',i===cur);el.classList.toggle('done',i<cur);});
+  $('stepnum').textContent=`Stage ${cur} / 3`;
+  $('title').innerHTML=s.title;$('explain').innerHTML=s.explain;
+  const codeEl=$('code');codeEl.innerHTML='';
+  for(const line of CODE){
+    const d=document.createElement('div');
+    let cls='cl';
+    if(line[1]==='cm')cls+=' cm';else if(line[1]==='g'+cur)cls+=' hl';
+    d.className=cls;d.textContent=line[0]===''?'\u00A0':line[0];codeEl.appendChild(d);
+  }
+  postH();
+}
+function go(i){cur=Math.max(0,Math.min(3,i));render();}
+/* ---------- play ---------- */
+let playing=false,timer=null;
+const speeds=[0.5,0.75,1,1.5,2,3];
+function stopPlay(){playing=false;if(timer)clearTimeout(timer);$('play').textContent='Race ▶';}
+function tick(){
+  if(!playing)return;
+  const per=Math.round(speeds[+$('spd').value-1]*2);
+  for(let k=0;k<per;k++)raceStep();
+  drawRace();drawBars();
+  if(steps>420){stopPlay();return;}
+  timer=setTimeout(tick,55);
+}
+$('play').addEventListener('click',()=>{
+  if(playing){stopPlay();return;}
+  if(steps>420)initRace();
+  playing=true;$('play').textContent='Pause ⏸';tick();
+});
+$('next').addEventListener('click',()=>go(cur+1));
+$('prev').addEventListener('click',()=>go(cur-1));
+$('reset').addEventListener('click',()=>{stopPlay();initRace();drawRace();drawBars();go(0);});
+$('spd').addEventListener('input',()=>{$('spdv').textContent=speeds[+$('spd').value-1].toFixed(1)+'×';});
+document.querySelectorAll('.rail .st').forEach(el=>{
+  el.addEventListener('click',()=>go(+el.dataset.s));});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')go(cur+1);
+  if(e.key==='ArrowLeft')go(cur-1);});
+$('lr').addEventListener('input',()=>{$('lrv').textContent=(+$('lr').value).toFixed(3);drawBars();});
+/* ---------- responsive + auto-height ---------- */
+const grid=$('grid'),wrap=document.querySelector('.wrap');
+function relayout(){grid.classList.toggle('is-narrow',window.innerWidth<880);}
+function postH(){
+  const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){relayout();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+relayout();drawRace();drawBars();render();
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

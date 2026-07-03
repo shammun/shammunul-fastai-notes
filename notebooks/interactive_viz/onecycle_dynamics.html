@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why 1cycle works — escape sharp minima</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:860px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 16px;margin:18px 0 16px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;
+    padding:9px 18px;transition:transform .12s,box-shadow .12s;}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35)}
+  #play:hover{transform:translateY(-1px)}
+  #prev,#next{background:var(--purple-soft);color:var(--purple)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:9px 8px}
+  .stepnum{color:var(--muted);font-size:13px;font-weight:700;min-width:96px}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:120px}
+
+  .rail{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 16px;}
+  .rail .st{background:#fff;border:2px solid var(--line);border-radius:12px;
+    padding:9px 6px;text-align:center;cursor:pointer;transition:.15s;user-select:none;}
+  .rail .st:hover{border-color:var(--purple)}
+  .rail .st .lab{font-size:12px;font-weight:800;}
+  .rail .st .sh{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+  .rail .st.active{background:var(--purple);border-color:var(--purple);box-shadow:var(--shadow)}
+  .rail .st.active .lab,.rail .st.active .sh{color:#fff}
+  .rail .st.done{background:var(--purple-soft);border-color:var(--purple-soft)}
+
+  .grid{display:grid;grid-template-columns:1.22fr .95fr;gap:18px;align-items:start}
+  .grid>*{min-width:0}
+  .grid.is-narrow{grid-template-columns:1fr}
+
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 14px;}
+  .stage-card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  canvas#cv{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+
+  .knobs{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:13px;color:var(--muted);font-weight:600}
+  .knobs input[type=range]{accent-color:var(--orange);width:130px;vertical-align:middle}
+  .chips{display:flex;gap:6px;align-items:center}
+  .chip{background:#fff;border:2px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--teal)}
+  .chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+
+  .counts{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .pill{background:#F6F8FE;border-radius:10px;padding:7px 13px;text-align:center;min-width:96px}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:16px}
+  .pill .t{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .pill.in .n{color:var(--orange)} .pill.mid .n{color:var(--purple)} .pill.out .n{color:var(--teal)}
+
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .panel+.panel{margin-top:14px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .steptitle{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .explain{color:#33415C}
+  .explain p{margin:0 0 8px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.o{color:var(--orange)} .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)}
+  .keybox{margin-top:8px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13.5px}
+  pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:#F6F8FE;border-radius:12px;padding:11px 0;overflow-x:auto;}
+  .cl{padding:0 15px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:4px solid var(--purple);padding-left:11px;font-weight:700}
+  .cl.cm{color:#8A94AC}
+  footer{margin-top:16px;color:var(--muted);font-size:12.5px;text-align:center}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+  /* tabs */
+  .tabbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+  .tab{background:#fff;border:2px solid var(--line);border-radius:999px;padding:6px 15px;
+    font-size:13px;font-weight:800;cursor:pointer;transition:.15s;user-select:none}
+  .tab:hover{border-color:var(--purple)}
+  .tab.on{background:var(--purple);border-color:var(--purple);color:#fff;box-shadow:var(--shadow-sm)}
+  /* canvas defaults */
+  canvas.pane{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+  .cv-title{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px}
+  /* legend rows (3D race etc) */
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .lg{display:flex;align-items:center;gap:8px;background:#F6F8FE;border:2px solid transparent;
+    border-radius:10px;padding:6px 11px;cursor:pointer;user-select:none;transition:.15s}
+  .lg:hover{border-color:var(--line)}
+  .lg.off{opacity:.38}
+  .lg .dot{width:12px;height:12px;border-radius:50%}
+  .lg .nm{font-size:12.5px;font-weight:800}
+  .lg .vl{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  /* flow / tree boxes */
+  .fcol{display:flex;flex-direction:column;gap:7px}
+  .fbox{background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 12px;
+    font-family:var(--mono);font-size:12.5px;transition:.18s;cursor:pointer;position:relative}
+  .fbox .t{font-family:-apple-system,"Segoe UI",Inter,sans-serif;font-size:10.5px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .fbox:hover{border-color:var(--purple)}
+  .fbox.on{border-color:var(--purple);background:var(--purple-soft);box-shadow:var(--shadow-sm)}
+  .fbox.fire{border-color:var(--orange);background:var(--orange-soft)}
+  .fbox.dim{opacity:.45}
+  .badge{position:absolute;top:-9px;right:10px;background:var(--orange);color:#fff;border-radius:999px;
+    font-size:10px;font-weight:800;padding:2px 9px;opacity:0;transition:opacity .2s}
+  .badge.show{opacity:1}
+  .indent1{margin-left:22px}.indent2{margin-left:44px}.indent3{margin-left:66px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Why 1cycle works — <span class="hl">big steps escape sharp minima</span></h1>
+  <p class="sub">The schedule's shape is only half the story. Here a weight starts next to a
+  <b style="color:var(--orange)">narrow, sharp minimum</b>; a <b style="color:var(--teal)">wide, flat minimum</b> —
+  the kind that generalizes better — lies further away. Press ▶: during the <b>high-lr phase</b>, steps in the
+  sharp valley overshoot wall-to-wall and grow until the ball is <i>thrown out</i>; in the wide valley the same lr
+  is stable. Annealing then settles it gently. Flip to <b>constant lr</b> and watch it stay trapped.</p>
+</header>
+
+<div class="controls">
+  <button id="play">Train ▶</button>
+  <button id="stepb">Step +1</button>
+  <span class="stepnum" id="stepnum">t = 0 / 300</span>
+  <label class="spd">speed <input type="range" id="spd" min="1" max="6" step="1" value="3"><span id="spdv">1.0×</span></label>
+  <button id="reset">Reset</button>
+</div>
+
+<div class="tabbar">
+  <div class="tab on" data-m="oc">1cycle schedule</div>
+  <div class="tab" data-m="const">constant small lr</div>
+</div>
+
+<div class="rail" id="rail" style="grid-template-columns:repeat(4,1fr)">
+  <div class="st" data-s="0"><div class="lab">① warmup</div><div class="sh">careful first steps</div></div>
+  <div class="st" data-s="1"><div class="lab">② high-lr exploration</div><div class="sh">escape the sharp pit</div></div>
+  <div class="st" data-s="2"><div class="lab">③ annealing</div><div class="sh">settle into the wide pit</div></div>
+  <div class="st" data-s="3"><div class="lab">④ momentum counter-cycle</div><div class="sh">0.95 → 0.85 → 0.95</div></div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="stage-card">
+    <h2>The loss landscape — sharp pit vs wide pit</h2>
+    <canvas id="cvL" class="pane" width="680" height="270"></canvas>
+    <div class="cv-title">The schedule driving the ball (cursor = current step)</div>
+    <canvas id="cvS" class="pane" width="680" height="150"></canvas>
+    <div class="counts">
+      <div class="pill in"><div class="n" id="p-lr">—</div><div class="t">lr now</div></div>
+      <div class="pill out"><div class="n" id="p-mom">—</div><div class="t">momentum now</div></div>
+      <div class="pill mid"><div class="n" id="p-where">sharp pit</div><div class="t">ball is in…</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>What is happening</h2>
+      <div class="steptitle" id="title"></div>
+      <div class="explain" id="explain"></div>
+    </div>
+    <div class="panel">
+      <h2>The code, from this notebook</h2>
+      <pre class="code" id="code"></pre>
+    </div>
+  </div>
+</div>
+<footer>The stability rule behind the magic: gradient descent diverges in a valley when roughly lr &gt; 2/curvature (a bit higher with momentum).
+A sharp pit has huge curvature → small divergence threshold; a wide pit has small curvature → same lr is stable.
+The high-lr phase is a <i>filter that only sharp minima fail</i>.</footer>
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const cvL=$('cvL'),cxL=cvL.getContext('2d');
+const cvS=$('cvS'),cxS=cvS.getContext('2d');
+/* ---------- landscape: sharp pit at -1.5, wide pit at 2.4 ---------- */
+function L(w){
+  return 1.9 - 1.25*Math.exp(-Math.pow((w+1.5)/0.34,2))
+             - 1.55*Math.exp(-Math.pow((w-2.4)/1.25,2))
+             + 0.015*w*w;
+}
+function dL(w){
+  return 1.25*Math.exp(-Math.pow((w+1.5)/0.34,2))*2*(w+1.5)/(0.34*0.34)
+       + 1.55*Math.exp(-Math.pow((w-2.4)/1.25,2))*2*(w-2.4)/(1.25*1.25)
+       + 0.03*w;
+}
+/* ---------- schedule ---------- */
+const T=300,PCT=0.3,MAXLR=0.30,CONSTLR=0.012;
+function cosA(s,e,pct){return e+(s-e)/2*(1+Math.cos(Math.PI*pct));}
+let mode='oc';
+function lrAt(t){
+  if(mode==='const')return CONSTLR;
+  const up=Math.round(T*PCT);
+  if(t<=up)return cosA(MAXLR/25,MAXLR,t/up);
+  return cosA(MAXLR,MAXLR/1e4,(t-up)/(T-up));
+}
+function momAt(t){
+  if(mode==='const')return 0.9;
+  const up=Math.round(T*PCT);
+  if(t<=up)return cosA(0.95,0.85,t/up);
+  return cosA(0.85,0.95,(t-up)/(T-up));
+}
+/* ---------- simulation ---------- */
+let t=0,w=-1.62,v=0,hist=[];
+function resetSim(){t=0;w=-1.62;v=0;hist=[[w,L(w)]];}
+resetSim();
+function simStep(){
+  if(t>=T)return;
+  const lr=lrAt(t),m=momAt(t);
+  v=m*v-lr*dL(w);
+  w+=v;
+  w=Math.max(-4.4,Math.min(5.4,w));
+  hist.push([w,L(w)]);
+  if(hist.length>90)hist.shift();
+  t++;
+}
+/* ---------- draw ---------- */
+function drawLand(){
+  const W=cvL.width,H=cvL.height,x0=-4.5,x1=5.5;
+  const X=x=>(x-x0)/(x1-x0)*W, Y=l=>H-30-((l+0.1)/2.35)*(H-58);
+  cxL.clearRect(0,0,W,H);
+  cxL.strokeStyle='#6C5CE7';cxL.lineWidth=2.6;cxL.beginPath();
+  for(let px=0;px<=W;px+=2){const x=x0+(x1-x0)*px/W;px===0?cxL.moveTo(px,Y(L(x))):cxL.lineTo(px,Y(L(x)));}
+  cxL.stroke();
+  // labels
+  cxL.font='bold 11.5px -apple-system,sans-serif';
+  cxL.fillStyle='#E8821F';cxL.fillText('sharp minimum',X(-1.5)-40,Y(L(-1.5))+22);
+  cxL.fillText('(narrow, steep walls)',X(-1.5)-52,Y(L(-1.5))+36);
+  cxL.fillStyle='#0E9C8F';cxL.fillText('wide minimum',X(2.4)-36,Y(L(2.4))+22);
+  cxL.fillText('(flat → generalizes better)',X(2.4)-58,Y(L(2.4))+36);
+  // trail
+  cxL.strokeStyle='rgba(232,130,31,.5)';cxL.lineWidth=1.6;cxL.beginPath();
+  hist.forEach((p,i)=>i?cxL.lineTo(X(p[0]),Y(p[1])):cxL.moveTo(X(p[0]),Y(p[1])));cxL.stroke();
+  hist.slice(-30).forEach((p,i)=>{
+    cxL.globalAlpha=0.12+i/30*0.5;
+    cxL.beginPath();cxL.arc(X(p[0]),Y(p[1]),3,0,7);cxL.fillStyle='#E8821F';cxL.fill();
+  });
+  cxL.globalAlpha=1;
+  // ball
+  cxL.beginPath();cxL.arc(X(w),Y(L(w)),9,0,7);cxL.fillStyle='#6C5CE7';cxL.fill();
+  cxL.lineWidth=3;cxL.strokeStyle='#fff';cxL.stroke();
+  $('p-where').textContent=w<0.4?'sharp pit':'wide pit';
+}
+function drawSched(){
+  const W=cvS.width,H=cvS.height;
+  const X=k=>40+k/T*(W-58), Y=v=>H-24-(v/(MAXLR*1.1))*(H-46);
+  const Ym=v=>H-24-((v-0.84)/0.12)*(H-46);
+  cxS.clearRect(0,0,W,H);
+  cxS.strokeStyle='#DDE5F2';cxS.beginPath();cxS.moveTo(40,Y(0));cxS.lineTo(W-14,Y(0));cxS.stroke();
+  cxS.strokeStyle='#6C5CE7';cxS.lineWidth=2.4;cxS.beginPath();
+  for(let k=0;k<=T;k++){k===0?cxS.moveTo(X(k),Y(lrAt(k))):cxS.lineTo(X(k),Y(lrAt(k)));}
+  cxS.stroke();
+  cxS.setLineDash([5,4]);cxS.strokeStyle='#0E9C8F';cxS.lineWidth=1.8;cxS.beginPath();
+  for(let k=0;k<=T;k++){k===0?cxS.moveTo(X(k),Ym(momAt(k))):cxS.lineTo(X(k),Ym(momAt(k)));}
+  cxS.stroke();cxS.setLineDash([]);
+  cxS.font='bold 10.5px -apple-system,sans-serif';
+  cxS.fillStyle='#6C5CE7';cxS.fillText('lr',44,16);
+  cxS.fillStyle='#0E9C8F';cxS.fillText('momentum (dashed)',70,16);
+  cxS.strokeStyle='#E8821F';cxS.lineWidth=1.6;
+  cxS.beginPath();cxS.moveTo(X(t),Y(0));cxS.lineTo(X(t),16);cxS.stroke();
+  cxS.beginPath();cxS.arc(X(t),Y(lrAt(t)),5.5,0,7);cxS.fillStyle='#E8821F';cxS.fill();
+  cxS.lineWidth=2;cxS.strokeStyle='#fff';cxS.stroke();
+  $('p-lr').textContent=lrAt(t).toFixed(4);
+  $('p-mom').textContent=momAt(t).toFixed(3);
+  $('stepnum').textContent='t = '+t+' / '+T;
+}
+/* ---------- stages (explanations keyed to the rail) ---------- */
+const CODE=[
+ ['lr, epochs = 6e-2, 5   # higher LR than before!','g1'],
+ ['tmax = epochs * len(dls.train)',''],
+ ['sched = partial(lr_scheduler.OneCycleLR,','g0'],
+ ['        max_lr=lr, total_steps=tmax)','g0'],
+ ['#  default pct_start=0.3:','cm'],
+ ['#    30% warmup, 70% annealing','g0 cm'],
+ [''],
+ ['xtra = [BatchSchedCB(sched), rec]',''],
+ ['learn = TrainLearner(model, dls,',''],
+ ['    F.cross_entropy, lr=lr,',''],
+ ['    cbs=cbs+xtra, opt_func=optim.AdamW)','g3'],
+ ['learn.fit(epochs)','g2'],
+ [''],
+ ['# momentum is cycled INVERSELY to lr:','g3 cm'],
+ ['# 0.95 -> 0.85 (at peak lr) -> 0.95','g3 cm'],
+];
+const stages=[
+ {title:'① Warmup — earn the right to big steps',
+  explain:`<p>Right after init, gradients are large and poorly scaled — a huge first step could fling the weights
+  somewhere unrecoverable (and Adam's buffers are still warming up, as the bias-correction viz showed).
+  So 1cycle starts at <code>max_lr/25</code> and cosine-climbs.</p>
+  <p>On the landscape: the ball takes tiny hops <i>inside</i> the sharp pit at first. Nothing dramatic — that's the point.</p>
+  <div class="keybox">Warmup ≈ "don't trust the first gradients too much." It's also why the high peak lr becomes safe at all.</div>`},
+ {title:'② High lr — the sharp-minimum filter',
+  explain:`<p>Near the peak (lr ≈ 0.30 here) watch the ball inside the narrow pit: each step overshoots the floor,
+  the bounce <b>grows</b>, and it gets ejected. The rule: a valley is stable only if
+  <code>lr &lt; 2/curvature</code>. Sharp pit → huge curvature → this lr breaks it. Wide pit → small curvature →
+  the same lr is perfectly stable.</p>
+  <p>So the high-lr phase <i>cannot settle</i> anywhere sharp — it keeps moving until it finds somewhere flat.
+  This is the "exploration" phase, and it's also strong implicit regularization.</p>
+  <div class="keybox">Flat minima tend to generalize better (train & test surfaces differ slightly; a flat floor forgives the shift). High lr finds flat minima by construction.</div>`},
+ {title:'③ Annealing — land the plane',
+  explain:`<p>The long cosine descent to essentially zero. Once the ball is over the wide pit, shrinking steps let it
+  spiral in and stop bouncing — that's when the training loss really drops.</p>
+  <p>Try the <b>constant small lr</b> tab and replay: the ball just polishes the sharp pit forever. Its final loss
+  can even look fine — the damage shows at <i>test</i> time.</p>
+  <div class="keybox">1cycle = one exploration phase + one exploitation phase, glued by cosine ramps. Hence "super-convergence": fewer epochs, higher lr, better minima.</div>`},
+ {title:'④ Momentum runs the opposite cycle',
+  explain:`<p>The teal dashed curve: momentum 0.95 → 0.85 → 0.95. At <b>peak lr</b> the steps are already huge, so
+  momentum backs off (0.85) to avoid compounding them; at the <b>slow ends</b> high momentum (0.95) keeps the ball
+  moving despite tiny lr.</p>
+  <p>In the notebook this is AdamW's β₁ being scheduled — <code>RecorderCB(lr=_lr, mom=_beta1)</code> is what
+  produced the two plots you saw after training.</p>
+  <div class="keybox">lr and momentum both control effective step size ≈ lr/(1−mom). Cycling them oppositely keeps that product from exploding at the peak.</div>`},
+];
+let cur=0;
+function renderStage(){
+  const s=stages[cur];
+  document.querySelectorAll('.rail .st').forEach((el,i)=>{
+    el.classList.toggle('active',i===cur);el.classList.toggle('done',i<cur);});
+  $('title').textContent=s.title;$('explain').innerHTML=s.explain;
+  const codeEl=$('code');codeEl.innerHTML='';
+  for(const line of CODE){
+    const tags=(line[1]||'').split(' ');
+    const d=document.createElement('div');
+    let cls='cl';
+    if(tags.includes('cm'))cls+=' cm';
+    if(tags.includes('g'+cur))cls+=' hl';
+    d.className=cls;d.textContent=line[0]===''?'\u00A0':line[0];codeEl.appendChild(d);
+  }
+  postH();
+}
+function stageForT(k){
+  if(mode==='const')return cur;
+  const up=Math.round(T*PCT);
+  if(k<up*0.85)return 0;
+  if(k<up+T*0.18)return 1;
+  return 2;
+}
+/* ---------- play ---------- */
+let playing=false,timer=null;
+const speeds=[0.5,0.75,1,1.5,2,3];
+function stopPlay(){playing=false;if(timer)clearTimeout(timer);$('play').textContent='Train ▶';}
+function tick(){
+  if(!playing)return;
+  const per=Math.round(speeds[+$('spd').value-1]*2);
+  for(let k=0;k<per;k++)simStep();
+  const st=stageForT(t);
+  if(st!==cur&&mode==='oc'){cur=st;renderStage();}
+  drawLand();drawSched();
+  if(t>=T){stopPlay();return;}
+  timer=setTimeout(tick,50);
+}
+$('play').addEventListener('click',()=>{
+  if(playing){stopPlay();return;}
+  if(t>=T)resetSim();
+  playing=true;$('play').textContent='Pause ⏸';tick();
+});
+$('stepb').addEventListener('click',()=>{stopPlay();simStep();drawLand();drawSched();});
+$('reset').addEventListener('click',()=>{stopPlay();resetSim();cur=0;renderStage();drawLand();drawSched();});
+$('spd').addEventListener('input',()=>{$('spdv').textContent=speeds[+$('spd').value-1].toFixed(1)+'×';});
+document.querySelectorAll('.rail .st').forEach(el=>{
+  el.addEventListener('click',()=>{cur=+el.dataset.s;renderStage();});});
+document.querySelectorAll('.tab').forEach(x=>{
+  x.addEventListener('click',()=>{
+    stopPlay();mode=x.dataset.m;
+    document.querySelectorAll('.tab').forEach(y=>y.classList.toggle('on',y===x));
+    resetSim();drawLand();drawSched();
+  });
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){stopPlay();simStep();drawLand();drawSched();}
+});
+/* responsive + auto-height */
+const grid=$('grid'),wrap=document.querySelector('.wrap');
+function relayout(){grid.classList.toggle('is-narrow',window.innerWidth<880);}
+function postH(){
+  const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){relayout();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+relayout();renderStage();drawLand();drawSched();
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scheduler callbacks — when does sched.step() fire?</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:860px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 16px;margin:18px 0 16px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;
+    padding:9px 18px;transition:transform .12s,box-shadow .12s;}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35)}
+  #play:hover{transform:translateY(-1px)}
+  #prev,#next{background:var(--purple-soft);color:var(--purple)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:9px 8px}
+  .stepnum{color:var(--muted);font-size:13px;font-weight:700;min-width:96px}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:120px}
+
+  .rail{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 16px;}
+  .rail .st{background:#fff;border:2px solid var(--line);border-radius:12px;
+    padding:9px 6px;text-align:center;cursor:pointer;transition:.15s;user-select:none;}
+  .rail .st:hover{border-color:var(--purple)}
+  .rail .st .lab{font-size:12px;font-weight:800;}
+  .rail .st .sh{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+  .rail .st.active{background:var(--purple);border-color:var(--purple);box-shadow:var(--shadow)}
+  .rail .st.active .lab,.rail .st.active .sh{color:#fff}
+  .rail .st.done{background:var(--purple-soft);border-color:var(--purple-soft)}
+
+  .grid{display:grid;grid-template-columns:1.22fr .95fr;gap:18px;align-items:start}
+  .grid>*{min-width:0}
+  .grid.is-narrow{grid-template-columns:1fr}
+
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 14px;}
+  .stage-card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  canvas#cv{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+
+  .knobs{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:13px;color:var(--muted);font-weight:600}
+  .knobs input[type=range]{accent-color:var(--orange);width:130px;vertical-align:middle}
+  .chips{display:flex;gap:6px;align-items:center}
+  .chip{background:#fff;border:2px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--teal)}
+  .chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+
+  .counts{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .pill{background:#F6F8FE;border-radius:10px;padding:7px 13px;text-align:center;min-width:96px}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:16px}
+  .pill .t{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .pill.in .n{color:var(--orange)} .pill.mid .n{color:var(--purple)} .pill.out .n{color:var(--teal)}
+
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .panel+.panel{margin-top:14px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .steptitle{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .explain{color:#33415C}
+  .explain p{margin:0 0 8px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.o{color:var(--orange)} .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)}
+  .keybox{margin-top:8px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13.5px}
+  pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:#F6F8FE;border-radius:12px;padding:11px 0;overflow-x:auto;}
+  .cl{padding:0 15px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:4px solid var(--purple);padding-left:11px;font-weight:700}
+  .cl.cm{color:#8A94AC}
+  footer{margin-top:16px;color:var(--muted);font-size:12.5px;text-align:center}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+  /* tabs */
+  .tabbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+  .tab{background:#fff;border:2px solid var(--line);border-radius:999px;padding:6px 15px;
+    font-size:13px;font-weight:800;cursor:pointer;transition:.15s;user-select:none}
+  .tab:hover{border-color:var(--purple)}
+  .tab.on{background:var(--purple);border-color:var(--purple);color:#fff;box-shadow:var(--shadow-sm)}
+  /* canvas defaults */
+  canvas.pane{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+  .cv-title{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px}
+  /* legend rows (3D race etc) */
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .lg{display:flex;align-items:center;gap:8px;background:#F6F8FE;border:2px solid transparent;
+    border-radius:10px;padding:6px 11px;cursor:pointer;user-select:none;transition:.15s}
+  .lg:hover{border-color:var(--line)}
+  .lg.off{opacity:.38}
+  .lg .dot{width:12px;height:12px;border-radius:50%}
+  .lg .nm{font-size:12.5px;font-weight:800}
+  .lg .vl{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  /* flow / tree boxes */
+  .fcol{display:flex;flex-direction:column;gap:7px}
+  .fbox{background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 12px;
+    font-family:var(--mono);font-size:12.5px;transition:.18s;cursor:pointer;position:relative}
+  .fbox .t{font-family:-apple-system,"Segoe UI",Inter,sans-serif;font-size:10.5px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .fbox:hover{border-color:var(--purple)}
+  .fbox.on{border-color:var(--purple);background:var(--purple-soft);box-shadow:var(--shadow-sm)}
+  .fbox.fire{border-color:var(--orange);background:var(--orange-soft)}
+  .fbox.dim{opacity:.45}
+  .badge{position:absolute;top:-9px;right:10px;background:var(--orange);color:#fff;border-radius:999px;
+    font-size:10px;font-weight:800;padding:2px 9px;opacity:0;transition:opacity .2s}
+  .badge.show{opacity:1}
+  .indent1{margin-left:22px}.indent2{margin-left:44px}.indent3{margin-left:66px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Scheduler callbacks — <span class="hl">watch sched.step() fire inside the loop</span></h1>
+  <p class="sub">The Learner runs the training loop; the callbacks decide <b>when the scheduler ticks</b>.
+  Press ▶ and follow the highlight through <b style="color:var(--purple)">2 epochs × 4 batches</b> —
+  every time <code>after_batch</code> (or <code>after_epoch</code>) fires, the
+  <b style="color:var(--orange)">sched.step()</b> badge flashes and the lr dot drops down the cosine curve.
+  <b>Click any box</b> in the loop to jump straight to that moment. Switch the mode to compare rhythms.</p>
+</header>
+
+<div class="controls">
+  <button id="prev">← Back</button>
+  <button id="play">Play ▶</button>
+  <button id="next">Next →</button>
+  <span class="stepnum" id="stepnum"></span>
+  <label class="spd">speed <input type="range" id="spd" min="1" max="6" step="1" value="3"><span id="spdv">1.0×</span></label>
+  <button id="reset">Reset</button>
+</div>
+
+<div class="tabbar">
+  <div class="tab on" data-m="batch">BatchSchedCB — step every batch</div>
+  <div class="tab" data-m="epoch">EpochSchedCB — step every epoch</div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="stage-card">
+    <h2>The training loop — click a box to jump there</h2>
+    <div class="fcol" id="flow">
+      <div class="fbox" data-p="fit"><div class="t">learn.fit → before_fit</div>schedo = self.sched(learn.opt)&nbsp;&nbsp;<i style="color:#8A94AC"># scheduler created HERE</i></div>
+      <div class="fbox indent1" data-p="epoch"><div class="t">epoch loop</div>for epoch in range(<b>2</b>): &nbsp;<span id="ep-ind" style="color:#6C5CE7;font-weight:800"></span></div>
+      <div class="fbox indent2" data-p="batch"><div class="t">batch loop</div>for xb, yb in dls.train: &nbsp;<span id="bt-ind" style="color:#6C5CE7;font-weight:800"></span></div>
+      <div class="fbox indent3" data-p="fwd">preds = model(xb); loss = loss_func(preds, yb)</div>
+      <div class="fbox indent3" data-p="bwd">loss.backward()</div>
+      <div class="fbox indent3" data-p="opt">opt.step(); opt.zero_grad()</div>
+      <div class="fbox indent3" data-p="ab"><div class="t">callbacks: after_batch</div><span id="ab-txt">BatchSchedCB.after_batch → _step → sched.step()</span><span class="badge" id="bdg-b">sched.step()!</span></div>
+      <div class="fbox indent2" data-p="ae"><div class="t">callbacks: after_epoch</div><span id="ae-txt">EpochSchedCB.after_epoch → _step → sched.step()</span><span class="badge" id="bdg-e">sched.step()!</span></div>
+    </div>
+    <div class="counts">
+      <div class="pill mid"><div class="n" id="p-loc">—</div><div class="t">position</div></div>
+      <div class="pill in"><div class="n" id="p-calls">0</div><div class="t">sched.step() calls</div></div>
+      <div class="pill out"><div class="n" id="p-lr">—</div><div class="t">current lr</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>lr as the loop runs (cosine annealing)</h2>
+      <canvas id="cv" class="pane" width="560" height="190"></canvas>
+    </div>
+    <div class="panel">
+      <h2>The callback code, from this notebook</h2>
+      <pre class="code" id="code"></pre>
+    </div>
+    <div class="panel">
+      <h2>Why this design is clever</h2>
+      <div class="explain" id="explain"></div>
+    </div>
+  </div>
+</div>
+<footer>Note the guard in <code>_step</code>: <code>if learn.training</code> — validation batches also trigger
+<code>after_batch</code>, and without that check the lr would silently decay during evaluation too.</footer>
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+const E=2,B=4;
+const PHASES=['fwd','bwd','opt','ab'];     // per batch
+let mode='batch';
+/* timeline: array of {p, e, b} micro-steps */
+let TL=[];
+function buildTL(){
+  TL=[{p:'fit',e:-1,b:-1}];
+  for(let e=0;e<E;e++){
+    TL.push({p:'epoch',e,b:-1});
+    for(let b=0;b<B;b++){
+      TL.push({p:'batch',e,b});
+      PHASES.forEach(p=>TL.push({p,e,b}));
+    }
+    TL.push({p:'ae',e,b:B-1});
+  }
+}
+buildTL();
+let idx=0;
+function schedCalls(i){ // how many sched.step() so far at timeline index i
+  let n=0;
+  for(let k=0;k<=i;k++){
+    const s=TL[k];
+    if(mode==='batch'&&s.p==='ab')n++;
+    if(mode==='epoch'&&s.p==='ae')n++;
+  }
+  return n;
+}
+function Tmax(){return mode==='batch'?E*B:E;}
+function lrAt(n){n=Math.min(n,Tmax());return 0.5*0.06*(1+Math.cos(Math.PI*n/Tmax()));}
+/* ---------- draw lr canvas ---------- */
+function drawLR(){
+  const W=cv.width,H=cv.height,T=Tmax();
+  const X=t=>44+t/T*(W-62), Y=v=>H-28-(v/0.068)*(H-52);
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='#DDE5F2';ctx.beginPath();ctx.moveTo(44,Y(0));ctx.lineTo(W-14,Y(0));ctx.stroke();
+  ctx.fillStyle='#8A94AC';ctx.font='10px SF Mono,Menlo,monospace';
+  ctx.fillText('0.06',10,Y(0.06)+4);ctx.fillText('0',24,Y(0)+4);
+  ctx.fillText(mode==='batch'?'sched.step() count (batches) →':'sched.step() count (epochs) →',W-210,Y(0)+16);
+  ctx.strokeStyle='#B9AEF5';ctx.lineWidth=1.8;ctx.beginPath();
+  for(let t=0;t<=T*20;t++){const x=t/20;t===0?ctx.moveTo(X(x),Y(lrAt(x))):ctx.lineTo(X(x),Y(lrAt(x)));}
+  ctx.stroke();
+  // discrete points actually visited
+  const n=schedCalls(idx);
+  ctx.fillStyle='#6C5CE7';
+  for(let k=0;k<=n;k++){ctx.beginPath();ctx.arc(X(k),Y(lrAt(k)),3.4,0,7);ctx.fill();}
+  ctx.beginPath();ctx.arc(X(n),Y(lrAt(n)),7,0,7);ctx.fillStyle='#E8821F';ctx.fill();
+  ctx.lineWidth=2.5;ctx.strokeStyle='#fff';ctx.stroke();
+}
+/* ---------- render flow ---------- */
+const CODE=[
+ ['class BaseSchedCB(Callback):',''],
+ ['    def __init__(self, sched):',''],
+ ['        self.sched = sched      # a CLASS','hFit'],
+ ['    def before_fit(self, learn):','hFit'],
+ ['        self.schedo = self.sched(learn.opt)','hFit'],
+ ['    def _step(self, learn):','hStep'],
+ ['        if learn.training:','hStep'],
+ ['            self.schedo.step()','hStep'],
+ [''],
+ ['class BatchSchedCB(BaseSchedCB):','mb'],
+ ['    def after_batch(self, learn):','mb hAB'],
+ ['        self._step(learn)','mb hAB'],
+ [''],
+ ['class EpochSchedCB(BaseSchedCB):','me'],
+ ['    def after_epoch(self, learn):','me hAE'],
+ ['        self._step(learn)','me hAE'],
+];
+const EXPLAIN={
+ batch:`<p><b class="p">Separation of concerns.</b> The scheduler knows math; the callback knows <i>timing</i>;
+ the Learner knows neither. Swap <code>BatchSchedCB</code> for <code>EpochSchedCB</code> and nothing else changes —
+ not the model, not the loop, not the scheduler class.</p>
+ <p>With batch-wise stepping and T_max = epochs × batches = <b>8</b>, the lr glides smoothly — each of the 8
+ batches lands one dot further down the cosine.</p>`,
+ epoch:`<p>Same loop, same scheduler class — but now <code>sched.step()</code> fires only at
+ <b class="o">after_epoch</b>, and T_max = epochs = <b>2</b>. The lr is frozen for all 4 batches of an epoch,
+ then drops. Watch the counter: 8 batches pass but only 2 scheduler ticks happen.</p>
+ <p>Neither is "wrong" — but T_max must match the rhythm you chose. The classic bug is batch-wise stepping with
+ an epoch-sized T_max (here: 3): the lr hits zero after just 3 <i>batches</i> — and since
+ CosineAnnealingLR is periodic past T_max, it then climbs back up!</p>`,
+};
+function render(){
+  const s=TL[idx];
+  document.querySelectorAll('#flow .fbox').forEach(b=>{
+    b.classList.toggle('on',b.dataset.p===s.p);
+    b.classList.remove('fire');
+  });
+  const firing=(mode==='batch'&&s.p==='ab')||(mode==='epoch'&&s.p==='ae');
+  if(firing)document.querySelector('#flow .fbox[data-p='+s.p+']').classList.add('fire');
+  $('bdg-b').classList.toggle('show',mode==='batch'&&s.p==='ab');
+  $('bdg-e').classList.toggle('show',mode==='epoch'&&s.p==='ae');
+  $('ab-txt').innerHTML=mode==='batch'
+    ?'BatchSchedCB.after_batch → _step → <b style="color:#E8821F">sched.step()</b>'
+    :'<i style="color:#8A94AC">(no scheduler callback listens here in epoch mode)</i>';
+  $('ae-txt').innerHTML=mode==='epoch'
+    ?'EpochSchedCB.after_epoch → _step → <b style="color:#E8821F">sched.step()</b>'
+    :'<i style="color:#8A94AC">(no scheduler callback listens here in batch mode)</i>';
+  $('ep-ind').textContent=s.e>=0?('# epoch '+s.e):'';
+  $('bt-ind').textContent=s.b>=0?('# batch '+s.b):'';
+  const n=schedCalls(idx);
+  $('p-loc').textContent=s.e<0?'before_fit':('e'+s.e+(s.b>=0?' · b'+s.b:''));
+  $('p-calls').textContent=n;
+  $('p-lr').textContent=lrAt(n).toFixed(4);
+  $('stepnum').textContent='micro-step '+idx+' / '+(TL.length-1);
+  // code highlighting
+  let key='';
+  if(s.p==='fit')key='hFit';
+  else if(firing&&s.p==='ab')key='hAB';
+  else if(firing&&s.p==='ae')key='hAE';
+  if(s.p==='ab'&&mode==='batch')key='hAB';
+  if(s.p==='ae'&&mode==='epoch')key='hAE';
+  const codeEl=$('code');codeEl.innerHTML='';
+  for(const line of CODE){
+    const tags=(line[1]||'').split(' ');
+    const d=document.createElement('div');
+    let cls='cl';
+    if(tags.includes('cm'))cls+=' cm';
+    if(key&&tags.includes(key))cls+=' hl';
+    if((key==='hAB'||key==='hAE')&&tags.includes('hStep'))cls+=' hl';
+    if((tags.includes('mb')&&mode!=='batch')||(tags.includes('me')&&mode!=='epoch'))d.style.opacity='.4';
+    d.className=cls;d.textContent=line[0]===''?'\u00A0':line[0];codeEl.appendChild(d);
+  }
+  drawLR();postH();
+}
+function go(i){idx=Math.max(0,Math.min(TL.length-1,i));render();}
+/* clicking flow boxes: jump to nearest matching micro-step at/after current position */
+document.querySelectorAll('#flow .fbox').forEach(b=>{
+  b.addEventListener('click',()=>{
+    stopPlay();
+    const p=b.dataset.p;
+    // search forward from current, wrapping
+    for(let k=1;k<=TL.length;k++){
+      const j=(idx+k)%TL.length;
+      if(TL[j].p===p){go(j);return;}
+    }
+  });
+});
+/* play */
+let playing=false,timer=null;
+const speeds=[0.5,0.75,1,1.5,2,3];
+function stopPlay(){playing=false;if(timer)clearTimeout(timer);$('play').textContent='Play ▶';}
+function tick(){
+  if(!playing)return;
+  if(idx>=TL.length-1){stopPlay();return;}
+  go(idx+1);
+  timer=setTimeout(tick,650/speeds[+$('spd').value-1]);
+}
+$('play').addEventListener('click',()=>{
+  if(playing){stopPlay();return;}
+  if(idx>=TL.length-1)go(0);
+  playing=true;$('play').textContent='Pause ⏸';
+  timer=setTimeout(tick,400/speeds[+$('spd').value-1]);
+});
+$('next').addEventListener('click',()=>{stopPlay();go(idx+1);});
+$('prev').addEventListener('click',()=>{stopPlay();go(idx-1);});
+$('reset').addEventListener('click',()=>{stopPlay();go(0);});
+$('spd').addEventListener('input',()=>{$('spdv').textContent=speeds[+$('spd').value-1].toFixed(1)+'×';});
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    stopPlay();mode=t.dataset.m;
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));
+    $('explain').innerHTML=EXPLAIN[mode];
+    go(0);
+  });
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){stopPlay();go(idx+1);}
+  if(e.key==='ArrowLeft'){stopPlay();go(idx-1);}});
+/* responsive + auto-height */
+const grid=$('grid'),wrap=document.querySelector('.wrap');
+function relayout(){grid.classList.toggle('is-narrow',window.innerWidth<880);}
+function postH(){
+  const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){relayout();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+relayout();$('explain').innerHTML=EXPLAIN[mode];go(0);
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

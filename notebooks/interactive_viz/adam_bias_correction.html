@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adam — momentum + RMSProp + bias correction</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:860px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 16px;margin:18px 0 16px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;
+    padding:9px 18px;transition:transform .12s,box-shadow .12s;}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35)}
+  #play:hover{transform:translateY(-1px)}
+  #prev,#next{background:var(--purple-soft);color:var(--purple)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:9px 8px}
+  .stepnum{color:var(--muted);font-size:13px;font-weight:700;min-width:96px}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:120px}
+
+  .rail{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 16px;}
+  .rail .st{background:#fff;border:2px solid var(--line);border-radius:12px;
+    padding:9px 6px;text-align:center;cursor:pointer;transition:.15s;user-select:none;}
+  .rail .st:hover{border-color:var(--purple)}
+  .rail .st .lab{font-size:12px;font-weight:800;}
+  .rail .st .sh{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+  .rail .st.active{background:var(--purple);border-color:var(--purple);box-shadow:var(--shadow)}
+  .rail .st.active .lab,.rail .st.active .sh{color:#fff}
+  .rail .st.done{background:var(--purple-soft);border-color:var(--purple-soft)}
+
+  .grid{display:grid;grid-template-columns:1.22fr .95fr;gap:18px;align-items:start}
+  .grid>*{min-width:0}
+  .grid.is-narrow{grid-template-columns:1fr}
+
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 14px;}
+  .stage-card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  canvas#cv{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+
+  .knobs{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:13px;color:var(--muted);font-weight:600}
+  .knobs input[type=range]{accent-color:var(--orange);width:130px;vertical-align:middle}
+  .chips{display:flex;gap:6px;align-items:center}
+  .chip{background:#fff;border:2px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--teal)}
+  .chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+
+  .counts{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .pill{background:#F6F8FE;border-radius:10px;padding:7px 13px;text-align:center;min-width:96px}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:16px}
+  .pill .t{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .pill.in .n{color:var(--orange)} .pill.mid .n{color:var(--purple)} .pill.out .n{color:var(--teal)}
+
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .panel+.panel{margin-top:14px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .steptitle{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .explain{color:#33415C}
+  .explain p{margin:0 0 8px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.o{color:var(--orange)} .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)}
+  .keybox{margin-top:8px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13.5px}
+  pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:#F6F8FE;border-radius:12px;padding:11px 0;overflow-x:auto;}
+  .cl{padding:0 15px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:4px solid var(--purple);padding-left:11px;font-weight:700}
+  .cl.cm{color:#8A94AC}
+  footer{margin-top:16px;color:var(--muted);font-size:12.5px;text-align:center}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+  /* tabs */
+  .tabbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+  .tab{background:#fff;border:2px solid var(--line);border-radius:999px;padding:6px 15px;
+    font-size:13px;font-weight:800;cursor:pointer;transition:.15s;user-select:none}
+  .tab:hover{border-color:var(--purple)}
+  .tab.on{background:var(--purple);border-color:var(--purple);color:#fff;box-shadow:var(--shadow-sm)}
+  /* canvas defaults */
+  canvas.pane{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+  .cv-title{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px}
+  /* legend rows (3D race etc) */
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .lg{display:flex;align-items:center;gap:8px;background:#F6F8FE;border:2px solid transparent;
+    border-radius:10px;padding:6px 11px;cursor:pointer;user-select:none;transition:.15s}
+  .lg:hover{border-color:var(--line)}
+  .lg.off{opacity:.38}
+  .lg .dot{width:12px;height:12px;border-radius:50%}
+  .lg .nm{font-size:12.5px;font-weight:800}
+  .lg .vl{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  /* flow / tree boxes */
+  .fcol{display:flex;flex-direction:column;gap:7px}
+  .fbox{background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 12px;
+    font-family:var(--mono);font-size:12.5px;transition:.18s;cursor:pointer;position:relative}
+  .fbox .t{font-family:-apple-system,"Segoe UI",Inter,sans-serif;font-size:10.5px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .fbox:hover{border-color:var(--purple)}
+  .fbox.on{border-color:var(--purple);background:var(--purple-soft);box-shadow:var(--shadow-sm)}
+  .fbox.fire{border-color:var(--orange);background:var(--orange-soft)}
+  .fbox.dim{opacity:.45}
+  .badge{position:absolute;top:-9px;right:10px;background:var(--orange);color:#fff;border-radius:999px;
+    font-size:10px;font-weight:800;padding:2px 9px;opacity:0;transition:opacity .2s}
+  .badge.show{opacity:1}
+  .indent1{margin-left:22px}.indent2{margin-left:44px}.indent3{margin-left:66px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Adam — <span class="hl">and why the bias correction matters</span></h1>
+  <p class="sub">Adam keeps <b style="color:var(--orange)">both</b> buffers: momentum's average gradient
+  (<code>p.avg</code>, "which way") and RMSProp's average squared gradient (<code>p.sqr_avg</code>, "how big").
+  Both start at <b>zero</b> — so early in training both are <b style="color:var(--orange)">biased toward zero</b>.
+  Dividing by <code>1 − β<sup>t</sup></code> undoes that bias exactly. Drag the <b>t slider</b> to see it, and walk
+  the rail to follow the code.</p>
+</header>
+
+<div class="controls">
+  <button id="prev">← Back</button>
+  <button id="play">Play ▶</button>
+  <button id="next">Next →</button>
+  <span class="stepnum" id="stepnum">Stage 0 / 4</span>
+  <label class="spd">speed <input type="range" id="spd" min="1" max="6" step="1" value="3"><span id="spdv">1.0×</span></label>
+  <button id="reset">Reset</button>
+</div>
+
+<div class="rail" id="rail" style="grid-template-columns:repeat(5,1fr)">
+  <div class="st" data-s="0"><div class="lab">⓪ two buffers</div><div class="sh">avg, sqr_avg = 0</div></div>
+  <div class="st" data-s="1"><div class="lab">① momentum EMA</div><div class="sh">β₁ = 0.9</div></div>
+  <div class="st" data-s="2"><div class="lab">② squared EMA</div><div class="sh">β₂ = 0.99</div></div>
+  <div class="st" data-s="3"><div class="lab">③ bias-correct</div><div class="sh">÷ (1 − βᵗ)</div></div>
+  <div class="st" data-s="4"><div class="lab">④ the step</div><div class="sh">lr·m̂ / (√v̂ + ε)</div></div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="stage-card">
+    <h2>An EMA that starts at zero underestimates — until we un-bias it</h2>
+    <canvas id="cvM" class="pane" width="680" height="240"></canvas>
+    <div class="knobs">
+      <label>step t <input type="range" id="t" min="1" max="60" step="1" value="3"><b id="tv" style="color:var(--purple)">3</b></label>
+      <span class="chips">β
+        <span class="chip on" data-b="0.9">0.9</span>
+        <span class="chip" data-b="0.99">0.99</span>
+      </span>
+    </div>
+    <div class="cv-title">The correction factor 1 / (1 − βᵗ) — huge at first, fades to 1</div>
+    <canvas id="cvF" class="pane" width="680" height="150"></canvas>
+    <div class="counts">
+      <div class="pill in"><div class="n" id="p-raw">—</div><div class="t">raw EMA</div></div>
+      <div class="pill mid"><div class="n" id="p-fac">—</div><div class="t">÷(1−βᵗ)</div></div>
+      <div class="pill out"><div class="n" id="p-cor">—</div><div class="t">corrected</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>What is happening</h2>
+      <div class="steptitle" id="title"></div>
+      <div class="explain" id="explain"></div>
+    </div>
+    <div class="panel">
+      <h2>The code, from this notebook's <span style="text-transform:none">Adam</span> class</h2>
+      <pre class="code" id="code"></pre>
+    </div>
+  </div>
+</div>
+<footer>The demo feeds a constant true gradient of 1.0. The raw EMA (orange) equals exactly 1 − βᵗ — so dividing by
+(1 − βᵗ) recovers 1.0 <i>perfectly</i> at every t. That's not luck; it's algebra, and it works for any gradient stream on average.</footer>
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const cvM=$('cvM'),cxM=cvM.getContext('2d');
+const cvF=$('cvF'),cxF=cvF.getContext('2d');
+let beta=0.9;
+const TMAX=60, TRUE=1.0;
+
+function drawMain(){
+  const t=+$('t').value;
+  const W=cvM.width,H=cvM.height;
+  const X=k=>44+(k-1)/(TMAX-1)*(W-64), Y=v=>H-26-(v/1.25)*(H-52);
+  cxM.clearRect(0,0,W,H);
+  cxM.strokeStyle='#DDE5F2';cxM.beginPath();cxM.moveTo(44,Y(0));cxM.lineTo(W-14,Y(0));cxM.stroke();
+  cxM.fillStyle='#8A94AC';cxM.font='10.5px SF Mono,Menlo,monospace';
+  cxM.fillText('0',26,Y(0)+4);cxM.fillText('1.0',20,Y(1)+4);cxM.fillText('t →',W-34,Y(0)+15);
+  // true gradient
+  cxM.setLineDash([5,4]);cxM.strokeStyle='#9AA6BF';cxM.lineWidth=1.6;
+  cxM.beginPath();cxM.moveTo(44,Y(TRUE));cxM.lineTo(W-14,Y(TRUE));cxM.stroke();cxM.setLineDash([]);
+  cxM.fillStyle='#64748B';cxM.font='bold 11px -apple-system,sans-serif';
+  cxM.fillText('true gradient = 1.0',W-160,Y(TRUE)-7);
+  // raw EMA: m_t = 1 - beta^t   (EMA of constant 1 starting from 0)
+  cxM.strokeStyle='#E8821F';cxM.lineWidth=2.6;cxM.beginPath();
+  for(let k=1;k<=TMAX;k++){const v=1-Math.pow(beta,k);k===1?cxM.moveTo(X(k),Y(v)):cxM.lineTo(X(k),Y(v));}
+  cxM.stroke();
+  cxM.fillStyle='#E8821F';cxM.fillText('raw EMA  m_t = 1 − βᵗ  (starts at ~0: biased!)',52,26);
+  // corrected: exactly 1
+  cxM.strokeStyle='#0E9C8F';cxM.lineWidth=2.6;cxM.beginPath();
+  cxM.moveTo(X(1),Y(1));cxM.lineTo(X(TMAX),Y(1));cxM.stroke();
+  cxM.fillStyle='#0E9C8F';cxM.fillText('corrected  m̂ = m_t / (1 − βᵗ)  — spot-on from step 1',52,Y(1)-10);
+  // cursor
+  const raw=1-Math.pow(beta,t), fac=1/(1-Math.pow(beta,t));
+  cxM.strokeStyle='#6C5CE7';cxM.lineWidth=1.5;cxM.setLineDash([3,3]);
+  cxM.beginPath();cxM.moveTo(X(t),Y(0));cxM.lineTo(X(t),Y(1.18));cxM.stroke();cxM.setLineDash([]);
+  cxM.beginPath();cxM.arc(X(t),Y(raw),6,0,7);cxM.fillStyle='#E8821F';cxM.fill();
+  cxM.lineWidth=2.5;cxM.strokeStyle='#fff';cxM.stroke();
+  cxM.beginPath();cxM.arc(X(t),Y(1),6,0,7);cxM.fillStyle='#0E9C8F';cxM.fill();cxM.strokeStyle='#fff';cxM.stroke();
+  $('p-raw').textContent=raw.toFixed(3);
+  $('p-fac').textContent='×'+fac.toFixed(2);
+  $('p-cor').textContent=(raw*fac).toFixed(3);
+}
+function drawFactor(){
+  const t=+$('t').value;
+  const W=cvF.width,H=cvF.height;
+  const X=k=>44+(k-1)/(TMAX-1)*(W-64);
+  const Yl=v=>H-22-(Math.log10(v)/2)*(H-44);   // log scale 1..100
+  cxF.clearRect(0,0,W,H);
+  cxF.strokeStyle='#DDE5F2';
+  [1,10,100].forEach(v=>{cxF.beginPath();cxF.moveTo(44,Yl(v));cxF.lineTo(W-14,Yl(v));cxF.stroke();
+    cxF.fillStyle='#8A94AC';cxF.font='10.5px SF Mono,Menlo,monospace';cxF.fillText('×'+v,12,Yl(v)+4);});
+  [[0.9,'#6C5CE7','β=0.9'],[0.99,'#E84393','β=0.99']].forEach(cf=>{
+    cxF.strokeStyle=cf[1];cxF.lineWidth=cf[0]===beta?3:1.7;
+    cxF.globalAlpha=cf[0]===beta?1:.5;
+    cxF.beginPath();
+    for(let k=1;k<=TMAX;k++){const v=Math.min(100,1/(1-Math.pow(cf[0],k)));
+      k===1?cxF.moveTo(X(k),Yl(v)):cxF.lineTo(X(k),Yl(v));}
+    cxF.stroke();cxF.globalAlpha=1;
+    cxF.fillStyle=cf[1];cxF.font='bold 11px -apple-system,sans-serif';
+    cxF.fillText(cf[2],X(4)+(cf[0]===0.99?38:0),Yl(1/(1-Math.pow(cf[0],4)))-6);
+  });
+  cxF.strokeStyle='#6C5CE7';cxF.setLineDash([3,3]);cxF.lineWidth=1.2;
+  cxF.beginPath();cxF.moveTo(X(t),Yl(1));cxF.lineTo(X(t),Yl(100));cxF.stroke();cxF.setLineDash([]);
+}
+/* ---------- stages ---------- */
+const CODE=[
+ ['class Adam(SGD):',''],
+ ['    def opt_step(self, p):',''],
+ ['        if not hasattr(p, "avg"):','g0'],
+ ['            p.avg = torch.zeros_like(p.grad)','g0'],
+ ['        if not hasattr(p, "sqr_avg"):','g0'],
+ ['            p.sqr_avg = torch.zeros_like(p.grad)','g0'],
+ [''],
+ ['        p.avg = (self.beta1*p.avg','g1'],
+ ['                 + (1-self.beta1)*p.grad)','g1'],
+ ['        unbias_avg = p.avg /','g3'],
+ ['            (1 - self.beta1**(self.i+1))','g3'],
+ [''],
+ ['        p.sqr_avg = (self.beta2*p.sqr_avg','g2'],
+ ['                 + (1-self.beta2)*p.grad**2)','g2'],
+ ['        unbias_sqr_avg = p.sqr_avg /','g3'],
+ ['            (1 - self.beta2**(self.i+1))','g3'],
+ [''],
+ ['        p -= self.lr * unbias_avg /','g4'],
+ ['             (unbias_sqr_avg.sqrt() + self.eps)','g4'],
+];
+const stages=[
+ {title:'⓪ Two buffers, both born at zero',
+  explain:`<p>Adam is literally <b class="p">Momentum + RMSProp</b> living on the same parameter:
+  <code>p.avg</code> tracks the average gradient (direction), <code>p.sqr_avg</code> tracks the average
+  squared gradient (scale). Both are initialized to <b>zeros</b>.</p>
+  <p>Zeros are convenient — but a lie. The gradients aren't zero; we just haven't seen any yet.
+  Every early average will be dragged toward that fake starting value.</p>
+  <div class="keybox">RMSProp dodged this by initializing with grad². Adam keeps the zeros and fixes the arithmetic instead.</div>`},
+ {title:'① The momentum buffer (first moment)',
+  explain:`<p><code>avg ← β₁·avg + (1−β₁)·grad</code> with β₁ = 0.9 — identical to the Momentum class.</p>
+  <p>Follow the <b class="o">orange curve</b>: we feed a constant true gradient of 1.0, yet at t = 1
+  the buffer reads only 1−β₁ = <b>0.1</b>. At t = 3 it reads 0.27. It takes ~20 steps to get close
+  to the truth. Early steps using this raw value would be ~10× too timid.</p>
+  <div class="keybox">The lag isn't noise — it's a predictable bias: with a constant signal, m_t is exactly (1 − β₁ᵗ) × truth.</div>`},
+ {title:'② The squared buffer (second moment)',
+  explain:`<p><code>sqr_avg ← β₂·sqr_avg + (1−β₂)·grad²</code> with β₂ = 0.99 — identical to RMSProp,
+  and biased the same way, only <b>worse</b>: at t = 1 it holds just 1% of the true magnitude.</p>
+  <p>And this buffer sits in a <b class="o">denominator</b>. An underestimated √v̂ means the step
+  <code>lr·m̂/√v̂</code> gets <b>inflated</b> — switch the β chip to 0.99 and check the factor plot:
+  the needed correction starts at ×100.</p>
+  <div class="keybox">Uncorrected Adam would take wild, huge first steps — exactly when the model is most fragile (right after init).</div>`},
+ {title:'③ Divide by (1 − βᵗ) — the exact antidote',
+  explain:`<p>For a steady signal g, the EMA after t steps is <code>(1 − βᵗ)·g</code> — pure algebra
+  (sum the geometric series of weights). So dividing by <code>(1 − βᵗ)</code> recovers g
+  <b class="t">exactly</b>: the teal line is flat at 1.0 from the very first step.</p>
+  <p>Scrub <b>t</b>: at t = 1 the factor is ×10 (β=0.9) or ×100 (β=0.99); by t = 50 it's ≈ ×1 and the
+  correction quietly vanishes. In the code, <code>self.i</code> — the step counter inherited from
+  SGD — is what makes this possible.</p>
+  <div class="keybox">Bias correction is temporary scaffolding: enormous at step 1, invisible by step 100.</div>`},
+ {title:'④ The Adam step',
+  explain:`<p><code>p −= lr · m̂ / (√v̂ + ε)</code> — momentum's <b class="p">direction</b>,
+  RMSProp's <b class="t">per-parameter scaling</b>, both de-biased.</p>
+  <p>Because √v̂ ≈ typical gradient size, the update is roughly lr-sized for every parameter —
+  which is why Adam's default lr (the notebook uses 6e-3) is so much smaller than SGD's, and why it
+  transfers between problems so well. One caveat you already met in the SGD viz: with Adam,
+  weight decay ≠ L2 — hence <code>optim.AdamW</code> later in this notebook.</p>
+  <div class="keybox">Adam = EMA(grad) ÷ √EMA(grad²), each divided by (1 − βᵗ). Every piece of that formula is now on screen.</div>`},
+];
+let cur=0;
+function render(){
+  const s=stages[cur];
+  document.querySelectorAll('.rail .st').forEach((el,i)=>{
+    el.classList.toggle('active',i===cur);el.classList.toggle('done',i<cur);});
+  $('stepnum').textContent=`Stage ${cur} / 4`;
+  $('title').innerHTML=s.title;$('explain').innerHTML=s.explain;
+  const codeEl=$('code');codeEl.innerHTML='';
+  for(const line of CODE){
+    const d=document.createElement('div');
+    let cls='cl';
+    if(line[1]==='cm')cls+=' cm';else if(line[1]==='g'+cur)cls+=' hl';
+    d.className=cls;d.textContent=line[0]===''?'\u00A0':line[0];codeEl.appendChild(d);
+  }
+  postH();
+}
+function go(i){cur=Math.max(0,Math.min(4,i));render();}
+/* play cycles stages AND advances t */
+let playing=false,timer=null;
+const speeds=[0.5,0.75,1,1.5,2,3];
+function stopPlay(){playing=false;if(timer)clearTimeout(timer);$('play').textContent='Play ▶';}
+function tick(){
+  if(!playing)return;
+  if(cur>=4){
+    // then sweep t
+    const t=+$('t').value;
+    if(t>=TMAX){stopPlay();return;}
+    $('t').value=t+2;$('tv').textContent=$('t').value;drawMain();drawFactor();
+  }else go(cur+1);
+  timer=setTimeout(tick,(cur>=4?140:1500)/speeds[+$('spd').value-1]);
+}
+$('play').addEventListener('click',()=>{
+  if(playing){stopPlay();return;}
+  if(cur>=4&&+$('t').value>=TMAX){go(0);$('t').value=1;$('tv').textContent='1';drawMain();drawFactor();}
+  playing=true;$('play').textContent='Pause ⏸';
+  timer=setTimeout(tick,700/speeds[+$('spd').value-1]);
+});
+$('next').addEventListener('click',()=>{stopPlay();go(cur+1);});
+$('prev').addEventListener('click',()=>{stopPlay();go(cur-1);});
+$('reset').addEventListener('click',()=>{stopPlay();$('t').value=3;$('tv').textContent='3';go(0);drawMain();drawFactor();});
+$('spd').addEventListener('input',()=>{$('spdv').textContent=speeds[+$('spd').value-1].toFixed(1)+'×';});
+document.querySelectorAll('.rail .st').forEach(el=>{
+  el.addEventListener('click',()=>{stopPlay();go(+el.dataset.s);});});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){stopPlay();go(cur+1);}
+  if(e.key==='ArrowLeft'){stopPlay();go(cur-1);}});
+$('t').addEventListener('input',()=>{$('tv').textContent=$('t').value;drawMain();drawFactor();});
+document.querySelectorAll('.chip').forEach(c=>{
+  c.addEventListener('click',()=>{
+    document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+    c.classList.add('on');beta=+c.dataset.b;drawMain();drawFactor();});});
+/* responsive + auto-height */
+const grid=$('grid'),wrap=document.querySelector('.wrap');
+function relayout(){grid.classList.toggle('is-narrow',window.innerWidth<880);}
+function postH(){
+  const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){relayout();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+relayout();drawMain();drawFactor();render();
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

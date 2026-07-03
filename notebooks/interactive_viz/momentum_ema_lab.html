@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Momentum &amp; EMA Lab</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:860px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 16px;margin:18px 0 16px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;
+    padding:9px 18px;transition:transform .12s,box-shadow .12s;}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35)}
+  #play:hover{transform:translateY(-1px)}
+  #prev,#next{background:var(--purple-soft);color:var(--purple)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:9px 8px}
+  .stepnum{color:var(--muted);font-size:13px;font-weight:700;min-width:96px}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:120px}
+
+  .rail{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 16px;}
+  .rail .st{background:#fff;border:2px solid var(--line);border-radius:12px;
+    padding:9px 6px;text-align:center;cursor:pointer;transition:.15s;user-select:none;}
+  .rail .st:hover{border-color:var(--purple)}
+  .rail .st .lab{font-size:12px;font-weight:800;}
+  .rail .st .sh{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+  .rail .st.active{background:var(--purple);border-color:var(--purple);box-shadow:var(--shadow)}
+  .rail .st.active .lab,.rail .st.active .sh{color:#fff}
+  .rail .st.done{background:var(--purple-soft);border-color:var(--purple-soft)}
+
+  .grid{display:grid;grid-template-columns:1.22fr .95fr;gap:18px;align-items:start}
+  .grid>*{min-width:0}
+  .grid.is-narrow{grid-template-columns:1fr}
+
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 14px;}
+  .stage-card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  canvas#cv{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+
+  .knobs{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:13px;color:var(--muted);font-weight:600}
+  .knobs input[type=range]{accent-color:var(--orange);width:130px;vertical-align:middle}
+  .chips{display:flex;gap:6px;align-items:center}
+  .chip{background:#fff;border:2px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--teal)}
+  .chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+
+  .counts{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .pill{background:#F6F8FE;border-radius:10px;padding:7px 13px;text-align:center;min-width:96px}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:16px}
+  .pill .t{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .pill.in .n{color:var(--orange)} .pill.mid .n{color:var(--purple)} .pill.out .n{color:var(--teal)}
+
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .panel+.panel{margin-top:14px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .steptitle{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .explain{color:#33415C}
+  .explain p{margin:0 0 8px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.o{color:var(--orange)} .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)}
+  .keybox{margin-top:8px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13.5px}
+  pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:#F6F8FE;border-radius:12px;padding:11px 0;overflow-x:auto;}
+  .cl{padding:0 15px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:4px solid var(--purple);padding-left:11px;font-weight:700}
+  .cl.cm{color:#8A94AC}
+  footer{margin-top:16px;color:var(--muted);font-size:12.5px;text-align:center}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+  /* tabs */
+  .tabbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+  .tab{background:#fff;border:2px solid var(--line);border-radius:999px;padding:6px 15px;
+    font-size:13px;font-weight:800;cursor:pointer;transition:.15s;user-select:none}
+  .tab:hover{border-color:var(--purple)}
+  .tab.on{background:var(--purple);border-color:var(--purple);color:#fff;box-shadow:var(--shadow-sm)}
+  /* canvas defaults */
+  canvas.pane{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+  .cv-title{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px}
+  /* legend rows (3D race etc) */
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .lg{display:flex;align-items:center;gap:8px;background:#F6F8FE;border:2px solid transparent;
+    border-radius:10px;padding:6px 11px;cursor:pointer;user-select:none;transition:.15s}
+  .lg:hover{border-color:var(--line)}
+  .lg.off{opacity:.38}
+  .lg .dot{width:12px;height:12px;border-radius:50%}
+  .lg .nm{font-size:12.5px;font-weight:800}
+  .lg .vl{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  /* flow / tree boxes */
+  .fcol{display:flex;flex-direction:column;gap:7px}
+  .fbox{background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 12px;
+    font-family:var(--mono);font-size:12.5px;transition:.18s;cursor:pointer;position:relative}
+  .fbox .t{font-family:-apple-system,"Segoe UI",Inter,sans-serif;font-size:10.5px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .fbox:hover{border-color:var(--purple)}
+  .fbox.on{border-color:var(--purple);background:var(--purple-soft);box-shadow:var(--shadow-sm)}
+  .fbox.fire{border-color:var(--orange);background:var(--orange-soft)}
+  .fbox.dim{opacity:.45}
+  .badge{position:absolute;top:-9px;right:10px;background:var(--orange);color:#fff;border-radius:999px;
+    font-size:10px;font-weight:800;padding:2px 9px;opacity:0;transition:opacity .2s}
+  .badge.show{opacity:1}
+  .indent1{margin-left:22px}.indent2{margin-left:44px}.indent3{margin-left:66px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Momentum — <span class="hl">average the gradients, kill the zigzag</span></h1>
+  <p class="sub">Mini-batch gradients are <b style="color:var(--orange)">noisy</b>, and in narrow "ravine" losses plain SGD
+  <b style="color:var(--orange)">zigzags</b> across the walls instead of moving along the floor. Momentum fixes both with one trick:
+  keep an <b style="color:var(--purple)">exponential moving average</b> of gradients —
+  <code>grad_avg = mom·grad_avg + (1−mom)·grad</code> — and step with the <i>average</i>.
+  Use the rail to walk the algorithm (code lights up on the right); press <b>Race ▶</b> to run SGD vs Momentum live.</p>
+</header>
+
+<div class="controls">
+  <button id="prev">← Back</button>
+  <button id="play">Race ▶</button>
+  <button id="next">Next →</button>
+  <span class="stepnum" id="stepnum">Stage 0 / 3</span>
+  <label class="spd">speed <input type="range" id="spd" min="1" max="6" step="1" value="3"><span id="spdv">1.0×</span></label>
+  <button id="reset">Reset</button>
+</div>
+
+<div class="rail" id="rail" style="grid-template-columns:repeat(4,1fr)">
+  <div class="st" data-s="0"><div class="lab">⓪ the problem</div><div class="sh">noise + zigzag</div></div>
+  <div class="st" data-s="1"><div class="lab">① init the buffer</div><div class="sh">grad_avg = zeros</div></div>
+  <div class="st" data-s="2"><div class="lab">② EMA update</div><div class="sh">mom·avg + (1−mom)·g</div></div>
+  <div class="st" data-s="3"><div class="lab">③ step with the average</div><div class="sh">p −= lr · grad_avg</div></div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="stage-card">
+    <h2>1 · EMA of a noisy gradient signal</h2>
+    <canvas id="cvE" class="pane" width="680" height="170"></canvas>
+    <div class="knobs">
+      <label>mom (β) <input type="range" id="beta" min="0.5" max="0.99" step="0.01" value="0.9"><b id="betav" style="color:var(--purple)">0.90</b></label>
+      <span style="color:var(--muted)">raw gradients in <b style="color:var(--orange)">orange</b>, EMA in <b style="color:var(--purple)">purple</b>, true trend dashed</span>
+    </div>
+    <div class="cv-title">2 · SGD vs Momentum in a ravine &nbsp; f(x, y) = ½(x² + 15y²)</div>
+    <canvas id="cvR" class="pane" width="680" height="300"></canvas>
+    <div class="knobs">
+      <label>lr <input type="range" id="lr" min="0.02" max="0.15" step="0.005" value="0.13"><b id="lrv" style="color:var(--orange)">0.130</b></label>
+      <span style="color:var(--muted)">same lr for both — momentum uses the β slider above</span>
+    </div>
+    <div class="counts">
+      <div class="pill in"><div class="n" id="p-sgd">—</div><div class="t">SGD loss</div></div>
+      <div class="pill mid"><div class="n" id="p-mom">—</div><div class="t">Momentum loss</div></div>
+      <div class="pill out"><div class="n" id="p-steps">0</div><div class="t">steps</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>What is happening</h2>
+      <div class="steptitle" id="title"></div>
+      <div class="explain" id="explain"></div>
+    </div>
+    <div class="panel">
+      <h2>The code, from this notebook's <span style="text-transform:none">Momentum</span> class</h2>
+      <pre class="code" id="code"></pre>
+    </div>
+  </div>
+</div>
+<footer>The stability rule: SGD diverges in a direction once lr × curvature &gt; 2 (here: lr &gt; 2/15 ≈ 0.133).
+Averaging lets Momentum stay stable well beyond that — which is exactly why the notebook trains at lr = 1.5 with
+momentum vs 0.4 without.</footer>
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const cvE=$('cvE'),cxE=cvE.getContext('2d');
+const cvR=$('cvR'),cxR=cvR.getContext('2d');
+
+/* ---------- seeded noise ---------- */
+let seed=42;
+function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
+function gauss(){return (rnd()+rnd()+rnd()+rnd()-2)*1.7;}
+seed=42;
+const N=90, trueG=[], rawG=[];
+for(let t=0;t<N;t++){const tr=1.4+1.1*Math.sin(t/13);trueG.push(tr);rawG.push(tr+gauss()*0.9);}
+
+/* ---------- EMA canvas ---------- */
+function drawEMA(){
+  const beta=+$('beta').value;
+  const W=cvE.width,H=cvE.height,lo=-1.5,hi=4.2;
+  const X=t=>28+t/(N-1)*(W-40), Y=v=>H-16-(v-lo)/(hi-lo)*(H-30);
+  cxE.clearRect(0,0,W,H);
+  cxE.strokeStyle='#DDE5F2';cxE.beginPath();cxE.moveTo(28,Y(0));cxE.lineTo(W-10,Y(0));cxE.stroke();
+  cxE.fillStyle='#8A94AC';cxE.font='10px SF Mono,Menlo,monospace';cxE.fillText('g_t',6,16);cxE.fillText('t →',W-30,Y(0)+13);
+  // true trend
+  cxE.setLineDash([4,4]);cxE.strokeStyle='#9AA6BF';cxE.lineWidth=1.5;cxE.beginPath();
+  trueG.forEach((v,t)=>t?cxE.lineTo(X(t),Y(v)):cxE.moveTo(X(t),Y(v)));cxE.stroke();cxE.setLineDash([]);
+  // raw
+  cxE.strokeStyle='rgba(232,130,31,.55)';cxE.lineWidth=1.4;cxE.beginPath();
+  rawG.forEach((v,t)=>t?cxE.lineTo(X(t),Y(v)):cxE.moveTo(X(t),Y(v)));cxE.stroke();
+  // EMA
+  let a=0;cxE.strokeStyle='#6C5CE7';cxE.lineWidth=2.6;cxE.beginPath();
+  for(let t=0;t<N;t++){a=beta*a+(1-beta)*rawG[t];t?cxE.lineTo(X(t),Y(a)):cxE.moveTo(X(t),Y(a));}
+  cxE.stroke();
+  cxE.fillStyle='#6C5CE7';cxE.font='bold 11px -apple-system,sans-serif';
+  cxE.fillText('β = '+beta.toFixed(2)+'  (higher β → smoother, but lags more)',34,14);
+}
+
+/* ---------- ravine race ---------- */
+const A=15;                                 // f = .5(x² + A y²)
+function f(x,y){return .5*(x*x+A*y*y);}
+const start={x:-2.45,y:0.85};
+let sgd,mom,steps;
+function initRace(){sgd={x:start.x,y:start.y,tr:[[start.x,start.y]]};
+  mom={x:start.x,y:start.y,ax:0,ay:0,tr:[[start.x,start.y]]};steps=0;}
+initRace();
+function raceStep(){
+  const lr=+$('lr').value, b=+$('beta').value;
+  // SGD
+  sgd.x-=lr*sgd.x; sgd.y-=lr*A*sgd.y;
+  sgd.x=Math.max(-3,Math.min(3,sgd.x)); sgd.y=Math.max(-1.4,Math.min(1.4,sgd.y));
+  sgd.tr.push([sgd.x,sgd.y]);
+  // Momentum (EMA form, exactly like the notebook)
+  mom.ax=b*mom.ax+(1-b)*mom.x;  mom.ay=b*mom.ay+(1-b)*A*mom.y;
+  mom.x-=lr*mom.ax; mom.y-=lr*mom.ay;
+  mom.x=Math.max(-3,Math.min(3,mom.x)); mom.y=Math.max(-1.4,Math.min(1.4,mom.y));
+  mom.tr.push([mom.x,mom.y]);
+  if(sgd.tr.length>500)sgd.tr.shift();
+  if(mom.tr.length>500)mom.tr.shift();
+  steps++;
+}
+function drawRace(){
+  const W=cvR.width,H=cvR.height,x0=-2.8,x1=2.8,y0=-1.15,y1=1.15;
+  const X=x=>(x-x0)/(x1-x0)*W, Y=y=>H-(y-y0)/(y1-y0)*H;
+  cxR.clearRect(0,0,W,H);
+  // contours (ellipses of constant f)
+  cxR.lineWidth=1.2;
+  [0.06,0.25,0.6,1.2,2.2,3.6].forEach((lv,i)=>{
+    const rx=Math.sqrt(2*lv), ry=Math.sqrt(2*lv/A);
+    cxR.strokeStyle='rgba(108,92,231,'+(0.10+i*0.05)+')';
+    cxR.beginPath();cxR.ellipse(X(0),Y(0),rx/(x1-x0)*W,ry/(y1-y0)*H,0,0,7);cxR.stroke();
+  });
+  cxR.fillStyle='#6C5CE7';cxR.beginPath();cxR.arc(X(0),Y(0),4,0,7);cxR.fill();
+  cxR.fillStyle='#8A94AC';cxR.font='10.5px SF Mono,Menlo,monospace';cxR.fillText('minimum',X(0)+8,Y(0)-6);
+  // trails
+  function trail(tr,col){
+    cxR.strokeStyle=col;cxR.lineWidth=2;cxR.beginPath();
+    tr.forEach((p,i)=>i?cxR.lineTo(X(p[0]),Y(p[1])):cxR.moveTo(X(p[0]),Y(p[1])));cxR.stroke();
+    const p=tr[tr.length-1];
+    cxR.beginPath();cxR.arc(X(p[0]),Y(p[1]),6.5,0,7);cxR.fillStyle=col;cxR.fill();
+    cxR.lineWidth=2.5;cxR.strokeStyle='#fff';cxR.stroke();
+  }
+  trail(sgd.tr,'#E8821F'); trail(mom.tr,'#6C5CE7');
+  cxR.font='bold 11.5px -apple-system,sans-serif';
+  cxR.fillStyle='#E8821F';cxR.fillText('● SGD',12,18);
+  cxR.fillStyle='#6C5CE7';cxR.fillText('● Momentum',60,18);
+  $('p-sgd').textContent=f(sgd.x,sgd.y).toFixed(3);
+  $('p-mom').textContent=f(mom.x,mom.y).toFixed(3);
+  $('p-steps').textContent=steps;
+}
+
+/* ---------- stages ---------- */
+const CODE=[
+ ['class Momentum(SGD):',''],
+ ['    def __init__(self, params, lr, wd=0., mom=0.9):','g0'],
+ ['        super().__init__(params, lr=lr, wd=wd)',''],
+ ['        self.mom = mom','g0'],
+ [''],
+ ['    def opt_step(self, p):',''],
+ ['        if not hasattr(p, "grad_avg"):','g1'],
+ ['            p.grad_avg = torch.zeros_like(p.grad)','g1'],
+ [''],
+ ['        p.grad_avg = (p.grad_avg * self.mom','g2'],
+ ['                      + p.grad * (1 - self.mom))','g2'],
+ [''],
+ ['        p -= self.lr * p.grad_avg','g3'],
+];
+const stages=[
+ {title:'⓪ Two problems, one cause',
+  explain:`<p><b>Problem 1 — noise.</b> Each mini-batch gives a slightly different gradient
+  (orange line, top chart). Following it exactly means following the noise.</p>
+  <p><b>Problem 2 — zigzag.</b> In the ravine below, the gradient is dominated by the steep
+  <b class="o">up/down</b> direction (15y) even though progress requires the gentle
+  <b class="p">left-right</b> direction (x). Press <b>Race ▶</b>: plain SGD bounces wall-to-wall.</p>
+  <div class="keybox">Both problems share a cure: successive gradients disagree in the noisy/steep direction but agree in the useful one — so average them.</div>`},
+ {title:'① Lazily create the buffer',
+  explain:`<p>The running average has to live somewhere. The notebook stores it <b>directly on the
+  parameter tensor</b> as <code>p.grad_avg</code> — created on the first step, initialized to
+  <b class="p">zeros</b>.</p>
+  <p>This "state attached to each parameter" idea is exactly what PyTorch formalizes as
+  <code>opt.state</code> (you'll open that box later in this notebook) — e.g. <code>momentum_buffer</code>.</p>
+  <div class="keybox">Optimizer state is lazy: it doesn't exist until the first step needs it.</div>`},
+ {title:'② The EMA update',
+  explain:`<p>Each step blends the buffer with the fresh gradient:
+  <code>avg ← mom·avg + (1−mom)·grad</code>. With mom = 0.9, the new gradient contributes only
+  <b class="o">10%</b> — the other 90% is history.</p>
+  <p>Drag the <b class="p">β slider</b> and watch the purple line: higher β → smoother (noise cancels)
+  but laggier (it takes longer to notice the trend changed). β = 0.9 averages over roughly the last
+  1/(1−β) = 10 gradients.</p>
+  <div class="keybox">In the ravine: the +y and −y gradient components alternate signs, so they cancel in the average — the x components all agree, so they survive. Zigzag dies, progress lives.</div>`},
+ {title:'③ Step with the average',
+  explain:`<p>The update is unchanged except for what we step with:
+  <code>p −= lr · grad_avg</code> instead of <code>p −= lr · grad</code>.</p>
+  <p>Because the wall-to-wall bouncing is cancelled, the <b>same lr is now stable at much higher
+  values</b> — in the notebook, momentum trains at lr = 1.5 where plain SGD needed 0.4.</p>
+  <p>For this ravine, plain SGD is only stable while lr &lt; 2/15 ≈ <b>0.133</b>. The default 0.13 sits
+  just under it (maximum zigzag); push the slider to <b>0.15</b> and race again — SGD blows up and slams
+  the walls, Momentum sails through.</p>
+  <div class="keybox">Momentum = SGD on the EMA of gradients. One buffer, three lines of code, dramatically faster training.</div>`},
+];
+let cur=0;
+function render(){
+  const s=stages[cur];
+  document.querySelectorAll('.rail .st').forEach((el,i)=>{
+    el.classList.toggle('active',i===cur);el.classList.toggle('done',i<cur);});
+  $('stepnum').textContent=`Stage ${cur} / 3`;
+  $('title').textContent=s.title;$('explain').innerHTML=s.explain;
+  const codeEl=$('code');codeEl.innerHTML='';
+  for(const line of CODE){
+    const d=document.createElement('div');
+    let cls='cl';
+    if(line[1]==='cm')cls+=' cm';else if(line[1]==='g'+cur)cls+=' hl';
+    d.className=cls;d.textContent=line[0]===''?'\u00A0':line[0];codeEl.appendChild(d);
+  }
+  postH();
+}
+function go(i){cur=Math.max(0,Math.min(3,i));render();}
+
+/* ---------- play (runs the race) ---------- */
+let playing=false,timer=null;
+const speeds=[0.5,0.75,1,1.5,2,3];
+function stopPlay(){playing=false;if(timer)clearTimeout(timer);$('play').textContent='Race ▶';}
+function tick(){
+  if(!playing)return;
+  const per=Math.round(speeds[+$('spd').value-1]*2);
+  for(let k=0;k<per;k++)raceStep();
+  drawRace();
+  if(steps>420){stopPlay();return;}
+  timer=setTimeout(tick,55);
+}
+$('play').addEventListener('click',()=>{
+  if(playing){stopPlay();return;}
+  if(steps>420)initRace();
+  playing=true;$('play').textContent='Pause ⏸';tick();
+});
+$('next').addEventListener('click',()=>go(cur+1));
+$('prev').addEventListener('click',()=>go(cur-1));
+$('reset').addEventListener('click',()=>{stopPlay();initRace();drawRace();go(0);});
+$('spd').addEventListener('input',()=>{$('spdv').textContent=speeds[+$('spd').value-1].toFixed(1)+'×';});
+document.querySelectorAll('.rail .st').forEach(el=>{
+  el.addEventListener('click',()=>go(+el.dataset.s));});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')go(cur+1);
+  if(e.key==='ArrowLeft')go(cur-1);});
+$('beta').addEventListener('input',()=>{$('betav').textContent=(+$('beta').value).toFixed(2);drawEMA();});
+$('lr').addEventListener('input',()=>{$('lrv').textContent=(+$('lr').value).toFixed(3);});
+
+/* ---------- responsive + auto-height ---------- */
+const grid=$('grid'),wrap=document.querySelector('.wrap');
+function relayout(){grid.classList.toggle('is-narrow',window.innerWidth<880);}
+function postH(){
+  const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){relayout();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+relayout();drawEMA();drawRace();render();
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

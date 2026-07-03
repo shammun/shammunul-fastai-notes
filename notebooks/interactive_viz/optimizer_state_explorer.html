@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inside a PyTorch optimizer — param_groups & state</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:860px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 16px;margin:18px 0 16px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;
+    padding:9px 18px;transition:transform .12s,box-shadow .12s;}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35)}
+  #play:hover{transform:translateY(-1px)}
+  #prev,#next{background:var(--purple-soft);color:var(--purple)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:9px 8px}
+  .stepnum{color:var(--muted);font-size:13px;font-weight:700;min-width:96px}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:120px}
+
+  .rail{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 16px;}
+  .rail .st{background:#fff;border:2px solid var(--line);border-radius:12px;
+    padding:9px 6px;text-align:center;cursor:pointer;transition:.15s;user-select:none;}
+  .rail .st:hover{border-color:var(--purple)}
+  .rail .st .lab{font-size:12px;font-weight:800;}
+  .rail .st .sh{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+  .rail .st.active{background:var(--purple);border-color:var(--purple);box-shadow:var(--shadow)}
+  .rail .st.active .lab,.rail .st.active .sh{color:#fff}
+  .rail .st.done{background:var(--purple-soft);border-color:var(--purple-soft)}
+
+  .grid{display:grid;grid-template-columns:1.22fr .95fr;gap:18px;align-items:start}
+  .grid>*{min-width:0}
+  .grid.is-narrow{grid-template-columns:1fr}
+
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 14px;}
+  .stage-card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  canvas#cv{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+
+  .knobs{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:13px;color:var(--muted);font-weight:600}
+  .knobs input[type=range]{accent-color:var(--orange);width:130px;vertical-align:middle}
+  .chips{display:flex;gap:6px;align-items:center}
+  .chip{background:#fff;border:2px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--teal)}
+  .chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+
+  .counts{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .pill{background:#F6F8FE;border-radius:10px;padding:7px 13px;text-align:center;min-width:96px}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:16px}
+  .pill .t{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .pill.in .n{color:var(--orange)} .pill.mid .n{color:var(--purple)} .pill.out .n{color:var(--teal)}
+
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .panel+.panel{margin-top:14px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .steptitle{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .explain{color:#33415C}
+  .explain p{margin:0 0 8px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.o{color:var(--orange)} .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)}
+  .keybox{margin-top:8px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13.5px}
+  pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:#F6F8FE;border-radius:12px;padding:11px 0;overflow-x:auto;}
+  .cl{padding:0 15px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:4px solid var(--purple);padding-left:11px;font-weight:700}
+  .cl.cm{color:#8A94AC}
+  footer{margin-top:16px;color:var(--muted);font-size:12.5px;text-align:center}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+  /* tabs */
+  .tabbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+  .tab{background:#fff;border:2px solid var(--line);border-radius:999px;padding:6px 15px;
+    font-size:13px;font-weight:800;cursor:pointer;transition:.15s;user-select:none}
+  .tab:hover{border-color:var(--purple)}
+  .tab.on{background:var(--purple);border-color:var(--purple);color:#fff;box-shadow:var(--shadow-sm)}
+  /* canvas defaults */
+  canvas.pane{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+  .cv-title{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px}
+  /* legend rows (3D race etc) */
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .lg{display:flex;align-items:center;gap:8px;background:#F6F8FE;border:2px solid transparent;
+    border-radius:10px;padding:6px 11px;cursor:pointer;user-select:none;transition:.15s}
+  .lg:hover{border-color:var(--line)}
+  .lg.off{opacity:.38}
+  .lg .dot{width:12px;height:12px;border-radius:50%}
+  .lg .nm{font-size:12.5px;font-weight:800}
+  .lg .vl{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  /* flow / tree boxes */
+  .fcol{display:flex;flex-direction:column;gap:7px}
+  .fbox{background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 12px;
+    font-family:var(--mono);font-size:12.5px;transition:.18s;cursor:pointer;position:relative}
+  .fbox .t{font-family:-apple-system,"Segoe UI",Inter,sans-serif;font-size:10.5px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .fbox:hover{border-color:var(--purple)}
+  .fbox.on{border-color:var(--purple);background:var(--purple-soft);box-shadow:var(--shadow-sm)}
+  .fbox.fire{border-color:var(--orange);background:var(--orange-soft)}
+  .fbox.dim{opacity:.45}
+  .badge{position:absolute;top:-9px;right:10px;background:var(--orange);color:#fff;border-radius:999px;
+    font-size:10px;font-weight:800;padding:2px 9px;opacity:0;transition:opacity .2s}
+  .badge.show{opacity:1}
+  .indent1{margin-left:22px}.indent2{margin-left:44px}.indent3{margin-left:66px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Inside <span class="hl">learn.opt</span> — param_groups, state, and lazy creation</h1>
+  <p class="sub">An optimizer object is just <b>two dictionaries wrapped in a class</b>:
+  <code>param_groups</code> (the <b style="color:var(--purple)">settings</b> — lr, momentum, and which tensors they apply to)
+  and <code>state</code> (the <b style="color:var(--orange)">per-parameter buffers</b> — created lazily, on the first
+  <code>step()</code>). Click any box in the diagram, or walk the stages — the matching exploration code from this
+  notebook lights up on the right.</p>
+</header>
+
+<div class="controls">
+  <button id="prev">← Back</button>
+  <button id="play">Play ▶</button>
+  <button id="next">Next →</button>
+  <span class="stepnum" id="stepnum">Stage 0 / 4</span>
+  <label class="spd">speed <input type="range" id="spd" min="1" max="6" step="1" value="3"><span id="spdv">1.0×</span></label>
+  <button id="reset">Reset</button>
+</div>
+
+<div class="rail" id="rail" style="grid-template-columns:repeat(5,1fr)">
+  <div class="st" data-s="0"><div class="lab">⓪ create</div><div class="sh">optim.SGD(params, …)</div></div>
+  <div class="st" data-s="1"><div class="lab">① param_groups</div><div class="sh">the settings</div></div>
+  <div class="st" data-s="2"><div class="lab">② state (empty!)</div><div class="sh">nothing yet…</div></div>
+  <div class="st" data-s="3"><div class="lab">③ first step()</div><div class="sh">buffers appear</div></div>
+  <div class="st" data-s="4"><div class="lab">④ state_dict()</div><div class="sh">checkpointing</div></div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="stage-card">
+    <h2>The object, drawn — click any box</h2>
+    <div class="fcol">
+      <div class="fbox" data-k="opt"><div class="t">the optimizer</div>opt = optim.SGD(model.parameters(), lr=0.1, momentum=0.9)</div>
+      <div class="fbox indent1" data-k="pg"><div class="t">opt.param_groups — list of dicts (settings)</div>
+        [{ 'lr': <b id="lr-live" style="color:#6C5CE7">0.1</b>, 'momentum': 0.9, 'weight_decay': 0,<br>&nbsp;&nbsp;&nbsp;'params': [w1, b1, w2, b2, …] }]</div>
+      <div class="fbox indent1" data-k="st"><div class="t">opt.state — dict: parameter ➜ its buffers</div>
+        <span id="state-body">{}&nbsp;&nbsp;<i style="color:#8A94AC"># empty — no step taken yet</i></span>
+        <span class="badge" id="bdg">created by step()!</span></div>
+      <div class="fbox indent1" data-k="sd"><div class="t">opt.state_dict() — everything above, as plain data</div>
+        {'state': {…buffers…}, 'param_groups': [{…settings…}]}</div>
+    </div>
+    <div class="counts">
+      <div class="pill mid"><div class="n" id="p-groups">1</div><div class="t">param groups</div></div>
+      <div class="pill in"><div class="n" id="p-state">0</div><div class="t">state entries</div></div>
+      <div class="pill out"><div class="n" id="p-steps">0</div><div class="t">step() calls</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>What is happening</h2>
+      <div class="steptitle" id="title"></div>
+      <div class="explain" id="explain"></div>
+    </div>
+    <div class="panel">
+      <h2>The exploration code, from this notebook</h2>
+      <pre class="code" id="code"></pre>
+    </div>
+  </div>
+</div>
+<footer>This is why schedulers work: <code>sched.step()</code> simply writes a new number into
+<code>opt.param_groups[0]['lr']</code> — the same dict the optimizer reads on its next step. No magic, just a shared dictionary.</footer>
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const CODE=[
+ ['learn = TrainLearner(model, dls, F.cross_entropy,',''],
+ ['                     lr=0.1, cbs=[SingleBatchCB()])',''],
+ ['learn.fit(1)   # runs fit -> creates the optimizer','g0'],
+ ['opt = learn.opt','g0'],
+ ['type(opt)      # torch.optim.sgd.SGD','g0'],
+ [''],
+ ['opt.param_groups          # list of dicts','g1'],
+ ["pg = opt.param_groups[0]",'g1'],
+ ["list(pg)   # ['params','lr','momentum', ...]",'g1'],
+ [''],
+ ['opt.state                 # defaultdict','g2'],
+ ['param = next(iter(learn.model.parameters()))','g2'],
+ ["opt.state[param]  # {'momentum_buffer': None}",'g2'],
+ [''],
+ ['loss.backward()',''],
+ ['opt.step()     # NOW buffers get filled','g3'],
+ ["opt.state[param]",'g3'],
+ ["#  {'momentum_buffer': tensor([...])}",'g3'],
+ [''],
+ ['torch.save(opt.state_dict(), "opt.pth")','g4'],
+ ['opt.load_state_dict(torch.load("opt.pth"))','g4'],
+];
+const stages=[
+ {k:'opt',title:'⓪ Creation is just bookkeeping',
+  explain:`<p>When <code>fit()</code> runs, the Learner calls
+  <code>opt_func(model.parameters(), lr)</code>. At that moment <b>no math happens</b> — the optimizer
+  just records <i>which tensors</i> it will manage and <i>what settings</i> to use. Creation vs execution:
+  the constructor stores, <code>step()</code> computes.</p>
+  <div class="keybox">That's why you can build the optimizer before ever seeing data — it's a filing cabinet, not a calculator.</div>`},
+ {k:'pg',title:'① param_groups — the settings',
+  explain:`<p>A <b>list of dicts</b>. Each dict holds hyperparameters (<code>lr</code>, <code>momentum</code>,
+  <code>weight_decay</code>…) plus <code>'params'</code>: the list of tensors those settings apply to.
+  One group is typical; several groups = different lr per layer (how fine-tuning freezes/slows a backbone).</p>
+  <p>Everything that schedules or records lr goes through here — the notebook's
+  <code>RecorderCB</code> literally reads <code>learn.opt.param_groups[0]['lr']</code> every batch.</p>
+  <div class="keybox">Hyperparameters aren't buried in attributes — they sit in a plain dict you can read and <i>write</i> at any time.</div>`},
+ {k:'st',title:'② state — empty until needed',
+  explain:`<p><code>opt.state</code> maps <b>each parameter tensor</b> to its private buffers. Right after creation
+  it's essentially <b class="o">empty</b> — indexing it shows only <code>{'momentum_buffer': None}</code>.</p>
+  <p>You built this exact idea by hand earlier: the custom Momentum class stored
+  <code>p.grad_avg</code> <i>on the parameter</i>, created inside the first <code>opt_step</code>.
+  PyTorch centralizes those buffers into one dict — same lazy pattern, tidier bookkeeping.</p>
+  <div class="keybox">Keys are the parameter tensors themselves (by identity) — which is why state survives even though tensors have no names.</div>`},
+ {k:'st',title:'③ The first step() fills it',
+  explain:`<p>Press through: on the first <code>opt.step()</code>, the momentum buffer springs into existence —
+  a tensor the same shape as its parameter. For Adam there would be <b>two</b> per parameter
+  (<code>exp_avg</code>, <code>exp_avg_sq</code>) plus a step counter.</p>
+  <p>Rough cost intuition: SGD+momentum stores 1 extra copy of your model; Adam stores 2. For a 7B-parameter
+  model in fp32 that's ~28 GB vs ~56 GB of pure optimizer state — lazy or not, it's real memory.</p>
+  <div class="keybox">The pills below the diagram track it live: state entries jump from 0 to "one per parameter" at step 1, then never change.</div>`},
+ {k:'sd',title:'④ state_dict() — pause & resume training',
+  explain:`<p><code>opt.state_dict()</code> flattens both dictionaries into plain saveable data. Checkpointing the
+  <i>model</i> alone is not enough to resume training faithfully — without the optimizer's buffers, Adam restarts
+  with zeroed moments (and, as the bias-correction viz showed, behaves differently for its first ~100 steps).</p>
+  <div class="keybox">A complete checkpoint = model.state_dict() + opt.state_dict() (+ the scheduler's, if you use one).</div>`},
+];
+let cur=0,stepsTaken=0;
+function render(){
+  const s=stages[cur];
+  stepsTaken=cur>=3?1:0;
+  document.querySelectorAll('.rail .st').forEach((el,i)=>{
+    el.classList.toggle('active',i===cur);el.classList.toggle('done',i<cur);});
+  document.querySelectorAll('.fbox').forEach(b=>{
+    b.classList.toggle('on',b.dataset.k===s.k);
+    b.classList.toggle('dim',b.dataset.k!==s.k&&b.dataset.k!=='opt');
+  });
+  // state box content
+  const sb=$('state-body'),bd=$('bdg');
+  if(cur>=3){
+    sb.innerHTML="{ w1: {'momentum_buffer': tensor([…])},<br>&nbsp;&nbsp;b1: {'momentum_buffer': tensor([…])}, … }";
+    bd.classList.add('show');
+  }else if(cur===2){
+    sb.innerHTML="{}&nbsp;&nbsp;<i style='color:#8A94AC'># opt.state[param] → {'momentum_buffer': None}</i>";
+    bd.classList.remove('show');
+  }else{
+    sb.innerHTML="{}&nbsp;&nbsp;<i style='color:#8A94AC'># empty — no step taken yet</i>";
+    bd.classList.remove('show');
+  }
+  $('p-state').textContent=cur>=3?'4 (= #params)':'0';
+  $('p-steps').textContent=stepsTaken;
+  $('stepnum').textContent=`Stage ${cur} / 4`;
+  $('title').textContent=s.title;$('explain').innerHTML=s.explain;
+  const codeEl=$('code');codeEl.innerHTML='';
+  for(const line of CODE){
+    const d=document.createElement('div');
+    let cls='cl';
+    if(line[1]==='cm')cls+=' cm';else if(line[1]==='g'+cur)cls+=' hl';
+    d.className=cls;d.textContent=line[0]===''?'\u00A0':line[0];codeEl.appendChild(d);
+  }
+  postH();
+}
+function go(i){cur=Math.max(0,Math.min(4,i));render();}
+let playing=false,timer=null;
+const speeds=[0.5,0.75,1,1.5,2,3];
+function stopPlay(){playing=false;if(timer)clearTimeout(timer);$('play').textContent='Play ▶';}
+function tick(){
+  if(!playing)return;
+  if(cur>=4){stopPlay();return;}
+  go(cur+1);
+  timer=setTimeout(tick,1700/speeds[+$('spd').value-1]);
+}
+$('play').addEventListener('click',()=>{
+  if(playing){stopPlay();return;}
+  if(cur>=4)go(0);
+  playing=true;$('play').textContent='Pause ⏸';
+  timer=setTimeout(tick,900/speeds[+$('spd').value-1]);
+});
+$('next').addEventListener('click',()=>{stopPlay();go(cur+1);});
+$('prev').addEventListener('click',()=>{stopPlay();go(cur-1);});
+$('reset').addEventListener('click',()=>{stopPlay();go(0);});
+$('spd').addEventListener('input',()=>{$('spdv').textContent=speeds[+$('spd').value-1].toFixed(1)+'×';});
+document.querySelectorAll('.rail .st').forEach(el=>{
+  el.addEventListener('click',()=>{stopPlay();go(+el.dataset.s);});});
+document.querySelectorAll('.fbox').forEach(b=>{
+  b.addEventListener('click',()=>{
+    stopPlay();
+    const map={opt:0,pg:1,st:cur>=3?3:2,sd:4};
+    go(map[b.dataset.k]);
+  });
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){stopPlay();go(cur+1);}
+  if(e.key==='ArrowLeft'){stopPlay();go(cur-1);}});
+const grid=$('grid'),wrap=document.querySelector('.wrap');
+function relayout(){grid.classList.toggle('is-narrow',window.innerWidth<880);}
+function postH(){
+  const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){relayout();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+relayout();render();
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anatomy of one SGD step</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:860px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 16px;margin:18px 0 16px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;
+    padding:9px 18px;transition:transform .12s,box-shadow .12s;}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35)}
+  #play:hover{transform:translateY(-1px)}
+  #prev,#next{background:var(--purple-soft);color:var(--purple)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:9px 8px}
+  .stepnum{color:var(--muted);font-size:13px;font-weight:700;min-width:96px}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:120px}
+
+  .rail{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 16px;}
+  .rail .st{background:#fff;border:2px solid var(--line);border-radius:12px;
+    padding:9px 6px;text-align:center;cursor:pointer;transition:.15s;user-select:none;}
+  .rail .st:hover{border-color:var(--purple)}
+  .rail .st .lab{font-size:12px;font-weight:800;}
+  .rail .st .sh{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+  .rail .st.active{background:var(--purple);border-color:var(--purple);box-shadow:var(--shadow)}
+  .rail .st.active .lab,.rail .st.active .sh{color:#fff}
+  .rail .st.done{background:var(--purple-soft);border-color:var(--purple-soft)}
+
+  .grid{display:grid;grid-template-columns:1.22fr .95fr;gap:18px;align-items:start}
+  .grid>*{min-width:0}
+  .grid.is-narrow{grid-template-columns:1fr}
+
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 14px;}
+  .stage-card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  canvas#cv{width:100%;border-radius:12px;background:#FBFCFF;border:1px solid var(--line);display:block}
+
+  .knobs{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:13px;color:var(--muted);font-weight:600}
+  .knobs input[type=range]{accent-color:var(--orange);width:130px;vertical-align:middle}
+  .chips{display:flex;gap:6px;align-items:center}
+  .chip{background:#fff;border:2px solid var(--line);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--teal)}
+  .chip.on{background:var(--teal);border-color:var(--teal);color:#fff}
+
+  .counts{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .pill{background:#F6F8FE;border-radius:10px;padding:7px 13px;text-align:center;min-width:96px}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:16px}
+  .pill .t{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .pill.in .n{color:var(--orange)} .pill.mid .n{color:var(--purple)} .pill.out .n{color:var(--teal)}
+
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .panel+.panel{margin-top:14px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .steptitle{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .explain{color:#33415C}
+  .explain p{margin:0 0 8px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.o{color:var(--orange)} .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)}
+  .keybox{margin-top:8px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13.5px}
+  pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:#F6F8FE;border-radius:12px;padding:11px 0;overflow-x:auto;}
+  .cl{padding:0 15px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:4px solid var(--purple);padding-left:11px;font-weight:700}
+  .cl.cm{color:#8A94AC}
+  footer{margin-top:16px;color:var(--muted);font-size:12.5px;text-align:center}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Anatomy of one <span class="hl">SGD step</span> — with weight decay</h1>
+  <p class="sub">Every call to <code>opt.step()</code> does two things to every parameter:
+  <b style="color:var(--teal)">shrink it a little</b> (<code>reg_step</code>, weight decay) and
+  <b style="color:var(--orange)">push it downhill</b> (<code>opt_step</code>, the gradient step).
+  Watch a single weight <code>w</code> walk down its loss curve, one sub-step at a time.
+  Click a stage on the rail to jump straight to it — the matching code lights up on the right.</p>
+</header>
+
+<div class="controls">
+  <button id="prev">← Back</button>
+  <button id="play">Play ▶</button>
+  <button id="next">Next →</button>
+  <span class="stepnum" id="stepnum">Stage 0 / 3</span>
+  <label class="spd">speed <input type="range" id="spd" min="1" max="6" step="1" value="3"><span id="spdv">1.0×</span></label>
+  <button id="reset">Reset</button>
+</div>
+
+<div class="rail" id="rail">
+  <div class="st" data-s="0"><div class="lab">⓪ gradients arrive</div><div class="sh">loss.backward()</div></div>
+  <div class="st" data-s="1"><div class="lab">① reg_step</div><div class="sh">p *= (1 − lr·wd)</div></div>
+  <div class="st" data-s="2"><div class="lab">② opt_step</div><div class="sh">p −= lr · p.grad</div></div>
+  <div class="st" data-s="3"><div class="lab">③ zero_grad, i += 1</div><div class="sh">ready for next batch</div></div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="stage-card">
+    <h2>The loss curve of one weight — L(w) = ½(w − 2)²</h2>
+    <canvas id="cv" width="680" height="320"></canvas>
+    <div class="knobs">
+      <label>lr <input type="range" id="lr" min="0.05" max="2.2" step="0.05" value="0.25"><b id="lrv" style="color:var(--orange)">0.25</b></label>
+      <span class="chips">wd
+        <span class="chip on" data-wd="0">0</span>
+        <span class="chip" data-wd="0.1">0.1</span>
+        <span class="chip" data-wd="0.3">0.3</span>
+      </span>
+    </div>
+    <div class="counts">
+      <div class="pill mid"><div class="n" id="p-w">−4.00</div><div class="t">w</div></div>
+      <div class="pill in"><div class="n" id="p-g">—</div><div class="t">p.grad</div></div>
+      <div class="pill out"><div class="n" id="p-shrink">—</div><div class="t">decay Δ</div></div>
+      <div class="pill in"><div class="n" id="p-step">—</div><div class="t">grad Δ</div></div>
+      <div class="pill mid"><div class="n" id="p-iter">0</div><div class="t">iteration i</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>What is happening</h2>
+      <div class="steptitle" id="title"></div>
+      <div class="explain" id="explain"></div>
+    </div>
+    <div class="panel">
+      <h2>The code, from this notebook's <span style="text-transform:none">SGD</span> class</h2>
+      <pre class="code" id="code"></pre>
+    </div>
+  </div>
+</div>
+<footer>Play loops forever: ③ hands back to ⓪ with fresh gradients, so you can watch <b>w</b> converge.
+Set <b>wd &gt; 0</b> and notice the minimum the ball settles at is <i>not</i> the loss minimum — decay pulls it toward 0.</footer>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const cv=$('cv'), ctx=cv.getContext('2d');
+
+/* ---------------- model state ---------------- */
+let lr=0.25, wd=0.0;
+let w=-4.0, grad=null, iter=0, cur=0;
+let snap={w:-4.0};                 // state at entry of stage 0 (for stage jumping)
+let wDisp=-4.0, gradA=0, decayA=0; // animated display values
+
+function lossOf(x){ return 0.5*(x-2)*(x-2); }
+function gradOf(x){ return (x-2); }
+function effMin(){ return 2/(1+wd); } // argmin of ½(w−2)² + ½wd·w²  (what SGD+decay converges to as lr→0)
+
+/* apply stages deterministically from the snapshot */
+function applyTo(s){
+  w=snap.w; grad=null;
+  if(s>=0) grad=gradOf(w);
+  if(s>=1) w=w*(1-lr*wd);
+  if(s>=2) w=w-lr*grad;
+  w=Math.max(-5.2,Math.min(6.3,w));
+  if(s>=3) grad=null;
+}
+
+/* ---------------- stages: text + code ---------------- */
+const CODE=[
+ ['# inside the training loop','cm'],
+ ['loss = loss_func(model(xb), yb)',''],
+ ['loss.backward()   # fills p.grad','g0'],
+ ['opt.step()        # ↓ what happens inside','cm'],
+ [''],
+ ['def step(self):',''],
+ ['    with torch.no_grad():',''],
+ ['        for p in self.params:',''],
+ ['            self.reg_step(p)   # regularize','g1'],
+ ['            self.opt_step(p)   # optimize','g2'],
+ ['    self.i += 1','g3'],
+ [''],
+ ['def reg_step(self, p):',''],
+ ['    if self.wd != 0:','g1'],
+ ['        p *= 1 - self.lr * self.wd','g1'],
+ [''],
+ ['def opt_step(self, p):',''],
+ ['    p -= p.grad * self.lr','g2'],
+ [''],
+ ['opt.zero_grad()   # clear grads for next batch','g3'],
+];
+const stages=[
+ {title:'⓪ Gradients arrive',
+  explain:`<p>The forward pass computes the loss; <code>loss.backward()</code> fills
+  <b class="o">p.grad</b> for every parameter. For our single weight the gradient of
+  ½(w−2)² is simply <b class="o">w − 2</b> — it points <i>uphill</i>, and its length says how steep the curve is.</p>
+  <p>Nothing has moved yet. The optimizer only reads <code>p.grad</code>; it never computes gradients itself
+  (that's why <code>step()</code> runs under <code>torch.no_grad()</code>).</p>
+  <div class="keybox">Steeper curve → longer orange arrow → bigger step coming in stage ②.</div>`},
+ {title:'① reg_step — weight decay',
+  explain:`<p>Before touching the gradient, SGD multiplies the weight by
+  <b class="t">(1 − lr·wd)</b> — a number slightly below 1. Every step, the weight is nudged toward
+  <b class="t">zero</b>, no matter what the loss says. That is the regularization.</p>
+  <p><b>Weight decay vs L2:</b> adding ½·wd·w² to the loss would add <code>wd·w</code> to the gradient, and the SGD
+  update <code>w −= lr·(grad + wd·w)</code> rearranges to exactly <code>w *= (1−lr·wd); w −= lr·grad</code>.
+  For plain SGD they are <b class="p">the same thing</b> — for Adam they are not (that's why AdamW exists).</p>
+  <div class="keybox">With wd &gt; 0 the ball no longer settles at w = 2 but at the dashed teal line — the compromise between "fit the data" and "stay small".</div>`},
+ {title:'② opt_step — the gradient step',
+  explain:`<p>Now the actual descent: <code>p −= p.grad * lr</code>. The step is the
+  <b class="o">gradient</b> times the <b class="o">learning rate</b> — walk against the slope,
+  and walk further where the curve is steeper.</p>
+  <p>Watch what the lr slider does. This curve has curvature 1, so each step multiplies the distance to the
+  minimum by (1 − lr): below lr = 1 the ball glides in monotonically; <b>past lr = 1 it overshoots</b> and bounces
+  side to side (try 1.5); <b>past lr = 2/curvature = 2 it diverges</b> — try 2.1 and watch the bounces grow until it
+  slams the edges.</p>
+  <div class="keybox">One number, lr, controls everything — which is exactly why the rest of this notebook exists (momentum, Adam, schedulers).</div>`},
+ {title:'③ zero_grad — and go again',
+  explain:`<p>PyTorch <b>accumulates</b> gradients: a second <code>backward()</code> would <i>add</i> to
+  <code>p.grad</code>, not replace it. So after stepping we wipe the slate with <code>opt.zero_grad()</code>,
+  and the step counter <code>self.i</code> ticks up (Adam will need it for bias correction).</p>
+  <p>Press ▶ Play and let it loop — each cycle is one mini-batch. The ball's hops shrink as the slope flattens:
+  gradient descent slows down on its own near a minimum.</p>
+  <div class="keybox">grads → shrink → step → clear. Four moves, repeated millions of times — that is all "training" is.</div>`},
+];
+
+/* ---------------- render ---------------- */
+function drawCurve(){
+  const W=cv.width,H=cv.height, x0=-5.5,x1=6.5, yTop=16;
+  const X=v=>(v-x0)/(x1-x0)*W;
+  const Y=l=>H-30-(l/yTop)*(H-70);
+  ctx.clearRect(0,0,W,H);
+  // axes
+  ctx.strokeStyle='#DDE5F2';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,Y(0));ctx.lineTo(W,Y(0));ctx.stroke();
+  ctx.beginPath();ctx.moveTo(X(0),12);ctx.lineTo(X(0),H-18);ctx.stroke();
+  ctx.fillStyle='#8A94AC';ctx.font='11px SF Mono,Menlo,monospace';
+  ctx.fillText('w = 0',X(0)+5,H-22); ctx.fillText('L(w)',X(0)+5,20);
+  // loss curve
+  ctx.strokeStyle='#6C5CE7';ctx.lineWidth=2.5;ctx.beginPath();
+  for(let px=0;px<=W;px+=3){const v=x0+(x1-x0)*px/W;const l=lossOf(v);
+    px===0?ctx.moveTo(px,Y(Math.min(l,yTop))):ctx.lineTo(px,Y(Math.min(l,yTop)));}
+  ctx.stroke();
+  // loss minimum marker
+  ctx.setLineDash([5,4]);ctx.strokeStyle='#B9AEF5';ctx.beginPath();
+  ctx.moveTo(X(2),Y(0));ctx.lineTo(X(2),Y(yTop*0.75));ctx.stroke();
+  ctx.fillStyle='#6C5CE7';ctx.font='bold 11px -apple-system,sans-serif';
+  ctx.fillText('loss min (w=2)',X(2)-38,Y(yTop*0.75)-6);
+  // effective minimum with decay
+  if(wd>0){
+    ctx.strokeStyle='#0E9C8F';ctx.beginPath();
+    ctx.moveTo(X(effMin()),Y(0));ctx.lineTo(X(effMin()),Y(yTop*0.55));ctx.stroke();
+    ctx.fillStyle='#0E9C8F';
+    ctx.fillText('with decay → w*≈'+effMin().toFixed(2),X(effMin())-52,Y(yTop*0.55)-6);
+  }
+  ctx.setLineDash([]);
+  // ball
+  const bl=lossOf(wDisp), bx=X(wDisp), by=Y(Math.min(bl,yTop));
+  // decay arrow (toward 0)
+  if(decayA>0.03 && wd>0){
+    ctx.globalAlpha=decayA;
+    arrow(bx,by-24,bx-Math.sign(wDisp)*34,by-24,'#0E9C8F');
+    ctx.fillStyle='#0E9C8F';ctx.font='bold 11px -apple-system,sans-serif';
+    ctx.fillText('×(1−lr·wd)',bx-30,by-32);
+    ctx.globalAlpha=1;
+  }
+  // gradient arrow (uphill) and step arrow (downhill)
+  if(gradA>0.03 && grad!==null){
+    ctx.globalAlpha=gradA;
+    const g=gradOf(wDisp);
+    arrow(bx,by,bx+Math.max(-70,Math.min(70,g*16)),by,'#E8821F');
+    ctx.fillStyle='#E8821F';ctx.font='bold 11px -apple-system,sans-serif';
+    ctx.fillText('p.grad (uphill)',bx+(g>0?14:-92),by-10);
+    ctx.globalAlpha=1;
+  }
+  ctx.beginPath();ctx.arc(bx,by,9,0,7);ctx.fillStyle='#6C5CE7';ctx.fill();
+  ctx.lineWidth=3;ctx.strokeStyle='#fff';ctx.stroke();
+}
+function arrow(x1,y1,x2,y2,col){
+  ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const a=Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath();ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-9*Math.cos(a-0.45),y2-9*Math.sin(a-0.45));
+  ctx.lineTo(x2-9*Math.cos(a+0.45),y2-9*Math.sin(a+0.45));
+  ctx.closePath();ctx.fill();
+}
+
+function render(){
+  const s=stages[cur];
+  document.querySelectorAll('.rail .st').forEach((el,i)=>{
+    el.classList.toggle('active',i===cur);
+    el.classList.toggle('done',i<cur);
+  });
+  $('stepnum').textContent=`Stage ${cur} / 3`;
+  $('title').textContent=s.title;
+  $('explain').innerHTML=s.explain;
+  const codeEl=$('code');codeEl.innerHTML='';
+  for(const line of CODE){
+    const d=document.createElement('div');
+    let cls='cl';
+    if(line[1]==='cm')cls+=' cm';
+    else if(line[1]==='g'+cur)cls+=' hl';
+    d.className=cls;d.textContent=line[0]===''?'\u00A0':line[0];
+    codeEl.appendChild(d);
+  }
+  // pills
+  $('p-w').textContent=w.toFixed(2);
+  $('p-g').textContent=grad===null?'—':grad.toFixed(2);
+  $('p-shrink').textContent=(cur>=1&&wd>0)?(snap.w*(1-lr*wd)-snap.w).toFixed(3):(cur>=1?'0':'—');
+  $('p-step').textContent=cur>=2?((-lr*(grad??0))>=0?'+':'')+(-lr*(grad??0)).toFixed(2):'—';
+  $('p-iter').textContent=iter;
+  $('prev').disabled=false;$('next').disabled=false;
+  postH();
+}
+
+/* smooth animation loop */
+let last=0;
+function loop(t){
+  const dt=Math.min(0.05,(t-last)/1000)||0.016; last=t;
+  wDisp+=(w-wDisp)*Math.min(1,dt*8);
+  const gT=(grad!==null&&cur>=0)?1:0, dT=(cur===1)?1:0;
+  gradA+=(gT-gradA)*Math.min(1,dt*7);
+  decayA+=(dT-decayA)*Math.min(1,dt*7);
+  drawCurve();
+  requestAnimationFrame(loop);
+}
+
+/* ---------------- navigation ---------------- */
+function go(i){
+  if(i>3){ // wrap: commit this iteration, start next
+    applyTo(3); snap={w:w}; iter++; cur=0; applyTo(0);
+  }else if(i<0){ cur=0; applyTo(0);
+  }else{ cur=i; applyTo(cur); }
+  render();
+}
+let playing=false,timer=null;
+const speeds=[0.5,0.75,1,1.5,2,3];
+function stopPlay(){playing=false;if(timer)clearTimeout(timer);$('play').textContent='Play ▶';}
+function tick(){
+  if(!playing)return;
+  go(cur+1);
+  timer=setTimeout(tick,1300/speeds[+$('spd').value-1]);
+}
+$('play').addEventListener('click',()=>{
+  if(playing){stopPlay();return;}
+  playing=true;$('play').textContent='Pause ⏸';
+  timer=setTimeout(tick,900/speeds[+$('spd').value-1]);
+});
+$('next').addEventListener('click',()=>{stopPlay();go(cur+1);});
+$('prev').addEventListener('click',()=>{stopPlay();go(cur-1);});
+$('reset').addEventListener('click',()=>{stopPlay();snap={w:-4};iter=0;cur=0;applyTo(0);wDisp=-4;render();});
+$('spd').addEventListener('input',()=>{$('spdv').textContent=speeds[+$('spd').value-1].toFixed(1)+'×';});
+document.querySelectorAll('.rail .st').forEach(el=>{
+  el.addEventListener('click',()=>{stopPlay();go(+el.dataset.s);});
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){stopPlay();go(cur+1);}
+  if(e.key==='ArrowLeft'){stopPlay();go(cur-1);}
+});
+$('lr').addEventListener('input',()=>{lr=+$('lr').value;$('lrv').textContent=lr.toFixed(2);applyTo(cur);render();});
+document.querySelectorAll('.chip').forEach(c=>{
+  c.addEventListener('click',()=>{
+    document.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+    c.classList.add('on');wd=+c.dataset.wd;applyTo(cur);render();
+  });
+});
+
+/* ---------------- responsive + auto-height ---------------- */
+const grid=$('grid'),wrap=document.querySelector('.wrap');
+function relayout(){grid.classList.toggle('is-narrow',window.innerWidth<880);}
+function postH(){
+  const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){relayout();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+relayout();applyTo(0);render();requestAnimationFrame(loop);
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>
