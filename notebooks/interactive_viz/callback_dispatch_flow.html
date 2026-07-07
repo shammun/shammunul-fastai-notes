@@ -1,0 +1,150 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Who Calls What? Learner + DDPMCB Dispatch</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:930px;line-height:1.45;}
+  .ctrl{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);width:100px;}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:12px;align-items:start;}
+  .grid.is-narrow{grid-template-columns:1fr;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);min-width:0;}
+  .cap{font-size:12.5px;font-weight:700;margin:0 0 7px;}
+  .lane{border-left:3px solid var(--line);margin-left:8px;padding-left:12px;}
+  .fr{border:2px solid var(--line);border-radius:10px;padding:5px 9px;font-size:11.5px;margin:5px 0;background:#fbfdff;cursor:pointer;transition:all .16s;line-height:1.4;}
+  .fr .nm{font-weight:700;font-family:monospace;font-size:11.8px;}
+  .fr .who{font-size:9.5px;font-weight:700;border-radius:999px;padding:1px 8px;display:inline-block;margin-left:6px;vertical-align:1px;}
+  .fr .who.lrn{background:#eef2fa;color:var(--soft);}
+  .fr .who.tcb{background:#fdf1e3;color:var(--in);}
+  .fr .who.ddpm{background:#f0eafd;color:var(--ac);}
+  .fr .ds{color:var(--soft);font-size:10.5px;}
+  .fr:hover{border-color:var(--ac);}
+  .fr.hot{border-color:var(--ac);background:#f4efff;box-shadow:0 4px 14px rgba(123,92,214,.22);}
+  .fr.hot .nm{color:var(--ac);}
+  .fr.done{border-color:#cfe8e8;background:#f6fbfb;}
+  .ind1{margin-left:16px;}.ind2{margin-left:32px;}.ind3{margin-left:48px;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11px;line-height:1.6;overflow-x:auto;white-space:pre;min-height:200px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .kw{color:#7ce0d3;}
+  .story{font-size:12px;color:var(--soft);line-height:1.55;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 13px;box-shadow:0 6px 16px rgba(123,92,214,.08);margin-top:10px;}
+  .story b{color:var(--ink);}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:7px;}
+  .legend b.i{color:var(--in);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<div class="wrap">
+<h1>learn.fit(5): Who Actually Calls DDPMCB?</h1>
+<p class="sub">You never call <b>before_batch</b> or <b>predict</b> yourself — the miniai <b>Learner</b> does, by broadcasting hook names to every callback at the right moment. This trace follows <b>one training batch</b> through the machinery. <b>Click any frame</b> to jump there (its code appears on the right), or press Play to watch the whole dispatch. Badges show <i>whose</i> code runs: generic Learner, generic TrainCB, or our DDPMCB.</p>
+
+<div class="ctrl">
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span>·</span> speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="grid" id="grid">
+  <div class="card">
+    <div class="cap">Call stack for one batch (indent = who called whom)</div>
+    <div class="lane" id="lane"></div>
+  </div>
+  <div class="card">
+    <div class="cap">The code that runs at this frame</div>
+    <div class="code" id="code"></div>
+  </div>
+</div>
+
+<div class="story" id="story"></div>
+<div class="legend">key insight: DDPM needed <b>zero changes</b> to the training loop. Grey = untouched Learner plumbing; <b class="i">orange = TrainCB defaults</b>; <b class="a">purple = the only ~30 lines DDPM actually adds</b>.</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const FRAMES=[
+ {ind:0,who:'lrn',nm:'learn.fit(5)',ds:'top-level entry — sets up epochs, opt, callbacks',
+  code:'# miniai Learner\ndef fit(self, n_epochs):\n    self.n_epochs = n_epochs\n    with self.cb_ctx("fit"):       # fires before_fit / after_fit\n        for self.epoch in range(n_epochs):\n            self.one_epoch(True)   # train\n            self.one_epoch(False)  # validate',
+  s:'<b>Everything starts here.</b> fit() is pure orchestration: it owns the epoch loop and wraps it in a callback context so any callback can hook <code>before_fit</code>/<code>after_fit</code>. Nothing DDPM-specific has happened yet.'},
+ {ind:1,who:'lrn',nm:'one_epoch(train=True)',ds:'iterates the DataLoader',
+  code:'def one_epoch(self, train):\n    self.model.train(train)\n    self.dl = self.dls.train if train else self.dls.valid\n    with self.cb_ctx("epoch"):\n        for self.iter, self.batch in enumerate(self.dl):\n            self.one_batch()       # ← the star of this trace',
+  s:'<b>One pass over the data.</b> Each raw batch from the DataLoader is still an innocent <code>(images, labels)</code> pair at this point.'},
+ {ind:2,who:'lrn',nm:'one_batch() → callback("before_batch")',ds:'the broadcast moment',
+  code:'def one_batch(self):\n    with self.cb_ctx("batch"):     # ← fires "before_batch" to ALL\n        self.predict()             #    callbacks, in `order` order\n        self.get_loss()\n        if self.training:\n            self.backward(); self.step(); self.zero_grad()\n\ndef callback(self, method_nm):\n    for cb in sorted(self.cbs, key=attrgetter("order")):\n        getattr(cb, method_nm, identity)(self)',
+  s:'<b>The dispatch trick:</b> <code>callback("before_batch")</code> walks every registered callback in <code>order</code>, and calls the method <i>if it exists</i> (via getattr with a do-nothing default). DeviceCB has order N, and DDPMCB set <code>order = DeviceCB.order + 1</code> — guaranteeing data is already on the GPU when DDPMCB touches it.'},
+ {ind:3,who:'ddpm',nm:'DDPMCB.before_batch(learn)',ds:'★ noising happens HERE',
+  code:'# DDPMCB — the DDPM magic, ~10 lines\ndef before_batch(self, learn):\n    ε  = torch.randn(learn.batch[0].shape)   # noise = target\n    x0 = learn.batch[0]                       # clean images\n    t  = torch.randint(0, self.n_steps, (n,)) # per-image t\n    ᾱ_t = self.ᾱ[t].reshape(-1,1,1,1)\n    xt = ᾱ_t.sqrt()*x0 + (1-ᾱ_t).sqrt()*ε     # closed form\n    learn.batch = ((xt, t), ε)                # REWIRE the batch',
+  s:'<b>The heist.</b> Because DDPMCB defines a method literally named <code>before_batch</code>, the broadcast finds and calls it. It noisifies the images and <b>replaces learn.batch</b> with <code>((xt, t), ε)</code>. The Learner has no idea — it just sees "a batch".'},
+ {ind:3,who:'ddpm',nm:'DDPMCB.predict(learn)',ds:'★ custom model call (overrides TrainCB)',
+  code:'# TrainCB default would be:\n#   learn.preds = learn.model(learn.batch[0])   # ← one arg\n\n# DDPMCB overrides it because our model needs TWO args\n# and returns a wrapper object:\ndef predict(self, learn):\n    learn.preds = learn.model(*learn.batch[0]).sample\n    #                         ^ unpack (xt, t)   ^ unwrap tensor',
+  s:'<b>Why override predict?</b> The stock TrainCB calls <code>model(batch[0])</code> — one argument. But UNet2DModel needs <code>(x_t, t)</code> and returns an output <i>object</i>, not a tensor. Two tiny deviations → one tiny override. This is inheritance doing exactly what it\'s for: DDPMCB extends TrainCB and replaces only what differs.'},
+ {ind:3,who:'tcb',nm:'TrainCB.get_loss(learn)',ds:'inherited unchanged — MSE just works',
+  code:'# inherited straight from TrainCB — DDPM changes NOTHING here\ndef get_loss(self, learn):\n    learn.loss = learn.loss_func(learn.preds, learn.batch[1])\n\n# because before_batch rewired the batch:\n#   learn.preds    = ε̂  (predicted noise)\n#   learn.batch[1] = ε  (true noise)\n# → loss = MSE(ε̂, ε). The rewiring pays off here.',
+  s:'<b>The payoff of rewiring.</b> The generic loss line <code>loss_func(preds, batch[1])</code> now automatically means MSE(predicted noise, true noise) — because before_batch quietly made <code>batch[1]</code> be ε. No DDPM-specific loss code was ever written.'},
+ {ind:3,who:'tcb',nm:'backward() · step() · zero_grad()',ds:'inherited unchanged',
+  code:'# also inherited from TrainCB, totally standard:\ndef backward(self, learn):  learn.loss.backward()\ndef step(self, learn):      learn.opt.step()\ndef zero_grad(self, learn): learn.opt.zero_grad()',
+  s:'<b>Plain PyTorch.</b> Gradients flow from the MSE back through the U-Net; the optimizer nudges ~10⁶ weights toward being a slightly better noise-guesser. Multiply by thousands of batches and the sampler\'s loop starts producing real garments.'},
+ {ind:2,who:'lrn',nm:'…next batch → next epoch → done',ds:'the loop closes',
+  code:'# after training, generation is one line:\nsamples = ddpm_cb.sample(learn.model, (16, 1, 32, 32))\n#         └── the reverse loop: t = 999 → 0\n# samples[-1] = 16 brand-new images',
+  s:'<b>Full circle.</b> Training taught the model to see noise; <code>sample()</code> exploits that skill 1000 times per image. Note the beautiful symmetry: <code>before_batch</code> runs the forward process during training, <code>sample</code> runs the reverse process after it — both live in the same small callback class.'},
+];
+const lane=$('lane');
+FRAMES.forEach((f,i)=>{
+  const d=document.createElement('div');
+  d.className='fr ind'+f.ind;d.id='fr'+i;
+  d.innerHTML='<span class="nm">'+f.nm+'</span><span class="who '+f.who+'">'
+    +(f.who==='lrn'?'Learner':f.who==='tcb'?'TrainCB':'DDPMCB')+'</span><br><span class="ds">'+f.ds+'</span>';
+  d.onclick=()=>{stop();setFrame(i);};
+  lane.appendChild(d);
+});
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function fmt(code){
+  return esc(code).split('\n').map(l=>{
+    let h=l.replace(/(#.*)$/,'<span class="cm">$1</span>');
+    h=h.replace(/\b(def|for|with|if|else|return|class)\b/g,'<span class="kw">$1</span>');
+    h=h.replace(/\b(\d+)\b/g,'<span class="num">$1</span>');
+    return h||' ';
+  }).join('\n');
+}
+let cur=0,timer=null,speed=1;
+function setFrame(i){
+  cur=Math.max(0,Math.min(FRAMES.length-1,i));
+  FRAMES.forEach((f,j)=>{const el=$('fr'+j);
+    el.classList.toggle('hot',j===cur);el.classList.toggle('done',j<cur);});
+  $('code').innerHTML=fmt(FRAMES[cur].code);
+  $('story').innerHTML=FRAMES[cur].s;
+}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+$('play').onclick=()=>{
+  if(timer){stop();return;}
+  if(cur>=FRAMES.length-1)cur=-1;
+  timer=setInterval(()=>{if(cur>=FRAMES.length-1){stop();return;}setFrame(cur+1);},2100/speed);
+  setFrame(cur+1);$('play').textContent='⏸ Pause';
+};
+$('fwd').onclick=()=>{stop();setFrame(cur+1);};
+$('back').onclick=()=>{stop();setFrame(cur-1);};
+$('reset').onclick=()=>{stop();setFrame(0);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();$('play').click();}};
+const gridEl=$('grid');
+function relayout(){gridEl.classList.toggle('is-narrow',innerWidth<920);}
+addEventListener('resize',relayout);
+relayout();setFrame(0);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  const wrap=document.querySelector('.wrap');
+  function ch(){return Math.ceil((wrap?wrap.getBoundingClientRect().height:document.body.scrollHeight))+26;}
+  function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+  addEventListener('load',postH);addEventListener('resize',postH);
+  if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+  setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>

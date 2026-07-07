@@ -1,0 +1,209 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDPM: The Big Picture</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:920px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .chip.fwd.on{border-color:var(--in);background:var(--in);box-shadow:0 4px 12px rgba(246,146,30,.3);}
+  .chip.rev.on{border-color:var(--out);background:var(--out);box-shadow:0 4px 12px rgba(22,163,163,.3);}
+  .ctrl{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);}
+  #speed{width:100px;}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);max-width:960px;margin:0 auto 10px;}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 6px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .strip{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;}
+  .frame{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;}
+  .frame canvas{border:2px solid var(--line);border-radius:8px;image-rendering:pixelated;transition:border-color .15s, box-shadow .15s;}
+  .frame.cur canvas{border-color:var(--ac);box-shadow:0 0 0 3px rgba(123,92,214,.25);}
+  .frame .tl{font-family:monospace;font-size:10.5px;color:var(--soft);font-weight:700;}
+  .frame.cur .tl{color:var(--ac);}
+  .arrowrow{display:flex;justify-content:center;align-items:center;gap:4px;margin:2px 0 6px;font-size:12px;font-weight:700;}
+  .arrowrow .fa{color:var(--in);}.arrowrow .ra{color:var(--out);}
+  .bigrow{display:flex;gap:16px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .bigimg canvas{border:2px solid var(--line);border-radius:10px;image-rendering:pixelated;}
+  .meter{width:230px;}
+  .meter .lbl{display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:2px;}
+  .meter .bar{height:14px;border-radius:7px;background:#f0f3fa;overflow:hidden;display:flex;margin-bottom:9px;border:1px solid var(--line);}
+  .meter .sig{background:var(--in);height:100%;transition:width .12s;}
+  .meter .noi{background:var(--ac);height:100%;transition:width .12s;}
+  .eq{font-family:"SF Mono",Consolas,monospace;font-size:12px;background:#f4f7fd;border-radius:8px;padding:7px 10px;line-height:1.7;}
+  .eq .o{color:var(--in);font-weight:700;}.eq .p{color:var(--ac);font-weight:700;}.eq .t{color:var(--out);font-weight:700;}
+  .story{max-width:920px;margin:0 auto;font-size:12px;color:var(--soft);line-height:1.55;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 13px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .story b{color:var(--ink);}
+  .tline{max-width:920px;margin:0 auto 8px;}
+  .tline input{width:100%;}
+  .tline .lab{display:flex;justify-content:space-between;font-size:10.5px;color:var(--soft);font-weight:700;font-family:monospace;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:7px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>DDPM: Destroy an Image Slowly, Learn to Rebuild It</h1>
+<p class="sub">A diffusion model is trained with a <b style="color:var(--in)">forward process</b> that gradually drowns an image in Gaussian noise over <b>T = 1000</b> tiny steps, and generates by running a learned <b style="color:var(--out)">reverse process</b> that removes that noise one step at a time. Pick a direction, press Play, drag the timeline, or click any thumbnail to jump straight to that timestep.</p>
+
+<div class="stagebar">
+  <button class="chip fwd on" id="dirF">→ Forward: add noise (fixed math, no learning)</button>
+  <button class="chip rev" id="dirR">← Reverse: remove noise (learned by the U-Net)</button>
+</div>
+
+<div class="ctrl">
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span>·</span> speed <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="tline">
+  <input id="tslider" type="range" min="0" max="1000" step="1" value="0">
+  <div class="lab"><span>t = 0 (clean image x₀)</span><span id="tcur">t = 0</span><span>t = 1000 (pure noise x_T)</span></div>
+</div>
+
+<div class="card">
+  <div class="cap" id="stripcap">The journey from image to noise <small>click any thumbnail to jump to that timestep</small></div>
+  <div class="strip" id="strip"></div>
+  <div class="arrowrow" id="arrows"></div>
+  <div class="bigrow">
+    <div class="bigimg"><canvas id="big" width="28" height="28" style="width:196px;height:196px"></canvas>
+      <div style="text-align:center;font-family:monospace;font-size:12px;font-weight:700;margin-top:4px" id="bigl">x₀</div></div>
+    <div class="meter">
+      <div class="lbl"><span style="color:var(--in)">signal kept: √ᾱ_t</span><span id="sv" style="font-family:monospace"></span></div>
+      <div class="bar"><div class="sig" id="sigbar"></div></div>
+      <div class="lbl"><span style="color:var(--ac)">noise mixed in: √(1−ᾱ_t)</span><span id="nv" style="font-family:monospace"></span></div>
+      <div class="bar"><div class="noi" id="noibar"></div></div>
+      <div class="eq" id="eq"></div>
+    </div>
+  </div>
+</div>
+
+<div class="story" id="story"></div>
+<div class="legend"><b class="i">orange = signal / forward direction</b> &nbsp;·&nbsp; <b class="a">purple = noise being mixed in</b> &nbsp;·&nbsp; <b class="o">teal = learned reverse (denoising) direction</b></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const T=1000;
+// ---- seeded RNG so the noise field is reproducible ----
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(rng){let u=0,v=0;while(u===0)u=rng();while(v===0)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+// ---- a 28x28 "sneaker"-ish Fashion-MNIST style image, procedural ----
+const W=28,H=28;
+const x0=new Float32Array(W*H);
+(function(){
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+    let v=0;
+    // sole
+    if(y>=19&&y<=22&&x>=3&&x<=25)v=0.95;
+    if(y===23&&x>=4&&x<=24)v=0.55;
+    // body: a wedge rising to the left (ankle)
+    const top=19-(x<12?(12-x)*0.9:0)-2;
+    if(y>=Math.max(6,top)&&y<19&&x>=4&&x<=24){
+      v=0.62;
+      // toe cap shading
+      if(x>19)v=0.75;
+      // laces
+      if(((x===10&&y>=9)||(x===13&&y>=10)||(x===16&&y>=12))&&y<18)v=0.25;
+      // collar
+      if(x<9&&y<Math.max(6,top)+3)v=0.8;
+    }
+    x0[y*W+x]=v*2-1; // scale to [-1,1] like the notebook does
+  }
+})();
+// fixed noise field ε (one draw, reused, so scrubbing t is smooth & honest to the closed form)
+let eps=new Float32Array(W*H);
+function resampleEps(seed){const r=mulberry32(seed);for(let i=0;i<W*H;i++)eps[i]=gauss(r);}
+resampleEps(7);
+// linear beta schedule -> alpha_bar, exactly like DDPMCB(1000, 0.0001, 0.02)
+const abar=new Float64Array(T+1);
+(function(){let p=1;abar[0]=1;for(let i=0;i<T;i++){const b=1e-4+(0.02-1e-4)*i/(T-1);p*=(1-b);abar[i+1]=p;}})();
+function drawAt(canvas,t,scale){
+  const c=canvas.getContext('2d');const im=c.createImageData(W,H);
+  const s=Math.sqrt(abar[t]),n=Math.sqrt(1-abar[t]);
+  for(let i=0;i<W*H;i++){
+    let v=s*x0[i]+n*eps[i];        // x_t = sqrt(abar)*x0 + sqrt(1-abar)*eps
+    v=(v+1)/2; v=Math.max(0,Math.min(1,v));
+    const g=Math.round(v*255);
+    im.data[4*i]=g;im.data[4*i+1]=g;im.data[4*i+2]=g;im.data[4*i+3]=255;
+  }
+  c.putImageData(im,0,0);
+}
+// ---- thumbnails ----
+const STOPS=[0,50,150,300,500,750,1000];
+const strip=$('strip'),arrows=$('arrows');
+const frames=[];
+STOPS.forEach((t,i)=>{
+  const d=document.createElement('div');d.className='frame';
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;cv.style.width='64px';cv.style.height='64px';
+  const tl=document.createElement('div');tl.className='tl';tl.textContent=(t===0?'x₀':(t===1000?'x_T':'x_'+t));
+  d.appendChild(cv);d.appendChild(tl);strip.appendChild(d);
+  d.onclick=()=>{stop();setT(t);};
+  drawAt(cv,t,1);frames.push({el:d,t:t});
+});
+// direction arrows under the strip
+function renderArrows(){
+  arrows.innerHTML = dir==='F'
+   ? '<span class="fa">q(x_t | x_{t−1}) — add a pinch of noise ⟶ ⟶ ⟶ (fixed formula, nothing to learn)</span>'
+   : '<span class="ra">⟵ ⟵ ⟵ p_θ(x_{t−1} | x_t) — the U-Net predicts the noise so we can subtract it</span>';
+}
+// ---- state ----
+let t=0,dir='F',speed=1,timer=null;
+function setT(nt){t=Math.max(0,Math.min(T,nt));render();}
+function render(){
+  $('tslider').value=t;$('tcur').textContent='t = '+t;
+  drawAt($('big'),t,7);
+  $('bigl').textContent=(t===0?'x₀ (clean)':(t===T?'x_T ≈ pure N(0, I) noise':'x_'+t));
+  const s=Math.sqrt(abar[t]),n=Math.sqrt(1-abar[t]);
+  $('sigbar').style.width=(s*100)+'%';$('noibar').style.width=(n*100)+'%';
+  $('sv').textContent=s.toFixed(3);$('nv').textContent=n.toFixed(3);
+  $('eq').innerHTML='x_'+t+' = <span class="o">'+s.toFixed(3)+'</span> · x₀ + <span class="p">'+n.toFixed(3)+'</span> · ε'
+    +'<br><span style="color:var(--soft)">one jump, no loop — the closed form of the forward process</span>';
+  frames.forEach(f=>f.el.classList.toggle('cur',f.t===t||(Math.abs(f.t-t)<25&&!frames.some(g=>g.t===t))));
+  const st=$('story');
+  if(dir==='F'){
+    st.innerHTML='<b>Forward process (training-time):</b> we never actually loop 1000 times. Because each step adds <i>Gaussian</i> noise, all '+T+' steps collapse into one formula: <b>x_t = √ᾱ_t·x₀ + √(1−ᾱ_t)·ε</b>. At t='+t+' the image is <b style="color:var(--in)">'+(s*100).toFixed(1)+'% signal</b> and <b style="color:var(--ac)">'+(n*100).toFixed(1)+'% noise</b> (in std-dev terms). Notice how recognizable the sneaker still is at t=300 — most of the "destruction" happens late, because ᾱ_t decays slowly at first.';
+  } else {
+    st.innerHTML='<b>Reverse process (generation-time):</b> start from pure noise x_T and ask the trained U-Net, at every step, <i>"what noise is hiding in this image?"</i>. Subtract a calibrated fraction of that predicted noise, add back a little fresh noise σ_t·z (except at the very last step), and repeat '+T+' times. Here at t='+t+' the model has recovered <b style="color:var(--in)">'+(s*100).toFixed(1)+'%</b> of the signal. The thumbnails above show the states it passes through — same math, opposite direction.';
+  }
+  renderArrows();
+}
+function tick(){
+  const step=Math.max(4,Math.round(10*speed));
+  if(dir==='F'){t+=step;if(t>=T){t=T;stop();}}
+  else{t-=step;if(t<=0){t=0;stop();}}
+  render();
+}
+function play(){if(timer){stop();return;}
+  if(dir==='F'&&t>=T)t=0; if(dir==='R'&&t<=0)t=T;
+  timer=setInterval(tick,40);$('play').textContent='⏸ Pause';}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+$('dirF').onclick=()=>{dir='F';$('dirF').classList.add('on');$('dirR').classList.remove('on');stop();render();};
+$('dirR').onclick=()=>{dir='R';$('dirR').classList.add('on');$('dirF').classList.remove('on');stop();if(t===0)t=T;render();};
+$('play').onclick=play;
+$('fwd').onclick=()=>{stop();setT(t+25);};
+$('back').onclick=()=>{stop();setT(t-25);};
+$('reset').onclick=()=>{stop();resampleEps(7);t=(dir==='F'?0:T);frames.forEach(f=>drawAt(f.el.querySelector('canvas'),f.t,1));render();};
+$('tslider').oninput=e=>{stop();setT(+e.target.value);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+render();
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}
+  function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+  addEventListener('load',postH);addEventListener('resize',postH);
+  if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>

@@ -2,8 +2,8 @@
 
 <html lang="en">
 <head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
 <title>15_DDPM_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
@@ -7525,6 +7525,8 @@ a.anchor-link {
   </a>
 </div>
 <main>
+
+<main>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=aa3d1652">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7578,6 +7580,112 @@ a.anchor-link {
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3cfd20fc">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%8E%AE-Interactive-Visualizations-%E2%80%94-Setup">🎮 Interactive Visualizations &mdash; Setup<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-Visualizations-%E2%80%94-Setup">¶</a></h2><p>This notebook embeds <strong>8 interactive visualizations</strong> (2D + 3D) that let you <em>play with</em> every core DDPM idea: the forward/reverse processes, the variance schedule, the closed-form noising jump, the U-Net, the training step, the sampling loop, and the callback dispatch machinery.</p>
+<p>Run the cell below <strong>once</strong>. Each "🎮 Interactive" cell then loads a standalone HTML file from the published copy on GitHub Pages, in an isolated <code>&lt;iframe&gt;</code> (its CSS/JS can't leak into the notebook). Each is shown <strong>full width</strong> and <strong>auto-fits its content height</strong> &mdash; no dead space below.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=2b650fb9">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE VISUALIZATIONS -- setup (run this cell ONCE).</span>
+<span class="c1"># Each "🎮 Interactive" cell below loads a standalone HTML file from the</span>
+<span class="c1"># published copy on GitHub Pages, in an isolated &lt;iframe&gt; (its CSS/JS can't leak</span>
+<span class="c1"># into the notebook). It is shown FULL WIDTH and auto-fits its content height.</span>
+<span class="c1"># No local files needed -- the visualizations are read from GitHub.</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+
+<span class="k">def</span> <span class="nf">show_viz</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"600px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Embed an interactive visualization full width; it auto-fits its height.</span>
+<span class="sd">    `path` may be a bare 'interactive_viz/&lt;file&gt;.html' (resolved to the GitHub</span>
+<span class="sd">    Pages copy) or a full https URL."""</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="s2">"https://shammun.github.io/shammunul-fastai-notes/notebooks/"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"http"</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">path</span>
+    <span class="k">return</span> <span class="n">HTML</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'&lt;iframe src="</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">" loading="lazy" allowfullscreen '</span>
+        <span class="sa">f</span><span class="s1">'style="width:100%;height:</span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s1">;border:1px solid #dde5f2;border-radius:12px;'</span>
+        <span class="sa">f</span><span class="s1">'box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"&gt;&lt;/iframe&gt;'</span>
+        <span class="s1">'&lt;script&gt;addEventListener("message",function(e){'</span>
+        <span class="s1">'if(e.data&amp;&amp;e.data.type==="ce-frame-height"&amp;&amp;e.data.height&gt;50){'</span>
+        <span class="s1">'var fs=document.querySelectorAll("iframe");for(var i=0;i&lt;fs.length;i++){'</span>
+        <span class="s1">'if(fs[i].contentWindow===e.source){fs[i].style.height=e.data.height+"px";break;}}}});&lt;/script&gt;'</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=31d1ee9c">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-The-Big-Picture-%E2%80%94-Forward-vs-Reverse">🎮 Interactive: The Big Picture &mdash; Forward vs Reverse<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-The-Big-Picture-%E2%80%94-Forward-vs-Reverse">¶</a></h3><p>Before any code: build the mental model. Watch the <strong>forward process</strong> grind a sneaker into pure Gaussian noise over 1000 steps, then flip direction and watch the <strong>learned reverse process</strong> rebuild it. Drag the timeline, click any thumbnail to jump to that timestep, and watch the signal/noise mixing bars track &radic;ᾱ_t and &radic;(1−ᾱ_t) live.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=1fd2c40d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm_big_picture.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddpm_big_picture.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a60b2145">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Diffusion-in-3D-%E2%80%94-A-Whole-Distribution-Melting">🎮 Interactive: Diffusion in 3D &mdash; A Whole Distribution Melting<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Diffusion-in-3D-%E2%80%94-A-Whole-Distribution-Melting">¶</a></h3><p>The image-strip view shows <em>one</em> image getting noisier; this 3D view shows what happens to the <strong>entire dataset</strong>. Every dot is a data point; the forward process diffuses the structured swiss-roll into a featureless N(0, I) ball &mdash; the one distribution we can trivially sample from. Drag to orbit, scroll to zoom, and run it in both directions.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=08fa8488">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/diffusion_3d_trajectory.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"720px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/diffusion_3d_trajectory.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:720px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e97c4f01">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -8122,6 +8230,34 @@ Output: (batch, 1, 32, 32)
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ddbeaa8d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-The-DDPM-U-Net,-Exploded-in-3D">🎮 Interactive: The DDPM U-Net, Exploded in 3D<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-The-DDPM-U-Net,-Exploded-in-3D">¶</a></h3><p>The exact model built above &mdash; <code>UNet2DModel(in_channels=1, out_channels=1, block_out_channels=(32, 64, 128, 128))</code> &mdash; rendered as a 3D exploded diagram. Box height = channels, box width = spatial size. <strong>Click any block</strong> to see its tensor shapes and its job; toggle the skip connections and the timestep-embedding injection to see why both are essential.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=9e873eb2">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/unet_ddpm_3d.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"700px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/unet_ddpm_3d.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:700px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=64f26317">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8241,7 +8377,35 @@ Output: (batch, 1, 32, 32)
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=aa916302-00c5-4ec0-ac69-de4dccce755f">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c75fd300">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-The-Variance-Schedule-Lab">🎮 Interactive: The Variance Schedule Lab<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-The-Variance-Schedule-Lab">¶</a></h3><p>The four tensors from <code>DDPMCB.__init__</code> (β, α, ᾱ, σ) plotted live. <strong>Hover</strong> to read exact values at any t (including the two coefficients &radic;ᾱ_t and &radic;(1−ᾱ_t) that the closed form uses), toggle curves on/off, and <strong>drag β_min / β_max / n_steps</strong> to see how the schedule reshapes &mdash; and why the paper's defaults are a sweet spot.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=756c71d0">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/variance_schedule_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"720px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/variance_schedule_lab.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:720px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=aa916302-00c5-4ec0-ac69-de4dccce755f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8869,6 +9033,34 @@ torch.randn &rarr; [1.1, -0.2, ...]  &rarr;   image of a sneaker
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=038913ed">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Anatomy-of-One-DDPM-Training-Step">🎮 Interactive: Anatomy of One DDPM Training Step<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Anatomy-of-One-DDPM-Training-Step">¶</a></h3><p>Step through exactly what <code>DDPMCB</code> does to every batch &mdash; sample ε, sample per-image timesteps, gather + reshape ᾱ_t, build x_t, <strong>rewire <code>learn.batch</code></strong>, run <code>predict</code>, take the MSE. Each stage lights up the matching lines of the real notebook code, and a batch of four images shows four different corruption levels happening at once.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=14e1138c">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm_training_step.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddpm_training_step.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=forward-process-visual">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8889,39 +9081,35 @@ t=999:  Almost pure noise       [~0% signal, ~100% noise]
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: The forward diffusion process</h3>
-  <p class="ce-interactive-hint">Drag the timestep slider to watch a 2D dataset progressively destroyed by Gaussian noise. At <code>t=0</code> you see structured data; by <code>t=1000</code> you see pure noise. The formulas under the canvas show the closed-form jump <code>x<sub>t</sub> = &radic;&#257;<sub>t</sub> &middot; x<sub>0</sub> + &radic;(1&minus;&#257;<sub>t</sub>) &middot; &epsilon;</code> in action.</p>
-  <canvas id="fwd-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action: manipulation;"></canvas>
-  <div class="ms-controls">
-    <label>Timestep t: <span id="fwd-t-val" class="ms-val">0</span></label>
-    <input id="fwd-t" type="range" min="0" max="1000" step="1" value="0">
-  </div>
-  <div class="ms-controls" style="font-size: 0.86em; color: var(--ce-text-muted, #697386);">
-    <span id="fwd-ab">&#257;<sub>t</sub> = 1.000</span>
-    <span id="fwd-sg">&radic;(1&minus;&#257;<sub>t</sub>) = 0.000</span>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    The variance is engineered so that &#257;<sub>t</sub> &rarr; 0 by t = T. At that point the signal is fully destroyed and <code>x<sub>T</sub> &sim; &Nscr;(0, I)</code> &mdash; pure Gaussian noise, ready for the reverse process to undo.
-  </p>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=110c36df">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Reverse sampling, step by step</h3>
-  <p class="ce-interactive-hint">Start at pure noise (t = 1000). Click <strong>Next step</strong> to apply one reverse-diffusion step. Watch the points slowly re-cohere into the original structured distribution. <strong>This is what a trained DDPM does at inference</strong> &mdash; chain 1000 of these denoising steps and you get a generated sample.</p>
-  <canvas id="rev-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action: manipulation;"></canvas>
-  <div class="ms-controls">
-    <button id="rev-step" class="ms-btn">Next step</button>
-    <button id="rev-run" class="ms-btn">Run to end</button>
-    <button id="rev-reset" class="ms-btn ms-secondary">Reset</button>
-    <span class="ms-val" id="rev-t">t = 1000</span>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    The "neural network" here is a cheat &mdash; we use the true noise vector we added in the forward pass. A real DDPM trains a network to predict that noise from the noisy image. But the mechanics of the reverse loop are exactly what's animating below.
-  </p>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Forward-Noising-Lab-%E2%80%94-the-Closed-Form,-Live">🎮 Interactive: Forward Noising Lab &mdash; the Closed Form, Live<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Forward-Noising-Lab-%E2%80%94-the-Closed-Form,-Live">¶</a></h3><p>The most important formula in the notebook, computed before your eyes: <strong>x_t = &radic;ᾱ_t·x₀ + &radic;(1−ᾱ_t)·ε</strong>. Drag t, resample ε, and <strong>click any pixel of x_t</strong> to trace its exact arithmetic (one multiply-add, broadcast over all 784 pixels). Note the variance check: the two squared coefficients always sum to 1.</p>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1a1bedb9">
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=f236aa67">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/forward_noising_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/forward_noising_lab.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1e1fa52c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8933,8 +9121,7 @@ t=999:  Almost pure noise       [~0% signal, ~100% noise]
 </code></pre>
 <p>At each step, we need to compute x_{t-1} from x_t. The DDPM paper gives us a formula for this.</p>
 <hr/>
-<h2 id="The-Core-Equations">The Core Equations<a class="anchor-link" href="#The-Core-Equations">¶</a></h2>
-<h3 id="Equation-1:-Forward-Process-(for-reference)">Equation 1: Forward Process (for reference)<a class="anchor-link" href="#Equation-1:-Forward-Process-(for-reference)">¶</a></h3>$$x_t = \sqrt{\bar{\alpha}_t} \cdot x_0 + \sqrt{1-\bar{\alpha}_t} \cdot \varepsilon$$<h3 id="Equation-2:-Estimate-x%E2%82%80-from-x%E2%82%9C-(rearranging-Equation-1)">Equation 2: Estimate x₀ from xₜ (rearranging Equation 1)<a class="anchor-link" href="#Equation-2:-Estimate-x%E2%82%80-from-x%E2%82%9C-(rearranging-Equation-1)">¶</a></h3>$$\hat{x}_0 = \frac{x_t - \sqrt{1-\bar{\alpha}_t} \cdot \varepsilon_{predicted}}{\sqrt{\bar{\alpha}_t}}$$<h3 id="Equation-3:-Compute-x_%7Bt-1%7D-(the-reverse-step)">Equation 3: Compute x_{t-1} (the reverse step)<a class="anchor-link" href="#Equation-3:-Compute-x_%7Bt-1%7D-(the-reverse-step)">¶</a></h3>$$x_{t-1} = \underbrace{\frac{\sqrt{\bar{\alpha}_{t-1}} \cdot (1-\alpha_t)}{1-\bar{\alpha}_t}}_{x_0 \text{ coefficient}} \cdot \hat{x}_0 + \underbrace{\frac{\sqrt{\alpha_t} \cdot (1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t}}_{x_t \text{ coefficient}} \cdot x_t + \sigma_t \cdot z$$<p>Where z is random noise (zero at final step).</p>
+<h2 id="The-Core-Equations">The Core Equations<a class="anchor-link" href="#The-Core-Equations">¶</a></h2><h3 id="Equation-1:-Forward-Process-(for-reference)">Equation 1: Forward Process (for reference)<a class="anchor-link" href="#Equation-1:-Forward-Process-(for-reference)">¶</a></h3>$$x_t = \sqrt{\bar{\alpha}_t} \cdot x_0 + \sqrt{1-\bar{\alpha}_t} \cdot \varepsilon$$<h3 id="Equation-2:-Estimate-x%E2%82%80-from-x%E2%82%9C-(rearranging-Equation-1)">Equation 2: Estimate x₀ from xₜ (rearranging Equation 1)<a class="anchor-link" href="#Equation-2:-Estimate-x%E2%82%80-from-x%E2%82%9C-(rearranging-Equation-1)">¶</a></h3>$$\hat{x}_0 = \frac{x_t - \sqrt{1-\bar{\alpha}_t} \cdot \varepsilon_{predicted}}{\sqrt{\bar{\alpha}_t}}$$<h3 id="Equation-3:-Compute-x_%7Bt-1%7D-(the-reverse-step)">Equation 3: Compute x_{t-1} (the reverse step)<a class="anchor-link" href="#Equation-3:-Compute-x_%7Bt-1%7D-(the-reverse-step)">¶</a></h3>$$x_{t-1} = \underbrace{\frac{\sqrt{\bar{\alpha}_{t-1}} \cdot (1-\alpha_t)}{1-\bar{\alpha}_t}}_{x_0 \text{ coefficient}} \cdot \hat{x}_0 + \underbrace{\frac{\sqrt{\alpha_t} \cdot (1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t}}_{x_t \text{ coefficient}} \cdot x_t + \sigma_t \cdot z$$<p>Where z is random noise (zero at final step).</p>
 <hr/>
 <h2 id="The-Complete-Code">The Complete Code<a class="anchor-link" href="#The-Complete-Code">¶</a></h2><div class="highlight"><pre><span></span><span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>  <span class="c1"># Disable gradient tracking - we don't need gradients during inference/sampling</span>
 <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">sz</span><span class="p">):</span>
@@ -9288,7 +9475,6 @@ $$x_{t-1} = \text{x0\_coeff} \cdot \hat{x}_0 + \text{xt\_coeff} \cdot x_t + \sig
 └─────────────────────────────────────────────────────────────────┘
 </code></pre>
 <hr/>
-
 <h2 id="Complete-Flow-for-1000-Steps">Complete Flow for 1000 Steps<a class="anchor-link" href="#Complete-Flow-for-1000-Steps">¶</a></h2><pre><code>t=999: x_999 (noise) &rarr; predict ε &rarr; estimate x̂₀ &rarr; compute x_998
 t=998: x_998         &rarr; predict ε &rarr; estimate x̂₀ &rarr; compute x_997
 t=997: x_997         &rarr; predict ε &rarr; estimate x̂₀ &rarr; compute x_996
@@ -9347,7 +9533,35 @@ t=0:   x_0 (final image, no noise added)
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b8273a49">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e7e10a77">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-The-Reverse-Sampling-Loop,-Step-by-Step">🎮 Interactive: The Reverse Sampling Loop, Step by Step<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-The-Reverse-Sampling-Loop,-Step-by-Step">¶</a></h3><p>Walk the <code>sample()</code> method one iteration at a time: (1) predict the noise -&gt; (2) invert the forward formula to estimate x̂₀ -&gt; (3) compute the two posterior coefficients -&gt; (4) add fresh noise σ·z (except at t=0!) -&gt; (5) blend into x_{t−1}. The timeline runs right-to-left like the loop itself; click any stage chip and the matching code lines highlight.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=1a29f99b">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/reverse_sampling_stepper.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/reverse_sampling_stepper.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2b92ccc3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9866,7 +10080,7 @@ $$\mathcal{L} = \frac{1}{N} \sum_{i=1}^{N} \| \varepsilon_{\text{pred}}^{(i)} - 
 <span class="c1"># The Learner ties everything together:</span>
 <span class="c1"># - model: Our U-Net</span>
 <span class="c1"># - dls: DataLoaders (training and validation data)</span>
-<span class="c1"># - nn.MSELoss(): Mean Squared Error loss (we minimize |predicted_noise - actual_noise|<sup>2</sup>)</span>
+<span class="c1"># - nn.MSELoss(): Mean Squared Error loss (we minimize |predicted_noise - actual_noise|²)</span>
 <span class="c1"># - lr: Learning rate</span>
 <span class="c1"># - cbs: List of callbacks</span>
 <span class="c1"># - opt_func=optim.Adam: Use Adam optimizer (adaptive learning rates per parameter)</span>
@@ -10315,7 +10529,35 @@ Combines model, data, loss function, optimizer, and callbacks into one training 
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=b5a8e6df">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=780e226c">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Who-Calls-What?-Learner-+-DDPMCB-Dispatch">🎮 Interactive: Who Calls What? Learner + DDPMCB Dispatch<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Who-Calls-What?-Learner-+-DDPMCB-Dispatch">¶</a></h3><p>A clickable call-stack trace of one training batch: <code>fit -&gt; one_epoch -&gt; one_batch -&gt; callback('before_batch') -&gt; DDPMCB.before_batch -&gt; DDPMCB.predict -&gt; TrainCB.get_loss -&gt; backward/step</code>. Badges show whose code runs at each frame &mdash; and reveal that DDPM added only ~30 purple lines to an otherwise untouched training loop.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=79c41f8d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/callback_dispatch_flow.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/callback_dispatch_flow.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c2bc8742">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10903,174 +11145,15 @@ An animation where:</p>
 </div>
 </div>
 </div>
-<style>
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--ce-purple, #6c5ce7); height: 6px; touch-action: manipulation; }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 70px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactive .ms-btn.ms-secondary { background: transparent; color: var(--ce-purple, #6c5ce7); border: 1px solid var(--ce-purple, #6c5ce7); box-shadow: none; }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-// Shared: linear schedule
-var T_MAX = 1000;
-var beta = new Float32Array(T_MAX + 1);
-var alphabar = new Float32Array(T_MAX + 1);
-(function buildSchedule() {
-  var ab = 1;
-  for (var t = 0; t <= T_MAX; t++) {
-    beta[t] = 1e-4 + (0.02 - 1e-4) * (t / T_MAX);
-    if (t === 0) alphabar[0] = 1;
-    else { ab *= (1 - beta[t]); alphabar[t] = ab; }
-  }
-})();
-
-function gauss() {
-  var u1 = Math.random(), u2 = Math.random();
-  return Math.sqrt(-2 * Math.log(u1 || 1e-9)) * Math.cos(2 * Math.PI * u2);
-}
-
-// Shared dataset: spiral
-var N = 220;
-var dataPts = [];
-var noisePts = [];
-for (var i = 0; i < N; i++) {
-  var u = i / (N - 1);
-  var theta = u * 6.5;
-  var r = 6 + u * 80;
-  dataPts.push([Math.cos(theta) * r, Math.sin(theta) * r]);
-  noisePts.push([gauss() * 80, gauss() * 70]);
-}
-
-// ============================================================================
-// Interactive 1: Forward diffusion
-// ============================================================================
-(function forward() {
-  var canvas = document.getElementById('fwd-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-
-  function draw() {
-    var t = parseInt(document.getElementById('fwd-t').value);
-    var ab = alphabar[t];
-    var sqAb = Math.sqrt(ab);
-    var sqOmAb = Math.sqrt(1 - ab);
-    document.getElementById('fwd-t-val').textContent = t;
-    document.getElementById('fwd-ab').innerHTML = '&#257;<sub>t</sub> = ' + ab.toFixed(4);
-    document.getElementById('fwd-sg').innerHTML = '&radic;(1&minus;&#257;<sub>t</sub>) = ' + sqOmAb.toFixed(4);
-    ctx.clearRect(0, 0, W, H);
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
-    var cx = W / 2, cy = H / 2;
-    for (var i = 0; i < N; i++) {
-      var x = cx + sqAb * dataPts[i][0] + sqOmAb * noisePts[i][0];
-      var y = cy + sqAb * dataPts[i][1] + sqOmAb * noisePts[i][1];
-      var r = Math.round(79 + (6 - 79) * (1 - ab));
-      var g = Math.round(70 + (182 - 70) * (1 - ab));
-      var b = Math.round(229 + (212 - 229) * (1 - ab));
-      ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.78)';
-      ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI * 2); ctx.fill();
-    }
-  }
-  document.getElementById('fwd-t').addEventListener('input', draw);
-  draw();
-})();
-
-// ============================================================================
-// Interactive 2: Reverse sampling
-// ============================================================================
-(function reverse() {
-  var canvas = document.getElementById('rev-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-  var STEP_SIZE = 25;
-  var pts, t;
-  var rafId = null;
-  var running = false;
-
-  function init() {
-    t = T_MAX;
-    pts = noisePts.map(function(n) { return [n[0], n[1]]; });
-    update();
-  }
-  init();
-
-  function predNoise(curPts, t) {
-    var ab = alphabar[t]; var sqAb = Math.sqrt(ab); var sqOm = Math.sqrt(1 - ab) || 1e-6;
-    return curPts.map(function(p, i) {
-      return [(p[0] - sqAb * dataPts[i][0]) / sqOm, (p[1] - sqAb * dataPts[i][1]) / sqOm];
-    });
-  }
-
-  function step() {
-    if (t <= 0) return false;
-    var beta_t = beta[t], alpha_t = 1 - beta_t, ab_t = alphabar[t];
-    var sigma_t = Math.sqrt(beta_t);
-    var eps = predNoise(pts, t);
-    pts = pts.map(function(p, i) {
-      var x = (p[0] - beta_t / Math.sqrt(1 - ab_t) * eps[i][0]) / Math.sqrt(alpha_t);
-      var y = (p[1] - beta_t / Math.sqrt(1 - ab_t) * eps[i][1]) / Math.sqrt(alpha_t);
-      if (t > 1) {
-        x += sigma_t * gauss() * 22;
-        y += sigma_t * gauss() * 18;
-      }
-      return [x, y];
-    });
-    t = Math.max(0, t - STEP_SIZE);
-    return true;
-  }
-
-  function update() {
-    var cx = W / 2, cy = H / 2;
-    ctx.clearRect(0, 0, W, H);
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
-    var ab = alphabar[t];
-    for (var i = 0; i < N; i++) {
-      var r = Math.round(6 + (79 - 6) * ab);
-      var g = Math.round(182 + (70 - 182) * ab);
-      var b = Math.round(212 + (229 - 212) * ab);
-      ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.78)';
-      ctx.beginPath(); ctx.arc(cx + pts[i][0], cy + pts[i][1], 2.6, 0, Math.PI * 2); ctx.fill();
-    }
-    document.getElementById('rev-t').textContent = 't = ' + t;
-  }
-
-  function tickRun() {
-    if (!running) return;
-    if (step()) {
-      update();
-      if (t > 0) rafId = requestAnimationFrame(tickRun);
-      else { running = false; document.getElementById('rev-run').textContent = 'Done'; }
-    }
-  }
-
-  document.getElementById('rev-step').addEventListener('click', function() {
-    if (step()) update();
-  });
-  document.getElementById('rev-run').addEventListener('click', function() {
-    if (running) { running = false; document.getElementById('rev-run').textContent = 'Run to end'; return; }
-    if (t <= 0) init();
-    running = true;
-    document.getElementById('rev-run').textContent = 'Pause';
-    tickRun();
-  });
-  document.getElementById('rev-reset').addEventListener('click', function() {
-    running = false; cancelAnimationFrame(rafId);
-    document.getElementById('rev-run').textContent = 'Run to end';
-    init();
-  });
-})();
-
+<script id="ce-fullbleed-resize">
+(function(){
+  function fit(f){ try{var d=f.contentDocument; if(d&&d.body){var h=Math.ceil(Math.max(d.body.scrollHeight,d.body.offsetHeight)); if(h>50){f.style.height=(h+8)+"px";return true;}}}catch(e){} return false; }
+  function all(){ document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(fit); }
+  addEventListener("message",function(e){ if(!e.data||e.data.type!=="ce-frame-height"||!(e.data.height>50))return;
+    var ifr=document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)");
+    for(var i=0;i<ifr.length;i++){ if(ifr[i].contentWindow===e.source){ ifr[i].style.height=(e.data.height+8)+"px"; break; } } });
+  document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(function(f){ f.addEventListener("load",function(){fit(f);setTimeout(function(){fit(f);},400);setTimeout(function(){fit(f);},1200);}); });
+  addEventListener("resize",all); setInterval(all,1500); all();
 })();
 </script>
 </main>

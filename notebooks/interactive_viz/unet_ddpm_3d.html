@@ -1,0 +1,449 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The DDPM U-Net in 3D — every layer labeled</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:10px 12px 8px;}
+  .wrap{max-width:1160px;margin:0 auto;}
+  h1{font-size:16.5px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:11.5px;margin:0 auto 6px;max-width:1050px;line-height:1.45;}
+  .bar{display:flex;gap:6px;align-items:center;justify-content:center;font-size:11.5px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  button{font-family:inherit;font-weight:700;font-size:12px;border:none;border-radius:9px;padding:5px 12px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:132px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);width:86px;}
+  .spv{font-family:monospace;font-weight:700;color:var(--ac);min-width:30px;display:inline-block;}
+  .tg{display:inline-flex;align-items:center;gap:4px;background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:3px 10px;cursor:pointer;font-weight:600;}
+  .tg input{accent-color:var(--ac);margin:0;}
+  .chips{display:flex;gap:5px;overflow-x:auto;padding:2px 2px 6px;justify-content:flex-start;scrollbar-width:thin;}
+  .chip{flex:0 0 auto;font-size:11px;font-weight:700;border-radius:999px;padding:4px 11px;border:1.5px solid var(--line);background:#fff;color:var(--soft);cursor:pointer;white-space:nowrap;}
+  .chip.on{background:var(--ac);border-color:var(--ac);color:#fff;box-shadow:0 3px 10px rgba(123,92,214,.3);}
+  .main{display:flex;gap:10px;align-items:stretch;}
+  #stage{flex:1;min-width:0;height:462px;position:relative;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);overflow:hidden;}
+  #stage canvas{display:block;}
+  .hint{position:absolute;left:10px;bottom:8px;font-size:10px;color:var(--soft);background:rgba(255,255,255,.85);border:1px solid var(--line);border-radius:8px;padding:2px 8px;pointer-events:none;}
+  .ticker{position:absolute;left:50%;transform:translateX(-50%);top:8px;font-size:11.5px;font-weight:700;color:var(--ac);background:rgba(255,255,255,.92);border:1.5px solid #e4dcf9;border-radius:999px;padding:3px 14px;pointer-events:none;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis;}
+  .right{width:308px;flex:0 0 308px;height:462px;display:flex;flex-direction:column;gap:8px;min-width:0;}
+  #panel{flex:1;min-height:0;overflow-y:auto;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);padding:10px 12px;font-size:11.8px;line-height:1.5;color:var(--soft);}
+  #code{flex:0 0 196px;overflow:auto;background:#1f2940;color:#dce6f5;border-radius:12px;padding:8px 6px;font-family:"SF Mono",Consolas,monospace;font-size:10.3px;line-height:1.5;white-space:pre;box-shadow:0 6px 16px rgba(123,92,214,.12);}
+  #code .cl{display:block;padding:0 7px;border-radius:5px;}
+  #code .cl.hl{background:#4a3d85;color:#fff;font-weight:700;}
+  #code .cm{color:#7d8db0;}
+  #panel h2{font-size:13px;color:var(--ink);margin:0 0 2px;}
+  #panel .cls{font-family:monospace;font-size:10.5px;color:var(--ac);margin-bottom:6px;}
+  #panel .shp{display:flex;gap:6px;align-items:center;font-family:monospace;font-size:11px;font-weight:700;margin:6px 0;flex-wrap:wrap;}
+  #panel .shp .b{border-radius:7px;padding:2px 8px;}
+  #panel .shp .i{background:#fdf1e3;color:var(--in);}
+  #panel .shp .o{background:#e2f4f4;color:var(--out);}
+  #panel ul{margin:4px 0 8px;padding-left:16px;}
+  #panel li{margin:2px 0;font-family:monospace;font-size:10.6px;color:var(--ink);}
+  #panel .why{color:var(--soft);}
+  #panel .tag{display:inline-block;font-size:9.8px;font-weight:700;border-radius:999px;padding:1px 8px;margin:2px 4px 2px 0;}
+  #panel .tag.t{background:#fdf1e3;color:var(--in);}
+  #panel .tag.s{background:#f0eafd;color:var(--ac);}
+  #panel .tag.a{background:#fff6df;color:#b07d10;}
+  .legend{text-align:center;font-size:10.4px;color:var(--soft);margin-top:6px;line-height:1.5;}
+  .sw{display:inline-block;width:9px;height:9px;border-radius:3px;vertical-align:-1px;margin:0 3px 0 8px;}
+  @media (max-width:900px){
+    .main{flex-direction:column;}
+    .right{width:100%;flex:0 0 auto;height:auto;}
+    #panel{max-height:200px;}
+    #code{flex:0 0 auto;height:170px;}
+    #stage{height:360px;}
+  }
+</style></head><body>
+<div class="wrap">
+<h1>The DDPM U-Net in 3D — every layer, exactly as diffusers builds it</h1>
+<p class="sub">This is the real structure of <b>UNet2DModel(in_channels=1, out_channels=1, block_out_channels=(32,64,128,128))</b> for a 1×32×32 image. <b>Box height = number of channels · box footprint = spatial resolution.</b> Vertical position = resolution level (deeper = smaller image). <b>Click any box</b> (or its chip below) for a plain-English explanation with exact tensor shapes. Drag to orbit · scroll to zoom.</p>
+
+<div class="bar">
+  <button class="play" id="play">▶ Trace forward pass</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span>speed</span><input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="spv" id="spv">1×</span>
+  <label class="tg"><input type="checkbox" id="tgSkip" checked>skip connections</label>
+  <label class="tg"><input type="checkbox" id="tgTemb" checked>timestep embedding</label>
+  <label class="tg"><input type="checkbox" id="tgRot">auto-rotate</label>
+</div>
+<div class="chips" id="chips"></div>
+
+<div class="main">
+  <div id="stage"><div class="ticker" id="ticker">click a block, or press “Trace forward pass”</div><div class="hint">drag = orbit · scroll = zoom · click = inspect</div></div>
+  <div class="right">
+    <div id="panel"></div>
+    <div id="code"></div>
+  </div>
+</div>
+
+<div class="legend">
+  <span class="sw" style="background:#f6921e"></span>input side (image in, conv_in)
+  <span class="sw" style="background:#8b76dd"></span>encoder (Down 1–4)
+  <span class="sw" style="background:#5a49b8"></span>bottleneck (Mid)
+  <span class="sw" style="background:#1fa9a2"></span>decoder (Up 1–4, conv_out, ε̂ out)
+  <span class="sw" style="background:#f2b23c"></span>gold ring = self-attention at that resolution
+  · dashed purple arcs = skips (concat) · thin orange lines = t_emb into every ResNet
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+
+/* ---------- verified block data (diffusers UNet2DModel defaults) ---------- */
+/* down_block_types = (DownBlock2D, AttnDownBlock2D, AttnDownBlock2D, AttnDownBlock2D)
+   up_block_types   = (AttnUpBlock2D, AttnUpBlock2D, AttnUpBlock2D, UpBlock2D)
+   layers_per_block = 2  → each down block: 2 ResNets (+Attn) then Downsample (except last)
+                         → each up block: 3 ResNets (+Attn), each fed one popped skip, then Upsample (except last) */
+const BLOCKS=[
+ {id:'input',  x:-9.5, res:32, ch:1,  col:0xf6921e, name:'Input: noisy image x_t',
+  cls:'(+ integer timestep t)', inS:'—', outS:'[1, 32, 32]',
+  sub:['x_t : 1×32×32 grayscale, values ≈ [−1, 1]','t : integer 0…999 (one per image in the batch)'],
+  why:'The network receives a noisy Fashion-MNIST image and which step t it came from. Its ONLY job: predict the noise ε that was mixed into x_t.'},
+ {id:'conv_in',x:-7.8, res:32, ch:32, col:0xf6921e, name:'conv_in', skip:'sends skip → Up 4',
+  cls:'Conv2d(1 → 32, 3×3, pad 1)', inS:'[1, 32, 32]', outS:'[32, 32, 32]',
+  sub:['a single 3×3 convolution — nothing else'],
+  why:'Lifts the 1-channel image into 32 feature channels so the rest of the network has room to compute. Resolution is untouched. Its output is also saved as the very first skip tensor.'},
+ {id:'d1', x:-6.1, res:16, ch:32, col:0x8b76dd, temb:true, name:'Down 1', skip:'sends skips → Up 3 / Up 4',
+  cls:'DownBlock2D (no attention)', inS:'[32, 32, 32]', outS:'[32, 16, 16]',
+  sub:['ResNet(32→32) + t_emb','ResNet(32→32) + t_emb','Downsample: stride-2 conv, 32×32 → 16×16'],
+  why:'First encoder stage: two ResNets refine features at 32×32, then resolution is halved. No attention here — at 32×32 there are 1024 positions, so full self-attention would be needlessly expensive; convs handle local texture fine. Each ResNet output is pushed onto the skip stack.'},
+ {id:'d2', x:-4.45,res:8, ch:64, col:0x8b76dd, temb:true, attn:16, name:'Down 2', skip:'sends skips → Up 2',
+  cls:'AttnDownBlock2D', inS:'[32, 16, 16]', outS:'[64, 8, 8]',
+  sub:['ResNet(32→64) + t_emb → Self-Attn @16×16','ResNet(64→64) + t_emb → Self-Attn @16×16','Downsample ↓2, 16×16 → 8×8'],
+  why:'Channels double to 64 (fewer pixels, richer descriptions per pixel) and self-attention appears: each of the 16×16 = 256 positions can now look at every other position, capturing global structure like the overall garment silhouette.'},
+ {id:'d3', x:-2.85,res:4, ch:128,col:0x8b76dd, temb:true, attn:8, name:'Down 3', skip:'sends skips → Up 1',
+  cls:'AttnDownBlock2D', inS:'[64, 8, 8]', outS:'[128, 4, 4]',
+  sub:['ResNet(64→128) + t_emb → Self-Attn @8×8','ResNet(128→128) + t_emb → Self-Attn @8×8','Downsample ↓2, 8×8 → 4×4'],
+  why:'Channels double again to 128. Attention now runs over just 8×8 = 64 positions — cheap and fully global. Features here describe large chunks of the image.'},
+ {id:'d4', x:-1.35,res:4, ch:128,col:0x8b76dd, temb:true, attn:4, name:'Down 4', skip:'sends skips → Up 1',
+  cls:'AttnDownBlock2D (final: no downsample)', inS:'[128, 4, 4]', outS:'[128, 4, 4]',
+  sub:['ResNet(128→128) + t_emb → Self-Attn @4×4','ResNet(128→128) + t_emb → Self-Attn @4×4','(no Downsample — this is the last down block)'],
+  why:'The fourth entry of block_out_channels=(32,64,128,128) keeps 128 channels, and diffusers never downsamples in the final down block — so resolution stays 4×4. That is why 32×32 input only shrinks to 4×4, not 2×2.'},
+ {id:'mid',x:0.35, res:4, ch:128,col:0x5a49b8, temb:true, attn:4, name:'Mid (bottleneck)',
+  cls:'UNetMidBlock2D', inS:'[128, 4, 4]', outS:'[128, 4, 4]',
+  sub:['ResNet(128→128) + t_emb','Self-Attn @4×4 (16 tokens — fully global)','ResNet(128→128) + t_emb'],
+  why:'The most compressed view of the image: 16 spatial positions × 128 channels. Each position summarizes a large region, and the attention layer lets them all exchange information. Think of it as the network “deciding what the image is” before rebuilding detail.'},
+ {id:'u1', x:2.05, res:8, ch:128,col:0x1fa9a2, temb:true, attn:4, name:'Up 1', skipIn:'receives skips ← Down 3 & Down 4 (4×4)',
+  cls:'AttnUpBlock2D', inS:'[128, 4, 4] + 3 skips', outS:'[128, 8, 8]',
+  sub:['3 × [ concat skip → ResNet(256→128) + t_emb → Self-Attn @4×4 ]','Upsample ×2 (nearest + conv), 4×4 → 8×8'],
+  why:'Up blocks have 3 ResNets (layers_per_block + 1). Before EACH one, a saved skip tensor is popped off the stack and concatenated on the channel axis — so the ResNet sees 128+128 = 256 input channels and compresses back to 128. Then resolution doubles.'},
+ {id:'u2', x:3.65, res:16,ch:128,col:0x1fa9a2, temb:true, attn:8, name:'Up 2', skipIn:'receives skips ← Down 2 level (8×8)',
+  cls:'AttnUpBlock2D', inS:'[128, 8, 8] + 3 skips', outS:'[128, 16, 16]',
+  sub:['3 × [ concat skip → ResNet + t_emb → Self-Attn @8×8 ]','Upsample ×2, 8×8 → 16×16'],
+  why:'Same recipe one level up: fuse the encoder’s 8×8 memories, refine with attention over 64 positions, then double the resolution to 16×16.'},
+ {id:'u3', x:5.25, res:32,ch:64, col:0x1fa9a2, temb:true, attn:16, name:'Up 3', skipIn:'receives skips ← Down 1 level (16×16)',
+  cls:'AttnUpBlock2D', inS:'[128, 16, 16] + 3 skips', outS:'[64, 32, 32]',
+  sub:['3 × [ concat skip → ResNet(→64) + t_emb → Self-Attn @16×16 ]','Upsample ×2, 16×16 → 32×32'],
+  why:'Channels shrink to 64 as resolution grows — the mirror image of the encoder. Skips from Down 1’s level restore where edges were at 16×16.'},
+ {id:'u4', x:6.85, res:32,ch:32, col:0x1fa9a2, temb:true, name:'Up 4', skipIn:'receives skips ← conv_in / Down 1 ResNets (32×32)',
+  cls:'UpBlock2D (final: no attention, no upsample)', inS:'[64, 32, 32] + 3 skips', outS:'[32, 32, 32]',
+  sub:['3 × [ concat skip → ResNet(→32) + t_emb ]','(no Upsample — already at full 32×32)'],
+  why:'Back at full resolution. The skips concatenated here are the 32×32 tensors saved at the very start (conv_in and Down 1’s ResNets) — pixel-precise detail the bottleneck could never carry. No attention: 1024 positions again, and convs suffice for final polish.'},
+ {id:'conv_out',x:8.45,res:32,ch:1, col:0x128b8b, name:'conv_out',
+  cls:'GroupNorm(32) → SiLU → Conv2d(32 → 1, 3×3)', inS:'[32, 32, 32]', outS:'[1, 32, 32]',
+  sub:['GroupNorm → SiLU → one 3×3 convolution'],
+  why:'Projects the 32 feature maps down to a single channel: the predicted noise ε̂ — exactly the same shape as the input image, as it must be.'},
+ {id:'output',x:10.0, res:32, ch:1, col:0x128b8b, name:'Output: predicted noise ε̂',
+  cls:'model(x_t, t).sample', inS:'—', outS:'[1, 32, 32]',
+  sub:['training: loss = MSE(ε̂, ε)','sampling: ε̂ drives the x_t → x_{t−1} update'],
+  why:'One tensor out. During training we compare it with the true ε (MSE). During sampling, DDPMCB.sample() plugs ε̂ into the reverse-step formula 1000 times to grow an image out of pure noise.'},
+];
+const TEMB={id:'temb', name:'Timestep embedding t_emb',
+  cls:'Timesteps → TimestepEmbedding (MLP)', inS:'t : integer 0…999', outS:'t_emb : [128]',
+  sub:['sinusoidal encoding of t → vector [32]','Linear(32→128) → SiLU → Linear(128→128)'],
+  why:'How does ONE network handle 1000 different noise levels? The integer t is turned into a smooth 128-dim vector, and EVERY ResNet in the diagram (orange lines) adds a per-channel projection of it right after its first convolution. So each block behaves slightly differently at t=990 (almost pure noise → denoise boldly) than at t=10 (nearly clean → touch gently).'};
+
+/* ---------- geometry helpers ---------- */
+const RESY={32:4.15,16:2.75,8:1.4,4:0.15};                 // vertical level per resolution
+const SP ={32:2.9,16:2.15,8:1.5,4:1.0};                    // footprint per resolution
+const CH ={1:0.34,32:0.85,64:1.55,128:2.5};                // box height per channels
+const stage=$('stage'), panel=$('panel');
+
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0xffffff);
+const camera=new THREE.PerspectiveCamera(38,2,0.1,200);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+stage.appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff,0.72));
+const dl=new THREE.DirectionalLight(0xffffff,0.55); dl.position.set(6,12,8); scene.add(dl);
+const dl2=new THREE.DirectionalLight(0xcdd8ff,0.25); dl2.position.set(-8,4,-6); scene.add(dl2);
+
+function labelSprite(lines,big,col){
+  const W=560, LH=big?64:54, H=LH*lines.length+18;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const c=cv.getContext('2d');
+  c.fillStyle='rgba(255,255,255,0.88)';
+  const r=16; c.beginPath();
+  c.moveTo(r,0);c.arcTo(W,0,W,H,r);c.arcTo(W,H,0,H,r);c.arcTo(0,H,0,0,r);c.arcTo(0,0,W,0,r);c.fill();
+  c.textAlign='center';
+  lines.forEach((ln,i)=>{
+    c.font=(i===0?('700 '+(big?42:38)):'600 32')+'px "Segoe UI",sans-serif';
+    c.fillStyle=i===0?(col||'#25324a'):'#5a6b86';
+    c.fillText(ln,W/2,LH*(i+0.78)+6);
+  });
+  const tex=new THREE.CanvasTexture(cv); tex.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true}));
+  const sc=big?2.6:2.15; sp.scale.set(sc,sc*H/W,1); sp.renderOrder=5;
+  return sp;
+}
+
+const meshes={}, group=new THREE.Group(); scene.add(group);
+BLOCKS.forEach((b,bi)=>{
+  const s=SP[b.res], h=CH[b.ch], y=(b.id==='input'||b.id==='output')?4.95:RESY[b.res];
+  const m=new THREE.Mesh(new THREE.BoxGeometry(s*0.62,h,s),
+    new THREE.MeshLambertMaterial({color:b.col,emissive:0x000000}));
+  m.position.set(b.x,y,0); m.userData.id=b.id; b.y=y; b.h=h;
+  group.add(m); meshes[b.id]=m;
+  if(b.attn){
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(0.24,0.06,10,24),
+      new THREE.MeshLambertMaterial({color:0xf2b23c,emissive:0x6b4c00}));
+    ring.rotation.x=Math.PI/2; ring.position.set(b.x,y+h/2+0.14,0); group.add(ring);
+  }
+  const lab=labelSprite([(bi+1)+'. '+b.name,b.outS.replace(/\s/g,'')],false);
+  lab.scale.multiplyScalar(0.92);
+  const stag=(bi%2)?0.72:0;           // alternate high/low so neighbors never overlap
+  lab.position.set(b.x,y+h/2+(b.attn?0.8:0.58)+stag,0); group.add(lab);
+});
+
+/* START / END flow markers — the pass always reads left → right */
+const startLab=labelSprite(['▶ START (step 1)','noisy x_t + timestep t enter here'],true,'#f6921e');
+startLab.position.set(-9.5,7.2,0); group.add(startLab);
+const startCone=new THREE.Mesh(new THREE.ConeGeometry(0.2,0.5,12),
+  new THREE.MeshLambertMaterial({color:0xf6921e,emissive:0x5c3300}));
+startCone.rotation.x=Math.PI; startCone.position.set(-9.5,6.15,0); group.add(startCone);
+const endLab=labelSprite(['■ END (step 13)','predicted noise ε̂ comes out here'],true,'#128b8b');
+endLab.position.set(10.0,7.2,0); group.add(endLab);
+const endCone=new THREE.Mesh(new THREE.ConeGeometry(0.2,0.5,12),
+  new THREE.MeshLambertMaterial({color:0x128b8b,emissive:0x073d3d}));
+endCone.rotation.x=Math.PI; endCone.position.set(10.0,6.15,0); group.add(endCone);
+
+/* main data-flow path with direction cones */
+const order=BLOCKS.map(b=>b.id);
+const flowMat=new THREE.LineBasicMaterial({color:0x9aa9c7});
+for(let i=0;i<order.length-1;i++){
+  const a=meshes[order[i]].position, b=meshes[order[i+1]].position;
+  const g=new THREE.BufferGeometry().setFromPoints([a.clone(),b.clone()]);
+  group.add(new THREE.Line(g,flowMat));
+  const dir=b.clone().sub(a), mid=a.clone().add(dir.clone().multiplyScalar(0.55));
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(0.11,0.3,10),
+    new THREE.MeshLambertMaterial({color:0x8a99bd}));
+  cone.position.copy(mid); cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());
+  group.add(cone);
+}
+
+/* skip arcs (dashed) — pairs verified by resolution level */
+const SKIPS=[['conv_in','u4',3.2],['d1','u3',2.7],['d2','u2',2.3],['d3','u1',1.9],['d4','u1',1.1]];
+const skipGroup=new THREE.Group(); group.add(skipGroup);
+const skipArcs=[];   // {f, t, mat} — lets us highlight arcs when either end is selected
+SKIPS.forEach(([f,t,lift])=>{
+  const A=meshes[f].position, B=meshes[t].position;
+  const top=Math.max(A.y,B.y)+lift;
+  const curve=new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(A.x,A.y+meshes[f].geometry.parameters.height/2,0),
+    new THREE.Vector3((A.x+B.x)/2,top,0),
+    new THREE.Vector3(B.x,B.y+meshes[t].geometry.parameters.height/2,0));
+  const g=new THREE.BufferGeometry().setFromPoints(curve.getPoints(40));
+  const mat=new THREE.LineDashedMaterial({color:0x7b5cd6,dashSize:0.22,gapSize:0.14,transparent:true,opacity:0.55});
+  const ln=new THREE.Line(g,mat); ln.computeLineDistances();
+  skipGroup.add(ln); skipArcs.push({f:f,t:t,mat:mat});
+  if(f!=='d4'){ // one label per arc (skip the short duplicate into u1)
+    const lb=labelSprite(['skip · concat @'+ (f==='conv_in'?'32×32':(f==='d1'?'16×16':(f==='d2'?'8×8':'4×4')))],false);
+    lb.scale.multiplyScalar(0.78);
+    lb.position.set((A.x+B.x)/2, top+0.28, 0); skipGroup.add(lb);
+  }
+});
+/* highlight every arc touching the selected block (bright orange = "this skip is being used") */
+function highlightSkips(id){
+  skipArcs.forEach(a=>{
+    const on=(id!==null)&&(a.t===id||a.f===id);
+    a.mat.color.setHex(on?0xf6921e:0x7b5cd6);
+    a.mat.opacity=on?1:0.55;
+    a.mat.dashSize=on?0.4:0.22;
+  });
+}
+
+/* timestep-embedding node: labeled box + thin orange lines to every ResNet block */
+const tembGroup=new THREE.Group(); group.add(tembGroup);
+const tembMesh=new THREE.Mesh(new THREE.BoxGeometry(2.6,0.6,0.7),
+  new THREE.MeshLambertMaterial({color:0xf6921e,emissive:0x5c3300}));
+tembMesh.position.set(0.35,7.0,0); tembMesh.userData.id='temb';
+tembGroup.add(tembMesh); meshes.temb=tembMesh;
+const tembLab=labelSprite(['Timestep embedding','t → sin/cos → MLP → t_emb [128]'],true);
+tembLab.position.set(0.35,7.95,0); tembGroup.add(tembLab);
+const tembLineMat=new THREE.LineBasicMaterial({color:0xf6921e,transparent:true,opacity:0.5});
+BLOCKS.filter(b=>b.temb).forEach(b=>{
+  const g=new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0.35,6.7,0), new THREE.Vector3(b.x,b.y+b.h/2,0)]);
+  tembGroup.add(new THREE.Line(g,tembLineMat));
+});
+
+/* ---------- camera orbit ---------- */
+let theta=0.0, phi=1.22, radius=19.5, target=new THREE.Vector3(0.25,2.7,0), autoRot=false;
+function applyCam(){
+  camera.position.set(
+    target.x+radius*Math.sin(phi)*Math.sin(theta),
+    target.y+radius*Math.cos(phi),
+    target.z+radius*Math.sin(phi)*Math.cos(theta));
+  camera.lookAt(target);
+}
+let dragging=false,px=0,py=0,moved=0;
+stage.addEventListener('pointerdown',e=>{dragging=true;moved=0;px=e.clientX;py=e.clientY;});
+addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  const dx=e.clientX-px, dy=e.clientY-py; moved+=Math.abs(dx)+Math.abs(dy);
+  theta-=dx*0.0055; phi=Math.max(0.35,Math.min(1.5,phi-dy*0.0045));
+  px=e.clientX; py=e.clientY; autoRot=false; $('tgRot').checked=false;
+});
+addEventListener('pointerup',e=>{
+  if(dragging&&moved<6)pick(e);
+  dragging=false;
+});
+stage.addEventListener('wheel',e=>{e.preventDefault();radius=Math.max(9,Math.min(34,radius+e.deltaY*0.02));},{passive:false});
+
+/* ---------- picking + info panel ---------- */
+const ray=new THREE.Raycaster(), ptr=new THREE.Vector2();
+function pick(e){
+  const r=renderer.domElement.getBoundingClientRect();
+  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)return;
+  ptr.x=((e.clientX-r.left)/r.width)*2-1; ptr.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(ptr,camera);
+  const hits=ray.intersectObjects(Object.values(meshes));
+  if(hits.length)select(hits[0].object.userData.id);
+}
+/* ---------- code panel: the notebook line + what model(x_t, t) runs inside ---------- */
+const CODE=[
+ {t:'# the exact line from the notebook:',                                   ids:[]},
+ {t:'model = UNet2DModel(in_channels=1, out_channels=1,',                    ids:[]},
+ {t:'          block_out_channels=(32, 64, 128, 128))',                      ids:[]},
+ {t:'',                                                                       ids:[]},
+ {t:'# inside model(x_t, t) — shapes for a 1×32×32 input:',                  ids:[]},
+ {t:'def forward(x_t, t):              # x_t: [1,32,32]',                    ids:['input']},
+ {t:'  temb = MLP(sin_cos(t))          # t_emb: [128]',                      ids:['temb']},
+ {t:'  x = conv_in(x_t)                # [32,32,32] save skip',              ids:['conv_in']},
+ {t:'  x = down1(x, temb)              # [32,16,16] save ×3',                ids:['d1']},
+ {t:'  x = down2(x, temb)  # +attn16²  # [64,8,8]   save ×3',                ids:['d2']},
+ {t:'  x = down3(x, temb)  # +attn8²   # [128,4,4]  save ×3',                ids:['d3']},
+ {t:'  x = down4(x, temb)  # +attn4²   # [128,4,4]  save ×2',                ids:['d4']},
+ {t:'  x = mid(x, temb)    # Res-Attn-Res [128,4,4]',                        ids:['mid']},
+ {t:'  x = up1(x, skips.pop(3), temb)  # [128,8,8]',                         ids:['u1']},
+ {t:'  x = up2(x, skips.pop(3), temb)  # [128,16,16]',                       ids:['u2']},
+ {t:'  x = up3(x, skips.pop(3), temb)  # [64,32,32]',                        ids:['u3']},
+ {t:'  x = up4(x, skips.pop(3), temb)  # [32,32,32]',                        ids:['u4']},
+ {t:'  return conv_out(silu(norm(x)))  # ε̂: [1,32,32]',                     ids:['conv_out','output']},
+];
+const codeBox=$('code');
+codeBox.innerHTML=CODE.map((l,i)=>{
+  const esc=l.t.replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/(#[^#]*)$/,'<span class="cm">$1</span>');
+  return '<span class="cl" id="cl'+i+'">'+(esc||' ')+'</span>';
+}).join('');
+function highlightCode(id){
+  CODE.forEach((l,i)=>{
+    const el=$('cl'+i), on=(id!==null)&&l.ids.indexOf(id)>-1;
+    el.classList.toggle('hl',on);
+    if(on)el.scrollIntoView({block:'nearest'});
+  });
+}
+
+let selected=null;
+function select(id){
+  selected=id;
+  Object.entries(meshes).forEach(([k,m])=>m.material.emissive.setHex(k===id?0x4a2fa8:(k==='temb'?0x5c3300:0x000000)));
+  if(id==='temb')meshes.temb.material.emissive.setHex(0x8a4d00);
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c.dataset.id===id));
+  const b=id==='temb'?TEMB:BLOCKS.find(x=>x.id===id);
+  let h='<h2>'+b.name+'</h2><div class="cls">'+b.cls+'</div>'
+   +'<div class="shp"><span class="b i">in '+b.inS+'</span><span>→</span><span class="b o">out '+b.outS+'</span></div>';
+  let tags='';
+  if(b.temb)tags+='<span class="tag t">+ t_emb in every ResNet</span>';
+  if(b.attn)tags+='<span class="tag a">self-attention @'+b.attn+'×'+b.attn+'</span>';
+  if(b.skip)tags+='<span class="tag s">'+b.skip+'</span>';
+  if(b.skipIn)tags+='<span class="tag s">'+b.skipIn+'</span>';
+  if(tags)h+='<div>'+tags+'</div>';
+  h+='<ul>'+b.sub.map(s=>'<li>'+s+'</li>').join('')+'</ul><div class="why">'+b.why+'</div>';
+  panel.innerHTML=h;
+  $('ticker').textContent=b.name+'  →  '+b.outS;
+  highlightSkips(id);
+  highlightCode(id);
+}
+function defaultPanel(){
+  panel.innerHTML='<h2>How to read this diagram</h2><div class="why" style="margin-top:6px">'
+   +'<b style="color:var(--ink)">Box height</b> = channels (1 → 32 → 64 → 128 and back). '
+   +'<b style="color:var(--ink)">Box footprint &amp; vertical level</b> = image resolution (32² → 16² → 8² → 4² → back up). '
+   +'The left slope <b style="color:#8b76dd">compresses</b> (what is in this image?), the bottom <b style="color:#5a49b8">reasons globally</b>, the right slope <b style="color:#1fa9a2">rebuilds detail</b> — helped by the '
+   +'<b style="color:var(--ac)">dashed skip arcs</b> that hand pixel-precise features straight across, and the '
+   +'<b style="color:var(--in)">orange t_emb lines</b> that tell every ResNet how noisy the input is.<br><br>'
+   +'<b style="color:var(--ink)">Gold rings</b> mark self-attention (only where the grid is small enough to be cheap: 16², 8², 4²).<br><br>'
+   +'Click any block — or press <b style="color:var(--ac)">Trace forward pass</b> to walk a tensor through all 13 stops.</div>';
+}
+
+/* chips */
+const chipRow=$('chips');
+BLOCKS.concat([{id:'temb',name:'t_emb'}]).forEach((b,i)=>{
+  const c=document.createElement('button'); c.className='chip'; c.dataset.id=b.id;
+  const nm=({input:'Input x_t',conv_in:'conv_in',d1:'Down 1',d2:'Down 2',d3:'Down 3',d4:'Down 4',
+    mid:'Mid',u1:'Up 1',u2:'Up 2',u3:'Up 3',u4:'Up 4',conv_out:'conv_out',output:'Output ε̂',temb:'t_emb'})[b.id];
+  c.textContent=(b.id==='temb'?'':((i+1)+' · '))+nm;
+  c.onclick=()=>{stopTrace();select(b.id);};
+  chipRow.appendChild(c);
+});
+
+/* ---------- forward-pass trace ---------- */
+let ti=-1,timer=null,speed=1;
+function traceStep(){
+  ti++;
+  if(ti>=order.length){stopTrace();return;}
+  const id=order[ti]; select(id);      // select() also lights this block's skip arcs + code line
+  Object.entries(meshes).forEach(([k,m])=>{
+    if(k==='temb')return;
+    const done=order.indexOf(k)>-1&&order.indexOf(k)<ti;
+    m.material.emissive.setHex(k===id?0x4a2fa8:(done?0x1c1440:0x000000));
+  });
+}
+function stopTrace(){clearInterval(timer);timer=null;$('play').textContent='▶ Trace forward pass';}
+$('play').onclick=()=>{
+  if(timer){stopTrace();return;}
+  if(ti>=order.length-1)ti=-1;
+  timer=setInterval(traceStep,1500/speed); traceStep();
+  $('play').textContent='⏸ Pause trace';
+};
+$('fwd').onclick=()=>{stopTrace();traceStep();};
+$('reset').onclick=()=>{stopTrace();ti=-1;selected=null;
+  Object.values(meshes).forEach(m=>m.material.emissive.setHex(0x000000));
+  meshes.temb.material.emissive.setHex(0x5c3300);
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  highlightSkips(null); highlightCode(null);
+  $('ticker').textContent='click a block, or press “Trace forward pass”'; defaultPanel();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';
+  if(timer){clearInterval(timer);timer=setInterval(traceStep,1500/speed);}};
+$('tgSkip').onchange=e=>skipGroup.visible=e.target.checked;
+$('tgTemb').onchange=e=>tembGroup.visible=e.target.checked;
+$('tgRot').onchange=e=>autoRot=e.target.checked;
+
+/* ---------- resize + loop ---------- */
+function resize(){
+  const w=stage.clientWidth,h=stage.clientHeight;
+  renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stage); resize();
+(function loop(){
+  requestAnimationFrame(loop);
+  if(autoRot&&!dragging)theta+=0.0016;
+  applyCam(); renderer.render(scene,camera);
+})();
+defaultPanel();
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  const wrap=document.querySelector('.wrap');
+  function ch(){return Math.ceil((wrap?wrap.getBoundingClientRect().height:document.body.scrollHeight))+22;}
+  function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+  addEventListener('load',postH);addEventListener('resize',postH);
+  if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+  setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>

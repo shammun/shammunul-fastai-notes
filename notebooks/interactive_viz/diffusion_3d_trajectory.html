@@ -1,0 +1,173 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diffusion in 3D: A Whole Distribution Melting into Noise</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  .wrap{max-width:980px;margin:0 auto;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:900px;line-height:1.45;}
+  .ctrl{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:110px;}
+  .revb{background:var(--out);color:#fff;min-width:110px;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);}
+  #tslider{width:min(560px,80vw);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .stage{position:relative;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);overflow:hidden;}
+  #c3d{display:block;width:100%;height:430px;cursor:grab;}
+  #c3d:active{cursor:grabbing;}
+  .hud{position:absolute;top:10px;left:12px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:12px;line-height:1.5;max-width:300px;box-shadow:0 4px 12px rgba(123,92,214,.12);}
+  .hud .t{font-family:monospace;font-weight:700;color:var(--ac);font-size:14px;}
+  .hint{position:absolute;bottom:8px;right:12px;font-size:10.5px;color:var(--soft);background:rgba(255,255,255,.85);border-radius:8px;padding:3px 8px;}
+  .story{font-size:12px;color:var(--soft);line-height:1.55;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 13px;box-shadow:0 6px 16px rgba(123,92,214,.08);margin-top:10px;}
+  .story b{color:var(--ink);}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:7px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<div class="wrap">
+<h1>Why "Diffusion"? Watch a Whole Dataset Melt into a Gaussian</h1>
+<p class="sub">Each dot is one <b>data point</b> (imagine: one image, plotted in a 3-D slice of pixel space). The dataset starts as a structured shape — a swiss-roll — and the forward process diffuses every point toward the same featureless <b>Gaussian ball</b>. Generation is the reverse trip: the model learns a vector field that carries random Gaussian points back onto the data shape. <b>Drag to orbit · scroll to zoom · drag the timeline.</b></p>
+
+<div class="ctrl">
+  <button class="play" id="playF">▶ Diffuse →</button>
+  <button class="revb" id="playR">◀ Denoise ←</button>
+  <button class="reset" id="reset">↺ Reset view</button>
+  <span>·</span> speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+<div class="ctrl">
+  <span style="font-family:monospace;font-weight:700">t = 0</span>
+  <input id="tslider" type="range" min="0" max="1000" step="1" value="0">
+  <span style="font-family:monospace;font-weight:700">t = 1000</span>
+</div>
+
+<div class="stage">
+  <canvas id="c3d"></canvas>
+  <div class="hud"><span class="t" id="hudT">t = 0</span><br><span id="hudTxt">Structured data: every point sits on the swiss-roll manifold.</span></div>
+  <div class="hint">drag = orbit · wheel = zoom</div>
+</div>
+
+<div class="story" id="story"><b>The key mental shift:</b> the image-strip view shows <i>one</i> image getting noisier. This view shows the <i>entire distribution</i>. The forward process turns a complicated, curved data distribution into the simplest distribution we know — 𝒩(0, I) — for which sampling is trivial (<code>torch.randn</code>). The whole job of the U-Net is to learn the return journey.</div>
+<div class="legend"><b class="i">orange = still close to the data manifold</b> &nbsp;·&nbsp; <b class="a">purple = in between</b> &nbsp;·&nbsp; <b class="o">teal wireframe = the 𝒩(0, I) ball every point ends up in</b></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const T=1000,N=900;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(u===0)u=r();while(v===0)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const rng=mulberry32(42);
+// swiss roll data, normalized to ~unit scale
+const X0=[],EPS=[];
+for(let i=0;i<N;i++){
+  const t0=1.5*Math.PI*(1+2*rng());
+  const x=t0*Math.cos(t0)/14, z=t0*Math.sin(t0)/14, y=(rng()*2-1)*0.9;
+  X0.push(new THREE.Vector3(x*2.2,y,z*2.2));
+  EPS.push(new THREE.Vector3(gauss(rng),gauss(rng),gauss(rng)));
+}
+// alpha_bar for linear beta schedule (0.0001 -> 0.02, 1000 steps)
+const abar=new Float64Array(T+1);(function(){let p=1;abar[0]=1;for(let i=0;i<T;i++){const b=1e-4+(0.02-1e-4)*i/(T-1);p*=1-b;abar[i+1]=p;}})();
+
+// ---- three.js scene ----
+const canvas=$('c3d');
+const renderer=new THREE.WebGLRenderer({canvas:canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+let W=canvas.clientWidth||900,Hh=430;
+const camera=new THREE.PerspectiveCamera(46,W/Hh,0.1,100);
+scene.add(new THREE.AmbientLight(0xffffff,0.9));
+const dl=new THREE.DirectionalLight(0xffffff,0.5);dl.position.set(4,6,5);scene.add(dl);
+
+// gaussian target ball (wireframe, teal)
+const ball=new THREE.Mesh(new THREE.SphereGeometry(2.05,20,14),
+  new THREE.MeshBasicMaterial({color:0x16a3a3,wireframe:true,transparent:true,opacity:0.15}));
+scene.add(ball);
+// soft ground grid
+const grid=new THREE.GridHelper(9,18,0xdde5f2,0xeef3fb);grid.position.y=-2.6;scene.add(grid);
+
+// point cloud
+const geo=new THREE.BufferGeometry();
+const pos=new Float32Array(N*3),col=new Float32Array(N*3);
+geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:0.09,vertexColors:true}));
+scene.add(pts);
+
+const cOrange=new THREE.Color(0xf6921e),cPurple=new THREE.Color(0x7b5cd6),cTeal=new THREE.Color(0x16a3a3);
+let t=0;
+function setPositions(){
+  const s=Math.sqrt(abar[t]),n=Math.sqrt(1-abar[t]);
+  // color by how much noise dominates
+  const mix=n; // 0..1
+  const c=new THREE.Color();
+  if(mix<0.5)c.copy(cOrange).lerp(cPurple,mix*2);else c.copy(cPurple).lerp(cTeal,(mix-0.5)*2);
+  for(let i=0;i<N;i++){
+    pos[3*i]  = s*X0[i].x + n*EPS[i].x;
+    pos[3*i+1]= s*X0[i].y + n*EPS[i].y;
+    pos[3*i+2]= s*X0[i].z + n*EPS[i].z;
+    col[3*i]=c.r;col[3*i+1]=c.g;col[3*i+2]=c.b;
+  }
+  geo.attributes.position.needsUpdate=true;
+  geo.attributes.color.needsUpdate=true;
+  ball.material.opacity=0.06+0.18*mix;
+  $('hudT').textContent='t = '+t;
+  $('tslider').value=t;
+  const pct=(Math.sqrt(1-abar[t])*100).toFixed(0);
+  $('hudTxt').textContent = t===0
+    ? 'Structured data: every point sits on the swiss-roll manifold.'
+    : (t===T ? 'Pure noise: the swiss-roll is gone. This IS 𝒩(0, I) — the easiest thing in the world to sample.'
+    : 'x_t = √ᾱ·x₀ + √(1−ᾱ)·ε  ·  noise level ≈ '+pct+'%');
+}
+// camera orbit
+let theta=0.9,phi=1.12,R=8.5,dragging=false,lx=0,ly=0,auto=true;
+function placeCam(){camera.position.set(R*Math.sin(phi)*Math.cos(theta),R*Math.cos(phi),R*Math.sin(phi)*Math.sin(theta));camera.lookAt(0,-0.2,0);}
+canvas.addEventListener('pointerdown',e=>{dragging=true;auto=false;lx=e.clientX;ly=e.clientY;});
+addEventListener('pointerup',()=>dragging=false);
+addEventListener('pointermove',e=>{if(!dragging)return;theta+=(e.clientX-lx)*0.008;phi=Math.max(0.25,Math.min(2.6,phi+(e.clientY-ly)*0.008));lx=e.clientX;ly=e.clientY;placeCam();});
+canvas.addEventListener('wheel',e=>{e.preventDefault();R=Math.max(4,Math.min(18,R+e.deltaY*0.008));placeCam();},{passive:false});
+
+// playback
+let timer=null,speed=1;
+function stop(){clearInterval(timer);timer=null;$('playF').textContent='▶ Diffuse →';$('playR').textContent='◀ Denoise ←';}
+function run(dirF){
+  if(timer){stop();return;}
+  if(dirF&&t>=T)t=0; if(!dirF&&t<=0)t=T;
+  timer=setInterval(()=>{const st=Math.max(4,Math.round(9*speed));
+    t+=dirF?st:-st;
+    if(t>=T){t=T;stop();} if(t<=0){t=0;stop();}
+    setPositions();updateStory(dirF);
+  },40);
+  $(dirF?'playF':'playR').textContent='⏸ Pause';
+}
+function updateStory(dirF){
+  $('story').innerHTML = dirF===undefined ? $('story').innerHTML :
+   (dirF
+    ? '<b>Forward (diffusion):</b> nothing is being learned here — this is fixed math. Every point is dragged toward the origin (multiplied by √ᾱ_t &lt; 1) while Gaussian jitter (√(1−ᾱ_t)·ε) swells around it. By t=1000 the original shape is unrecoverable <i>from the point alone</i> — which is exactly why the model must learn statistics of the whole dataset, not memorize points.'
+    : '<b>Reverse (generation):</b> to run this direction for real, the U-Net predicts the noise inside each point and the sampler subtracts a calibrated slice of it, 1000 times. The learned vector field funnels the featureless Gaussian ball back onto the data manifold. (Here we replay the same trajectories backwards — a perfect denoiser.)');
+}
+$('playF').onclick=()=>run(true);
+$('playR').onclick=()=>run(false);
+$('reset').onclick=()=>{theta=0.9;phi=1.12;R=8.5;auto=true;placeCam();};
+$('tslider').oninput=e=>{stop();t=+e.target.value;setPositions();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+
+function resize(){W=canvas.clientWidth||900;renderer.setSize(W,Hh,false);canvas.style.height=Hh+'px';camera.aspect=W/Hh;camera.updateProjectionMatrix();}
+function animate(){requestAnimationFrame(animate);if(auto&&!dragging){theta+=0.0016;placeCam();}renderer.render(scene,camera);}
+placeCam();setPositions();resize();animate();
+addEventListener('resize',resize);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  const wrap=document.querySelector('.wrap');
+  function ch(){return Math.ceil((wrap?wrap.getBoundingClientRect().height:document.body.scrollHeight))+26;}
+  function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+  addEventListener('load',postH);addEventListener('resize',postH);
+  if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+  setTimeout(postH,200);setTimeout(postH,700);
+})();
+</script>
+</body></html>

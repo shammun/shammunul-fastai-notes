@@ -1,0 +1,150 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forward Noising Lab</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  .wrap{max-width:980px;margin:0 auto;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:900px;line-height:1.45;}
+  .ctrl{display:flex;gap:10px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;font-weight:700;}
+  input[type=range]{accent-color:var(--ac);}
+  #tslider{width:min(430px,70vw);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .eqrow{display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:4px;}
+  .imgcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);text-align:center;}
+  .imgcard canvas{border:2px solid var(--line);border-radius:8px;image-rendering:pixelated;display:block;margin:0 auto;}
+  .imgcard .cap{font-size:12px;font-weight:700;margin-bottom:5px;}
+  .imgcard .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .imgcard .coef{margin-top:5px;font-family:monospace;font-size:12px;font-weight:700;}
+  .opsym{font-size:26px;font-weight:700;color:var(--soft);}
+  .eq{font-family:"SF Mono",Consolas,monospace;font-size:13px;background:#f4f7fd;border-radius:10px;padding:8px 12px;line-height:1.7;text-align:center;max-width:760px;margin:8px auto 0;}
+  .eq .o{color:var(--in);font-weight:700;}.eq .p{color:var(--ac);font-weight:700;}.eq .t2{color:var(--out);font-weight:700;}
+  .pix{font-family:monospace;font-size:11.5px;color:var(--soft);text-align:center;margin-top:5px;background:#fff;border:1px solid var(--line);border-radius:10px;max-width:760px;margin:8px auto 0;padding:7px 10px;line-height:1.7;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .pix b{color:var(--ink);}
+  .story{font-size:12px;color:var(--soft);line-height:1.55;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 13px;box-shadow:0 6px 16px rgba(123,92,214,.08);margin-top:10px;}
+  .story b{color:var(--ink);}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:7px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<div class="wrap">
+<h1>One Jump, Not a Thousand Steps: x_t = √ᾱ_t · x₀ + √(1−ᾱ_t) · ε</h1>
+<p class="sub">This is the single most important formula in the notebook — it's what <b>before_batch</b> executes on every training batch. Drag <b>t</b>, resample <b>ε</b>, and <b>click any pixel of x_t</b> to see its exact arithmetic. The two coefficients under each image update live so you can watch signal fade out as noise fades in.</p>
+
+<div class="ctrl">
+  <span>t = <span id="tv" style="color:var(--ac);font-family:monospace">300</span></span>
+  <input id="tslider" type="range" min="0" max="999" step="1" value="300">
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="reeps">🎲 resample ε</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="eqrow">
+  <div class="imgcard">
+    <div class="cap" style="color:var(--in)">√ᾱ_t · x₀ <small>the fading signal</small></div>
+    <canvas id="cs" width="28" height="28" style="width:150px;height:150px"></canvas>
+    <div class="coef" style="color:var(--in)">× <span id="csv"></span></div>
+  </div>
+  <div class="opsym">+</div>
+  <div class="imgcard">
+    <div class="cap" style="color:var(--ac)">√(1−ᾱ_t) · ε <small>the growing noise</small></div>
+    <canvas id="cn" width="28" height="28" style="width:150px;height:150px"></canvas>
+    <div class="coef" style="color:var(--ac)">× <span id="cnv"></span></div>
+  </div>
+  <div class="opsym">=</div>
+  <div class="imgcard">
+    <div class="cap" style="color:var(--out)">x_t <small>what the U-Net sees — click a pixel!</small></div>
+    <canvas id="cx" width="28" height="28" style="width:150px;height:150px;cursor:crosshair"></canvas>
+    <div class="coef" style="color:var(--out)">the training input</div>
+  </div>
+</div>
+
+<div class="eq" id="eq"></div>
+<div class="pix" id="pix">click any pixel of <b>x_t</b> to trace its value: <b>x_t[i,j] = √ᾱ·x₀[i,j] + √(1−ᾱ)·ε[i,j]</b></div>
+
+<div class="story"><b>Why can we jump straight to any t?</b> Adding Gaussian noise to Gaussian noise gives… Gaussian noise, with variances that simply add. So 1000 tiny noise additions collapse into one big, exactly-equivalent addition — the closed form above. This is a huge deal for training: for each image in a batch, <b>before_batch</b> draws a random t (0–999), computes x_t in <i>one line</i>, and asks the model to predict the ε it just used. No simulation loop, no stored trajectory — every batch trains the model at hundreds of noise levels simultaneously. (The reverse process gets no such shortcut: generation really does loop 1000 times.)</div>
+<div class="legend"><b class="i">orange = signal term</b> &nbsp;·&nbsp; <b class="a">purple = noise term</b> &nbsp;·&nbsp; <b class="o">teal = the mixed result</b> · images use the notebook's [−1, 1] scaling; mid-grey = 0</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const T=1000,W=28,H=28;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(u===0)u=r();while(v===0)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+// sneaker x0 in [-1,1] (same drawing as big-picture viz)
+const x0=new Float32Array(W*H);
+(function(){for(let y=0;y<H;y++)for(let x=0;x<W;x++){let v=0;
+ if(y>=19&&y<=22&&x>=3&&x<=25)v=.95; if(y===23&&x>=4&&x<=24)v=.55;
+ const top=19-(x<12?(12-x)*.9:0)-2;
+ if(y>=Math.max(6,top)&&y<19&&x>=4&&x<=24){v=.62;if(x>19)v=.75;
+  if(((x===10&&y>=9)||(x===13&&y>=10)||(x===16&&y>=12))&&y<18)v=.25;
+  if(x<9&&y<Math.max(6,top)+3)v=.8;}
+ x0[y*W+x]=v*2-1;}})();
+let seed=11,eps=new Float32Array(W*H);
+function resample(){const r=mulberry32(seed);for(let i=0;i<W*H;i++)eps[i]=gauss(r);}
+resample();
+const abar=new Float64Array(T);(function(){let p=1;for(let i=0;i<T;i++){const b=1e-4+(0.02-1e-4)*i/(T-1);p*=1-b;abar[i]=p;}})();
+function paint(canvas,fn){
+  const c=canvas.getContext('2d');const im=c.createImageData(W,H);
+  for(let i=0;i<W*H;i++){let v=fn(i);v=(v+1)/2;v=Math.max(0,Math.min(1,v));const g=Math.round(v*255);
+    im.data[4*i]=g;im.data[4*i+1]=g;im.data[4*i+2]=g;im.data[4*i+3]=255;}
+  c.putImageData(im,0,0);
+}
+let t=300,timer=null,selPix=null;
+function render(){
+  const s=Math.sqrt(abar[t]),n=Math.sqrt(1-abar[t]);
+  paint($('cs'),i=>s*x0[i]);
+  paint($('cn'),i=>n*eps[i]);
+  paint($('cx'),i=>s*x0[i]+n*eps[i]);
+  // pixel highlight
+  if(selPix!==null){
+    const c=$('cx').getContext('2d');const x=selPix%W,y=(selPix-x)/W;
+    c.strokeStyle='#16a3a3';c.lineWidth=1;c.strokeRect(x+0.5-1,y+0.5-1,2,2);
+  }
+  $('tv').textContent=t;$('tslider').value=t;
+  $('csv').textContent=s.toFixed(4);$('cnv').textContent=n.toFixed(4);
+  $('eq').innerHTML='x_<span class="t2">'+t+'</span> &nbsp;=&nbsp; <span class="o">'+s.toFixed(4)+'</span> · x₀ &nbsp;+&nbsp; <span class="p">'+n.toFixed(4)+'</span> · ε'
+   +'<br><span style="color:var(--soft);font-size:11px">ᾱ_'+t+' = '+abar[t].toExponential(3)
+   +' &nbsp;·&nbsp; check: ('+s.toFixed(3)+')² + ('+n.toFixed(3)+')² = '+((s*s+n*n)).toFixed(3)+' — variance is conserved</span>';
+  if(selPix!==null){
+    const i=selPix,x=i%W,y=(i-x)/W;
+    const v=s*x0[i]+n*eps[i];
+    $('pix').innerHTML='pixel ['+y+','+x+']: &nbsp; <b style="color:var(--out)">'+v.toFixed(3)+'</b> = '
+     +'<b style="color:var(--in)">'+s.toFixed(3)+'</b> × '+x0[i].toFixed(2)+' (x₀) + '
+     +'<b style="color:var(--ac)">'+n.toFixed(3)+'</b> × '+eps[i].toFixed(2)+' (ε)'
+     +' &nbsp;<span style="color:#8fa3c2">— this exact sum happens for all 784 pixels at once via broadcasting</span>';
+  }
+}
+$('cx').addEventListener('click',e=>{
+  const r=$('cx').getBoundingClientRect();
+  const x=Math.floor((e.clientX-r.left)/r.width*W),y=Math.floor((e.clientY-r.top)/r.height*H);
+  selPix=y*W+x;render();
+});
+$('tslider').oninput=e=>{stop();t=+e.target.value;render();};
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+$('play').onclick=()=>{
+  if(timer){stop();return;}
+  if(t>=T-1)t=0;
+  timer=setInterval(()=>{t+=8;if(t>=T-1){t=T-1;stop();}render();},40);
+  $('play').textContent='⏸ Pause';
+};
+$('reeps').onclick=()=>{seed=(seed*16807)%2147483647;resample();render();};
+$('reset').onclick=()=>{stop();t=300;seed=11;resample();selPix=null;render();};
+render();
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  const wrap=document.querySelector('.wrap');
+  function ch(){return Math.ceil((wrap?wrap.getBoundingClientRect().height:document.body.scrollHeight))+26;}
+  function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+  addEventListener('load',postH);addEventListener('resize',postH);
+  if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+  setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>

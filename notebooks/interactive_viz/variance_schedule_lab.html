@@ -1,0 +1,157 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Variance Schedule Lab</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  .wrap{max-width:980px;margin:0 auto;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:900px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .ctrl{display:flex;gap:14px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;font-weight:700;}
+  .ctrl code{font-family:monospace;color:var(--ac);}
+  input[type=range]{accent-color:var(--ac);width:130px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  #chart{display:block;width:100%;height:330px;cursor:crosshair;}
+  .readout{font-family:"SF Mono",Consolas,monospace;font-size:12px;background:#f4f7fd;border-radius:8px;padding:7px 10px;line-height:1.75;margin-top:8px;}
+  .readout .b{color:var(--neg);font-weight:700;}.readout .a{color:var(--in);font-weight:700;}
+  .readout .ab{color:var(--ac);font-weight:700;}.readout .s{color:var(--out);font-weight:700;}
+  .story{font-size:12px;color:var(--soft);line-height:1.55;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 13px;box-shadow:0 6px 16px rgba(123,92,214,.08);margin-top:10px;}
+  .story b{color:var(--ink);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.65;margin:10px 0 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:7px;}
+</style></head><body>
+<div class="wrap">
+<h1>The Variance Schedule: β, α and the All-Important ᾱ</h1>
+<p class="sub">Four cheap tensors, computed once in <b>DDPMCB.__init__</b>, drive everything in DDPM. <b>β_t</b> is how much noise step t adds; <b>α_t = 1−β_t</b> is how much signal it keeps; <b>ᾱ_t = ∏α</b> is the signal surviving <i>all</i> steps up to t. <b>Hover the chart</b> to read exact values, click the curve chips to toggle them, and drag the sliders to see how the schedule reshapes.</p>
+
+<div class="stagebar" id="chips"></div>
+
+<div class="ctrl">
+  <span><code>β_min</code> <input id="bmin" type="range" min="0.00001" max="0.001" step="0.00001" value="0.0001"> <span id="bminv">0.0001</span></span>
+  <span><code>β_max</code> <input id="bmax" type="range" min="0.005" max="0.06" step="0.001" value="0.02"> <span id="bmaxv">0.020</span></span>
+  <span><code>n_steps</code> <input id="nT" type="range" min="100" max="2000" step="50" value="1000"> <span id="nTv">1000</span></span>
+  <button class="reset" id="reset">↺ Notebook defaults</button>
+</div>
+
+<div class="card">
+  <canvas id="chart"></canvas>
+  <div class="readout" id="readout"></div>
+</div>
+
+<div class="code"><span class="cm"># exactly the lines from DDPMCB.__init__ in the notebook:</span>
+self.β = torch.linspace(β_min, β_max, n_steps)   <span class="cm"># tiny per-step noise variances</span>
+self.α = <span class="num">1.</span> - self.β                             <span class="cm"># per-step signal keep-rate</span>
+self.ᾱ = torch.cumprod(self.α, dim=<span class="num">0</span>)            <span class="cm"># TOTAL signal kept after t steps</span>
+self.σ = self.β.sqrt()                           <span class="cm"># noise std used during sampling</span></div>
+
+<div class="story" id="story"><b>Three things to notice.</b> ① Each individual β_t is tiny (max 0.02 = keep 98% per step) — but 1000 compounding steps drive <b style="color:var(--ac)">ᾱ_t</b> to ≈0, which is why the final image is pure noise. ② The pair <b>√ᾱ_t</b> and <b>√(1−ᾱ_t)</b> are the exact coefficients in the closed-form jump <code>x_t = √ᾱ·x₀ + √(1−ᾱ)·ε</code> — hover any t to read them off. ③ Try raising β_max: destruction finishes early and many late timesteps are "wasted" on pure noise; lower it too far and x_T never becomes fully Gaussian, so sampling starts from the wrong distribution. The defaults (0.0001 → 0.02, T=1000) are the DDPM paper's carefully tuned compromise.</div>
+<div class="legend">tip: the y-axis is shared 0–1 for α-family curves; β is drawn ×?—scaled (see chip) so its shape is visible next to the others.</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const CURVES=[
+ {k:'beta', label:'β_t (×30 to be visible)',color:'#d64545',on:true},
+ {k:'alpha',label:'α_t = 1−β_t',            color:'#f6921e',on:true},
+ {k:'abar', label:'ᾱ_t = cumprod(α)',       color:'#7b5cd6',on:true},
+ {k:'sab',  label:'√ᾱ_t  (signal coeff)',   color:'#9d7bff',on:true},
+ {k:'snab', label:'√(1−ᾱ_t)  (noise coeff)',color:'#16a3a3',on:true},
+ {k:'sigma',label:'σ_t = √β_t (×6)',        color:'#c98ad9',on:false},
+];
+const chipbar=$('chips');
+CURVES.forEach((c,i)=>{const b=document.createElement('button');b.className='chip'+(c.on?' on':'');
+  b.textContent=c.label;b.style.borderColor=c.on?c.color:'';if(c.on){b.style.background=c.color;b.style.color='#fff';}
+  b.onclick=()=>{c.on=!c.on;b.classList.toggle('on',c.on);
+    b.style.background=c.on?c.color:'#fff';b.style.color=c.on?'#fff':'var(--soft)';b.style.borderColor=c.on?c.color:'var(--line)';
+    draw();};
+  if(c.on){b.style.borderColor=c.color;}
+  chipbar.appendChild(b);});
+let bmin=0.0001,bmax=0.02,T=1000;
+let beta=[],alpha=[],abar=[],hoverT=null;
+function compute(){
+  beta=[];alpha=[];abar=[];let p=1;
+  for(let i=0;i<T;i++){const b=bmin+(bmax-bmin)*i/(T-1);beta.push(b);alpha.push(1-b);p*=(1-b);abar.push(p);}
+}
+const cv=$('chart'),ctx=cv.getContext('2d');
+const PAD={l:44,r:14,t:12,b:26};
+function draw(){
+  const W=cv.clientWidth,H=330;
+  cv.width=W*devicePixelRatio;cv.height=H*devicePixelRatio;
+  cv.style.height=H+'px';ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  ctx.clearRect(0,0,W,H);
+  const pw=W-PAD.l-PAD.r,ph=H-PAD.t-PAD.b;
+  const X=t=>PAD.l+t/(T-1)*pw, Y=v=>PAD.t+(1-v)*ph;
+  // grid
+  ctx.strokeStyle='#eef2f8';ctx.lineWidth=1;ctx.font='10px monospace';ctx.fillStyle='#8fa3c2';
+  for(let g=0;g<=5;g++){const v=g/5,y=Y(v);ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(W-PAD.r,y);ctx.stroke();
+    ctx.fillText(v.toFixed(1),10,y+3);}
+  for(let g=0;g<=5;g++){const t=Math.round(g/5*(T-1)),x=X(t);ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,H-PAD.b);ctx.stroke();
+    ctx.fillText('t='+t,x-14,H-8);}
+  function series(k){
+    if(k==='beta')return beta.map(b=>b*30);
+    if(k==='alpha')return alpha;
+    if(k==='abar')return abar;
+    if(k==='sab')return abar.map(a=>Math.sqrt(a));
+    if(k==='snab')return abar.map(a=>Math.sqrt(1-a));
+    if(k==='sigma')return beta.map(b=>Math.sqrt(b)*6);
+  }
+  CURVES.forEach(c=>{
+    if(!c.on)return;
+    const s=series(c.k);
+    ctx.strokeStyle=c.color;ctx.lineWidth=2.4;ctx.beginPath();
+    const step=Math.max(1,Math.floor(T/600));
+    for(let t=0;t<T;t+=step){const v=Math.max(0,Math.min(1,s[t]));if(t===0)ctx.moveTo(X(t),Y(v));else ctx.lineTo(X(t),Y(v));}
+    ctx.stroke();
+  });
+  // hover crosshair
+  if(hoverT!==null){
+    const x=X(hoverT);
+    ctx.strokeStyle='#8fa3c2';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,H-PAD.b);ctx.stroke();ctx.setLineDash([]);
+    CURVES.forEach(c=>{if(!c.on)return;const v=Math.max(0,Math.min(1,series(c.k)[hoverT]));
+      ctx.fillStyle=c.color;ctx.beginPath();ctx.arc(x,Y(v),4,0,7);ctx.fill();});
+  }
+  const t=hoverT===null?Math.min(T-1,300):hoverT;
+  const a=abar[t];
+  $('readout').innerHTML=
+   't = <b>'+t+'</b>'+(hoverT===null?' <span style="color:#8fa3c2">(hover the chart to move this probe)</span>':'')+'<br>'
+   +'<span class="b">β_t = '+beta[t].toFixed(5)+'</span> &nbsp; <span class="a">α_t = '+alpha[t].toFixed(5)+'</span> &nbsp; '
+   +'<span class="ab">ᾱ_t = '+a.toExponential(3)+'</span> &nbsp; <span class="s">σ_t = '+Math.sqrt(beta[t]).toFixed(4)+'</span><br>'
+   +'x_'+t+' = <span class="ab">'+Math.sqrt(a).toFixed(4)+'</span>·x₀ + <span class="s">'+Math.sqrt(1-a).toFixed(4)+'</span>·ε '
+   +'&nbsp;→&nbsp; image is '+(Math.sqrt(a)*100).toFixed(1)+'% signal / '+(Math.sqrt(1-a)*100).toFixed(1)+'% noise (std units)';
+}
+cv.addEventListener('mousemove',e=>{
+  const r=cv.getBoundingClientRect();
+  const frac=(e.clientX-r.left-PAD.l)/(r.width-PAD.l-PAD.r);
+  hoverT=Math.max(0,Math.min(T-1,Math.round(frac*(T-1))));draw();
+});
+cv.addEventListener('mouseleave',()=>{hoverT=null;draw();});
+function refresh(){compute();draw();
+  $('bminv').textContent=bmin.toFixed(5);$('bmaxv').textContent=bmax.toFixed(3);$('nTv').textContent=T;}
+$('bmin').oninput=e=>{bmin=+e.target.value;refresh();};
+$('bmax').oninput=e=>{bmax=+e.target.value;refresh();};
+$('nT').oninput=e=>{T=+e.target.value;refresh();};
+$('reset').onclick=()=>{bmin=1e-4;bmax=0.02;T=1000;$('bmin').value=bmin;$('bmax').value=bmax;$('nT').value=T;refresh();};
+addEventListener('resize',draw);
+refresh();
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  const wrap=document.querySelector('.wrap');
+  function ch(){return Math.ceil((wrap?wrap.getBoundingClientRect().height:document.body.scrollHeight))+26;}
+  function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+  addEventListener('load',postH);addEventListener('resize',postH);
+  if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+  setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>

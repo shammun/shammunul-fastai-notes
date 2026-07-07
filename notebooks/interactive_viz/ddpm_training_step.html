@@ -1,0 +1,237 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anatomy of One DDPM Training Step</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:920px;line-height:1.45;}
+  .stagebar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:4px 10px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .ctrl{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);width:100px;}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;}
+  .grid.is-narrow{grid-template-columns:1fr;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{font-size:12.5px;font-weight:700;margin:0 0 6px;}
+  .diagram{position:relative;}
+  .node{border:2px solid var(--line);border-radius:10px;padding:6px 9px;font-size:11.5px;margin:5px 0;background:#fbfdff;transition:all .18s;line-height:1.45;}
+  .node .nm{font-weight:700;font-family:monospace;font-size:12px;}
+  .node .ds{color:var(--soft);font-size:10.5px;}
+  .node.hot{border-color:var(--ac);background:#f4efff;box-shadow:0 4px 14px rgba(123,92,214,.22);}
+  .node.hot .nm{color:var(--ac);}
+  .node.done{border-color:#cfe8e8;background:#f4fbfb;}
+  .node .tens{display:inline-block;font-family:monospace;font-size:10.5px;background:#eef2fa;border-radius:6px;padding:1px 6px;margin-top:2px;color:var(--ink);}
+  .batchrow{display:flex;gap:5px;margin-top:3px;flex-wrap:wrap;}
+  .bimg{width:34px;height:34px;border-radius:6px;border:1.5px solid var(--line);image-rendering:pixelated;}
+  .ttag{font-family:monospace;font-size:9.5px;text-align:center;color:var(--ac);font-weight:700;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11px;line-height:1.62;overflow-x:auto;white-space:pre;}
+  .code .ln{display:block;border-radius:5px;padding:0 5px;}
+  .code .ln.hl{background:rgba(123,92,214,.45);}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .kw{color:#7ce0d3;}
+  .story{font-size:12px;color:var(--soft);line-height:1.55;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 13px;box-shadow:0 6px 16px rgba(123,92,214,.08);margin-top:10px;}
+  .story b{color:var(--ink);}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:7px;}
+</style></head><body>
+<div class="wrap">
+<h1>Anatomy of One DDPM Training Step</h1>
+<p class="sub">This is exactly what <b>DDPMCB</b> does to every batch: <b>before_batch</b> secretly rewires the batch from <code>(images, labels)</code> into <code>((x_t, t), ε)</code>, then <b>predict</b> runs the U-Net, and plain <b>MSE</b> compares its output to the true noise. Click the numbered chips (or Play) — the matching lines of the notebook's real code light up on the right.</p>
+
+<div class="stagebar" id="chips"></div>
+<div class="ctrl">
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span>·</span> speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="grid" id="grid">
+  <div class="card diagram">
+    <div class="cap">The data's journey (batch of 4 shown)</div>
+    <div id="nodes"></div>
+  </div>
+  <div class="card">
+    <div class="cap">The notebook's code — current stage highlighted</div>
+    <div class="code" id="code"></div>
+  </div>
+</div>
+
+<div class="story" id="story"></div>
+<div class="legend">every image in the batch gets its <b>own random t</b> — one batch trains the model at many noise levels simultaneously. That's why DDPM training is so sample-efficient per batch.</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(u===0)u=r();while(v===0)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const W=14,Hh=14;
+// four tiny distinct "garment" patterns
+function makeImg(kind){
+  const a=new Float32Array(W*Hh);
+  for(let y=0;y<Hh;y++)for(let x=0;x<W;x++){let v=0;
+    if(kind===0){if(y>9&&y<12&&x>1&&x<13)v=.9;if(y>3&&y<10&&x>2&&x<12)v=.6;}                 // shoe-ish
+    if(kind===1){if(x>4&&x<9&&y>1)v=.8;if(y>4&&y<8&&x>1&&x<13)v=.6;}                          // t-shirt
+    if(kind===2){const d=Math.hypot(x-7,y-7);if(d<5)v=.85;if(d<2)v=.3;}                        // bag-ish
+    if(kind===3){if(x>2&&x<12&&y>2&&y<12&&(x+y)%3!==0)v=.7;}                                   // textured
+    a[y*W+x]=v*2-1;}
+  return a;
+}
+const IMGS=[0,1,2,3].map(makeImg);
+const TS=[842,127,505,63]; // fixed "random" ts for the demo
+const rngE=mulberry32(3);
+const EPSS=[0,1,2,3].map(()=>{const e=new Float32Array(W*Hh);for(let i=0;i<W*Hh;i++)e[i]=gauss(rngE);return e;});
+const abar=new Float64Array(1000);(function(){let p=1;for(let i=0;i<1000;i++){const b=1e-4+(0.02-1e-4)*i/999;p*=1-b;abar[i]=p;}})();
+function paintInto(cv,fn){const c=cv.getContext('2d');const im=c.createImageData(W,Hh);
+  for(let i=0;i<W*Hh;i++){let v=(fn(i)+1)/2;v=Math.max(0,Math.min(1,v));const g=Math.round(v*255);
+    im.data[4*i]=g;im.data[4*i+1]=g;im.data[4*i+2]=g;im.data[4*i+3]=255;}c.putImageData(im,0,0);}
+
+const STAGES=[
+ {n:'① batch arrives',code:[0,1],
+  s:'<b>The DataLoader hands over a normal batch:</b> <code>learn.batch = (images, labels)</code>. DDPM doesn\'t care about the labels at all — it\'s about to throw them away and manufacture its own supervised task out of thin air (well, out of noise).'},
+ {n:'② sample noise ε',code:[3,4],
+  s:'<b>Draw fresh Gaussian noise</b>, one full image\'s worth per batch item, with <code>torch.randn</code>. This ε plays two roles at once: it\'s the corruption we\'ll mix in, <i>and</i> it\'s the answer key — the target the model must predict.'},
+ {n:'③ sample t per image',code:[6,7],
+  s:'<b>Each image gets its own random timestep</b> from 0–999 via <code>torch.randint</code>. Look at the tags under the images: img0 gets t=842 (heavy noise), img3 gets t=63 (light noise). One batch = practice at four different noise levels.'},
+ {n:'④ gather ᾱ_t & reshape',code:[9,10],
+  s:'<b>Fancy-index the schedule:</b> <code>self.ᾱ[t]</code> pulls out one ᾱ value per image, then <code>.reshape(-1,1,1,1)</code> turns shape (4,) into (4,1,1,1) so it can <b>broadcast</b> against images of shape (4,1,32,32). No loop needed — one multiply hits all pixels of all images.'},
+ {n:'⑤ mix: make x_t',code:[12,13],
+  s:'<b>The closed-form jump:</b> <code>xt = ᾱ_t.sqrt()*x0 + (1-ᾱ_t).sqrt()*ε</code>. Watch the four images: img0 (t=842) is nearly pure static while img3 (t=63) is barely dusted. Same one-liner, four different corruption levels.'},
+ {n:'⑥ rewire the batch',code:[15,16],
+  s:'<b>The sneaky step:</b> <code>learn.batch = ((xt, t), ε)</code>. From here on, the generic training loop thinks the "input" is the pair (noisy image, timestep) and the "label" is ε. Nothing else in the Learner needed to change — that\'s the power of the callback design.'},
+ {n:'⑦ predict: ε̂ = model(x_t, t)',code:[19,20,21],
+  s:'<b>DDPMCB.predict overrides how the model is called:</b> <code>learn.model(*learn.batch[0]).sample</code>. The <code>*</code> unpacks (xt, t) into two arguments, and <code>.sample</code> unwraps the tensor from the diffusers output object. Output ε̂ has the same shape as the input image.'},
+ {n:'⑧ loss: MSE(ε̂, ε)',code:[23,24],
+  s:'<b>Plain MSE.</b> Since the batch was rewired, the stock loss call <code>loss_func(learn.preds, learn.batch[1])</code> automatically compares predicted noise against true noise. Backprop, optimizer step, next batch. That\'s the entire training recipe of DDPM — no adversary, no ELBO gymnastics in code.'},
+];
+const CODE=[
+'# before_batch(self, learn):  — runs before EVERY batch',
+'x0 = learn.batch[0]                    # clean images (B,1,32,32)',
+'',
+'# ── make the corruption + the answer key ──',
+'ε = torch.randn(learn.batch[0].shape)  # noise: input AND target',
+'',
+'# ── every image gets its own noise level ──',
+'t = torch.randint(0, self.n_steps, (n,))   # e.g. [842,127,505, 63]',
+'',
+'# ── look up how much signal survives to step t ──',
+'ᾱ_t = self.ᾱ[t].reshape(-1, 1, 1, 1)   # (B,) → (B,1,1,1) to broadcast',
+'',
+'# ── the one-jump closed form ──',
+'xt = ᾱ_t.sqrt() * x0 + (1 - ᾱ_t).sqrt() * ε',
+'',
+'# ── swap the batch under the Learner\'s feet ──',
+'learn.batch = ((xt, t), ε)             # input=(noisy, t), target=ε',
+'',
+'# predict(self, learn):  — how DDPMCB calls the model',
+'learn.preds = learn.model(',
+'    *learn.batch[0]        # unpacks to (xt, t)',
+').sample                   # unwrap diffusers\' output object',
+'',
+'# then the stock TrainCB.get_loss does the rest:',
+'learn.loss = learn.loss_func(learn.preds, learn.batch[1])  # MSE(ε̂, ε)',
+];
+// build chips
+const chipbar=$('chips');
+STAGES.forEach((s,i)=>{const b=document.createElement('button');b.className='chip';b.textContent=s.n;
+  b.onclick=()=>{stop();setStage(i);};chipbar.appendChild(b);});
+// build nodes with canvases
+const NODE_DEFS=[
+ {id:'nb',nm:'learn.batch = (images, labels)',ds:'what the DataLoader delivers',stage:0,imgs:'x0'},
+ {id:'ne',nm:'ε = torch.randn(...)',ds:'pure Gaussian noise — also the target',stage:1,imgs:'eps'},
+ {id:'nt',nm:'t = randint(0, 1000, (4,))',ds:'a private timestep per image',stage:2,imgs:'ttags'},
+ {id:'na',nm:'ᾱ_t = ᾱ[t].reshape(-1,1,1,1)',ds:'per-image signal-survival factor',stage:3,imgs:'avals'},
+ {id:'nx',nm:'x_t = √ᾱ·x₀ + √(1−ᾱ)·ε',ds:'four corruption levels in one line',stage:4,imgs:'xt'},
+ {id:'nw',nm:'learn.batch = ((x_t, t), ε)',ds:'batch rewired: new input, new target',stage:5,imgs:null},
+ {id:'np',nm:'ε̂ = model(x_t, t).sample',ds:'U-Net guesses the hidden noise',stage:6,imgs:'pred'},
+ {id:'nl',nm:'loss = MSE(ε̂, ε)',ds:'backprop → the model slowly becomes a denoiser',stage:7,imgs:null},
+];
+const nodesEl=$('nodes');
+NODE_DEFS.forEach(nd=>{
+  const d=document.createElement('div');d.className='node';d.id=nd.id;
+  let inner='<span class="nm">'+nd.nm+'</span><br><span class="ds">'+nd.ds+'</span>';
+  d.innerHTML=inner;
+  if(nd.imgs==='x0'||nd.imgs==='eps'||nd.imgs==='xt'||nd.imgs==='pred'){
+    const row=document.createElement('div');row.className='batchrow';
+    for(let k=0;k<4;k++){const cv=document.createElement('canvas');cv.width=W;cv.height=Hh;cv.className='bimg';
+      cv.dataset.kind=nd.imgs;cv.dataset.k=k;row.appendChild(cv);}
+    d.appendChild(row);
+  }
+  if(nd.imgs==='ttags'){
+    const row=document.createElement('div');row.className='batchrow';
+    TS.forEach(tv=>{const s=document.createElement('div');s.className='ttag';s.style.width='34px';s.textContent='t='+tv;row.appendChild(s);});
+    d.appendChild(row);
+  }
+  if(nd.imgs==='avals'){
+    const row=document.createElement('div');row.className='batchrow';
+    TS.forEach(tv=>{const s=document.createElement('div');s.className='ttag';s.style.width='60px';s.textContent='ᾱ='+abar[tv].toFixed(3);row.appendChild(s);});
+    d.appendChild(row);
+  }
+  nodesEl.appendChild(d);
+});
+function paintAll(){
+  document.querySelectorAll('canvas.bimg').forEach(cv=>{
+    const k=+cv.dataset.k,kind=cv.dataset.kind;
+    if(kind==='x0')paintInto(cv,i=>IMGS[k][i]);
+    if(kind==='eps')paintInto(cv,i=>EPSS[k][i]*0.55);
+    if(kind==='xt'){const a=abar[TS[k]],s=Math.sqrt(a),n=Math.sqrt(1-a);paintInto(cv,i=>s*IMGS[k][i]+n*EPSS[k][i]);}
+    if(kind==='pred'){paintInto(cv,i=>EPSS[k][i]*0.5+ (Math.sin(i*0.7+k)*0.12));} // imperfect noise guess
+  });
+}
+// code panel
+const codeEl=$('code');
+function renderCode(hl){
+  codeEl.innerHTML=CODE.map((l,i)=>{
+    let h=l.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    h=h.replace(/(#.*)$/,'<span class="cm">$1</span>');
+    h=h.replace(/\b(\d+)\b/g,'<span class="num">$1</span>');
+    return '<span class="ln'+(hl.includes(i)?' hl':'')+'">'+(h||' ')+'</span>';
+  }).join('');
+}
+let stage=0,timer=null,speed=1;
+function setStage(i){
+  stage=Math.max(0,Math.min(STAGES.length-1,i));
+  document.querySelectorAll('.chip').forEach((c,j)=>c.classList.toggle('on',j===stage));
+  NODE_DEFS.forEach((nd,j)=>{const el=$(nd.id);
+    el.classList.toggle('hot',nd.stage===stage);
+    el.classList.toggle('done',nd.stage<stage);});
+  renderCode(STAGES[stage].code);
+  $('story').innerHTML=STAGES[stage].s;
+}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+$('play').onclick=()=>{
+  if(timer){stop();return;}
+  if(stage>=STAGES.length-1)stage=-1;
+  timer=setInterval(()=>{if(stage>=STAGES.length-1){stop();return;}setStage(stage+1);},1800/speed);
+  setStage(stage+1);$('play').textContent='⏸ Pause';
+};
+$('fwd').onclick=()=>{stop();setStage(stage+1);};
+$('back').onclick=()=>{stop();setStage(stage-1);};
+$('reset').onclick=()=>{stop();setStage(0);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();$('play').click();}};
+const gridEl=$('grid');
+function relayout(){gridEl.classList.toggle('is-narrow',innerWidth<900);}
+addEventListener('resize',relayout);
+paintAll();relayout();setStage(0);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  const wrap=document.querySelector('.wrap');
+  function ch(){return Math.ceil((wrap?wrap.getBoundingClientRect().height:document.body.scrollHeight))+26;}
+  function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+  addEventListener('load',postH);addEventListener('resize',postH);
+  if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+  setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>

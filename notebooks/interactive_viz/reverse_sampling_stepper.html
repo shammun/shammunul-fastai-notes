@@ -1,0 +1,212 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Reverse Sampling Loop, Step by Step</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:930px;line-height:1.45;}
+  .stagebar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:4px 10px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--out);color:var(--out);}
+  .chip.on{border-color:var(--out);background:var(--out);color:#fff;box-shadow:0 4px 12px rgba(22,163,163,.3);}
+  .ctrl{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--out);color:#fff;min-width:110px;}
+  .stepb{background:#e2f4f4;color:var(--out);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--out);}
+  #tslider{width:min(480px,72vw);direction:rtl;}
+  .speedv{font-family:monospace;font-weight:700;color:var(--out);min-width:34px;display:inline-block;}
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:12px;align-items:start;}
+  .grid.is-narrow{grid-template-columns:1fr;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);min-width:0;}
+  .cap{font-size:12.5px;font-weight:700;margin:0 0 6px;}
+  .imgs{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  .imgs .u{text-align:center;}
+  .imgs canvas{border:2px solid var(--line);border-radius:8px;image-rendering:pixelated;}
+  .imgs .l{font-family:monospace;font-size:10.5px;font-weight:700;margin-top:3px;}
+  .terms{margin-top:8px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;background:#f4f7fd;border-radius:8px;padding:7px 10px;line-height:1.8;}
+  .terms .c1{color:var(--in);font-weight:700;}.terms .c2{color:var(--ac);font-weight:700;}.terms .c3{color:var(--neg);font-weight:700;}
+  .zwarn{display:inline-block;background:#fdeeee;color:var(--neg);border-radius:6px;padding:0 6px;font-weight:700;}
+  .zok{display:inline-block;background:#e2f4f4;color:var(--out);border-radius:6px;padding:0 6px;font-weight:700;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:10.8px;line-height:1.6;overflow-x:auto;white-space:pre;}
+  .code .ln{display:block;border-radius:5px;padding:0 5px;}
+  .code .ln.hl{background:rgba(22,163,163,.4);}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}
+  .story{font-size:12px;color:var(--soft);line-height:1.55;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 13px;box-shadow:0 6px 16px rgba(123,92,214,.08);margin-top:10px;}
+  .story b{color:var(--ink);}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:7px;}
+</style></head><body>
+<div class="wrap">
+<h1>Generation = Running the Loop Backwards: t = 999 → 0</h1>
+<p class="sub">This walks the notebook's <b>sample()</b> method. Unlike training, there is <i>no shortcut</i> here — we truly loop 1000 times, and each iteration does the same five things. Click the numbered chips to tour one iteration (the matching code lights up), drag the timeline to jump to any t, or press Play to run the whole denoising. Note the timeline runs <b>right-to-left</b>, because so does the loop.</p>
+
+<div class="stagebar" id="chips"></div>
+
+<div class="ctrl">
+  <span style="font-family:monospace;font-weight:700">t=999</span>
+  <input id="tslider" type="range" min="0" max="999" step="1" value="999">
+  <span style="font-family:monospace;font-weight:700">t=0</span>
+</div>
+<div class="ctrl">
+  <button class="stepb" id="back">⏮ t+25</button>
+  <button class="play" id="play">▶ Denoise</button>
+  <button class="stepb" id="fwd">t−25 ⏭</button>
+  <button class="reset" id="reset">↺ Restart from noise</button>
+  <span>·</span> speed <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1" style="width:100px"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="grid" id="grid">
+  <div class="card">
+    <div class="cap">What one iteration at t = <span id="tcap" style="color:var(--out);font-family:monospace">999</span> computes</div>
+    <div class="imgs">
+      <div class="u"><canvas id="cxt" width="28" height="28" style="width:110px;height:110px"></canvas><div class="l">x_t (current)</div></div>
+      <div class="u"><canvas id="cx0" width="28" height="28" style="width:110px;height:110px"></canvas><div class="l" style="color:var(--in)">x̂₀ (guess of clean img)</div></div>
+      <div class="u"><canvas id="cxp" width="28" height="28" style="width:110px;height:110px"></canvas><div class="l" style="color:var(--out)">x_{t−1} (one step cleaner)</div></div>
+    </div>
+    <div class="terms" id="terms"></div>
+  </div>
+  <div class="card">
+    <div class="cap">sample() — the notebook's code, current stage highlighted</div>
+    <div class="code" id="code"></div>
+  </div>
+</div>
+
+<div class="story" id="story"></div>
+<div class="legend">the demo "model" here is an oracle that knows the true noise — so you can see the <i>mechanics</i> clearly. A real freshly-initialized U-Net would guess badly and the image would stay noisy; training is what turns this loop into a generator.</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const T=1000,W=28,H=28;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(u===0)u=r();while(v===0)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+// target image (what our "oracle model" steers toward)
+const x0=new Float32Array(W*H);
+(function(){for(let y=0;y<H;y++)for(let x=0;x<W;x++){let v=0;
+ if(y>=19&&y<=22&&x>=3&&x<=25)v=.95; if(y===23&&x>=4&&x<=24)v=.55;
+ const top=19-(x<12?(12-x)*.9:0)-2;
+ if(y>=Math.max(6,top)&&y<19&&x>=4&&x<=24){v=.62;if(x>19)v=.75;
+  if(((x===10&&y>=9)||(x===13&&y>=10)||(x===16&&y>=12))&&y<18)v=.25;
+  if(x<9&&y<Math.max(6,top)+3)v=.8;}
+ x0[y*W+x]=v*2-1;}})();
+let seed=5,eps=new Float32Array(W*H);
+function resample(){const r=mulberry32(seed);for(let i=0;i<W*H;i++)eps[i]=gauss(r);}
+resample();
+// schedules
+const beta=new Float64Array(T),alpha=new Float64Array(T),abar=new Float64Array(T),sigma=new Float64Array(T);
+(function(){let p=1;for(let i=0;i<T;i++){beta[i]=1e-4+(0.02-1e-4)*i/(T-1);alpha[i]=1-beta[i];p*=alpha[i];abar[i]=p;sigma[i]=Math.sqrt(beta[i]);}})();
+function paint(cv,fn){const c=cv.getContext('2d');const im=c.createImageData(W,H);
+ for(let i=0;i<W*H;i++){let v=(fn(i)+1)/2;v=Math.max(0,Math.min(1,v));const g=Math.round(v*255);
+  im.data[4*i]=g;im.data[4*i+1]=g;im.data[4*i+2]=g;im.data[4*i+3]=255;}c.putImageData(im,0,0);}
+
+const STAGES=[
+ {n:'① predict the noise',code:[4,5],
+  s:'<b>Ask the U-Net: "what noise is hiding in x_t?"</b> — <code>noise_pred = model(x_t, t_batch).sample</code>. This is the only learned step in the loop; everything else is fixed arithmetic from the schedule. t_batch is just the scalar t repeated for every image in the batch.'},
+ {n:'② estimate x̂₀',code:[7,8],
+  s:'<b>Algebra, not magic:</b> rearrange the forward formula x_t = √ᾱ·x₀ + √(1−ᾱ)·ε to solve for x₀, plugging in the <i>predicted</i> noise: <code>x̂₀ = (x_t − √(1−ᾱ_t)·ε̂) / √ᾱ_t</code>. Look at the middle image — even at high t the guess is a blurry-but-plausible sneaker. <code>.clamp(-1,1)</code> stops early bad guesses from exploding.'},
+ {n:'③ compute the 2 coefficients',code:[10,11,12],
+  s:'<b>How much do we trust the guess?</b> The DDPM posterior blends x̂₀ and x_t with weights <code>x0_coeff</code> and <code>xt_coeff</code>. Early (t≈999) the weights barely trust x̂₀; near t=0 they trust it almost fully. Watch the live numbers below — they always (nearly) sum to ≈1 plus correction.'},
+ {n:'④ add fresh noise σ·z (except t=0!)',code:[2,3],
+  s:'<b>The counterintuitive part:</b> we\'re denoising, yet each step <i>adds</i> a little fresh noise σ_t·z. This keeps sampling stochastic and matches the true posterior — without it, images come out blurry and over-smooth. The single exception: at <b>t=0</b>, z is set to zeros — the final image gets no parting glitter.'},
+ {n:'⑤ blend → x_{t−1}, repeat',code:[14,15,16],
+  s:'<b>The update line:</b> <code>x_t = x̂₀·x0_coeff + x_t·xt_coeff + σ_t·z</code> — a weighted average of "where I think the clean image is" and "where I am now", plus jitter. Append to <code>preds</code> for the animation, decrement t, and go again. 1000 laps later, <code>preds[-1]</code> is a brand-new image that never existed in the dataset.'},
+];
+const CODE=[
+'for t in reversed(range(self.n_steps)):        # t = 999, 998, ..., 0',
+'    t_batch = torch.full((x_t.shape[0],), t)   # same t for whole batch',
+'    z = (torch.randn(x_t.shape) if t > 0',
+'         else torch.zeros(x_t.shape))          # NO noise at final step',
+'    # ① the only learned operation:',
+'    noise_pred = model(x_t, t_batch).sample',
+'',
+'    # ② invert the forward formula using the predicted noise:',
+'    x_0_hat = ((x_t - b̄_t.sqrt()*noise_pred) / ᾱ[t].sqrt()).clamp(-1,1)',
+'',
+'    # ③ posterior weights (from the DDPM paper):',
+'    x0_coeff = ᾱ_t1.sqrt() * (1 - α[t]) / b̄_t',
+'    xt_coeff = α[t].sqrt() * b̄_t1     / b̄_t',
+'',
+'    # ⑤ one step cleaner (+ ④ fresh noise σ·z):',
+'    x_t = x_0_hat*x0_coeff + x_t*xt_coeff + σ[t]*z',
+'    preds.append(x_t.cpu())     # preds[-1] = the final image',
+];
+const chipbar=$('chips');
+STAGES.forEach((s,i)=>{const b=document.createElement('button');b.className='chip';b.textContent=s.n;
+  b.onclick=()=>{setStage(i);};chipbar.appendChild(b);});
+const codeEl=$('code');
+function renderCode(hl){
+  codeEl.innerHTML=CODE.map((l,i)=>{
+    let h=l.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    h=h.replace(/(#.*)$/,'<span class="cm">$1</span>');
+    h=h.replace(/\b(\d+)\b/g,'<span class="num">$1</span>');
+    return '<span class="ln'+(hl.includes(i)?' hl':'')+'">'+(h||' ')+'</span>';
+  }).join('');
+}
+// simulated trajectory: oracle model, deterministic-ish demo
+// x_t at time t follows closed form with the SAME eps field (oracle world),
+// small per-step z contribution folded in visually via a secondary noise field
+let seed2=99,z2=new Float32Array(W*H);
+(function(){const r=mulberry32(seed2);for(let i=0;i<W*H;i++)z2[i]=gauss(r);})();
+function xt_at(t,i){const s=Math.sqrt(abar[t]),n=Math.sqrt(1-abar[t]);return s*x0[i]+n*eps[i];}
+let t=T-1,stage=0,timer=null,speed=1;
+function render(){
+  $('tslider').value=t;$('tcap').textContent=t;
+  const a=abar[t],s=Math.sqrt(a),nn=Math.sqrt(1-a);
+  paint($('cxt'),i=>xt_at(t,i));
+  // oracle x0hat: mostly x0 with residual blur proportional to noise level
+  paint($('cx0'),i=>{
+    const noisy=xt_at(t,i);
+    const pred=eps[i]*(0.94)+z2[i]*0.06; // near-perfect noise guess
+    let v=(noisy-nn*pred)/Math.max(s,1e-3);
+    return Math.max(-1,Math.min(1,v));
+  });
+  const tm=Math.max(0,t-1);
+  paint($('cxp'),i=>xt_at(tm,i)+(t>0?sigma[t]*z2[i]*0.35:0));
+  const at1=t>0?abar[t-1]:1;
+  const bt=1-a,bt1=1-at1;
+  const x0c=Math.sqrt(at1)*(1-alpha[t])/bt;
+  const xtc=Math.sqrt(alpha[t])*bt1/bt;
+  $('terms').innerHTML=
+   'x_{t−1} = <span class="c1">'+x0c.toFixed(4)+'</span>·x̂₀ + <span class="c2">'+xtc.toFixed(4)+'</span>·x_t + <span class="c3">'+sigma[t].toFixed(4)+'</span>·z<br>'
+   +'trust in x̂₀: <span class="c1">'+(x0c*100).toFixed(2)+'%</span> · keep of x_t: <span class="c2">'+(xtc*100).toFixed(2)+'%</span> · fresh noise: '
+   +(t>0?'<span class="zwarn">z ~ 𝒩(0, I)</span>':'<span class="zok">z = 0 (final step — no noise!)</span>');
+  $('story').innerHTML=STAGES[stage].s;
+}
+function setStage(i){stage=Math.max(0,Math.min(STAGES.length-1,i));
+  document.querySelectorAll('.chip').forEach((c,j)=>c.classList.toggle('on',j===stage));
+  renderCode(STAGES[stage].code);render();}
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Denoise';}
+$('play').onclick=()=>{
+  if(timer){stop();return;}
+  if(t<=0)t=T-1;
+  timer=setInterval(()=>{t-=Math.max(3,Math.round(8*speed));if(t<=0){t=0;stop();}
+    stage=(stage+ (Math.random()<0.15?1:0))%STAGES.length; // gently cycle stage highlight
+    document.querySelectorAll('.chip').forEach((c,j)=>c.classList.toggle('on',j===stage));
+    renderCode(STAGES[stage].code);render();},40);
+  $('play').textContent='⏸ Pause';};
+$('fwd').onclick=()=>{stop();t=Math.max(0,t-25);render();};
+$('back').onclick=()=>{stop();t=Math.min(T-1,t+25);render();};
+$('reset').onclick=()=>{stop();t=T-1;seed=(seed*48271)%2147483647;resample();setStage(0);};
+$('tslider').oninput=e=>{stop();t=+e.target.value;render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+const gridEl=$('grid');
+function relayout(){gridEl.classList.toggle('is-narrow',innerWidth<920);}
+addEventListener('resize',relayout);
+relayout();setStage(0);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  const wrap=document.querySelector('.wrap');
+  function ch(){return Math.ceil((wrap?wrap.getBoundingClientRect().height:document.body.scrollHeight))+26;}
+  function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+  addEventListener('load',postH);addEventListener('resize',postH);
+  if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+  setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>
