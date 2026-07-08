@@ -8175,6 +8175,8 @@ x ─&rarr; [Conv] ─&rarr; y      x ─&rarr; [Conv] ─&rarr; (+) ─&rarr; y
 Deep network (56 layers):     WORSE accuracy!
 </code></pre>
 <p>This isn't overfitting (training accuracy was also worse). It's a fundamental optimization problem.</p>
+<p style="text-align:center;margin:1.2em 0;"><img src="images/att_00042.png" width="700" style="max-width:100%;height:auto;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.12);"></p>
+<p style="text-align:center;font-style:italic;color:#555;">Figure 1 from He et al. (2015): a plain <b>56-layer</b> network has higher training <b>and</b> test error than a <b>20-layer</b> one. Since even the training error is worse, this is an optimization / degradation problem &mdash; not overfitting.</p>
 <h3 id="Why-Learning-Identity-is-Hard">Why Learning Identity is Hard<a class="anchor-link" href="#Why-Learning-Identity-is-Hard">¶</a></h3><p>For a layer to learn the identity function <code>f(x) = x</code>, it needs:</p>
 <ul>
 <li>All weights except the center element need to be exactly 0, and the center needs to be exactly 1 &mdash; a very specific pattern that's hard to reach from random initialization.</li>
