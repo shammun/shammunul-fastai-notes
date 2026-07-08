@@ -1,0 +1,175 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GroupNorm Explorer</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:7px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 13px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:10px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  .selrow label{font-weight:700;}
+  input[type=range]{width:160px;accent-color:var(--ac);}
+  .gval{font-family:monospace;font-weight:700;color:var(--ac);min-width:130px;display:inline-block;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 6px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  table.tensor{border-collapse:separate;border-spacing:3px;}
+  table.tensor th{font-size:9.5px;color:var(--soft);font-weight:700;padding:1px 2px;}
+  .cell{width:30px;height:30px;border-radius:6px;border:1px solid #e5ebf5;cursor:pointer;position:relative;transition:all .12s;background:
+    repeating-linear-gradient(45deg,#f2f5fb,#f2f5fb 3px,#e9eef8 3px,#e9eef8 6px);}
+  .cell:hover{border-color:var(--ac);}
+  .cell.grp{background:var(--out);opacity:.85;border-color:var(--out);}
+  .cell.pick{outline:3px solid var(--in);outline-offset:-1px;z-index:2;}
+  .gsep{border-top:2px dashed rgba(123,92,214,.55) !important;}
+  .readout{font-size:12px;line-height:1.65;max-width:290px;}
+  .readout code{background:#f4f7fd;border-radius:5px;padding:1px 5px;font-size:11.5px;}
+  .readout .axes{font-family:monospace;font-weight:700;color:var(--out);}
+  .warn{display:none;max-width:290px;margin-top:8px;background:#fdf1f1;border:1px solid #f3d2d2;border-radius:9px;padding:7px 10px;font-size:11.5px;color:var(--neg);font-weight:600;}
+  .warn.show{display:block;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.65;max-width:860px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}
+  .keybox{max-width:860px;margin:10px auto 0;background:#fff;border-left:4px solid var(--out);border-radius:10px;padding:8px 12px;font-size:12px;line-height:1.55;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .keybox b{color:var(--out);}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.o{color:var(--out);}.legend b.i{color:var(--in);}
+</style></head><body>
+<h1>Why <code>norm_num_groups=8</code>? — a normalization safari</h1>
+<p class="sub">Every normalization layer does the same thing — <code>(x − μ) / σ</code> — the <b>only</b> difference is <i>which activations are pooled together</i> to compute μ and σ.
+Below is one activation tensor of shape <b>(N=4, C=16, H, W)</b>: rows are images in the batch, columns are channels (each little square contains a whole H×W map).
+<b>Click any cell</b>, then switch the norm type: teal shows everything that shares statistics with your cell.</p>
+
+<div class="stagebar">
+  <button class="chip" data-k="batch">BatchNorm</button>
+  <button class="chip" data-k="layer">LayerNorm</button>
+  <button class="chip" data-k="inst">InstanceNorm</button>
+  <button class="chip on" data-k="group">GroupNorm ⭐</button>
+</div>
+<div class="selrow" id="grow">
+  <label>num_groups</label>
+  <input id="gslider" type="range" min="0" max="5" value="3">
+  <span class="gval" id="gv">8 groups × 2 ch</span>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap">activation tensor (N=4, C=16, H, W)<small>hatched = not pooled with your pick · <b style="color:var(--out)">teal</b> = shares μ, σ · <b style="color:var(--in)">orange ring</b> = your pick</small></div>
+    <table class="tensor" id="tbl"></table>
+  </div>
+  <div class="card">
+    <div class="cap">what gets pooled</div>
+    <div class="readout" id="ro"></div>
+    <div class="warn" id="warn"></div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="keybox" id="keymsg"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=4,C=16;
+let mode='group',G=8,pick=[1,5];
+const GOPTS=[1,2,4,8,16,3];
+function buildTable(){
+  const t=$('tbl');t.innerHTML='';
+  const hd=document.createElement('tr');hd.innerHTML='<th></th>'+Array.from({length:C},(_,c)=>'<th>c'+c+'</th>').join('');
+  t.appendChild(hd);
+  for(let n=0;n<N;n++){
+    const tr=document.createElement('tr');
+    let h='<th>img '+n+'</th>';
+    for(let c=0;c<C;c++)h+='<td><div class="cell" data-n="'+n+'" data-c="'+c+'"></div></td>';
+    tr.innerHTML=h;t.appendChild(tr);
+  }
+  t.querySelectorAll('.cell').forEach(el=>el.onclick=()=>{pick=[+el.dataset.n,+el.dataset.c];render();});
+}
+function shares(n,c){
+  const[pn,pc]=pick;
+  if(mode==='batch')return c===pc;                    // over (N,H,W) per channel
+  if(mode==='layer')return n===pn;                    // over (C,H,W) per sample
+  if(mode==='inst')return n===pn&&c===pc;             // over (H,W) per (sample,channel)
+  const per=Math.floor(C/G);
+  return n===pn && per>0 && Math.floor(c/per)===Math.floor(pc/per) && Math.floor(c/per)<G;
+}
+const info={
+ batch:{axes:'(N, H, W) — per channel',count:()=>'4 images × H×W pixels',
+  txt:'One μ,σ pair per channel, pooled <b>across the whole batch</b>. Powerful — but the statistics now depend on <i>which other images</i> happen to share your batch, and behave differently at batch size 512 vs 16 vs 1.',
+  code:'nn.BatchNorm2d(C)'},
+ layer:{axes:'(C, H, W) — per sample',count:()=>'all 16 channels × H×W',
+  txt:'One μ,σ pair per image, pooled over <b>every channel at once</b>. Batch-independent ✓, but an edge-detector channel and a texture channel are forced to share statistics — coarse.',
+  code:'nn.GroupNorm(1, C)  # = LayerNorm over C,H,W'},
+ inst:{axes:'(H, W) — per sample AND channel',count:()=>'just one H×W map',
+  txt:'Each (image, channel) map normalizes alone. Batch-independent ✓ and fine-grained — but with small H×W the estimate of μ,σ gets <b>noisy</b> (few pixels to average).',
+  code:'nn.GroupNorm(C, C)  # = InstanceNorm'},
+ group:{axes:'(C/G, H, W) — per sample, per group',count:()=>Math.floor(C/G)+' channels × H×W',
+  txt:'The compromise: channels are split into <b>G groups</b>; each group in each image gets its own μ,σ. Batch-independent ✓ (crucial for diffusion, where every image sits at a different noise level t!), yet statistics are pooled over enough numbers to be stable.',
+  code:'nn.GroupNorm(num_groups, C)'},
+};
+const codeLines={
+ batch:0,layer:1,inst:2,group:3
+};
+function codeHtml(){
+  const lines=[
+   'nn.BatchNorm2d(<span class="num">16</span>)          <span class="cm"># stats over the BATCH — depends on your batchmates</span>',
+   'nn.GroupNorm(<span class="num">1</span>, <span class="num">16</span>)         <span class="cm"># num_groups=1  → LayerNorm behaviour</span>',
+   'nn.GroupNorm(<span class="num">16</span>, <span class="num">16</span>)        <span class="cm"># num_groups=C  → InstanceNorm behaviour</span>',
+   'nn.GroupNorm(<span class="num">8</span>, <span class="num">16</span>)         <span class="cm"># the sweet spot — what norm_num_groups=8 builds</span>',
+   '',
+   'model = UNet(in_channels=<span class="num">1</span>, out_channels=<span class="num">1</span>,',
+   '             block_out_channels=(<span class="num">16</span>, <span class="num">32</span>, <span class="num">64</span>, <span class="num">128</span>),',
+   '             norm_num_groups=<span class="num">8</span>)   <span class="cm"># ← first block: 16 ch ÷ 8 groups = 2 ch/group</span>',
+  ];
+  const hl=codeLines[mode];
+  return lines.map((l,i)=>(i===hl||(mode==='group'&&i===7))?'<span class="hl">'+l+'</span>':l).join('\n');
+}
+function render(){
+  document.querySelectorAll('.stagebar .chip').forEach(c=>c.classList.toggle('on',c.dataset.k===mode));
+  $('grow').style.visibility=mode==='group'?'visible':'hidden';
+  const per=Math.floor(C/G);
+  document.querySelectorAll('#tbl .cell').forEach(el=>{
+    const n=+el.dataset.n,c=+el.dataset.c;
+    el.classList.toggle('grp',shares(n,c));
+    el.classList.toggle('pick',n===pick[0]&&c===pick[1]);
+    el.classList.toggle('gsep',mode==='group'&&per>0&&c%per===0&&c>0);
+  });
+  const inf=info[mode];
+  const covered=mode==='group'?G*Math.floor(C/G):C;
+  $('ro').innerHTML='μ and σ are computed over axes:<br><span class="axes">'+inf.axes+'</span><br><br>'+
+    'Your cell pools with: <b>'+inf.count()+'</b><br><br>'+inf.txt+
+    '<br><br><code>'+inf.code+'</code>';
+  const bad=mode==='group'&&C%G!==0;
+  $('warn').classList.toggle('show',bad);
+  if(bad)$('warn').innerHTML='⚠️ 16 % '+G+' ≠ 0 — PyTorch raises <code>ValueError: num_channels must be divisible by num_groups</code>. This is exactly why <b>every</b> value in block_out_channels=(16, 32, 64, 128) is a multiple of 8.';
+  $('gv').textContent = C%G===0 ? (G+' groups × '+(C/G)+' ch') : (G+' groups — invalid!');
+  $('code').innerHTML=codeHtml();
+  $('keymsg').innerHTML = mode==='group'
+   ? '💡 <b>Slide num_groups to the extremes:</b> G=1 turns the teal band into a full row (LayerNorm), G=16 shrinks it to a single cell (InstanceNorm). GroupNorm literally <i>contains</i> both as special cases — 8 is simply a battle-tested middle. And because no teal ever crosses rows, changing the batch size (128 → 512 in the mixed-precision section!) changes <b>nothing</b> about normalization.'
+   : '💡 <b>Now check GroupNorm ⭐</b> — in diffusion training every image in the batch carries a <i>different</i> noise level t, so pooling statistics across batchmates (BatchNorm’s whole trick) would mix wildly different distributions. Batch-independent norms are the standard choice in U-Nets for exactly this reason.';
+}
+document.querySelectorAll('.stagebar .chip').forEach(c=>c.onclick=()=>{mode=c.dataset.k;render();});
+$('gslider').oninput=e=>{G=GOPTS[+e.target.value];render();};
+buildTable();render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

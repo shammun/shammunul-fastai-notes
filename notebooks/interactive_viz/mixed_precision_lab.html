@@ -1,0 +1,317 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mixed Precision Lab</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:940px;line-height:1.45;}
+  .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:8px;flex-wrap:wrap;}
+  .tab{font-family:inherit;font-weight:700;font-size:12.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:6px 15px;cursor:pointer;transition:all .15s;}
+  .tab.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .hidden{display:none;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 13px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{font-size:12px;font-weight:700;margin:0 0 6px;text-align:center;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .main{display:flex;gap:12px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:1000px;margin:0 auto;}
+  /* bits */
+  .bitrow{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;margin:4px 0;}
+  .bit{width:22px;height:26px;border-radius:5px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:monospace;font-weight:700;font-size:12px;cursor:pointer;user-select:none;transition:all .1s;}
+  .bit:hover{transform:translateY(-2px);}
+  .bit.s{background:#f6f3fe;color:var(--ac);border-color:var(--ac);}
+  .bit.e{background:#fff6ec;color:var(--in);border-color:var(--in);}
+  .bit.m{background:#e9f7f7;color:var(--out);border-color:var(--out);}
+  .bit.one{filter:saturate(2.2) brightness(.92);font-weight:900;}
+  .bitlbl{display:flex;gap:2px;justify-content:center;font-size:9px;color:var(--soft);font-weight:700;}
+  .bval{font-family:monospace;font-size:13px;font-weight:700;text-align:center;margin-top:5px;}
+  .presets{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:7px 0 2px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:3px 10px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;}
+  canvas#nline{display:block;background:#fbfdff;border:1px solid var(--line);border-radius:8px;margin-top:8px;}
+  /* underflow */
+  .uf .row{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:12.5px;margin:8px 0;}
+  .uf .num{font-family:monospace;font-weight:700;font-size:14px;border-radius:8px;padding:6px 11px;background:#f4f7fd;}
+  .uf .dead{background:#fdf1f1;color:var(--neg);}
+  .uf .ok{background:#e9f7f7;color:var(--out);}
+  input[type=range]{accent-color:var(--ac);}
+  .arr{font-size:17px;color:var(--soft);font-weight:700;}
+  /* timeline */
+  .stagebar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:7px;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .flow{display:flex;gap:6px;justify-content:center;align-items:stretch;flex-wrap:wrap;max-width:980px;margin:0 auto;}
+  .node{background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 10px;box-shadow:0 6px 16px rgba(123,92,214,.08);text-align:center;min-width:128px;max-width:170px;opacity:.5;transition:all .2s;}
+  .node.on{opacity:1;border-color:var(--ac);transform:translateY(-2px);box-shadow:0 8px 22px rgba(123,92,214,.25);}
+  .node.done{opacity:1;}
+  .node .t{font-size:11px;font-weight:700;margin-bottom:3px;}
+  .node .d{font-size:10px;color:var(--soft);line-height:1.4;}
+  .fp16{color:var(--in);font-weight:700;}.fp32{color:var(--out);font-weight:700;}
+  .scalebox{max-width:560px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:12px;text-align:center;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .scalebox b{font-family:monospace;color:var(--ac);font-size:14px;}
+  .gradbar{height:14px;border-radius:7px;background:#f0f3fa;overflow:hidden;margin-top:5px;position:relative;}
+  .gradbar>div{height:100%;background:linear-gradient(90deg,var(--out),var(--ac));transition:width .35s;}
+  .gradbar .dz{position:absolute;left:0;top:0;height:100%;width:14%;background:repeating-linear-gradient(45deg,rgba(214,69,69,.25),rgba(214,69,69,.25) 4px,transparent 4px,transparent 8px);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.6;max-width:900px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .keybox{max-width:900px;margin:10px auto 0;background:#fff;border-left:4px solid var(--out);border-radius:10px;padding:8px 12px;font-size:12px;line-height:1.55;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .keybox b{color:var(--out);}
+</style></head><body>
+<h1>Mixed Precision Lab — FP16 without the tears</h1>
+<p class="sub">FP16 numbers are half the size of FP32 → roughly <b>2–8× faster</b> matmuls on tensor cores and half the memory (hello, batch size 512). The price: FP16 can only represent a <b>narrow range</b> of values, and small gradients silently become 0. Three mini-labs below.</p>
+
+<div class="tabs">
+  <button class="tab on" id="tb0">🔬 1 · The bits</button>
+  <button class="tab" id="tb1">💀 2 · The underflow problem</button>
+  <button class="tab" id="tb2">⚙️ 3 · The training step, staged</button>
+</div>
+
+<!-- ============ TAB 1: BITS ============ -->
+<div id="v0">
+  <div class="main">
+    <div class="card">
+      <div class="cap"><span class="fp32">FP32</span> — 1 sign · 8 exponent · 23 mantissa<small>click bits to flip them</small></div>
+      <div class="bitrow" id="b32"></div>
+      <div class="bitlbl"><span style="width:22px">s</span><span style="width:196px;text-align:center">exponent</span><span style="flex:1;text-align:center">mantissa (fraction)</span></div>
+      <div class="bval" id="v32"></div>
+    </div>
+    <div class="card">
+      <div class="cap"><span class="fp16">FP16</span> — 1 sign · 5 exponent · 10 mantissa<small>same value, squeezed — watch what survives</small></div>
+      <div class="bitrow" id="b16"></div>
+      <div class="bitlbl"><span style="width:22px">s</span><span style="width:118px;text-align:center">exponent</span><span style="flex:1;text-align:center">mantissa</span></div>
+      <div class="bval" id="v16"></div>
+      <div class="presets" id="presets"></div>
+    </div>
+  </div>
+  <div class="card" style="max-width:760px;margin:12px auto 0">
+    <div class="cap">where each format lives on the number line (log scale, positive values)</div>
+    <canvas id="nline" width="700" height="96" style="width:100%"></canvas>
+  </div>
+  <div class="keybox">💡 5 exponent bits ⇒ FP16 maxes out at <b>65 504</b> (overflow → <code>inf</code>) and normal numbers bottom out at <b>6.1×10⁻⁵</b> (subnormals crawl to 6×10⁻⁸, with terrible precision). Typical DDPM gradients live around 10⁻⁴…10⁻⁸ — squarely on the cliff edge. Click the <b>tiny gradient</b> preset and watch FP16 read 0.0.</div>
+</div>
+
+<!-- ============ TAB 2: UNDERFLOW ============ -->
+<div id="v1" class="hidden">
+  <div class="card uf" style="max-width:760px;margin:0 auto">
+    <div class="cap">a gradient’s journey into FP16 — and how GradScaler saves it</div>
+    <div class="row">true gradient (FP32): <input id="gslide" type="range" min="-80" max="0" value="-75" style="width:220px"><span class="num" id="gtrue"></span></div>
+    <div class="row"><span>stored directly in FP16:</span><span class="arr">→</span><span class="num" id="gnaive"></span></div>
+    <div class="row"><span>× loss scale <b style="font-family:monospace;color:var(--ac)">2<sup id="sexp">16</sup></b> <input id="sslide" type="range" min="0" max="24" value="16" style="width:150px"> first:</span><span class="arr">→</span><span class="num" id="gscaled"></span><span class="arr">→ unscale in FP32 →</span><span class="num" id="gback"></span></div>
+    <div id="verdict" style="text-align:center;font-weight:700;font-size:12.5px;margin-top:6px"></div>
+  </div>
+  <div class="keybox">💡 <b>The whole trick is one multiplication.</b> Because backprop is linear, scaling the <i>loss</i> by 2¹⁶ scales <i>every gradient</i> by 2¹⁶ — lifting them out of the underflow zone <b>before</b> they are ever stored in FP16. The optimizer must see honest gradients, so <code>scaler.step()</code> divides the scale back out <i>in FP32</i>, where tiny values are perfectly representable. Push the scale to 2²⁴ with a large-ish gradient: now you <b>overflow</b> to inf instead — which is why the scale is tuned <i>dynamically</i> (tab 3).</div>
+</div>
+
+<!-- ============ TAB 3: TIMELINE ============ -->
+<div id="v2" class="hidden">
+  <div class="stagebar" id="chips"></div>
+  <div class="selrow">
+    <button class="stepb" id="back">⏮ Step</button>
+    <button class="play" id="play">▶ Play</button>
+    <button class="stepb" id="fwd">Step ⏭</button>
+    <span style="width:1px;height:22px;background:var(--line)"></span>
+    speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1" style="width:110px"><span class="speedv" id="spv">1×</span>
+  </div>
+  <div class="flow">
+    <div class="node" id="n0"><div class="t">before_fit</div><div class="d">create <b>GradScaler</b><br>scale starts at 2¹⁶</div></div>
+    <div class="node" id="n1"><div class="t">before_batch</div><div class="d">enter <b>autocast</b>:<br>matmuls/convs run in <span class="fp16">FP16</span>, softmax &amp; losses stay <span class="fp32">FP32</span></div></div>
+    <div class="node" id="n2"><div class="t">forward + loss</div><div class="d">U-Net forward is <span class="fp16">FP16</span>-fast; MSE computed safely</div></div>
+    <div class="node" id="n3"><div class="t">after_loss</div><div class="d">exit autocast — everything after runs normally</div></div>
+    <div class="node" id="n4"><div class="t">backward</div><div class="d"><b>scale(loss)</b>.backward()<br>gradients are ×scale — safely above the FP16 floor</div></div>
+    <div class="node" id="n5"><div class="t">step</div><div class="d">unscale grads (÷scale, in <span class="fp32">FP32</span>) → inf/NaN check → <b>step or skip</b></div></div>
+    <div class="node" id="n6"><div class="t">update</div><div class="d">grads clean? grow scale slowly.<br>overflow? <b>halve scale</b>, skip step</div></div>
+  </div>
+  <div class="scalebox">dynamic loss scale: <b id="scaleVal">65536 (2¹⁶)</b> &nbsp;·&nbsp; steps since last overflow: <b id="okSteps">0</b> &nbsp;·&nbsp; <span id="evt" style="font-weight:700"></span>
+    <div class="gradbar"><div class="dz"></div><div id="gbar" style="width:0%"></div></div>
+    <div style="font-size:10px;color:var(--soft);margin-top:2px">gradient magnitude flowing through the step (hatched red = FP16 underflow zone)</div>
+  </div>
+  <div class="code" id="code"></div>
+  <div class="keybox">💡 <b>Read the callback as a story:</b> autocast makes the <i>forward</i> pass cheap; GradScaler makes the <i>backward</i> pass safe; and the master weights + optimizer state stay in FP32 the whole time — that’s the “mixed” in mixed precision. Note which Learner methods this callback overrides (backward, step) versus merely hooks (before_batch, after_loss): it surgically replaces only the numerics-critical pieces.</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+/* ================= TAB SWITCHING ================= */
+const tabs=['tb0','tb1','tb2'],views=['v0','v1','v2'];
+tabs.forEach((t,i)=>$(t).onclick=()=>{tabs.forEach((x,j)=>{$(x).classList.toggle('on',i===j);$(views[j]).classList.toggle('hidden',i!==j);});});
+
+/* ================= TAB 1: BITS ================= */
+let bits32=new Array(32).fill(0), bits16=new Array(16).fill(0);
+function f32FromBits(b){const u=new Uint32Array(1);let x=0;for(let i=0;i<32;i++)x=(x<<1)|b[i];u[0]=x>>>0;return new Float32Array(u.buffer)[0];}
+function f16Value(b){ // decode half
+  const s=b[0]?-1:1;let e=0;for(let i=1;i<=5;i++)e=(e<<1)|b[i];let m=0;for(let i=6;i<16;i++)m=(m<<1)|b[i];
+  if(e===31)return m?NaN:s*Infinity;
+  if(e===0)return s*Math.pow(2,-14)*(m/1024);
+  return s*Math.pow(2,e-15)*(1+m/1024);
+}
+function setF32(v){const f=new Float32Array([v]);const u=new Uint32Array(f.buffer)[0];for(let i=0;i<32;i++)bits32[i]=(u>>>(31-i))&1;}
+function f16Round(v){ // round f32 -> f16 bits (round to nearest even, simplified)
+  if(isNaN(v)){return[0,1,1,1,1,1,1,...new Array(9).fill(0)];}
+  const s=v<0||Object.is(v,-0)?1:0;v=Math.abs(v);
+  if(v===0)return[s,...new Array(15).fill(0)];
+  if(v>=65520)return[s,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0]; // inf
+  let e=Math.floor(Math.log2(v));
+  if(e<-14){ // subnormal
+    let m=Math.round(v/Math.pow(2,-24));if(m>1023)m=1023;
+    const bb=[s,0,0,0,0,0];for(let i=9;i>=0;i--)bb.push((m>>i)&1);return bb;
+  }
+  let m=Math.round((v/Math.pow(2,e)-1)*1024);
+  if(m===1024){m=0;e++;}
+  const E=e+15;const bb=[s];for(let i=4;i>=0;i--)bb.push((E>>i)&1);for(let i=9;i>=0;i--)bb.push((m>>i)&1);
+  return bb;
+}
+function bitRow(el,bits,split1,split2,onFlip){
+  el.innerHTML='';
+  bits.forEach((b,i)=>{
+    const d=document.createElement('div');
+    d.className='bit '+(i===0?'s':i<split2?'e':'m')+(b?' one':'');
+    d.textContent=b;d.onclick=()=>onFlip(i);el.appendChild(d);
+  });
+}
+function fmtV(v){
+  if(!isFinite(v))return v>0?'+inf':(v<0?'−inf':'NaN');
+  if(v===0)return (1/v===-Infinity?'−0.0':'0.0');
+  const a=Math.abs(v);
+  return a<0.001||a>=100000?v.toExponential(4):(''+ +v.toPrecision(6));
+}
+function renderBits(){
+  bitRow($('b32'),bits32,1,9,i=>{bits32[i]^=1;const v=f32FromBits(bits32);bits16=f16Round(v);renderBits();});
+  bitRow($('b16'),bits16,1,6,i=>{bits16[i]^=1;renderBits();});
+  const v32=f32FromBits(bits32),v16=f16Value(bits16);
+  $('v32').innerHTML='value = <span class="fp32">'+fmtV(v32)+'</span>';
+  const lost=isFinite(v32)&&v32!==0&&v16===0;
+  const ovf=isFinite(v32)&&!isFinite(v16);
+  $('v16').innerHTML='value = <span class="fp16">'+fmtV(v16)+'</span>'+
+    (lost?' <span style="color:var(--neg);font-weight:700">← UNDERFLOW: gradient erased!</span>':'')+
+    (ovf?' <span style="color:var(--neg);font-weight:700">← OVERFLOW → inf!</span>':'');
+  drawNumberLine();
+}
+const PRESETS=[['1.0',1],['learning rate 5e−3',5e-3],['tiny gradient 2e−8',2e-8],['huge activation 70 000',70000],['FP16 min normal 6.1e−5',6.104e-5],['π',Math.PI]];
+function presetsBuild(){const p=$('presets');PRESETS.forEach(([lbl,v])=>{const b=document.createElement('button');b.className='chip';b.textContent=lbl;
+  b.onclick=()=>{setF32(v);bits16=f16Round(v);renderBits();};p.appendChild(b);});}
+function drawNumberLine(){
+  const cv=$('nline'),c=cv.getContext('2d'),W=cv.width,H=cv.height;
+  c.clearRect(0,0,W,H);
+  const lo=-45,hi=6; // log10 range
+  const X=e=>20+(W-40)*(e-lo)/(hi-lo);
+  // FP32 band
+  c.fillStyle='rgba(22,163,163,.22)';c.fillRect(X(-38),16,X(4.6)-X(-38),16);
+  c.fillStyle='#16a3a3';c.font='bold 10px monospace';c.fillText('FP32: ~1e−38 … 3.4e38',X(-38),13);
+  // FP16 band + subnormal
+  c.fillStyle='rgba(246,146,30,.28)';c.fillRect(X(Math.log10(6.1e-5)),46,X(Math.log10(65504))-X(Math.log10(6.1e-5)),16);
+  c.fillStyle='rgba(246,146,30,.13)';c.fillRect(X(Math.log10(6e-8)),46,X(Math.log10(6.1e-5))-X(Math.log10(6e-8)),16);
+  c.fillStyle='#f6921e';c.fillText('FP16: 6e−8 (subnormal) · 6.1e−5 … 65504',X(Math.log10(6e-8)),43);
+  // underflow zone label
+  c.fillStyle='rgba(214,69,69,.14)';c.fillRect(20,46,X(Math.log10(6e-8))-20,16);
+  c.fillStyle='#d64545';c.font='bold 9.5px monospace';c.fillText('→ 0',24,57);
+  // axis
+  c.strokeStyle='#dde5f2';c.beginPath();c.moveTo(20,78);c.lineTo(W-20,78);c.stroke();
+  c.fillStyle='#5a6b86';c.font='9.5px monospace';
+  for(let e=-40;e<=4;e+=8){c.fillText('1e'+e,X(e)-12,92);c.strokeStyle='#dde5f2';c.beginPath();c.moveTo(X(e),74);c.lineTo(X(e),82);c.stroke();}
+  // current value marker
+  const v=Math.abs(f32FromBits(bits32));
+  if(v>0&&isFinite(v)){const x=X(Math.log10(v));c.fillStyle='#7b5cd6';c.beginPath();c.moveTo(x,64);c.lineTo(x-5,74);c.lineTo(x+5,74);c.fill();
+    c.font='bold 10px monospace';c.fillText('your value',Math.min(W-80,Math.max(4,x-28)),70);}
+}
+setF32(2e-8);bits16=f16Round(2e-8);presetsBuild();renderBits();
+
+/* ================= TAB 2: UNDERFLOW ================= */
+function toF16(v){ // numeric round-trip through half precision
+  return f16Value(f16Round(v));
+}
+function renderUF(){
+  const g=Math.pow(10,+$('gslide').value/10); // 1e-8 .. 1
+  const k=+$('sslide').value;$('sexp').textContent=k;
+  const naive=toF16(g);
+  const scaled=toF16(g*Math.pow(2,k));
+  const back=scaled/Math.pow(2,k); // unscale happens in FP32
+  $('gtrue').textContent=g.toExponential(2);
+  $('gnaive').textContent=fmtV(naive);
+  $('gnaive').className='num '+(naive===0?'dead':'ok');
+  $('gscaled').textContent=fmtV(scaled);
+  $('gscaled').className='num '+(!isFinite(scaled)?'dead':'ok');
+  $('gback').textContent=isFinite(scaled)?back.toExponential(2):'—';
+  $('gback').className='num '+(!isFinite(scaled)||back===0?'dead':'ok');
+  let verdict;
+  if(!isFinite(scaled))verdict='<span style="color:var(--neg)">💥 scaled gradient OVERFLOWED → GradScaler would skip this step and halve the scale.</span>';
+  else if(naive===0&&back>0)verdict='<span style="color:var(--out)">✅ rescued! Direct FP16 storage killed this gradient; scaling preserved it perfectly.</span>';
+  else if(naive===0&&back===0)verdict='<span style="color:var(--neg)">☠️ still zero — scale is too small for a gradient this tiny. Crank it up.</span>';
+  else verdict='<span style="color:var(--soft)">This gradient survives FP16 even without scaling — scaling is insurance for its smaller siblings.</span>';
+  $('verdict').innerHTML=verdict;
+}
+$('gslide').oninput=renderUF;$('sslide').oninput=renderUF;renderUF();
+
+/* ================= TAB 3: TIMELINE ================= */
+const stages=['before_fit','before_batch (autocast in)','forward+loss','after_loss (autocast out)','backward (scaled)','step (unscale→check→step)','update scale'];
+const codeLines=[
+ ['class <span class="fn">MixedPrecision</span>(TrainCB):',-1],
+ ['    order = DeviceCB.order + <span class="num">10</span>                       <span class="cm"># run AFTER data is on the GPU</span>',-1],
+ ['    def before_fit(self, learn):',0],
+ ['        self.scaler = torch.cuda.amp.<span class="fn">GradScaler</span>()      <span class="cm"># dynamic loss scale, starts 2¹⁶</span>',0],
+ ['    def before_batch(self, learn):',1],
+ ['        self.autocast = torch.<span class="fn">autocast</span>("cuda", dtype=torch.float16)',1],
+ ['        self.autocast.__enter__()                       <span class="cm"># FP16 region opens</span>',1],
+ ['    <span class="cm"># … Learner runs predict + get_loss inside the autocast region …</span>',2],
+ ['    def after_loss(self, learn):',3],
+ ['        self.autocast.__exit__(<span class="num">None</span>, <span class="num">None</span>, <span class="num">None</span>)         <span class="cm"># FP16 region closes</span>',3],
+ ['    def backward(self, learn):',4],
+ ['        self.scaler.<span class="fn">scale</span>(learn.loss).backward()       <span class="cm"># grads = true grads × scale</span>',4],
+ ['    def step(self, learn):',5],
+ ['        self.scaler.<span class="fn">step</span>(learn.opt)                    <span class="cm"># unscale → inf/NaN check → opt.step() or skip</span>',5],
+ ['        self.scaler.<span class="fn">update</span>()                           <span class="cm"># overflow? scale/2 · long streak ok? scale×2</span>',6],
+];
+let stage=0,timer=null,speed=1,scale=65536,okSteps=0;
+function chipsBuild(){const bar=$('chips');bar.innerHTML='';stages.forEach((s,i)=>{const b=document.createElement('button');b.className='chip'+(i===0?' on':'');b.textContent=(i===0?'':'')+s;b.onclick=()=>{stopTl();stage=i;renderTl(false);};bar.appendChild(b);});}
+function renderTl(advanceLogic){
+  document.querySelectorAll('#chips .chip').forEach((c,i)=>c.classList.toggle('on',i===stage));
+  for(let i=0;i<7;i++){const n=$('n'+i);n.classList.toggle('on',i===stage);n.classList.toggle('done',i<stage);}
+  const hl=stage;
+  $('code').innerHTML=codeLines.map(([t,s])=>s===hl?'<span class="hl">'+t+'</span>':t).join('\n');
+  // gradient bar: log position of a "typical grad" ~1e-5, scaled during stages 4-5
+  const baseE=-5.2,scaledE=baseE+Math.log10(scale);
+  let e=stage>=4&&stage<=4?scaledE:(stage===5?baseE:(stage>=4?baseE:null));
+  let w=0;
+  if(stage===4)w=(scaledE+8)/9.5*100;
+  else if(stage>=5)w=(baseE+8)/9.5*100;
+  $('gbar').style.width=Math.max(0,Math.min(100,w))+'%';
+  // scale dynamics on reaching "update"
+  if(advanceLogic&&stage===6){
+    okSteps++;
+    if(Math.random()<0.12){scale=Math.max(2,scale/2);okSteps=0;$('evt').innerHTML='<span style="color:var(--neg)">⚠️ inf detected → step SKIPPED, scale halved</span>';}
+    else if(okSteps>=6){scale*=2;okSteps=0;$('evt').innerHTML='<span style="color:var(--out)">📈 long clean streak → scale doubled</span>';}
+    else $('evt').innerHTML='<span style="color:var(--out)">✓ clean step</span>';
+  }else if(stage!==6)$('evt').textContent='';
+  const k=Math.round(Math.log2(scale));
+  $('scaleVal').textContent=scale+' (2'+String(k).split('').map(d=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[+d]).join('')+')';
+  $('okSteps').textContent=okSteps;
+}
+function stepF(){stage=(stage+1)%7;renderTl(true);}
+function stepB(){stage=(stage+6)%7;renderTl(false);}
+function playTl(){if(timer){stopTl();return;}$('play').textContent='⏸ Pause';timer=setInterval(stepF,1000/speed);}
+function stopTl(){if(timer)clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+$('play').onclick=playTl;$('fwd').onclick=()=>{stopTl();stepF();};$('back').onclick=()=>{stopTl();stepB();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stopTl();playTl();}};
+chipsBuild();renderTl(false);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

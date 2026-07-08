@@ -1,0 +1,229 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Data Pipeline: where should noisify live?</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:940px;line-height:1.45;}
+  .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:6px;flex-wrap:wrap;}
+  .tab{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 14px;cursor:pointer;transition:all .15s;}
+  .tab.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .tog{font-family:inherit;font-weight:700;font-size:11.5px;background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;padding:4px 11px;cursor:pointer;}
+  .tog.on{border-color:var(--out);color:var(--out);background:#e9f7f7;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button.play{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;background:var(--ac);color:#fff;min-width:84px;}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .stage{max-width:960px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(123,92,214,.12);padding:8px 10px;}
+  canvas#pipe{display:block;width:100%;height:300px;}
+  .stats{display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--soft);margin-top:6px;flex-wrap:wrap;}
+  .stats b{font-family:monospace;color:var(--ac);font-size:14px;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.6;max-width:900px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .keybox{max-width:900px;margin:10px auto 0;background:#fff;border-left:4px solid var(--out);border-radius:10px;padding:8px 12px;font-size:12px;line-height:1.55;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .keybox b{color:var(--out);}
+</style></head><body>
+<h1>Where should <code>noisify</code> live? — the data pipeline, animated</h1>
+<p class="sub">The same math can run in two very different places. <b>Callback mode</b> (Section 5) noisifies on the main process, <i>after</i> the batch reaches the GPU queue. <b>Collate mode</b> (Section 7) pushes it into <code>collate_ddpm</code>, so <b>4 background workers</b> noisify in parallel <i>while the GPU trains</i>. Toggle modes, add <b>MultDL ×2</b> (Section 9), and watch the batches (■) flow.</p>
+
+<div class="tabs">
+  <button class="tab on" id="mCb">mode: DDPMCB callback (before_batch)</button>
+  <button class="tab" id="mCo">mode: collate_ddpm + num_workers=4</button>
+  <button class="tog" id="mult">MultDL ×2: off</button>
+</div>
+<div class="selrow">
+  <button class="play" id="play">⏸ Pause</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="stage">
+  <canvas id="pipe" width="940" height="300"></canvas>
+  <div class="stats">
+    <span>batches trained: <b id="cnt">0</b></span>
+    <span>GPU busy: <b id="busy">0%</b></span>
+    <span id="hint" style="max-width:420px;text-align:left"></span>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="keybox" id="keymsg"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('pipe'),ctx=cv.getContext('2d');
+let mode='cb',mult=false,speed=1,playing=true;
+/* geometry */
+const W=940,H=300;
+const XDATA=70,XWORK=250,XCOLL=430,XQ=580,XGPU=760;
+const laneY=[60,115,170,225];
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function box(x,y,w,h,label,sub,color,active){
+  ctx.save();
+  roundRect(x-w/2,y-h/2,w,h,10);
+  ctx.fillStyle=active?'#ffffff':'#fbfcff';
+  ctx.shadowColor='rgba(123,92,214,'+(active?0.35:0.12)+')';ctx.shadowBlur=active?14:7;ctx.shadowOffsetY=3;
+  ctx.fill();ctx.shadowColor='transparent';
+  ctx.lineWidth=2;ctx.strokeStyle=active?color:'#dde5f2';ctx.stroke();
+  ctx.fillStyle=color;ctx.font='bold 11px "Segoe UI",sans-serif';ctx.textAlign='center';
+  ctx.fillText(label,x,y-(sub?3:-4));
+  if(sub){ctx.fillStyle='#5a6b86';ctx.font='9.5px "Segoe UI",sans-serif';ctx.fillText(sub,x,y+11);}
+  ctx.restore();
+}
+/* simulation: tokens with phases */
+let tokens=[],nextId=0,trained=0,gpuBusyTicks=0,ticks=0,gpuToken=null,gpuTime=0,queue=[];
+let workers=[null,null,null,null]; // token or null
+const GPU_COST=60, WORK_COST=110, NOISE_COST=55, MAIN_NOISE=28;
+function reset(){tokens=[];nextId=0;trained=0;gpuBusyTicks=0;ticks=0;gpuToken=null;gpuTime=0;queue=[];workers=[null,null,null,null];}
+function spawn(w){const t={id:nextId++,phase:'load',p:0,lane:w,reps:0};workers[w]=t;tokens.push(t);return t;}
+function step(){
+  ticks++;
+  const nw = mode==='co'?4:4; // workers always load; in cb mode they only load+collate (fast-ish), noisify happens on main
+  // workers
+  for(let w=0;w<4;w++){
+    let t=workers[w];
+    if(!t){if(queue.length<6)spawn(w);continue;}
+    t.p+=1;
+    const cost=WORK_COST*(0.9+0.2*((t.id*7)%10)/10);
+    const noiseC=mode==='co'?NOISE_COST:0;
+    if(t.p>=cost+noiseC){ // done loading (+noisify if collate mode)
+      if(queue.length<6){t.phase='queue';queue.push(t);workers[w]=null;}
+      else t.p=cost+noiseC; // stall: queue full
+    }else t.phase=(t.p<cost)?'load':'noisify';
+  }
+  // gpu
+  if(!gpuToken){
+    if(queue.length){
+      gpuToken=queue.shift();
+      // in callback mode, noisify runs serially on the main process first
+      gpuToken.phase = mode==='cb' ? 'mainNoise' : 'train';
+      gpuTime=0;
+    }
+  }else{
+    gpuTime++;
+    if(gpuToken.phase==='mainNoise'){
+      if(gpuTime>=MAIN_NOISE){gpuToken.phase='train';gpuTime=0;}
+    }else{
+      gpuBusyTicks++;
+      if(gpuTime>=GPU_COST){
+        trained++;gpuToken.reps++;
+        if(mult&&gpuToken.reps<2){gpuTime=0;gpuToken.phase='train';} // reuse the same batch
+        else{tokens=tokens.filter(x=>x!==gpuToken);gpuToken=null;}
+      }
+    }
+  }
+}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // static boxes
+  box(XDATA,H/2,96,58,'Dataset','Fashion-MNIST on disk','#5a6b86',false);
+  for(let w=0;w<4;w++){
+    const busyT=workers[w];
+    const lbl='worker '+w;
+    const sub=busyT? (busyT.phase==='noisify'?'noisify!':'load+collate') : 'idle';
+    box(XWORK,laneY[w],110,42,lbl,sub,busyT&&busyT.phase==='noisify'?'#f6921e':'#16a3a3',!!busyT);
+  }
+  box(XCOLL,H/2,120,50, mode==='co'?'collate_ddpm':'default_collate', mode==='co'?'noisify inside ✔':'just stacks tensors', mode==='co'?'#f6921e':'#5a6b86', true);
+  // queue slots
+  ctx.fillStyle='#5a6b86';ctx.font='bold 10px "Segoe UI"';ctx.textAlign='center';ctx.fillText('prefetch queue',XQ,H/2-44);
+  for(let i=0;i<6;i++){roundRect(XQ-36+ (i%3)*26, H/2-30+Math.floor(i/3)*30 ,20,20,5);
+    ctx.fillStyle=i<queue.length?'#7b5cd6':'#eef1f8';ctx.fill();}
+  // gpu
+  const gLbl=gpuToken?(gpuToken.phase==='mainNoise'?'noisify (serial!)':'training step'+(mult?' ('+(gpuToken.reps+1)+'/2)':'')):'waiting…';
+  box(XGPU,H/2,130,66,'GPU',gLbl,gpuToken&&gpuToken.phase!=='mainNoise'?'#7b5cd6':(gpuToken?'#d64545':'#b9c4d8'),!!gpuToken);
+  // moving tokens: draw squares along paths
+  tokens.forEach(t=>{
+    let x,y;
+    if(t.phase==='load'||t.phase==='noisify'){
+      const cost=WORK_COST+(mode==='co'?NOISE_COST:0);
+      const f=Math.min(1,t.p/cost);
+      x=XDATA+48+(XWORK-XDATA-100)*Math.min(1,f*3);y=laneY[t.lane];
+      if(f>0.33){x=XWORK+ (XCOLL-XWORK-60)*Math.max(0,(f-0.33)/0.67);y=laneY[t.lane]+(H/2-laneY[t.lane])*Math.max(0,(f-0.33)/0.67);}
+    }else if(t.phase==='queue'){
+      const qi=queue.indexOf(t);
+      x=XQ-26+(qi%3)*26;y=H/2-20+Math.floor(qi/3)*30;
+    }else{ x=XGPU;y=H/2; }
+    ctx.save();
+    ctx.fillStyle=(t.phase==='noisify'||(mode==='co'&&t.phase!=='load'))||t.phase==='train'&&mode==='co'?'#f6921e':(t.phase==='train'||t.phase==='mainNoise'?'#7b5cd6':'#16a3a3');
+    if(t.phase==='queue')ctx.fillStyle='#7b5cd6';
+    roundRect(x-7,y-7,14,14,4);ctx.fill();
+    ctx.restore();
+  });
+  // arrows
+  ctx.strokeStyle='#c9d4e8';ctx.lineWidth=1.5;
+  const arr=(x1,y1,x2,y2)=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();};
+  for(let w=0;w<4;w++){arr(XDATA+50,H/2,XWORK-57,laneY[w]);arr(XWORK+57,laneY[w],XCOLL-62,H/2);}
+  arr(XCOLL+62,H/2,XQ-42,H/2);arr(XQ+42,H/2,XGPU-67,H/2);
+  // stats
+  $('cnt').textContent=trained;
+  $('busy').textContent=ticks?Math.round(100*gpuBusyTicks/ticks)+'%':'0%';
+  $('hint').innerHTML = mode==='cb'
+    ?'👀 watch the GPU box flash <span style="color:#d64545;font-weight:700">red</span>: in callback mode it must noisify <i>serially</i> before every step — training waits.'
+    :'👀 the <span style="color:#f6921e;font-weight:700">orange</span> noisify work now happens in the worker lanes, overlapped with GPU training.'+(mult?' MultDL trains twice per delivered batch, so the queue drains slower — handy when loading is the bottleneck.':'');
+}
+const codeCb=[
+ ['<span class="cm"># === callback mode (Section 5) ===</span>',-1],
+ ['class DDPMCB(Callback):',-1],
+ ['    def before_batch(self, learn):',0],
+ ['        learn.batch = <span class="fn">noisify</span>(learn.batch[0], self.alphabar)   <span class="cm"># main process, every step, GPU idles</span>',0],
+];
+const codeCo=[
+ ['<span class="cm"># === collate mode (Section 7) ===</span>',-1],
+ ['def <span class="fn">collate_ddpm</span>(b):',-1],
+ ['    return <span class="fn">noisify</span>(default_collate(b)[xl], alphabar)   <span class="cm"># runs INSIDE each worker process</span>',0],
+ ['',-1],
+ ['def dl_ddpm(ds):',-1],
+ ['    return DataLoader(ds, batch_size=bs,',-1],
+ ['                      collate_fn=collate_ddpm,',0],
+ ['                      num_workers=<span class="num">4</span>)               <span class="cm"># 4 CPU processes prepare batches in parallel</span>',0],
+];
+const codeMult=[
+ ['',-1],
+ ['<span class="cm"># === Section 9: squeeze more training out of each loaded batch ===</span>',-1],
+ ['class MultDL:',-1],
+ ['    def __iter__(self):',1],
+ ['        for o in self.dl:',1],
+ ['            for i in range(self.mult): <span class="fn">yield</span> o     <span class="cm"># same batch, twice — fresh t &amp; ε each pass? No!</span>',1],
+ ['dls.train = MultDL(dls.train)                     <span class="cm"># but dropout/optimizer state still differ per pass</span>',1],
+];
+function renderCode(){
+  let lines=(mode==='cb'?codeCb:codeCo).slice();
+  if(mult)lines=lines.concat(codeMult);
+  $('code').innerHTML=lines.map(([t,s])=>s===0||(s===1&&mult)?'<span class="hl">'+t+'</span>':t).join('\n');
+  $('keymsg').innerHTML = mode==='cb'
+   ?'💡 <b>Nothing is wrong with the callback</b> — it’s clean and self-contained, and with a small model the serial noisify barely matters. But with mixed precision the GPU got ~2–4× faster while data prep didn’t, so the GPU starts <b>starving</b>. Flip to collate mode and compare “GPU busy”.'
+   :'💡 <b>Moving noisify into <code>collate_fn</code> is a classic performance pattern:</b> put per-batch CPU work where the parallel workers are. The math is byte-for-byte identical — only <i>where</i> and <i>when</i> it runs changed. One subtlety: the noise is created on the CPU now, so tensors arrive pre-noisified and DDPMCB is no longer needed in the callback list.'+(mult?'<br><br>🔁 <b>MultDL:</b> each loaded batch is yielded twice. The (t, ε) pair is <i>frozen</i> per delivery — but because the model weights change between the two passes (and the optimizer/dropout state differs), the second pass still teaches something. It’s a cheap way to raise steps-per-epoch when loading, not compute, is the bottleneck.':'');
+}
+let timer=null;
+function loop(){
+  if(playing){for(let k=0;k<Math.round(2*speed);k++)step();draw();}
+  requestAnimationFrame(loop);
+}
+$('mCb').onclick=()=>{mode='cb';$('mCb').classList.add('on');$('mCo').classList.remove('on');reset();renderCode();};
+$('mCo').onclick=()=>{mode='co';$('mCo').classList.add('on');$('mCb').classList.remove('on');reset();renderCode();};
+$('mult').onclick=()=>{mult=!mult;$('mult').textContent='MultDL ×2: '+(mult?'on':'off');$('mult').classList.toggle('on',mult);renderCode();};
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'⏸ Pause':'▶ Play';};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+reset();renderCode();loop();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

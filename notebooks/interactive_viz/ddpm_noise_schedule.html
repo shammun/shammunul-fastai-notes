@@ -1,0 +1,207 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Noise Schedule Lab</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:920px;line-height:1.45;}
+  .selrow{display:flex;gap:10px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  .selrow label{font-weight:700;}
+  .selrow .val{font-family:monospace;font-weight:700;color:var(--ac);min-width:56px;display:inline-block;}
+  input[type=range]{width:100px;accent-color:var(--ac);}
+  select{font-family:inherit;font-size:12px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:4px 7px;background:#fff;cursor:pointer;}
+  .main{display:grid;grid-template-columns:auto auto auto;gap:12px;justify-content:center;align-items:stretch;}
+  #cardBeta{grid-column:1;grid-row:1;}
+  #cardSig{grid-column:2;grid-row:1;}
+  #cardAb{grid-column:1/3;grid-row:2;}
+  #cardIns{grid-column:3;grid-row:1/3;display:flex;flex-direction:column;min-width:262px;}
+  #cardIns .readout{flex:0 0 auto;}
+  #cardIns .spacer{flex:1;}
+  body.ce-narrow .main{grid-template-columns:1fr;}
+  body.ce-narrow #cardBeta,body.ce-narrow #cardSig,body.ce-narrow #cardAb,body.ce-narrow #cardIns{grid-column:1;grid-row:auto;}
+  canvas.plot{max-width:100%;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  canvas.plot{background:#fbfdff;border:1px solid var(--line);border-radius:8px;cursor:crosshair;display:block;}
+  .chiprow{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:8px 0 2px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:3px 10px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .readout{font-family:monospace;font-size:12px;line-height:1.7;background:#f4f7fd;border-radius:8px;padding:7px 10px;min-width:230px;}
+  .readout b{color:var(--ac);}
+  .mixbar{height:16px;border-radius:8px;overflow:hidden;display:flex;border:1px solid var(--line);margin-top:6px;}
+  .mixbar .sig{background:var(--out);height:100%;transition:width .1s;}
+  .mixbar .noi{background:var(--in);height:100%;transition:width .1s;flex:1;}
+  .mixlbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--soft);margin-top:2px;}
+  .mixlbl b.s{color:var(--out);} .mixlbl b.n{color:var(--in);}
+  canvas.img{width:120px;height:120px;image-rendering:pixelated;border-radius:8px;border:1px solid var(--line);display:block;margin:6px auto 0;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.65;max-width:840px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .keybox{max-width:840px;margin:10px auto 0;background:#fff;border-left:4px solid var(--out);border-radius:10px;padding:8px 12px;font-size:12px;line-height:1.5;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .keybox b{color:var(--out);}
+  .warn{color:var(--neg);font-weight:700;}
+</style></head><body>
+<h1>The Noise Schedule Lab: β, σ and ᾱ</h1>
+<p class="sub">Three cheap tensors — <b>beta</b> (noise added per step), <b>sigma = √β</b>, and <b style="color:var(--ac)">alphabar ᾱ</b> (total signal surviving after t steps) — control the entire diffusion process.
+<b>Drag the sliders</b> to reshape them, and <b>click or drag on any curve</b> to inspect a timestep t: the image preview shows exactly how noisy Fashion-MNIST looks there.</p>
+
+<div class="selrow">
+  <label>n_steps</label> <input id="nT" type="range" min="100" max="2000" step="100" value="1000"><span class="val" id="nTv">1000</span>
+  <label>β_min</label> <input id="bmin" type="range" min="0" max="100" value="18"><span class="val" id="bminV">1.0e−4</span>
+  <label>β_max</label> <input id="bmax" type="range" min="0" max="100" value="41"><span class="val" id="bmaxV">0.020</span>
+  <label>schedule</label> <select id="sched"><option value="linear">linear (this notebook)</option><option value="cosine">cosine (Improved DDPM)</option></select>
+</div>
+
+<div class="main">
+  <div class="card" id="cardBeta"><div class="cap">β_t — variance of noise added <b>at</b> step t<small>tiny nudges early, bigger ones late</small></div><canvas class="plot" id="pBeta" width="260" height="150"></canvas></div>
+  <div class="card" id="cardSig"><div class="cap">σ_t = √β_t — std of that noise<small>this reappears in sampling as σ_t·z</small></div><canvas class="plot" id="pSig" width="260" height="150"></canvas></div>
+  <div class="card" id="cardAb"><div class="cap" style="color:var(--ac)">ᾱ_t = α₁·α₂·…·α_t — signal remaining ⭐<small>the most important curve — click it!</small></div><canvas class="plot" id="pAb" width="556" height="150"></canvas>
+    <div class="chiprow" id="miles"></div>
+  </div>
+  <div class="card" id="cardIns">
+    <div class="cap">timestep inspector<small>click any curve to move t</small></div>
+    <div class="readout" id="ro"></div>
+    <div class="mixbar"><div class="sig" id="mixSig"></div><div class="noi"></div></div>
+    <div class="mixlbl"><b class="s">signal ᾱ_t</b><b class="n">noise 1−ᾱ_t</b></div>
+    <div class="spacer"></div>
+    <canvas class="img" id="prev" width="28" height="28" style="width:150px;height:150px"></canvas>
+    <div style="text-align:center;font-size:10.5px;color:var(--soft);margin-top:4px">x_t = √ᾱ_t·x₀ + √(1−ᾱ_t)·ε at this t</div>
+    <div class="spacer"></div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="keybox">💡 <b>Why a whole schedule and not one noise level?</b> β_t alone looks boring — a straight line. The magic is the <b>product</b>: multiplying a thousand numbers that are each just barely below 1 (α_t = 1−β_t) makes ᾱ_t collapse toward ~0. That collapse must be <i>gradual</i>: if ᾱ dived instantly, the model would rarely practice light-noise steps; if it never reached ≈0, samples would start from “noise” that still secretly contains an image. Try β_max = 0.005 and watch the <span class="warn">⚠️ end-of-schedule warning</span> — ᾱ_T stays far from 0, which silently breaks sampling.</div>
+
+<script>
+const $=id=>document.getElementById(id);
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(rng){let u=0,v=0;while(u===0)u=rng();while(v===0)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const S=28;
+function shirt(){const im=new Float32Array(S*S);const set=(x,y,v)=>{if(x>=0&&x<S&&y>=0&&y<S)im[y*S+x]=Math.max(im[y*S+x],v);};
+  for(let y=7;y<24;y++)for(let x=8;x<20;x++)set(x,y,.85);
+  for(let y=7;y<12;y++){for(let x=3;x<8;x++)set(x,y,.75);for(let x=20;x<25;x++)set(x,y,.75);}
+  for(let x=11;x<17;x++)set(x,7,.15),set(x,8,.25);
+  const out=new Float32Array(S*S);
+  for(let y=0;y<S;y++)for(let x=0;x<S;x++){let s=0,n=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy;if(xx>=0&&xx<S&&yy>=0&&yy<S){s+=im[yy*S+xx];n++;}}out[y*S+x]=s/n*2-1;}
+  return out;}
+const X0=shirt();
+const EPS=(()=>{const r=mulberry32(42),e=new Float32Array(S*S);for(let i=0;i<S*S;i++)e[i]=gauss(r);return e;})();
+
+/* slider value maps (log for bmin) */
+function bminOf(s){return 1e-5*Math.pow(10,2*s/100);}         // 1e-5 .. 1e-3
+function bmaxOf(s){return 0.005+(0.05-0.005)*s/100;}          // 0.005 .. 0.05
+function fmt(v){return v<0.001? v.toExponential(1).replace('e-','e−') : v.toFixed(3);}
+
+let T=1000,BMIN=1e-4,BMAX=0.02,MODE='linear',tCur=200;
+let beta=[],alpha=[],ab=[],sig=[];
+function rebuild(){
+  beta=[];alpha=[];ab=[];sig=[];
+  if(MODE==='linear'){
+    let prod=1;
+    for(let i=0;i<T;i++){const b=BMIN+(BMAX-BMIN)*i/(T-1);beta.push(b);alpha.push(1-b);prod*=(1-b);ab.push(prod);sig.push(Math.sqrt(b));}
+  }else{ // cosine (Nichol & Dhariwal): define abar first, derive beta
+    const s=0.008,f=t=>Math.pow(Math.cos((t/T+s)/(1+s)*Math.PI/2),2);
+    let prev=1;
+    for(let i=0;i<T;i++){const a=f(i+1)/f(0);ab.push(a);let b=1-a/prev;b=Math.min(0.999,Math.max(1e-6,b));beta.push(b);alpha.push(1-b);sig.push(Math.sqrt(b));prev=a;}
+  }
+  tCur=Math.min(tCur,T-1);
+}
+/* plotting */
+function drawCurve(cv,data,color,yMax,name){
+  const c=cv.getContext('2d'),W=cv.width,H=cv.height,P=26;
+  c.clearRect(0,0,W,H);
+  c.strokeStyle='#dde5f2';c.lineWidth=1;
+  c.beginPath();c.moveTo(P,6);c.lineTo(P,H-18);c.lineTo(W-6,H-18);c.stroke();
+  c.fillStyle='#5a6b86';c.font='10px monospace';
+  c.fillText(yMax<0.01?yMax.toExponential(0):(''+ +yMax.toFixed(2)),2,12);
+  c.fillText('0',14,H-16);c.fillText('t →',W-24,H-5);c.fillText(''+T,W-30,H-16+11);
+  c.strokeStyle=color;c.lineWidth=2;c.beginPath();
+  for(let i=0;i<T;i++){const x=P+(W-P-8)*i/(T-1),y=(H-24)*(1-data[i]/yMax)+6;i?c.lineTo(x,y):c.moveTo(x,y);}
+  c.stroke();
+  // marker at tCur
+  const mx=P+(W-P-8)*tCur/(T-1),my=(H-24)*(1-data[tCur]/yMax)+6;
+  c.strokeStyle='#7b5cd6';c.setLineDash([4,3]);c.beginPath();c.moveTo(mx,6);c.lineTo(mx,H-18);c.stroke();c.setLineDash([]);
+  c.fillStyle='#7b5cd6';c.beginPath();c.arc(mx,my,4,0,7);c.fill();
+  c.fillStyle='#25324a';c.font='bold 10px monospace';
+  c.fillText(name+'['+tCur+']='+(data[tCur]<0.01?data[tCur].toExponential(1):data[tCur].toFixed(3)),P+4,14);
+}
+function attachPick(cv){
+  const pick=e=>{const r=cv.getBoundingClientRect(),P=26;
+    const x=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+    let f=(x*(cv.width/r.width)-P)/(cv.width-P-8);f=Math.max(0,Math.min(1,f));
+    tCur=Math.round(f*(T-1));render(false);};
+  let down=false;
+  cv.addEventListener('mousedown',e=>{down=true;pick(e);});
+  addEventListener('mousemove',e=>{if(down)pick(e);});
+  addEventListener('mouseup',()=>down=false);
+  cv.addEventListener('touchstart',pick);cv.addEventListener('touchmove',pick);
+}
+function paintPrev(){
+  const a=ab[tCur],sa=Math.sqrt(a),sn=Math.sqrt(1-a);
+  const cv=$('prev'),ctx=cv.getContext('2d'),id=ctx.createImageData(S,S);
+  for(let i=0;i<S*S;i++){let v=sa*X0[i]+sn*EPS[i];v=(v+2.2)/4.4;v=Math.max(0,Math.min(1,v));const g=Math.round(v*255);
+    id.data[4*i]=g;id.data[4*i+1]=g;id.data[4*i+2]=g;id.data[4*i+3]=255;}
+  ctx.putImageData(id,0,0);
+}
+function milestones(){
+  const targets=[[0.99,'ᾱ≈0.99 “barely touched”'],[0.5,'ᾱ=0.5 “half signal”'],[0.1,'ᾱ=0.1 “mostly noise”'],[0.01,'ᾱ=0.01 “almost pure static”']];
+  const bar=$('miles');bar.innerHTML='';
+  targets.forEach(([v,lbl])=>{let idx=ab.findIndex(x=>x<=v);if(idx<0)idx=T-1;
+    const b=document.createElement('button');b.className='chip';b.textContent=lbl+' → t='+idx;
+    b.onclick=()=>{tCur=idx;render(false);};bar.appendChild(b);});
+}
+const codeLines=[
+ ['beta  = torch.<span class="fn">linspace</span>(betamin, betamax, n_steps)   <span class="cm"># noise variance per step</span>','beta'],
+ ['alpha = <span class="num">1.</span> − beta                                  <span class="cm"># signal kept per step</span>','beta'],
+ ['alphabar = alpha.<span class="fn">cumprod</span>(dim=<span class="num">0</span>)                   <span class="cm"># total signal after t steps ⭐</span>','ab'],
+ ['sigma = beta.<span class="fn">sqrt</span>()                              <span class="cm"># noise std, reused in sampling</span>','sig'],
+];
+let hlKey='ab';
+function render(rebuildAll=true){
+  if(rebuildAll)rebuild();
+  drawCurve($('pBeta'),beta,'#f6921e',Math.max(...beta)*1.05,'β');
+  drawCurve($('pSig'),sig,'#16a3a3',Math.max(...sig)*1.05,'σ');
+  drawCurve($('pAb'),ab,'#7b5cd6',1,'ᾱ');
+  const a=ab[tCur];
+  const endWarn=ab[T-1]>0.02?'<br><span style="color:#d64545;font-weight:700">⚠️ ᾱ_T='+ab[T-1].toFixed(3)+' — never reaches ≈0,<br>so “pure noise” still hides signal!</span>':'';
+  $('ro').innerHTML='t = <b>'+tCur+'</b> / '+T+
+    '<br>β_t &nbsp;= '+fmt(beta[tCur])+'&nbsp;&nbsp; α_t = '+alpha[tCur].toFixed(4)+
+    '<br>ᾱ_t &nbsp;= <b>'+a.toFixed(4)+'</b>'+
+    '<br>√ᾱ_t = '+Math.sqrt(a).toFixed(3)+' <span style="color:#16a3a3">(signal coef)</span>'+
+    '<br>√(1−ᾱ_t) = '+Math.sqrt(1-a).toFixed(3)+' <span style="color:#f6921e">(noise coef)</span>'+endWarn;
+  $('mixSig').style.width=(a*100)+'%';
+  paintPrev();
+  if(rebuildAll)milestones();
+  $('code').innerHTML=codeLines.map(([txt,k])=>k===hlKey?'<span class="hl">'+txt+'</span>':txt).join('\n');
+}
+$('pBeta').onmouseenter=()=>{hlKey='beta';render(false);};
+$('pSig').onmouseenter=()=>{hlKey='sig';render(false);};
+$('pAb').onmouseenter=()=>{hlKey='ab';render(false);};
+attachPick($('pBeta'));attachPick($('pSig'));attachPick($('pAb'));
+$('nT').oninput=e=>{T=+e.target.value;$('nTv').textContent=T;render();};
+$('bmin').oninput=e=>{BMIN=bminOf(+e.target.value);$('bminV').textContent=BMIN.toExponential(1).replace('e-','e−');render();};
+$('bmax').oninput=e=>{BMAX=bmaxOf(+e.target.value);$('bmaxV').textContent=BMAX.toFixed(3);render();};
+$('sched').onchange=e=>{MODE=e.target.value;render();};
+render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>

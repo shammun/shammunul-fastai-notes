@@ -1,0 +1,197 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Sampling Walk</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:4px 11px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:100px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .timeline{max-width:860px;margin:0 auto 8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 14px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .tl-track{position:relative;height:34px;cursor:pointer;}
+  canvas#strip{position:absolute;inset:0;width:100%;height:22px;top:6px;border-radius:6px;}
+  .tl-cursor{position:absolute;top:0;width:2px;height:34px;background:var(--ac);}
+  .tl-cursor::after{content:"";position:absolute;top:-2px;left:-5px;width:12px;height:12px;border-radius:50%;background:var(--ac);box-shadow:0 2px 6px rgba(123,92,214,.5);}
+  .tl-lbl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--soft);margin-top:2px;}
+  .tl-lbl b{color:var(--ac);font-family:monospace;}
+  .main{display:flex;gap:10px;justify-content:center;align-items:stretch;flex-wrap:wrap;}
+  .card{background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 10px;box-shadow:0 6px 16px rgba(123,92,214,.08);text-align:center;transition:all .2s;opacity:.55;}
+  .card.on{opacity:1;border-color:var(--ac);transform:translateY(-2px);box-shadow:0 8px 22px rgba(123,92,214,.25);}
+  .card.always{opacity:1;}
+  .card .t{font-size:11.5px;font-weight:700;margin-bottom:4px;}
+  .card .d{font-size:10px;color:var(--soft);max-width:150px;line-height:1.35;margin-top:4px;}
+  canvas.img{width:96px;height:96px;image-rendering:pixelated;border-radius:8px;border:1px solid var(--line);}
+  .arrow{align-self:center;font-size:20px;color:#b9c4d8;font-weight:700;}
+  .coef{font-family:monospace;font-size:10.5px;background:#f4f7fd;border-radius:7px;padding:5px 8px;margin-top:5px;line-height:1.6;text-align:left;}
+  .coef b{color:var(--ac);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.65;max-width:900px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .keybox{max-width:900px;margin:10px auto 0;background:#fff;border-left:4px solid var(--out);border-radius:10px;padding:8px 12px;font-size:12px;line-height:1.5;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .keybox b{color:var(--out);}
+</style></head><body>
+<h1>The Sampling Walk — from pure static to a new image</h1>
+<p class="sub">Generation runs the diffusion “movie” <b>backwards</b>: start at t=T−1 with pure noise, and at every step do the same four moves.
+<b>Click anywhere on the timeline</b> to jump to that step, walk the stage chips, or press ▶ Denoise. Watch the middle panel: the model’s <i>implied clean image</i> x̂₀ starts as a blur and crystallizes.</p>
+
+<div class="stagebar" id="chips"></div>
+<div class="selrow">
+  <button class="stepb" id="back">⏮ t+1</button>
+  <button class="play" id="play">▶ Denoise</button>
+  <button class="stepb" id="fwd">t−1 ⏭</button>
+  <button class="reset" id="reroll">🎲 New seed</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="timeline">
+  <div class="tl-track" id="track"><canvas id="strip" width="600" height="22"></canvas><div class="tl-cursor" id="cursor"></div></div>
+  <div class="tl-lbl"><span>t = 199 (pure noise)</span><b id="tlbl">t = 199</b><span>t = 0 (finished sample)</span></div>
+</div>
+
+<div class="main">
+  <div class="card always"><div class="t" style="color:var(--in)">current x_t</div><canvas class="img" id="cxt" width="28" height="28"></canvas><div class="d">what the model actually sees</div></div>
+  <div class="arrow">➜</div>
+  <div class="card" id="k1"><div class="t" style="color:var(--ac)">② ε̂ = model((x_t, t))</div><canvas class="img" id="ceps" width="28" height="28"></canvas><div class="d">the network’s <b>only</b> job: “which part of this is noise?”</div></div>
+  <div class="arrow">➜</div>
+  <div class="card" id="k2"><div class="t" style="color:var(--out)">③ implied x̂₀ (clamped)</div><canvas class="img" id="cx0" width="28" height="28"></canvas><div class="d">algebraically undo the mix — blurry at high t, sharp near 0</div></div>
+  <div class="arrow">➜</div>
+  <div class="card" id="k3"><div class="t" style="color:var(--out)">④ blend → x_{t−1}</div><canvas class="img" id="cnext" width="28" height="28"></canvas>
+    <div class="coef" id="coef"></div></div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="keybox" id="keymsg"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(rng){let u=0,v=0;while(u===0)u=rng();while(v===0)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const S=28,T=200;
+function shape(kind){const im=new Float32Array(S*S);const set=(x,y,v)=>{if(x>=0&&x<S&&y>=0&&y<S)im[y*S+x]=Math.max(im[y*S+x],v);};
+  if(kind===0){for(let y=7;y<24;y++)for(let x=8;x<20;x++)set(x,y,.85);
+    for(let y=7;y<12;y++){for(let x=3;x<8;x++)set(x,y,.75);for(let x=20;x<25;x++)set(x,y,.75);}
+    for(let x=11;x<17;x++)set(x,7,.15),set(x,8,.25);}
+  else if(kind===1){for(let y=4;y<25;y++){for(let x=9;x<13;x++)set(x,y,.85);for(let x=15;x<19;x++)set(x,y,.85);}
+    for(let x=9;x<19;x++)for(let y=4;y<9;y++)set(x,y,.9);}
+  else{for(let y=12;y<24;y++)for(let x=6;x<22;x++)set(x,y,.85);
+    for(let q=0;q<40;q++){const a=Math.PI*q/39;set(Math.round(14+6*Math.cos(a)),Math.round(12-5*Math.sin(a)),.7);}}
+  const out=new Float32Array(S*S);
+  for(let y=0;y<S;y++)for(let x=0;x<S;x++){let s=0,n=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy;if(xx>=0&&xx<S&&yy>=0&&yy<S){s+=im[yy*S+xx];n++;}}out[y*S+x]=s/n*2-1;}
+  return out;}
+const beta=[],alpha=[],ab=[],sig=[];{let p=1;for(let i=0;i<T;i++){const b=1e-4+(0.02-1e-4)*i/(T-1);beta.push(b);alpha.push(1-b);p*=(1-b);ab.push(p);sig.push(Math.sqrt(b));}}
+function paint(cv,arr,lo=-1,hi=1){const ctx=cv.getContext('2d'),id=ctx.createImageData(S,S);
+  for(let i=0;i<S*S;i++){let v=(arr[i]-lo)/(hi-lo);v=Math.max(0,Math.min(1,v));const g=Math.round(v*255);
+    id.data[4*i]=g;id.data[4*i+1]=g;id.data[4*i+2]=g;id.data[4*i+3]=255;}
+  ctx.putImageData(id,0,0);}
+
+let seed=5,frames=[],idx=0,stage=3,timer=null,speed=1;
+function simulate(){
+  const rng=mulberry32(seed);
+  const tgt=shape(Math.floor(rng()*3));
+  let x=new Float32Array(S*S);for(let i=0;i<S*S;i++)x[i]=gauss(rng);
+  frames=[];
+  for(let t=T-1;t>=0;t--){
+    const a=alpha[t],abt=ab[t],abp=t>0?ab[t-1]:1,sg=sig[t];
+    const bbar=1-abt,bbarp=1-abp;
+    const errW=0.65*Math.sqrt(t/T);
+    const eps=new Float32Array(S*S),x0h=new Float32Array(S*S);
+    for(let i=0;i<S*S;i++){
+      const perfect=(x[i]-Math.sqrt(abt)*tgt[i])/Math.sqrt(bbar);
+      eps[i]=perfect+errW*gauss(rng);
+      x0h[i]=Math.max(-1,Math.min(1,(x[i]-Math.sqrt(bbar)*eps[i])/Math.sqrt(abt)));
+    }
+    const xn=new Float32Array(S*S);
+    const w0=Math.sqrt(abp)*(1-a)/bbar, wx=Math.sqrt(a)*bbarp/bbar;
+    for(let i=0;i<S*S;i++){const z=t>0?gauss(rng):0;xn[i]=x0h[i]*w0+x[i]*wx+sg*z;}
+    frames.push({t,xt:x,eps,x0h,xn,w0,wx,sg});
+    x=xn;
+  }
+  drawStrip();
+}
+function drawStrip(){ // gradient strip: noise->image thumbnails every 20 frames
+  const cv=$('strip'),c=cv.getContext('2d'),W=cv.width,H=cv.height;
+  c.clearRect(0,0,W,H);
+  const n=10,w=W/n;
+  for(let k=0;k<n;k++){
+    const f=frames[Math.min(frames.length-1,Math.round(k*(frames.length-1)/(n-1)))];
+    const tmp=document.createElement('canvas');tmp.width=S;tmp.height=S;paint(tmp,f.xt,-2.5,2.5);
+    c.imageSmoothingEnabled=false;c.drawImage(tmp,k*w,0,w,H);
+  }
+  c.strokeStyle='#dde5f2';c.strokeRect(0,0,W,H);
+}
+const stagesDef=['① z = randn (0 at t=0)','② predict noise ε̂','③ implied x̂₀ = undo the mix','④ blend → x_{t−1} (+ σ_t·z)'];
+const codeLines=[
+ ['x_t = torch.<span class="fn">randn</span>(sz, device=device)                    <span class="cm"># start: pure Gaussian static</span>',-1],
+ ['for t in <span class="fn">reversed</span>(range(n_steps)):',-1],
+ ['    z = (torch.randn(...) if t &gt; <span class="num">0</span> else torch.zeros(...))       <span class="cm"># ① no fresh noise on the LAST step</span>',0],
+ ['    noise_pred = learn.model((x_t, t_batch))                     <span class="cm"># ② the U-Net’s single skill</span>',1],
+ ['    x_0_hat = ((x_t − b_bar_t.sqrt()·noise_pred) / alphabar[t].sqrt()).clamp(−<span class="num">1</span>, <span class="num">1</span>)  <span class="cm"># ③</span>',2],
+ ['    x_t = (x_0_hat · alphabar_t1.sqrt()·(1−alpha[t])/b_bar_t     <span class="cm"># ④ pull toward the clean guess…</span>',3],
+ ['           + x_t · alpha[t].sqrt()·b_bar_t1/b_bar_t              <span class="cm">#   …keep most of what we had…</span>',3],
+ ['           + sigma[t]·z)                                         <span class="cm">#   …re-inject a pinch of noise</span>',3],
+ ['    preds.append(x_t.cpu())                                      <span class="cm"># save the frame for the movie</span>',-1],
+];
+const keymsgs=[
+ '🎲 <b>Why add noise while removing noise?!</b> The σ_t·z term keeps sampling <i>stochastic</i> — without it every start would collapse along the same over-smooth path (that variant exists too: it’s called DDIM). At t=0 we finally set z=0 because we want to <b>keep</b> the finished image.',
+ '🧠 <b>The model never “draws”.</b> At every one of the 200 steps it answers the same exam question it practiced during training: given (x_t, t), what is ε? All the generative magic is in <i>repeating</i> that answer while t counts down.',
+ '🔍 <b>x̂₀ is just algebra.</b> Rearranging x_t = √ᾱ·x₀ + √(1−ᾱ)·ε for x₀ gives this line. Scrub to t≈180: x̂₀ is a gray ghost — through that much static the model can only see “probably a blob in the middle”. By t≈40 it has committed to details. The .clamp(−1,1) keeps early wild guesses inside valid pixel range.',
+ '⚖️ <b>x_{t−1} is a weighted average with a safety pinch.</b> Look at the live weights: at high t the “keep x_t” weight dominates (tiny cautious steps); near t=0 the “trust x̂₀” weight takes over. The schedule you built earlier chose these weights — sampling just reads them off.',
+];
+function chipsBuild(){const bar=$('chips');bar.innerHTML='';stagesDef.forEach((s,i)=>{const b=document.createElement('button');b.className='chip'+(i===3?' on':'');b.textContent=s;b.onclick=()=>{stage=i;render();};bar.appendChild(b);});}
+function render(){
+  const f=frames[idx];
+  document.querySelectorAll('#chips .chip').forEach((c,i)=>c.classList.toggle('on',i===stage));
+  ['k1','k2','k3'].forEach((id,i)=>$(id).classList.toggle('on',stage===i+1||stage===0));
+  paint($('cxt'),f.xt,-2.5,2.5);paint($('ceps'),f.eps,-3,3);paint($('cx0'),f.x0h);paint($('cnext'),f.xn,-2.5,2.5);
+  $('coef').innerHTML='weight on x̂₀ &nbsp;= <b>'+f.w0.toFixed(3)+'</b><br>weight on x_t &nbsp;= <b>'+f.wx.toFixed(3)+'</b><br>σ_t (fresh noise) = <b>'+(f.t>0?f.sg.toFixed(3):'0 (last step!)')+'</b>';
+  $('tlbl').textContent='t = '+f.t;
+  const track=$('track');
+  $('cursor').style.left=(idx/(frames.length-1)*100)+'%';
+  const hl=stage;
+  $('code').innerHTML=codeLines.map(([txt,s])=>s===hl?'<span class="hl">'+txt+'</span>':txt).join('\n');
+  $('keymsg').innerHTML=keymsgs[stage];
+}
+function stepF(){if(idx<frames.length-1){idx++;render();}else stop();}
+function stepB(){if(idx>0){idx--;render();}}
+function play(){if(timer){stop();return;}if(idx>=frames.length-1)idx=0;$('play').textContent='⏸ Pause';timer=setInterval(stepF,180/speed);}
+function stop(){if(timer)clearInterval(timer);timer=null;$('play').textContent='▶ Denoise';}
+$('play').onclick=play;$('fwd').onclick=()=>{stop();stepF();};$('back').onclick=()=>{stop();stepB();};
+$('reroll').onclick=()=>{stop();seed=Math.floor(Math.random()*1e6);simulate();idx=0;render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+$('track').addEventListener('mousedown',e=>{stop();const r=$('track').getBoundingClientRect();
+  const pick=ev=>{let f=(ev.clientX-r.left)/r.width;f=Math.max(0,Math.min(1,f));idx=Math.round(f*(frames.length-1));render();};
+  pick(e);
+  const mv=ev=>pick(ev),up2=()=>{removeEventListener('mousemove',mv);removeEventListener('mouseup',up2);};
+  addEventListener('mousemove',mv);addEventListener('mouseup',up2);});
+chipsBuild();simulate();render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+  body.ce-narrow .grid{grid-template-columns:1fr !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth<900); }
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  function up(){ reflow(); postH(); }
+  addEventListener('load',up); addEventListener('resize',up);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  reflow(); setTimeout(up,150); setTimeout(up,600);
+})();
+</script>
+</body></html>
