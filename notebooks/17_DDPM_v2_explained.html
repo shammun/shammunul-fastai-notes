@@ -7649,8 +7649,8 @@ a.anchor-link {
 <tr>
 <td>8</td>
 <td>🚚 <strong>The data pipeline</strong></td>
-<td>Sections 7 &amp; 9</td>
-<td>callback vs. collate noisify, 4 workers, and MultDL &times;2 &mdash; animated</td>
+<td>Section 7</td>
+<td>callback vs. collate noisify, 4 workers, and MultDL &times;2 &mdash; animated (revisit it from Section 9!)</td>
 </tr>
 </tbody>
 </table>
@@ -11495,32 +11495,11 @@ batch_3                   batch_2
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%F0%9F%8E%AE-Interactive-(revisited):-watch-MultDL-in-the-pipeline">🎮 Interactive (revisited): watch <code>MultDL</code> in the pipeline<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-(revisited):-watch-MultDL-in-the-pipeline">¶</a></h3><p>This is the same data-pipeline visualization from Section 7 &mdash; but now that you know what <code>MultDL</code> does, <strong>toggle "MultDL &times;2" on</strong> and watch each delivered batch get consumed twice by the GPU while the workers get breathing room. Notice the trade-off: steps-per-epoch doubles, but the two passes reuse the <em>same</em> frozen (x_t, t, ε) &mdash; only the model weights differ between them.</p>
+<h3 id="%F0%9F%8E%AE-Pointer:-watch-MultDL-in-the-pipeline-visualization">🎮 Pointer: watch <code>MultDL</code> in the pipeline visualization<a class="anchor-link" href="#%F0%9F%8E%AE-Pointer:-watch-MultDL-in-the-pipeline-visualization">¶</a></h3><p>Now that you know what <code>MultDL</code> does, <strong>scroll back up to the 🎮 data-pipeline visualization in Section 7</strong> and toggle <strong>"MultDL &times;2" on</strong>: each delivered batch gets consumed twice by the GPU while the workers get breathing room. Notice the trade-off: steps-per-epoch doubles, but the two passes reuse the <em>same</em> frozen (x_t, t, ε) &mdash; only the model weights (and dropout/optimizer state) differ between them.</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=7ee48e75">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- same pipeline visualization as Section 7; this time toggle</span>
-<span class="c1"># "MultDL &times;2" ON and watch each batch get trained on twice.</span>
-<span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm_data_pipeline.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-</div><div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/ddpm_data_pipeline.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
-</div>
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=32255eaf">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=32255eaf">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
