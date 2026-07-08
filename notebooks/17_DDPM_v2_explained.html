@@ -7586,6 +7586,84 @@ a.anchor-link {
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5d9048d3">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%93%93-How-this-notebook-relates-to-notebook-15-(15_DDPM_explained.ipynb)">📓 How this notebook relates to notebook 15 (<code>15_DDPM_explained.ipynb</code>)<a class="anchor-link" href="#%F0%9F%93%93-How-this-notebook-relates-to-notebook-15-(15_DDPM_explained.ipynb)">¶</a></h2><p>This notebook is a <strong>rewrite</strong> of notebook 15. Both train the <em>same</em> DDPM on the <em>same</em> data &mdash; Fashion-MNIST resized to 32&times;32, a diffusers U-Net predicting ε, MSE loss, Adam, OneCycleLR, 1000-step linear β schedule from 0.0001 to 0.02 &mdash; and both produce a <code>samples</code> list with one entry per timestep. <strong>The math is identical.</strong> What changed is <em>how the code is organized</em>, and then this notebook keeps going into performance territory notebook 15 never enters.</p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Notebook 15</th>
+<th>Notebook 17 (this one)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Variable names</td>
+<td>Greek unicode: <code>self.β</code>, <code>self.α</code>, <code>self.ᾱ</code>, <code>self.σ</code>, <code>ε</code>, <code>βmin</code></td>
+<td>ASCII: <code>beta</code>, <code>alpha</code>, <code>alphabar</code>, <code>sigma</code>, <code>epsilon</code>, <code>betamin</code></td>
+</tr>
+<tr>
+<td>Noise schedule</td>
+<td>built inside <code>DDPMCB.__init__</code></td>
+<td>built <strong>at module level</strong> first (Section 3), so you can plot and play with it before any class appears</td>
+</tr>
+<tr>
+<td>Forward process</td>
+<td>~40 lines <strong>inline</strong> in <code>DDPMCB.before_batch</code></td>
+<td>standalone pure function <code>noisify(x0, alphabar)</code> (Section 4)</td>
+</tr>
+<tr>
+<td>Reverse process</td>
+<td><code>sample()</code> <strong>method</strong> on the callback, reads <code>self.ᾱ</code> etc.</td>
+<td>standalone <code>@torch.no_grad()</code> function <code>sample(model, sz, alpha, alphabar, sigma, n_steps)</code> (Section 5)</td>
+</tr>
+<tr>
+<td>Callback</td>
+<td>monolithic <code>DDPMCB(TrainCB)</code>: schedule + noisify + custom <code>predict</code> + sampling, all in one class</td>
+<td>thin <code>DDPMCB(Callback)</code>: one-line <code>before_batch</code> that delegates to <code>noisify</code></td>
+</tr>
+<tr>
+<td>Model-output quirk (<code>.sample</code>)</td>
+<td>handled by overriding <code>predict</code> in the callback</td>
+<td>absorbed by a 4-line <code>UNet(UNet2DModel)</code> wrapper</td>
+</tr>
+<tr>
+<td>Model</td>
+<td><code>block_out_channels=(32, 64, 128, 128)</code>, default <code>norm_num_groups=32</code></td>
+<td><code>(16, 32, 64, 128)</code> with <code>norm_num_groups=8</code> &mdash; leaner</td>
+</tr>
+<tr>
+<td>Initialization</td>
+<td>none (diffusers defaults)</td>
+<td>custom <code>init_ddpm</code> (zeroed residual convs, orthogonal downsamplers)</td>
+</tr>
+<tr>
+<td>Learner</td>
+<td><code>Learner(...)</code> + <code>DDPMCB</code> supplying the <code>TrainCB</code> behaviour</td>
+<td><code>TrainLearner(...)</code> (training methods built in)</td>
+</tr>
+<tr>
+<td>lr / bs</td>
+<td><code>lr=4e-3</code>, <code>bs=128</code>, <code>num_workers=8</code></td>
+<td><code>lr=5e-3</code> &rarr; <code>1e-2</code>, <code>bs=128</code> &rarr; <code>512</code>, <code>num_workers=4</code> with collate-noisify</td>
+</tr>
+<tr>
+<td>Performance work</td>
+<td>&mdash;</td>
+<td>Sections 7&ndash;10: mixed precision, <code>collate_ddpm</code>, 🤗 Accelerate, <code>MultDL</code>, nbdev export</td>
+</tr>
+</tbody>
+</table>
+<p>Throughout the notebook you'll find <strong>🔄 Compared with notebook 15</strong> boxes at each point where the two diverge, quoting notebook 15's code so you can see the difference side by side. The one-sentence summary: <strong>notebook 15 optimizes for line-by-line narration inside one big class; this notebook factors the same logic into small, independently testable pieces &mdash; and that factoring is exactly what makes Sections 7&ndash;10 possible.</strong></p>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=89e37259">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8090,6 +8168,37 @@ Run the next cell once, then run any 🎮 cell.</p>
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c870bd72">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%84-Compared-with-notebook-15:-where-the-schedule-lives,-and-what-it's-called">🔄 Compared with notebook 15: where the schedule lives, and what it's called<a class="anchor-link" href="#%F0%9F%94%84-Compared-with-notebook-15:-where-the-schedule-lives,-and-what-it's-called">¶</a></h3><p>Notebook 15 computes the <strong>same four tensors</strong>, but (a) inside <code>DDPMCB.__init__</code> rather than at module level, and (b) with Greek unicode names:</p>
+<div class="highlight"><pre><span></span><span class="c1"># notebook 15, inside DDPMCB.__init__:</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">β</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">βmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">βmax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">α</span> <span class="o">=</span> <span class="mf">1.</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">β</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cumprod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">α</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">σ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">β</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
+</pre></div>
+<p>versus this notebook's module-level version:</p>
+<div class="highlight"><pre><span></span><span class="c1"># notebook 17 (this notebook), Section 3:</span>
+<span class="n">beta</span>     <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">betamin</span><span class="p">,</span> <span class="n">betamax</span><span class="p">,</span> <span class="n">n_steps</span><span class="p">)</span>
+<span class="n">alpha</span>    <span class="o">=</span> <span class="mf">1.</span> <span class="o">-</span> <span class="n">beta</span>
+<span class="n">alphabar</span> <span class="o">=</span> <span class="n">alpha</span><span class="o">.</span><span class="n">cumprod</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">sigma</span>    <span class="o">=</span> <span class="n">beta</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
+</pre></div>
+<p><strong>What's the same:</strong> the math, the values, even <code>alpha.cumprod(dim=0)</code> vs <code>torch.cumprod(self.α, dim=0)</code> are just two spellings of the same call.</p>
+<p><strong>What's different, and why it matters:</strong></p>
+<ul>
+<li><strong>Module level first.</strong> Here the schedule exists as plain tensors <em>before</em> any class &mdash; that's what let us plot β, σ and ι&hellip; ᾱ in the three cells above and poke at them in the 🎮 lab, with zero setup. In notebook 15 you'd have to instantiate the whole callback just to look at a curve.</li>
+<li><strong>ASCII vs Greek.</strong> <code>self.ᾱ</code> looks exactly like the paper, which is genuinely nice for reading. But you can't <em>type</em> <code>ᾱ</code> without an IDE trick, searching for it is painful, and some tools/fonts mangle it. <code>alphabar</code> is greppable, typeable, and unambiguous &mdash; the paper-to-code mapping is kept in comments instead (β ↔ <code>beta</code>, ᾱ ↔ <code>alphabar</code>, ε ↔ <code>epsilon</code>, σ ↔ <code>sigma</code>).</li>
+<li>Note the callback later in this notebook (Section 5) <em>recomputes</em> these same four tensors inside <code>__init__</code> with <code>fc.store_attr()</code> &mdash; so the recipe appears once at module level for exploration and once inside the class for self-containment, both in ASCII.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=90908c1a">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8347,6 +8456,37 @@ t=999:  ᾱ &asymp; 0.0   (0% signal, 100% noise)
 <ul>
 <li><strong>Model input</strong>: <code>(noisy_image, timestep)</code> - the model needs to know which timestep to denoise</li>
 <li><strong>Target</strong>: <code>epsilon</code> - we train the model to predict the noise that was added</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=da536c39">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%84-Compared-with-notebook-15:-noisify-as-a-function-vs.-inline-callback-code">🔄 Compared with notebook 15: <code>noisify</code> as a function vs. inline callback code<a class="anchor-link" href="#%F0%9F%94%84-Compared-with-notebook-15:-noisify-as-a-function-vs.-inline-callback-code">¶</a></h3><p>Notebook 15 has <strong>no <code>noisify</code> function</strong>. The same five steps live inline inside <code>DDPMCB.before_batch</code>, interleaved with device bookkeeping:</p>
+<div class="highlight"><pre><span></span><span class="c1"># notebook 15, DDPMCB.before_batch (condensed &mdash; the original is ~40 commented lines):</span>
+<span class="k">def</span> <span class="nf">before_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+    <span class="n">device</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">device</span>
+    <span class="n">ε</span>  <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>   <span class="c1"># noise (the target!)</span>
+    <span class="n">x0</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>                              <span class="c1"># move schedule to GPU</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="n">x0</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+    <span class="n">ᾱ_t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">xt</span> <span class="o">=</span> <span class="n">ᾱ_t</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span><span class="o">*</span><span class="n">x0</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">ᾱ_t</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span><span class="o">*</span><span class="n">ε</span>
+    <span class="n">learn</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="p">((</span><span class="n">xt</span><span class="p">,</span> <span class="n">t</span><span class="p">),</span> <span class="n">ε</span><span class="p">)</span>
+</pre></div>
+<p><strong>What's the same:</strong> every tensor operation. <code>randint</code> over timesteps, <code>randn</code> for ε, the gather + <code>reshape(-1,1,1,1)</code> broadcast, the closed-form mix, and the <code>((xt, t), ε)</code> batch layout &mdash; identical, line for line.</p>
+<p><strong>What's different, and why it matters:</strong></p>
+<ul>
+<li><strong>Testability.</strong> Here <code>noisify(xb, alphabar)</code> can be called on any tensor in any cell &mdash; which is exactly what the single-batch test does a few cells below, <em>before</em> any training. In notebook 15 the logic only runs inside a fitting Learner; to test it you must construct a callback, a learner, and a batch.</li>
+<li><strong>Reusability.</strong> Because it's a free function, Section 7 later reuses <em>the exact same <code>noisify</code></em> inside <code>collate_ddpm</code> (running in DataLoader workers), and Section 8 swaps in a variant returning a flat tuple for Accelerate. Notebook 15's inline version can't move &mdash; it's welded to the callback.</li>
+<li><strong>Naming.</strong> <code>ε</code> &rarr; <code>epsilon</code>, <code>ᾱ_t</code> &rarr; <code>alphabar_t</code>: same story as the schedule.</li>
+<li>One subtle behavioral nit: notebook 15 mutates the callback's own state every batch (<code>self.ᾱ = self.ᾱ.to(device)</code>); the function version keeps device handling local (<code>x0.device</code>) with no hidden state changes.</li>
 </ul>
 </div>
 </div>
@@ -8782,6 +8922,33 @@ t=999:  ᾱ &asymp; 0.0   (0% signal, 100% noise)
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d36b8f05">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%84-Compared-with-notebook-15:-sample-as-a-function-vs.-a-method">🔄 Compared with notebook 15: <code>sample</code> as a function vs. a method<a class="anchor-link" href="#%F0%9F%94%84-Compared-with-notebook-15:-sample-as-a-function-vs.-a-method">¶</a></h3><p>In notebook 15, <code>sample</code> is a <strong>method on <code>DDPMCB</code></strong> that reads the schedule from <code>self</code>:</p>
+<div class="highlight"><pre><span></span><span class="c1"># notebook 15 (signature):</span>
+<span class="k">class</span> <span class="nc">DDPMCB</span><span class="p">(</span><span class="n">TrainCB</span><span class="p">):</span>
+    <span class="o">...</span>
+    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">sz</span><span class="p">):</span>
+        <span class="c1"># uses self.ᾱ, self.α, self.σ, self.n_steps internally</span>
+</pre></div>
+<p>and is invoked through the callback instance: <code>samples = ddpm_cb.sample(learn.model, (16, 1, 32, 32))</code>.</p>
+<p>Here it's a <strong>standalone function with explicit arguments</strong>: <code>sample(model, sz, alpha, alphabar, sigma, n_steps)</code>, decorated with <code>@torch.no_grad()</code>.</p>
+<p><strong>What's the same:</strong> the loop itself &mdash; iterate <code>t = T−1 &hellip; 0</code>, build <code>t_batch</code>, draw <code>z</code> (zero at the final step), predict ε̂, form the implied x̂₀, take the weighted DDPM step. The generated images are statistically identical.</p>
+<p><strong>What's different, and why it matters:</strong></p>
+<ul>
+<li><strong>Explicit dependencies.</strong> The function signature <em>is</em> the documentation: sampling needs a model, a shape, and four schedule tensors &mdash; nothing else. In the method version those dependencies are invisible until you read the body.</li>
+<li><strong>Usable without training machinery.</strong> You can load a saved model in a fresh session and call <code>sample(...)</code> with schedule tensors from Section 3 &mdash; no callback, no Learner. In notebook 15 you must construct a <code>DDPMCB(1000, 0.0001, 0.02)</code> first just to borrow its method (and its <code>self.ᾱ</code>).</li>
+<li><strong><code>@torch.no_grad()</code> at the definition</strong> makes inference-mode a property of the function rather than something the caller must remember.</li>
+<li>The thin <code>DDPMCB</code> in this notebook still exposes <code>.sample(model, sz)</code> for convenience &mdash; but it's a two-line delegation to this function, not a second implementation.</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5b1c8fdd">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8914,6 +9081,51 @@ t=999:  ᾱ &asymp; 0.0   (0% signal, 100% noise)
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8906926f">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%84-Compared-with-notebook-15:-thin-callback-vs.-monolithic-callback">🔄 Compared with notebook 15: thin callback vs. monolithic callback<a class="anchor-link" href="#%F0%9F%94%84-Compared-with-notebook-15:-thin-callback-vs.-monolithic-callback">¶</a></h3><p>This is the <strong>single biggest structural difference</strong> between the two notebooks. Notebook 15's <code>DDPMCB</code> is the whole show:</p>
+<div class="highlight"><pre><span></span><span class="c1"># notebook 15:</span>
+<span class="k">class</span> <span class="nc">DDPMCB</span><span class="p">(</span><span class="n">TrainCB</span><span class="p">):</span>                      <span class="c1"># ← subclasses TrainCB</span>
+    <span class="n">order</span> <span class="o">=</span> <span class="n">DeviceCB</span><span class="o">.</span><span class="n">order</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_steps</span><span class="p">,</span> <span class="n">beta_min</span><span class="p">,</span> <span class="n">beta_max</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">βmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">βmax</span> <span class="o">=</span> <span class="n">n_steps</span><span class="p">,</span> <span class="n">beta_min</span><span class="p">,</span> <span class="n">beta_max</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">β</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">...</span><span class="p">);</span> <span class="bp">self</span><span class="o">.</span><span class="n">α</span> <span class="o">=</span> <span class="mf">1.</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">β</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cumprod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">α</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">);</span> <span class="bp">self</span><span class="o">.</span><span class="n">σ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">β</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+        <span class="n">learn</span><span class="o">.</span><span class="n">preds</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">sample</span>   <span class="c1"># ← unpack + .sample here</span>
+    <span class="k">def</span> <span class="nf">before_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+        <span class="o">..</span><span class="mf">.40</span> <span class="n">lines</span> <span class="n">of</span> <span class="n">inline</span> <span class="n">noisify</span><span class="o">...</span>
+    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">sz</span><span class="p">):</span>
+        <span class="o">...</span><span class="n">the</span> <span class="n">whole</span> <span class="n">reverse</span> <span class="n">loop</span><span class="o">...</span>
+</pre></div>
+<p>One class holds <strong>four jobs</strong>: schedule construction, forward noising, adapting the model's calling convention, and generation.</p>
+<p>This notebook's version keeps only the <em>glue</em>:</p>
+<div class="highlight"><pre><span></span><span class="c1"># this notebook:</span>
+<span class="k">class</span> <span class="nc">DDPMCB</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>                     <span class="c1"># ← plain Callback, not TrainCB</span>
+    <span class="n">order</span> <span class="o">=</span> <span class="n">DeviceCB</span><span class="o">.</span><span class="n">order</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_steps</span><span class="p">,</span> <span class="n">beta_min</span><span class="p">,</span> <span class="n">beta_max</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="n">fc</span><span class="o">.</span><span class="n">store_attr</span><span class="p">()</span>                     <span class="c1"># ← stores all args as self.xxx in one line</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">beta</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">...</span><span class="p">);</span> <span class="o">...</span>
+    <span class="k">def</span> <span class="nf">before_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+        <span class="n">learn</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="n">noisify</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">alphabar</span><span class="p">)</span>   <span class="c1"># ← one line, delegates</span>
+</pre></div>
+<p><strong>Why the differences line up the way they do:</strong></p>
+<ul>
+<li><strong><code>Callback</code> vs <code>TrainCB</code>:</strong> notebook 15 <em>had</em> to subclass <code>TrainCB</code> because it needed to override <code>predict</code> (to unpack the tuple and grab <code>.sample</code>). Here that quirk is absorbed by the <code>UNet</code> wrapper in the next cell &mdash; so nothing about prediction needs customizing, and a plain <code>Callback</code> suffices while <code>TrainLearner</code> provides the standard training methods.</li>
+<li><strong><code>fc.store_attr()</code></strong> replaces three manual <code>self.x = x</code> assignments &mdash; a small fastcore idiom worth knowing.</li>
+<li><strong>Where did <code>sample</code> and <code>noisify</code> go?</strong> Nowhere &mdash; they became the module-level functions you already read. The callback shrank because its jobs were given proper homes, not because work was deleted.</li>
+<li><strong>What's the same:</strong> <code>order = DeviceCB.order + 1</code> (must run after data reaches the GPU), the constructor signature, and the schedule recipe inside <code>__init__</code>.</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=unet-wrapper-header">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9017,6 +9229,32 @@ t=999:  ᾱ &asymp; 0.0   (0% signal, 100% noise)
 <p>Our wrapper simplifies this:</p>
 <div class="highlight"><pre><span></span><span class="n">noise_pred</span> <span class="o">=</span> <span class="n">model</span><span class="p">((</span><span class="n">image</span><span class="p">,</span> <span class="n">timestep</span><span class="p">))</span>  <span class="c1"># Single tuple argument, returns tensor directly</span>
 </pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=3c3ef6b8">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%84-Compared-with-notebook-15:-wrapper-class-vs.-predict-override">🔄 Compared with notebook 15: wrapper class vs. <code>predict</code> override<a class="anchor-link" href="#%F0%9F%94%84-Compared-with-notebook-15:-wrapper-class-vs.-predict-override">¶</a></h3><p>Both notebooks face the same two-part interface mismatch: the batch carries <code>(xt, t)</code> as one object while <code>UNet2DModel.forward</code> wants two arguments, and diffusers returns an output <em>object</em> whose tensor hides behind <code>.sample</code>. They patch it in different places:</p>
+<div class="highlight"><pre><span></span><span class="c1"># notebook 15 &mdash; patched in the CALLBACK:</span>
+<span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+    <span class="n">learn</span><span class="o">.</span><span class="n">preds</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">sample</span>
+</pre></div>
+<div class="highlight"><pre><span></span><span class="c1"># this notebook &mdash; patched in the MODEL:</span>
+<span class="k">class</span> <span class="nc">UNet</span><span class="p">(</span><span class="n">UNet2DModel</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span> <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="o">*</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span>
+</pre></div>
+<p><strong>Why the model-side patch is the nicer home:</strong></p>
+<ul>
+<li>The quirk belongs to the model (diffusers' API), so fixing it <em>at the model</em> means everything downstream &mdash; <code>TrainLearner</code>, loss computation, even <code>sample()</code> &mdash; can treat it as an ordinary <code>nn.Module</code>: tensor in, tensor out.</li>
+<li>It's why this notebook's callback could drop the <code>predict</code> override entirely and stop being a <code>TrainCB</code>.</li>
+<li>The wrapped model is also pleasant interactively: <code>model((xt, t))</code> works in any cell.</li>
+</ul>
+<p><strong>Trade-off, honestly stated:</strong> the wrapper hides the tuple-unpacking magic inside the class, and Section 8 has to <em>undo</em> it &mdash; Accelerate prefers flat batches, so there the raw <code>UNet2DModel</code> returns along with a tiny <code>DDPMCB2.after_predict</code> that re-extracts <code>.sample</code> (notebook 15's approach, essentially, relocated to <code>after_predict</code>). Neither placement is universally right; this notebook simply picks the one that keeps the <em>default</em> path cleanest.</p>
 </div>
 </div>
 </div>
@@ -9253,6 +9491,33 @@ t=999:  ᾱ &asymp; 0.0   (0% signal, 100% noise)
 <span class="p">)</span>
 </pre></div>
 </div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4cdfc886">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%84-Compared-with-notebook-15:-the-model-and-hyperparameters">🔄 Compared with notebook 15: the model and hyperparameters<a class="anchor-link" href="#%F0%9F%94%84-Compared-with-notebook-15:-the-model-and-hyperparameters">¶</a></h3><div class="highlight"><pre><span></span><span class="c1"># notebook 15:</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">UNet2DModel</span><span class="p">(</span><span class="n">in_channels</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="n">block_out_channels</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">))</span>   <span class="c1"># norm_num_groups: default (32)</span>
+<span class="n">lr</span> <span class="o">=</span> <span class="mf">4e-3</span>
+</pre></div>
+<div class="highlight"><pre><span></span><span class="c1"># this notebook:</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">UNet</span><span class="p">(</span><span class="n">in_channels</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+             <span class="n">block_out_channels</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span> <span class="n">norm_num_groups</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="n">lr</span> <span class="o">=</span> <span class="mf">5e-3</span>
+</pre></div>
+<p><strong>Differences worth noticing:</strong></p>
+<ul>
+<li><strong>Leaner early layers:</strong> <code>(16, 32, &hellip;)</code> vs <code>(32, 64, &hellip;)</code> &mdash; high-resolution levels are the expensive ones (channels &times; 32&times;32 positions), so halving them cuts compute where it hurts most, while the deepest level keeps 128 channels for capacity.</li>
+<li><strong><code>norm_num_groups=8</code> is forced by that choice:</strong> diffusers defaults to 32 groups, which works for notebook 15's 32-channel first block but would crash on a 16-channel block (16 is not divisible by 32). Every entry in <code>(16, 32, 64, 128)</code> is a multiple of 8 &mdash; see the GroupNorm explainer and 🎮 explorer above.</li>
+<li><strong>Slightly higher lr</strong> (<code>5e-3</code> vs <code>4e-3</code>), and later <code>1e-2</code> once mixed precision + bs=512 arrive &mdash; larger batches support larger learning rates.</li>
+<li><strong>What's the same:</strong> epochs=5 (for this first run), OneCycleLR via <code>BatchSchedCB(partial(lr_scheduler.OneCycleLR, max_lr=lr, total_steps=tmax))</code>, <code>nn.MSELoss()</code>, Adam, and the callback list structure (<code>DeviceCB</code>, <code>ProgressCB(plot=True)</code>, <code>MetricsCB</code>, scheduler CB) &mdash; that whole recipe carried over intact.</li>
+</ul>
 </div>
 </div>
 </div>
@@ -9649,6 +9914,23 @@ Input: 8&times;8   &rarr; (no downsampler at bottom)
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=adfd6b88">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%84-Compared-with-notebook-15:-initialization-%E2%80%94-new-here-entirely">🔄 Compared with notebook 15: initialization &mdash; new here entirely<a class="anchor-link" href="#%F0%9F%94%84-Compared-with-notebook-15:-initialization-%E2%80%94-new-here-entirely">¶</a></h3><p>Notebook 15 <strong>has no custom initialization</strong>: the model trains from diffusers' default weights. <code>init_ddpm</code> is one of this notebook's genuinely new ingredients, not a reorganization:</p>
+<ul>
+<li>zeroing <code>conv2</code> in every residual block makes each block start as an <strong>identity mapping</strong> (output = skip connection), so early training flows gradients cleanly through the whole depth;</li>
+<li>zeroing the final output conv means the untrained model predicts <strong>zero noise</strong> &mdash; a sane, unbiased starting guess for a network whose job is ε-prediction;</li>
+<li>orthogonal init on downsamplers preserves signal/gradient scale across resolution changes.</li>
+</ul>
+<p>Together with the leaner architecture, this is part of why this notebook can push the learning rate higher than notebook 15's <code>4e-3</code> without diverging. If you ever wonder "would notebook 15 train fine with this init added?" &mdash; yes, and it's a nice exercise: <code>init_ddpm</code> works on any <code>UNet2DModel</code>.</p>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=be8dd3fc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9684,6 +9966,26 @@ Input: 8&times;8   &rarr; (no downsampler at bottom)
 <span class="p">)</span>
 </pre></div>
 </div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8b7b9e05">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%84-Compared-with-notebook-15:-TrainLearner-vs-Learner-+-TrainCB">🔄 Compared with notebook 15: <code>TrainLearner</code> vs <code>Learner</code> + <code>TrainCB</code><a class="anchor-link" href="#%F0%9F%94%84-Compared-with-notebook-15:-TrainLearner-vs-Learner-+-TrainCB">¶</a></h3><div class="highlight"><pre><span></span><span class="c1"># notebook 15:</span>
+<span class="n">learn</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dls</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">lr</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="n">cbs</span><span class="p">,</span> <span class="n">opt_func</span><span class="o">=</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">)</span>
+<span class="c1"># ...where cbs includes ddpm_cb, a TrainCB subclass that supplies</span>
+<span class="c1"># predict / get_loss / backward / step / zero_grad</span>
+</pre></div>
+<div class="highlight"><pre><span></span><span class="c1"># this notebook:</span>
+<span class="n">learn</span> <span class="o">=</span> <span class="n">TrainLearner</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dls</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">lr</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="n">cbs</span><span class="p">,</span> <span class="n">opt_func</span><span class="o">=</span><span class="n">opt_func</span><span class="p">)</span>
+<span class="c1"># ...training methods are built into the Learner; ddpm_cb is a plain Callback</span>
+</pre></div>
+<p>Same miniai machinery, opposite ends of it: in notebook 15 the <em>callback</em> provides the five training methods (because it needed to customize <code>predict</code> anyway); here nothing needs customizing (the <code>UNet</code> wrapper saw to that), so the batteries-included <code>TrainLearner</code> is used and the callback stays minimal. Also new here: <code>opt_func = partial(optim.Adam, eps=1e-5)</code> &mdash; the larger epsilon guards against division-by-tiny-values instability, which matters more once mixed precision enters in Section 7 (notebook 15 uses plain <code>optim.Adam</code>).</p>
 </div>
 </div>
 </div>
@@ -9834,6 +10136,24 @@ Input: 8&times;8   &rarr; (no downsampler at bottom)
 <li>GPUs have dedicated FP16 hardware (Tensor Cores) that's 2-8x faster</li>
 <li>Half the memory = bigger batch sizes</li>
 </ul>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=97017dc1">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%84-Compared-with-notebook-15:-everything-from-here-on-is-new">🔄 Compared with notebook 15: everything from here on is new<a class="anchor-link" href="#%F0%9F%94%84-Compared-with-notebook-15:-everything-from-here-on-is-new">¶</a></h3><p>Notebook 15 ends where Section 6 of this notebook ends: train, save, sample, animate, summary. <strong>Sections 7&ndash;10 have no counterpart there at all.</strong> This is the payoff of the refactoring you've been reading about:</p>
+<ul>
+<li><strong>Mixed precision (Section 7)</strong> slots in as just another callback &mdash; possible cleanly because training behaviour was never welded into <code>DDPMCB</code>.</li>
+<li><strong><code>collate_ddpm</code> (Section 7)</strong> reuses the <em>module-level</em> <code>noisify</code> inside DataLoader workers &mdash; impossible in notebook 15, where the noising logic exists only inside <code>before_batch</code>, and moving it out would mean rewriting the callback.</li>
+<li><strong>Accelerate (Section 8)</strong> swaps <code>MixedPrecision</code> for <code>AccelerateCB</code> and adjusts the batch layout with a small <code>noisify</code> variant &mdash; again, editing one small function, not untangling a monolith.</li>
+<li><strong><code>MultDL</code> (Section 9)</strong> and the <strong>nbdev export (Section 10)</strong> round out the "make it fast, make it reusable" arc.</li>
+</ul>
+<p>If you want a concrete appreciation exercise: sketch how you'd add <code>num_workers</code>-parallel noising to notebook 15's <code>DDPMCB</code>. You'll find yourself extracting a <code>noisify</code> function &mdash; i.e., re-deriving this notebook.</p>
 </div>
 </div>
 </div>
