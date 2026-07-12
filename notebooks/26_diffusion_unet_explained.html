@@ -8585,7 +8585,7 @@ Output (32x32)
 <li>Without knowing the noise level, the network can't adjust its behavior</li>
 </ul>
 <h3 id="Sinusoidal-Positional-Embeddings">Sinusoidal Positional Embeddings<a class="anchor-link" href="#Sinusoidal-Positional-Embeddings">¶</a></h3><p>We use <strong>sinusoidal embeddings</strong> (same as in Transformers) to encode the timestep:</p>
-$$\text{embed}(t, 2i) = \sin(t \cdot \omega_i)$$$$\text{embed}(t, 2i+1) = \cos(t \cdot \omega_i)$$<p>Where $\omega_i = \exp\left(-\frac{\log(\text{max\_period}) \cdot i}{d/2}\right)$</p>
+$$\text{embed}(t, 2i) = \sin(t \cdot \omega_i)$$$$\text{embed}(t, 2i+1) = \cos(t \cdot \omega_i)$$<p>Where $\omega_i = \exp\left(-\frac{\log(\text{max_period}) \cdot i}{d/2}\right)$</p>
 <p>This gives each timestep a unique embedding that varies smoothly.</p>
 </div>
 </div>
