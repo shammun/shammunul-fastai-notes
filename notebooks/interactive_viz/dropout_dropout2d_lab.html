@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dropout vs Dropout2d Lab</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:14px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden}
+  body{background:var(--bg);color:var(--ink);
+    font:13.5px/1.45 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;}
+
+  /* fixed design canvas, scaled to always fit the viewport exactly (no scrolling ever) */
+  #viewport{width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .stage{width:1280px;height:800px;flex:none;transform-origin:center center;
+    display:flex;flex-direction:column;padding:12px;gap:9px}
+
+  /* ---------------- header + tabs ---------------- */
+  .top{display:flex;align-items:center;gap:14px;flex:none}
+  .top h1{font-size:19px;font-weight:800;letter-spacing:-.02em;white-space:nowrap}
+  .top h1 .hl{color:var(--purple)}
+  .tabs{display:flex;gap:5px;margin-left:auto;background:#E3EAF7;border-radius:12px;padding:4px}
+  .tabs button{border:none;background:transparent;font:inherit;font-size:12.5px;font-weight:700;
+    color:var(--muted);border-radius:9px;padding:7px 12px;cursor:pointer;white-space:nowrap;transition:.15s}
+  .tabs button:hover{color:var(--ink)}
+  .tabs button.on{background:#fff;color:var(--purple);box-shadow:var(--shadow-sm)}
+  .tabs button.on.t-d{color:var(--orange)}
+  .tabs button.on.t-c{color:var(--teal)}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+
+  /* ---------------- control bar ---------------- */
+  .controls{display:flex;align-items:center;gap:16px;flex:none;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:8px 16px;height:48px}
+  .controls.dimmed{opacity:.45;pointer-events:none}
+  label.lbl{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap}
+  .pctl{display:flex;align-items:center;gap:8px}
+  .pctl input{accent-color:var(--purple);width:170px}
+  .pv{font-family:var(--mono);font-weight:800;font-size:14px;color:var(--purple);min-width:40px}
+  .seg{display:inline-flex;background:#EFF3FB;border-radius:10px;padding:3px;gap:3px}
+  .seg button{border:none;background:transparent;font:inherit;font-size:12px;font-weight:700;border-radius:8px;padding:5px 12px;cursor:pointer;color:var(--muted)}
+  .seg button.on{background:var(--purple);color:#fff;box-shadow:var(--shadow-sm)}
+  button.act{font:inherit;font-size:12.5px;font-weight:700;border:none;border-radius:10px;cursor:pointer;
+    padding:7px 14px;background:var(--purple-soft);color:var(--purple);transition:transform .12s}
+  button.act:hover{transform:translateY(-1px)}
+  .scalepill{margin-left:auto;background:#F6F8FE;border-radius:9px;padding:4px 12px;text-align:center}
+  .scalepill .n{font-family:var(--mono);font-weight:800;font-size:13.5px;color:var(--purple);display:block}
+  .scalepill .t{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+
+  /* ---------------- main area ---------------- */
+  .main{flex:1;display:flex;gap:14px;min-height:0}
+  .viz{width:846px;flex:none;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 15px;display:flex;flex-direction:column;min-height:0}
+  .viz.full{width:100%}
+  .side{flex:1;display:flex;flex-direction:column;gap:7px;min-height:0}
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:9px 13px}
+  .panel h2, .viz h2{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+    margin-bottom:5px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .panel h2 .badge, .viz h2 .badge{font-family:var(--mono);font-size:10.5px;background:var(--purple-soft);color:var(--purple);
+    border-radius:999px;padding:2px 9px;text-transform:none;letter-spacing:0;font-weight:700}
+  .viz h2 .badge.ev{background:var(--purple);color:#fff}
+  .explain{color:#33415C;font-size:12.4px}
+  .explain p{margin:0 0 6px}
+  .explain code, .keybox code, .co code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:5px;padding:1px 5px}
+  b.o{color:var(--orange)} b.t{color:var(--teal)} b.p{color:var(--purple)}
+  .keybox{background:var(--purple-soft);border-radius:10px;padding:8px 12px;color:#4636C9;font-weight:600;font-size:12.3px}
+  .steps{list-style:none;font-size:12.4px;color:#33415C}
+  .steps li{display:flex;gap:8px;margin-bottom:4px;align-items:flex-start}
+  .steps .n{flex:none;width:18px;height:18px;border-radius:50%;background:var(--purple);color:#fff;
+    font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .steps.orange .n{background:var(--orange)} .steps.teal .n{background:var(--teal)}
+
+  .pills{display:flex;gap:7px;flex-wrap:wrap}
+  .pill{background:#F6F8FE;border-radius:9px;padding:5px 10px;text-align:center;flex:1;min-width:100px}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:14px}
+  .pill .t{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-top:1px}
+  .pill.hot .n{color:var(--orange)} .pill.hotc .n{color:var(--teal)} .pill.ok .n{color:var(--purple)}
+  .takeaway{border-radius:10px;padding:6px 11px;font-weight:600;font-size:12.2px}
+  .takeaway.o{background:var(--orange-soft);color:#9A5510}
+  .takeaway.t{background:var(--teal-soft);color:#0A6D64}
+
+  /* ---------------- tensor grids ---------------- */
+  .flowrow{display:flex;flex-direction:column;gap:4px}
+  .rowlab{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .rowlab b{color:var(--ink)}
+  .chanrow{display:flex;gap:8px}
+  .chan .chlabel{font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:800;white-space:nowrap}
+  .chan .chlabel .dropnote{color:var(--teal)}
+  .tgrid{display:grid;gap:2px}
+  .cell{border-radius:4px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-weight:600;cursor:default;transition:background .25s,color .25s}
+  .cell.dropped{background:#E8EDF6 !important;color:#9AA6BC !important}
+  .cell.recon{outline:2px dashed var(--orange);outline-offset:-2px}
+  .downarrow{display:flex;align-items:center;gap:10px;color:var(--muted);font-weight:700;font-size:12px;margin:5px 0}
+  .downarrow .ar{font-size:19px}
+  .downarrow .what{background:#F6F8FE;border-radius:8px;padding:3px 11px;font-size:11.5px}
+  .downarrow .what b{font-family:var(--mono)}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:11.5px;color:var(--muted);font-weight:600;margin-top:auto;padding-top:8px}
+  .legend .sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+  .legend .ramp{display:inline-flex;border-radius:3px;overflow:hidden;vertical-align:-2px;margin-right:4px}
+  .legend .ramp i{width:8px;height:12px;display:block}
+
+  /* compare table */
+  table.cmp{width:100%;border-collapse:collapse;font-size:12.2px}
+  table.cmp th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:4px 6px;border-bottom:2px solid var(--line)}
+  table.cmp th.od{color:var(--orange)} table.cmp th.tc{color:var(--teal)}
+  table.cmp td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top;color:#33415C}
+  table.cmp td:first-child{font-weight:700;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em;width:92px}
+
+  /* experiment */
+  .exp-h{font-size:12.5px;font-weight:800;margin:2px 0 5px}
+  .exp-h code{font-family:var(--mono);font-size:.92em}
+  .exp-flow{display:flex;gap:8px;align-items:flex-start}
+  .exp-step{text-align:center}
+  .exp-step .t{font-size:10.5px;font-weight:800;margin-bottom:3px}
+  .exp-arrow{align-self:center;color:var(--muted);font-size:19px;padding:0 1px}
+  .verdict{font-size:11.8px;font-weight:700;border-radius:9px;padding:6px 10px;display:block;margin-top:6px}
+  .verdict.ok{background:var(--orange-soft);color:var(--orange)}
+  .verdict.bad{background:var(--teal-soft);color:var(--teal)}
+
+  /* pipeline */
+  .rail{display:flex;align-items:stretch;gap:5px;margin:6px 0 2px}
+  .rail .st{background:#fff;border:2px solid var(--line);border-radius:11px;padding:7px 9px;text-align:center;
+    display:flex;flex-direction:column;justify-content:center;flex:1;min-width:0}
+  .rail .st .lab{font-size:11.5px;font-weight:800;white-space:nowrap}
+  .rail .st .sh{font-family:var(--mono);font-size:9.5px;color:var(--muted);margin-top:2px;white-space:nowrap}
+  .rail .st.hl-d{border-color:var(--orange);background:var(--orange-soft);cursor:help}
+  .rail .st.hl-d .lab{color:var(--orange)}
+  .rail .st.hl-c{border-color:var(--teal);background:var(--teal-soft);cursor:help}
+  .rail .st.hl-c .lab{color:var(--teal)}
+  .rail .arr{align-self:center;color:var(--muted);font-size:13px;flex:none}
+  .callouts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+  .co{border-radius:11px;padding:10px 13px;font-size:12.6px;color:#33415C}
+  .co b.mono{font-family:var(--mono)}
+  .co.c1{background:var(--teal-soft);border-left:4px solid var(--teal)}
+  .co.c2{background:var(--orange-soft);border-left:4px solid var(--orange)}
+
+  /* scaling mini-demo */
+  .scaledemo{background:#F6F8FE;border-radius:11px;padding:9px 13px;margin-top:10px}
+  .scaledemo .sd-title{font-size:12px;font-weight:800;margin-bottom:7px}
+  .scaledemo .sd-title code{font-family:var(--mono);font-size:.92em}
+  .dcells{display:flex;gap:3px}
+  .dcells .cell{width:27px;height:24px;font-size:10px;flex:none}
+  .sd-row{display:flex;align-items:center;gap:12px;margin-top:6px}
+  .sd-cap{font-size:11.6px;color:#33415C;line-height:1.35}
+  .sd-cap .good{color:#0A8F44;font-weight:800} .sd-cap .bad{color:#C24141;font-weight:800}
+  .sd-note{font-size:11.8px;color:#33415C;margin-top:8px;text-align:center}
+  .sd-note b{color:var(--purple)}
+
+  /* code blocks */
+  pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:#F6F8FE;border-radius:11px;padding:10px 0;overflow:hidden}
+  pre.code.small{font-size:10.8px;line-height:1.5;margin:0;padding:6px 0}
+  .cl{padding:0 14px;white-space:pre;display:block}
+  .cl .cm{color:#8A94AC}
+  .cl.hlc{background:var(--teal-soft);border-left:4px solid var(--teal);padding-left:10px;font-weight:700}
+  .cl.hld{background:var(--orange-soft);border-left:4px solid var(--orange);padding-left:10px;font-weight:700}
+
+  /* quiz */
+  .quizgrid{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:12px;flex:1;min-height:0;margin-top:4px}
+  .qcard{border:2px solid var(--line);border-radius:12px;padding:11px 14px;cursor:pointer;transition:.15s;
+    display:flex;flex-direction:column;background:#fff}
+  .qcard:hover{border-color:var(--purple)}
+  .qcard .q{font-weight:800;font-size:13.2px}
+  .qcard .revealhint{color:var(--purple);font-size:11px;font-weight:700;margin-top:auto}
+  .qcard .a{display:none;font-size:12.2px;color:#33415C;margin-top:7px;border-top:2px dashed var(--line);padding-top:7px}
+  .qcard.open{border-color:var(--purple);background:#FDFDFF;box-shadow:var(--shadow-sm)}
+  .qcard.open .a{display:block}
+  .qcard.open .revealhint{display:none}
+  .qcard .a code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:5px;padding:0 4px}
+
+  /* tooltip */
+  #tip{position:fixed;pointer-events:none;z-index:100;display:none;
+    background:var(--ink);color:#fff;border-radius:9px;padding:7px 10px;
+    font-size:11.5px;line-height:1.45;max-width:250px;box-shadow:0 8px 24px rgba(31,42,68,.35)}
+  #tip .tt{font-weight:800}
+  #tip .mono{font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div id="viewport"><div class="stage" id="stage">
+
+  <div class="top">
+    <h1>Dropout vs Dropout2d <span class="hl">— the interactive lab</span></h1>
+    <div class="tabs" id="tabs">
+      <button data-t="0" class="on">① In the model</button>
+      <button data-t="1">② The tensor</button>
+      <button data-t="2" class="t-d">③ Dropout</button>
+      <button data-t="3" class="t-c">④ Dropout2d</button>
+      <button data-t="4">⑤ Compare</button>
+      <button data-t="5">⑥ Why channels?</button>
+      <button data-t="6">⑦ Quiz</button>
+    </div>
+  </div>
+
+  <div class="controls" id="controlbar">
+    <span class="pctl">
+      <label class="lbl" for="pslider">dropout p</label>
+      <input type="range" id="pslider" min="0" max="0.9" step="0.1" value="0.3">
+      <span class="pv" id="pval">0.30</span>
+    </span>
+    <span class="seg">
+      <button id="btntrain" class="on">model.train()</button>
+      <button id="btneval">model.eval()</button>
+    </span>
+    <button class="act" id="btnresample">🎲 Resample mask</button>
+    <button class="act" id="btnreplay">▶ Replay drop</button>
+    <span class="scalepill" id="scalepill" style="cursor:help"><span class="n" id="scaleval">×1.43</span><span class="t">survivors made louder ×1/(1−p)</span></span>
+  </div>
+
+  <div class="main" id="main"></div>
+
+</div></div>
+<div id="tip"></div>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+
+/* ================= seeded RNG ================= */
+function mulberry32(seed){
+  return function(){
+    seed|=0; seed=(seed+0x6D2B79F5)|0;
+    let t=Math.imul(seed^(seed>>>15),1|seed);
+    t=(t+Math.imul(t^(t>>>7),61|t))^t;
+    return ((t^(t>>>14))>>>0)/4294967296;
+  };
+}
+
+/* ================= palette ================= */
+const RAMP=["#F3F0FF","#E6DFFD","#D6CBFB","#C5B6F8","#B3A1F4","#A08CF0","#8C77EC","#7A64E9","#6C5CE7","#5B49D8","#4A38C4","#3B2BA5","#2E2183"];
+const valColor=(v,vmax)=>RAMP[Math.round(Math.max(0,Math.min(1,vmax>0?v/vmax:0))*(RAMP.length-1))];
+const inkFor=(v,vmax)=>((vmax>0?v/vmax:0)>0.52?"#FFFFFF":"#1F2A44");
+
+/* ================= data: (1, 6, 5, 5) tensor, smooth channels ================= */
+const C=6,H=5,W=5,N=C*H*W;
+function makeTensor(){
+  const rng=mulberry32(20260712), chans=[];
+  for(let c=0;c<C;c++){
+    const fx=0.6+rng()*0.9, fy=0.6+rng()*0.9;
+    const px=rng()*6.28, py=rng()*6.28, amp=0.28+rng()*0.14, g=[];
+    for(let y=0;y<H;y++){const row=[];
+      for(let x=0;x<W;x++){
+        let v=0.5+amp*Math.sin(x*fx+px)*Math.cos(y*fy+py)+(rng()-0.5)*0.10;
+        row.push(Math.min(0.95,Math.max(0.05,v)));
+      } g.push(row);}
+    chans.push(g);
+  }
+  return chans;
+}
+const tensor=makeTensor();
+const meanOrig=tensor.flat(2).reduce((a,b)=>a+b,0)/N;
+
+/* smooth 8x8 blob for the experiment */
+const EH=8,EW=8;
+function makeBlob(){
+  const rng=mulberry32(777), cx=3.1, cy=3.7, g=[];
+  for(let y=0;y<EH;y++){const row=[];
+    for(let x=0;x<EW;x++){
+      const d2=(x-cx)*(x-cx)+(y-cy)*(y-cy);
+      let v=0.15+0.8*Math.exp(-d2/9)+(rng()-0.5)*0.05;
+      row.push(Math.min(0.95,Math.max(0.05,v)));
+    } g.push(row);}
+  return g;
+}
+const blob=makeBlob();
+
+/* ================= state ================= */
+let p=0.30, training=true, maskSeed=1, tab=0;
+let uElem,uChan,uBlob;
+function resample(){
+  const r=mulberry32(1000+maskSeed*7919);
+  uElem=tensor.map(g=>g.map(row=>row.map(()=>r())));
+  uChan=Array.from({length:C},()=>r());
+  uBlob=blob.map(row=>row.map(()=>r()));
+}
+resample();
+
+let pendingTimers=[];
+function clearTimers(){pendingTimers.forEach(clearTimeout);pendingTimers=[];}
+
+/* ================= tooltip ================= */
+const tip=$('tip');
+function showTip(html,ev){
+  tip.innerHTML=html;tip.style.display="block";
+  const pad=14;let x=ev.clientX+pad,y=ev.clientY+pad;
+  const r=tip.getBoundingClientRect();
+  if(x+r.width>innerWidth-8)x=ev.clientX-r.width-pad;
+  if(y+r.height>innerHeight-8)y=ev.clientY-r.height-pad;
+  tip.style.left=x+"px";tip.style.top=y+"px";
+}
+function hideTip(){tip.style.display="none";}
+const fmt=v=>v.toFixed(2);
+const scaleOf=()=>p<1?1/(1-p):1;
+const isActive=()=>training&&p>0;
+
+/* ================= grid building ================= */
+function buildGrid(hC,wC,px,cellInfo){
+  const grid=document.createElement("div");
+  grid.className="tgrid";
+  grid.style.gridTemplateColumns=`repeat(${wC},${px}px)`;
+  const cells=[];
+  for(let y=0;y<hC;y++)for(let x=0;x<wC;x++){
+    const info=cellInfo(x,y);
+    const cell=document.createElement("div");
+    cell.className="cell";
+    cell.style.width=px+"px";cell.style.height=Math.round(px*0.82)+"px";
+    cell.style.fontSize=Math.max(8,Math.round(px*0.37))+"px";
+    if(info.dropped&&!info.delay){cell.classList.add("dropped");cell.textContent="0";}
+    else{
+      cell.style.background=valColor(info.colorVal,info.vmax);
+      cell.style.color=inkFor(info.colorVal,info.vmax);
+      cell.textContent=fmt(info.display);
+      if(info.recon)cell.classList.add("recon");
+      if(info.dropped&&info.delay){
+        pendingTimers.push(setTimeout(()=>{
+          cell.classList.add("dropped");cell.textContent="0";
+          cell.style.background="";cell.style.color="";
+        },info.delay));
+      }
+    }
+    cell.addEventListener("mousemove",ev=>showTip(info.tip,ev));
+    cell.addEventListener("mouseleave",hideTip);
+    grid.appendChild(cell);cells.push(cell);
+  }
+  return grid;
+}
+function chanBlock(label,grid){
+  const chan=document.createElement("div");chan.className="chan";
+  if(label!==null){
+    const lab=document.createElement("div");lab.className="chlabel";lab.innerHTML=label;chan.appendChild(lab);
+  }
+  chan.appendChild(grid);return chan;
+}
+
+/* one row of all 6 channels */
+function tensorRow(px,cellInfoFor,labelFor){
+  const row=document.createElement("div");row.className="chanrow";
+  for(let c=0;c<C;c++) row.appendChild(chanBlock(labelFor(c),buildGrid(H,W,px,(x,y)=>cellInfoFor(c,x,y))));
+  return row;
+}
+
+/* masks + stats */
+function elemMask(){const a=isActive();return tensor.map((g,c)=>g.map((row,y)=>row.map((_,x)=>a&&uElem[c][y][x]<p)));}
+function chanMask(){const a=isActive();return Array.from({length:C},(_,c)=>a&&uChan[c]<p);}
+function elemStats(){
+  const m=elemMask(),s=scaleOf();let drop=0,sum=0,killed=0;
+  for(let c=0;c<C;c++){let all=true;
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+      if(m[c][y][x]){drop++;}else{all=false;sum+=isActive()?tensor[c][y][x]*s:tensor[c][y][x];}
+    }
+    if(isActive()&&all)killed++;
+  }
+  return {drop,mean:sum/N,killed};
+}
+function chanStats(){
+  const m=chanMask(),s=scaleOf();const dropped=[];let sum=0;
+  for(let c=0;c<C;c++){
+    if(m[c]){dropped.push(c);}
+    else for(let y=0;y<H;y++)for(let x=0;x<W;x++)sum+=isActive()?tensor[c][y][x]*s:tensor[c][y][x];
+  }
+  return {dropped,mean:sum/N};
+}
+
+/* ================= layout helpers ================= */
+const main=$('main');
+function layout(vizFull){
+  main.innerHTML="";
+  const viz=document.createElement("div");viz.className="viz"+(vizFull?" full":"");
+  main.appendChild(viz);
+  let side=null;
+  if(!vizFull){side=document.createElement("div");side.className="side";main.appendChild(side);}
+  return {viz,side};
+}
+function panel(side,titleHtml,bodyHtml,grow){
+  const el=document.createElement("div");el.className="panel";
+  if(grow)el.style.flex="1";
+  el.innerHTML=(titleHtml?`<h2>${titleHtml}</h2>`:"")+bodyHtml;
+  side.appendChild(el);return el;
+}
+const pill=(n,t,cls)=>`<div class="pill ${cls||""}"><div class="n">${n}</div><div class="t">${t}</div></div>`;
+function legendHtml(){
+  return `<div class="legend"><span><span class="ramp">${RAMP.map(c=>`<i style="background:${c}"></i>`).join("")}</span> low → high value</span>
+  <span><span class="sw" style="background:#E8EDF6"></span> zeroed (shows 0)</span>
+  <span>💡 hover any cell for its exact story</span></div>`;
+}
+function vizHeader(viz,title,badge){
+  const h=document.createElement("h2");
+  h.innerHTML=`<span>${title}</span>`+(badge||"")+(!training?`<span class="badge ev">eval mode: identity — nothing is dropped</span>`:"");
+  viz.appendChild(h);
+}
+
+/* ================= TAB 0 — the tensor ================= */
+function renderTab0(){
+  const {viz,side}=layout(false);
+  vizHeader(viz,"The example activation tensor",`<span class="badge">(batch 1, channels 6, 5 × 5 pixels)</span>`);
+  const body=document.createElement("div");
+  body.style.cssText="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px";
+  const grids=document.createElement("div");
+  grids.style.cssText="display:grid;grid-template-columns:repeat(3,max-content);gap:16px 26px;justify-content:center";
+  for(let c=0;c<C;c++){
+    grids.appendChild(chanBlock(`channel ${c}`,buildGrid(H,W,46,(x,y)=>{
+      const v=tensor[c][y][x];
+      return {dropped:false,display:v,colorVal:v,vmax:1,
+        tip:`<span class="tt">channel ${c}, pixel (row ${y}, col ${x})</span><br><span class="mono">value = ${fmt(v)}</span><br>Raw activation — no dropout applied yet.`};
+    })));
+  }
+  body.appendChild(grids);viz.appendChild(body);
+  viz.insertAdjacentHTML("beforeend",legendHtml());
+
+  panel(side,"What you are looking at",`<div class="explain">
+    <p>In <code>get_dropmodel</code>, the activation after the first ResBlock is
+    <code>(batch, 16, 28, 28)</code> — 16 feature maps of 28×28 pixels. Too many numbers to read, so this lab uses a
+    shrunk stand-in with the <b>exact same structure</b>: <b class="p">6 channels</b> (feature maps), each
+    <b class="p">5×5 pixels</b> — <b>150 numbers</b> total. Every cell is one activation value.</p>
+    <p>A <b>channel</b> = the output of one learned feature detector (one filter). A <b>pixel</b> = that detector's
+    response at one location.</p></div>`);
+  panel(side,"The one insight to carry forward",`<div class="keybox">Look inside any channel: <b>neighbouring pixels
+    have similar values</b>. Real conv feature maps are like this because neighbouring outputs come from overlapping
+    receptive fields. This spatial correlation is the entire reason Dropout2d exists — tab ⑥ proves it.</div>`);
+  panel(side,"Where to next",`<div class="explain">
+    <p>③ <b class="o">Dropout</b> — watch it zero <b>individual numbers</b>.</p>
+    <p>④ <b class="t">Dropout2d</b> — watch it zero <b>whole channels</b>.</p>
+    <p>⑤ Compare both side by side · ⑥ why channels · ⑦ test yourself · (① shows where both live in the model code).</p></div>`);
+}
+
+/* ---- the scaling worked example, computed from the slider's p ---- */
+function scaleDemoHtml(isE){
+  const s=scaleOf();
+  const unit=isE?"number":"channel", units=isE?"numbers":"channels";
+  if(!training||p===0){
+    return `<div class="scaledemo">
+      <div class="sd-title">Why are survivors multiplied by <code>1/(1−p)</code>?</div>
+      <div class="sd-note">${!training
+        ?`In <b>eval mode</b> nothing is dropped, so nothing needs the volume fix — values pass through exactly as they are. Switch back to <b>model.train()</b> and raise p to see the demo.`
+        :`p = 0 — nothing is dropped and the scale is ×1.00, so there is nothing to fix. Drag the slider above 0 to see the trick in action.`}</div>
+    </div>`;
+  }
+  const n=10, k=Math.round(p*10);          /* slider steps by 0.1 → exactly k of 10 die */
+  const dropSet=new Set(); let acc=0;      /* spread the k drops evenly along the strip */
+  for(let i=0;i<n;i++){acc+=k;if(acc>=n){acc-=n;dropSet.add(i);}}
+  const cellHtml=v=>v===null
+    ?`<div class="cell dropped">0</div>`
+    :`<div class="cell" style="background:${v>1?'#3B2BA5':'#6C5CE7'};color:#fff">${v>=10?v.toFixed(0):v.toFixed(1)}</div>`;
+  const row=vals=>`<div class="dcells">${vals.map(cellHtml).join("")}</div>`;
+  const a1=Array(n).fill(1);
+  const a2=a1.map((v,i)=>dropSet.has(i)?null:v);
+  const a3=a1.map((v,i)=>dropSet.has(i)?null:s);
+  return `<div class="scaledemo">
+    <div class="sd-title">Why are survivors multiplied by <code>1/(1−p)</code>? Watch it with <b>your p = ${p.toFixed(2)}</b> — ten ${units}, each carrying signal 1.0</div>
+    <div class="sd-row">${row(a1)}<div class="sd-cap"><b>start:</b> ten ${units} × 1.0 → average signal = <b>1.00</b></div></div>
+    <div class="sd-row">${row(a2)}<div class="sd-cap"><b>dropout, p = ${p.toFixed(2)}:</b> each ${unit} dies with ${Math.round(p*100)}% chance → exactly <b>${k} of 10</b> die → average = ${10-k}/10 = <span class="bad">${(1-p).toFixed(2)}</span> — the layer is suddenly ${Math.round(p*100)}% quieter!</div></div>
+    <div class="sd-row">${row(a3)}<div class="sd-cap"><b>the fix:</b> each of the ${10-k} survivors × 1/(1−${p.toFixed(2)}) = <b>×${s.toFixed(2)}</b> → average = ${10-k} × ${s.toFixed(2)} / 10 = <span class="good">1.00 ✓</span> volume restored</div></div>
+    <div class="sd-note">${p>=0.85
+      ?`Your p = 0.90 is the extreme case: <b>one survivor in ten</b> must shout <b>×10</b> to carry the whole signal alone — like the last singer left in a 10-person choir singing 10× louder so the song keeps its volume.`
+      :`The higher p gets, the louder each survivor must be: at p = 0.90 one survivor in ten shouts <b>×10</b> — like the last singer left in a 10-person choir. Without this fix, every layer downstream would hear a quieter signal in training than at test time.`}</div>
+  </div>`;
+}
+
+/* ================= TABS — Dropout / Dropout2d ================= */
+function renderDropTab(kind,animate){ /* kind: 'e' element-wise | 'c' channel-wise */
+  const {viz,side}=layout(false);
+  const isE=kind==='e';
+  const s=scaleOf(), active=isActive();
+  const mE=elemMask(), mC=chanMask();
+  const name=isE?"nn.Dropout":"nn.Dropout2d";
+  const color=isE?"var(--orange)":"var(--teal)";
+  vizHeader(viz,`${name}(p) applied to the tensor`,
+    `<span class="badge" style="background:${isE?'var(--orange-soft)':'var(--teal-soft)'};color:${color}">${isE?'element-wise: one coin per number':'channel-wise: one coin per channel'}</span>`);
+
+  const flow=document.createElement("div");flow.className="flowrow";flow.style.cssText="flex:1;justify-content:center";
+
+  /* input row */
+  const lab1=document.createElement("div");lab1.className="rowlab";
+  lab1.innerHTML=isE
+    ?`<b>input</b> — the tensor from tab ② · <span style="text-transform:none;letter-spacing:0">note: in the real model this layer runs <b>after Flatten()</b> on a flat (bs, 512) vector with <b>no channels</b> — we use the 6-channel tensor only for a fair visual comparison with Dropout2d; the one-ticket-per-number rule is identical either way</span>`
+    :`<b>input</b> — the tensor from tab ② · <span style="text-transform:none;letter-spacing:0">this <b>is</b> what the model's Dropout2d sees: the real (bs, 16, 28, 28) activation, shrunk here to 6 channels of 5×5 to stay readable</span>`;
+  flow.appendChild(lab1);
+  flow.appendChild(tensorRow(24,(c,x,y)=>{
+    const v=tensor[c][y][x];
+    return {dropped:false,display:v,colorVal:v,vmax:1,
+      tip:`<span class="tt">input · ch ${c}, (${y},${x})</span><br><span class="mono">value ${fmt(v)}</span>`};
+  },c=>`ch ${c}`));
+
+  /* arrow row */
+  const mid=document.createElement("div");mid.className="downarrow";
+  mid.innerHTML=active
+    ? (isE
+      ?`<span class="ar">↓</span><span class="what">🪙 <b>150 coin flips</b> — one per number, each zeroed with prob p = ${p.toFixed(2)}</span><span class="what">survivors <b>× ${s.toFixed(2)}</b></span><span class="ar">↓</span>`
+      :`<span class="ar">↓</span><span class="what">🪙 <b>6 coin flips</b> — one per channel, each wiped whole with prob p = ${p.toFixed(2)}</span><span class="what">surviving channels <b>× ${s.toFixed(2)}</b></span><span class="ar">↓</span>`)
+    :`<span class="ar">↓</span><span class="what">${training?"p = 0 — no coins flipped":"eval mode — dropout switched off"}: output = input, untouched</span><span class="ar">↓</span>`;
+  flow.appendChild(mid);
+
+  /* output row (animated) */
+  const lab2=document.createElement("div");lab2.className="rowlab";
+  lab2.innerHTML=`<b>output</b> — what the next layer receives`;
+  flow.appendChild(lab2);
+  const vmax=active?s*0.95:1;
+  let k=0;
+  flow.appendChild(tensorRow(24,(c,x,y)=>{
+    const v=tensor[c][y][x];
+    const d=isE?mE[c][y][x]:mC[c];
+    const out=d?0:(active?v*s:v);
+    const delay=animate&&d?(isE?250+(k++)*28:350+c*330):0;
+    return {dropped:d,display:d?(active?v*s:v):out,colorVal:d?(active?v*s:v):out,vmax,delay,
+      tip:d
+        ?(isE
+          ?`<span class="tt">${name} · ch ${c}, (${y},${x})</span><br><span class="mono">original ${fmt(v)} → DROPPED → 0.00</span><br>This one number drew an unlucky coin flip. Its neighbours are untouched.`
+          :`<span class="tt">${name} · ch ${c}, (${y},${x})</span><br><span class="mono">original ${fmt(v)} → 0.00</span><br>Zeroed <b>not because of this pixel</b> — channel ${c} drew one unlucky flip, so all 25 of its pixels died together.`)
+        :(active
+          ?`<span class="tt">${name} · ch ${c}, (${y},${x})</span><br><span class="mono">${fmt(v)} → kept → ×${s.toFixed(2)} → ${fmt(out)}</span><br>${isE?"Kept (prob 1−p), then scaled.":"Channel "+c+" survived its coin flip — every pixel kept and scaled."}`
+          :`<span class="mono">value ${fmt(v)} (identity)</span>`)};
+  },c=>{
+    const d=!isE&&mC[c];
+    return d?`ch ${c} <span class="dropnote">— dropped!</span>`:`ch ${c}`;
+  }));
+
+  /* ---- the "why make survivors louder" worked example (live, follows the slider) ---- */
+  flow.insertAdjacentHTML("beforeend",scaleDemoHtml(isE));
+  viz.appendChild(flow);
+  viz.insertAdjacentHTML("beforeend",legendHtml());
+
+  /* ---- side panels ---- */
+  if(isE){
+    const st=elemStats();
+    panel(side,"Why dropout exists at all",`<div class="explain"><p>Big nets <b>overfit</b>: units
+      <b class="p">co-adapt</b> — brittle team-ups that only work on training data. Dropout (Srivastava &amp; Hinton,
+      2014) deletes random units every step, so each feature must be useful <b>on its own</b>; at test time the full
+      net acts like an average of all the thinned subnetworks.</p></div>`);
+    panel(side,"How nn.Dropout decides — step by step",`<ul class="steps orange">
+      <li><span class="n">1</span><span>Every one of the 150 numbers gets <b>its own lottery ticket</b>. Each ticket loses with chance p = ${p.toFixed(2)} — so at the current p, about <b>${Math.round(p*150)} of the 150</b> numbers lose.</span></li>
+      <li><span class="n">2</span><span>A loser is simply <b>silenced</b>: its value becomes 0 for this training step. Nothing happens to its neighbours.</span></li>
+      <li><span class="n">3</span><span>Every winner is made <b>a bit louder</b>${training?` (×${s.toFixed(2)})`:""} so the layer's total signal keeps the same strength — the small demo under the grids shows exactly why.</span></li></ul>`);
+    panel(side,"Live count — this exact mask",`<div class="pills">
+      ${pill("150","coin flips")}
+      ${pill(`${st.drop} / 150`,`numbers zeroed (${Math.round(100*st.drop/N)}%)`,st.drop?"hot":"")}
+      ${pill(`${st.killed} / 6`,"channels fully wiped")}
+      ${pill(`${meanOrig.toFixed(3)} → ${st.mean.toFixed(3)}`,"mean: in → out","ok")}</div>
+      <div class="explain" style="margin-top:6px"><p>${(()=>{
+        const q=Math.pow(p,H*W);
+        const qTxt=q<1e-6?"practically zero":(q*100).toFixed(q<0.005?2:0)+"%";
+        return `A whole channel dying needs 25 lost lotteries in a row — chance ${qTxt} at p = ${p.toFixed(2)}. ${st.killed?`It actually happened ${st.killed===1?"once":st.killed+" times"} here!`:"Every detector stays at least partly alive."}`;
+      })()}</p></div>`);
+    panel(side,"In the code — and the pattern",`<pre class="code small"><span class="cl">nn.Flatten(),               <span class="cm"># → (bs, 512)</span></span><span class="cl hld">Dropout(drop),  <span class="cm"># ← here: flat vector</span></span><span class="cl">nn.Linear(nfs[-1], 10, bias=False),</span></pre>
+      <div class="takeaway o" style="margin-top:6px">Salt everywhere — channels nicked, none lost. Real regularization? → tab ⑥.</div>`);
+  }else{
+    const st=chanStats();
+    panel(side,"Why a special 2D version exists",`<div class="explain"><p>On conv feature maps, plain dropout
+      <b>barely regularizes</b>: neighbours are so correlated that a dropped pixel <b class="p">leaks back</b>
+      (tab ⑥ proves it). SpatialDropout (Tompson et&nbsp;al., 2015) drops <b>whole feature maps</b> — entire
+      learned detectors — instead.</p></div>`);
+    panel(side,"How nn.Dropout2d decides — step by step",`<ul class="steps teal">
+      <li><span class="n">1</span><span>Only the <b>6 channels</b> get lottery tickets — one each. The individual pixels get no say. Each channel loses with chance p = ${p.toFixed(2)}, so on average <b>${(p*6).toFixed(1)} of the 6</b> channels lose.</span></li>
+      <li><span class="n">2</span><span>A losing channel is silenced <b>completely</b>: all 25 of its pixels become 0 together — that detector does not exist this step.</span></li>
+      <li><span class="n">3</span><span>Winning channels are made <b>a bit louder</b>${training?` (×${s.toFixed(2)})`:""} so the total signal keeps its strength — same demo under the grids.${(active&&chanStats().dropped.length===C)?` <b>This time there were no winners at all</b> — see the note below.`:""}</span></li></ul>`);
+    panel(side,"Live count — this exact mask",`<div class="pills">
+      ${pill("6","coin flips")}
+      ${pill(st.dropped.length?`${st.dropped.length} / 6`:"0 / 6",st.dropped.length?`channels wiped (#${st.dropped.join(", #")})`:"channels wiped",st.dropped.length?"hotc":"")}
+      ${pill(`${st.dropped.length*H*W} / 150`,`numbers zeroed (${Math.round(100*st.dropped.length*H*W/N)}%)`,st.dropped.length?"hotc":"")}
+      ${pill(`${meanOrig.toFixed(3)} → ${st.mean.toFixed(3)}`,"mean: in → out","ok")}</div>
+      <div class="explain" style="margin-top:6px"><p>${(()=>{
+        const wipe=Math.pow(p,C), wipeTxt=(wipe*100).toFixed(wipe<0.005?2:0)+"%";
+        if(st.dropped.length===C) return `☠️ <b>Total wipe-out:</b> all 6 channels died — output all zeros, mean 0.000. The boost only helps <b>survivors</b>, and there are none. At p = ${p.toFixed(2)} this happens ${wipeTxt} of the time (${p.toFixed(2)}<sup>6</sup>) — why Dropout2d needs <b>small</b> p. Press 🎲: over many masks the average still returns.`;
+        return `With only 6 flips, luck matters: the measured mean jumps around its target (press 🎲) but averages out over many masks.${p>=0.5?` And beware: at p = ${p.toFixed(2)} there is a ${wipeTxt} chance <b>all 6 channels die at once</b> — small p keeps that risk near zero.`:""}`;
+      })()}</p></div>`);
+    panel(side,"In the code — and the pattern",`<pre class="code small"><span class="cl">ResBlock(1, 16, ks=5, stride=1, …), <span class="cm"># → (bs,16,28,28)</span></span><span class="cl hlc">nn.Dropout2d(drop),  <span class="cm"># ← here: spatial maps</span></span><span class="cl">ResBlock(nfs[i], nfs[i+1], stride=2), …</span></pre>
+      <div class="takeaway t" style="margin-top:6px">Whole maps vanish — all-or-nothing → tab ⑥.</div>`);
+  }
+}
+
+/* ================= TAB 3 — compare ================= */
+function renderTab3(){
+  const {viz,side}=layout(false);
+  const s=scaleOf(),active=isActive();
+  const mE=elemMask(),mC=chanMask();
+  vizHeader(viz,"Same tensor · same p · same random seed — only the unit differs",`<span class="badge">p = ${p.toFixed(2)}</span>`);
+  const flow=document.createElement("div");flow.className="flowrow";flow.style.cssText="flex:1;justify-content:center;gap:8px";
+  const vmax=active?s*0.95:1;
+
+  const lab1=document.createElement("div");lab1.className="rowlab";
+  lab1.innerHTML=`<b style="color:var(--orange)">nn.Dropout output</b> — zeros scattered like salt · <span style="text-transform:none;letter-spacing:0">(illustrative input — see the caveat on the right)</span>`;
+  flow.appendChild(lab1);
+  flow.appendChild(tensorRow(24,(c,x,y)=>{
+    const v=tensor[c][y][x],d=mE[c][y][x],out=d?0:(active?v*s:v);
+    return {dropped:d,display:out,colorVal:out,vmax,
+      tip:d?`<span class="mono">${fmt(v)} → 0 (this pixel's own coin flip)</span>`:`<span class="mono">${fmt(v)} → ${fmt(out)}</span>`};
+  },c=>`ch ${c}`));
+
+  const gap=document.createElement("div");gap.style.height="10px";flow.appendChild(gap);
+
+  const lab2=document.createElement("div");lab2.className="rowlab";
+  lab2.innerHTML=`<b style="color:var(--teal)">nn.Dropout2d output</b> — whole feature maps vanish`;
+  flow.appendChild(lab2);
+  flow.appendChild(tensorRow(24,(c,x,y)=>{
+    const v=tensor[c][y][x],d=mC[c],out=d?0:(active?v*s:v);
+    return {dropped:d,display:out,colorVal:out,vmax,
+      tip:d?`<span class="mono">${fmt(v)} → 0 (channel ${c}'s single coin flip)</span>`:`<span class="mono">${fmt(v)} → ${fmt(out)}</span>`};
+  },c=>mC[c]?`ch ${c} <span class="dropnote">— dropped!</span>`:`ch ${c}`));
+
+  /* ---- how each kind of deletion helps the network learn ---- */
+  flow.insertAdjacentHTML("beforeend",`<div class="scaledemo">
+    <div class="sd-title">Remember: a channel is one learned <b>feature detector</b> (an edge, a curve, a stroke) — so the two layers ask the network very different questions</div>
+    <div class="callouts" style="margin-top:2px">
+      <div class="co c2" style="font-size:12px;padding:8px 12px"><b class="mono" style="color:var(--orange)">nn.Dropout</b> asks:
+        <b>"can you cope with static noise on your detectors?"</b> An easy question — convolution is naturally
+        noise-tolerant, and the intact neighbours fill each hole right back in (tab ⑥). The network barely has to change
+        how it stores information.</div>
+      <div class="co c1" style="font-size:12px;padding:8px 12px"><b class="mono" style="color:var(--teal)">nn.Dropout2d</b> asks:
+        <b>"can you still classify when a whole detector goes missing?"</b> A hard question — the only way to survive it is
+        to store every concept <b>redundantly across several channels</b>, so no single detector is a point of failure.
+        That redundancy is the real regularization.</div>
+    </div>
+  </div>`);
+  viz.appendChild(flow);
+  viz.insertAdjacentHTML("beforeend",legendHtml());
+
+  const stE=elemStats(),stC=chanStats();
+  panel(side,"Head to head",`<table class="cmp">
+    <tr><th></th><th class="od">Dropout</th><th class="tc">Dropout2d</th></tr>
+    <tr><td>coin flips</td><td>150 — per number</td><td>6 — per channel</td></tr>
+    <tr><td>unit zeroed</td><td>one pixel</td><td>one whole feature map</td></tr>
+    <tr><td>zeroed now</td><td>${stE.drop} px (${Math.round(100*stE.drop/N)}%)</td><td>${stC.dropped.length} ch = ${stC.dropped.length*25} px (${Math.round(100*stC.dropped.length*25/N)}%)</td></tr>
+    <tr><td>mean out</td><td>${stE.mean.toFixed(3)}</td><td>${stC.mean.toFixed(3)}</td></tr>
+    <tr><td>network learns</td><td>robustness to noisy pixels</td><td>redundancy across detectors</td></tr>
+  </table>`);
+  panel(side,"The subtle insight",`<div class="explain"><p>At the same p, <b>both zero the same number of values on average</b>
+    (p × 150 = ${(p*150).toFixed(0)}). The difference is pure <b class="p">structure</b>: scattered recoverable noise
+    vs. entire detectors missing. The <b>expected</b> mean is identical too — the 1/(1−p) scaling guarantees it for both
+    (the measured Dropout2d mean wobbles more per mask: it rides on just 6 coin flips instead of 150).</p></div>`);
+  panel(side,"But wait — is this comparison real?",`<div class="explain"><p>Not in our model — the two layers
+    <b>never see the same tensor</b> there. <b class="t">Dropout2d</b> really does run on the spatial
+    <b>(bs, 16, 28, 28)</b> activation, so its row above is faithful. But plain <b class="o">Dropout</b> runs
+    <b>after <code>Flatten()</code></b>, on a <b>(bs, 512)</b> vector with <b>no channels at all</b> — picture its real input
+    as one long row of 512 numbers, ~${Math.round(p*100)}% of them zeroed. We give it the 6-channel tensor here <b>only</b>
+    to show both drop patterns on identical input; the coin-per-number rule is the same either way.</p></div>
+    <div class="keybox" style="margin-top:7px">Rule of thumb: channels + spatial dims → <b>Dropout2d</b> · flat vector after
+    <code>Flatten()</code> → <b>Dropout</b>. Exactly how <code>get_dropmodel</code> places them — code in tab ①.</div>`);
+}
+
+/* ================= TAB 4 — why channels ================= */
+function renderTab4(){
+  const {viz,side}=layout(false);
+  const pe=Math.max(p,0.1);
+  const dropped=blob.map((row,y)=>row.map((_,x)=>uBlob[y][x]<pe));
+  const nDrop=dropped.flat().filter(Boolean).length;
+  vizHeader(viz,"The neighbour-leak experiment — one smooth 8×8 feature map",`<span class="badge">p = ${pe.toFixed(2)}</span>`);
+
+  const wrap2=document.createElement("div");
+  wrap2.style.cssText="flex:1;display:flex;flex-direction:column;justify-content:space-evenly;gap:6px";
+
+  function expRow(title,steps){
+    const box=document.createElement("div");
+    box.insertAdjacentHTML("beforeend",`<div class="exp-h">${title}</div>`);
+    const flow=document.createElement("div");flow.className="exp-flow";
+    steps.forEach((st,i)=>{
+      if(i){const a=document.createElement("div");a.className="exp-arrow";a.textContent="→";flow.appendChild(a);}
+      const el=document.createElement("div");el.className="exp-step";
+      el.innerHTML=`<div class="t">${st.t}</div>`;
+      el.appendChild(buildGrid(EH,EW,24,st.info));
+      flow.appendChild(el);
+    });
+    box.appendChild(flow);return box;
+  }
+  const orig=(x,y)=>({dropped:false,display:blob[y][x],colorVal:blob[y][x],vmax:1,tip:`<span class="mono">original ${fmt(blob[y][x])}</span>`});
+
+  /* row A */
+  const rec=(function(){
+    const recSrc=blob.map((row,y)=>row.map((v,x)=>dropped[y][x]?null:v));
+    return blob.map((row,y)=>row.map((v,x)=>{
+      if(!dropped[y][x])return {v,recon:false};
+      let s=0,n=0;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+        if(!dy&&!dx)continue;
+        const yy=y+dy,xx=x+dx;
+        if(yy<0||xx<0||yy>=EH||xx>=EW)continue;
+        if(recSrc[yy][xx]!==null){s+=recSrc[yy][xx];n++;}
+      }
+      return {v:n?s/n:0,recon:true};
+    }));
+  })();
+  let errSum=0,base=0;
+  for(let y=0;y<EH;y++)for(let x=0;x<EW;x++)
+    if(dropped[y][x]){errSum+=Math.abs(rec[y][x].v-blob[y][x]);base+=blob[y][x];}
+  const recovered=base>0?Math.max(0,100*(1-errSum/base)):100;
+
+  const rowA=expRow(`A — after <code style="color:var(--orange)">nn.Dropout</code> : holes have intact neighbours`,[
+    {t:"original map",info:orig},
+    {t:`after Dropout — ${nDrop} px zeroed`,info:(x,y)=>{
+      const v=blob[y][x],d=dropped[y][x];
+      return {dropped:d,display:v,colorVal:v,vmax:1,tip:d?`<span class="mono">${fmt(v)} → 0</span>`:`<span class="mono">${fmt(v)} kept</span>`};}},
+    {t:"rebuilt from 3×3 neighbour averages",info:(x,y)=>{
+      const r=rec[y][x],v=blob[y][x];
+      return {dropped:false,display:r.v,colorVal:r.v,vmax:1,recon:r.recon,
+        tip:r.recon?`<span class="tt">reconstructed</span><br><span class="mono">true ${fmt(v)} · rebuilt ${fmt(r.v)} · err ${fmt(Math.abs(r.v-v))}</span>`:`<span class="mono">${fmt(v)} (never dropped)</span>`};}}
+  ]);
+  rowA.insertAdjacentHTML("beforeend",`<span class="verdict ok">✓ ~${recovered.toFixed(0)}% of the dropped signal recovered by a dumb average — a trained conv filter does even better. The information leaked back.</span>`);
+  wrap2.appendChild(rowA);
+
+  const rowB=expRow(`B — after <code style="color:var(--teal)">nn.Dropout2d</code> : the whole map is gone`,[
+    {t:"original map",info:orig},
+    {t:"channel dropped — one flip, 64 zeros",info:(x,y)=>({dropped:true,display:0,colorVal:0,vmax:1,tip:`<span class="mono">${fmt(blob[y][x])} → 0 (whole channel)</span>`})},
+    {t:"rebuild attempt — nothing to average",info:()=>({dropped:true,display:0,colorVal:0,vmax:1,tip:`<span class="mono">no surviving neighbours → unrecoverable</span>`})}
+  ]);
+  rowB.insertAdjacentHTML("beforeend",`<span class="verdict bad">✗ 0% recovered from inside this map — the information must live redundantly in <b>other channels</b>. That is the regularization.</span>`);
+  wrap2.appendChild(rowB);
+  viz.appendChild(wrap2);
+
+  panel(side,"Why this experiment matters",`<div class="explain">
+    <p>Feature-map pixels are <b class="p">spatially correlated</b> — neighbours carry nearly the same information
+    (tab ② insight). So when element-wise dropout zeroes a pixel, the next conv layer can quietly
+    <b>reconstruct it from surviving neighbours</b>.</p>
+    <p>Here we refill every hole with the crudest recovery possible — the plain average of its surviving 3×3
+    neighbours — and still get most of the signal back. The "regularization" barely regularized.</p></div>`);
+  panel(side,"The punchline",`<div class="keybox">Dropping the <b>entire channel</b> removes the escape hatch:
+    no neighbours survive, nothing leaks. The network is forced to stop relying on any single feature detector and
+    to spread information <b>across channels</b>.</div>`);
+  panel(side,"And after Flatten()?",`<div class="explain"><p>A flat vector has <b>no spatial neighbours</b> —
+    adjacent entries are unrelated features, so nothing can leak and plain <code>Dropout</code> regularizes properly
+    there. That is why the model uses each layer where it does → the code in tab ①.</p></div>`);
+}
+
+/* ================= TAB "in the model" (shown first) ================= */
+function renderModelTab(){
+  const {viz}=layout(true);
+  vizHeader(viz,"get_dropmodel — the full code, and where the two dropouts sit",`<span class="badge">start here · hover the highlighted boxes · then explore tabs ②–⑦</span>`);
+  const body=document.createElement("div");
+  body.style.cssText="flex:1;display:flex;flex-direction:column;justify-content:center;gap:11px";
+
+  const nodes=[
+    {lab:"input",sh:"(bs, 1, 28, 28)"},
+    {lab:"ResBlock 1→16",sh:"(bs, 16, 28, 28)"},
+    {lab:"Dropout2d(p)",sh:"(bs, 16, 28, 28)",cls:"hl-c",
+     tip:"<span class='tt'>Why here?</span><br>The tensor is still spatial — 16 feature maps of 28×28 correlated pixels. Element-wise dropout would leak through neighbours (tab ⑥), so whole channels are dropped instead."},
+    {lab:"ResBlock ×5, stride 2",sh:"28→14→7→4→2→1 px"},
+    {lab:"Flatten",sh:"(bs, 512)"},
+    {lab:"Dropout(p)",sh:"(bs, 512)",cls:"hl-d",
+     tip:"<span class='tt'>Why here?</span><br>The tensor is now a flat vector — no channels, no spatial neighbours, so 'drop a channel' is meaningless. Element-wise dropout regularizes the 512 features, right before the classifier."},
+    {lab:"Linear 512→10",sh:"(bs, 10)"},
+    {lab:"BatchNorm1d",sh:"(bs, 10)"}
+  ];
+  const rail=document.createElement("div");rail.className="rail";
+  nodes.forEach((n,i)=>{
+    if(i){const a=document.createElement("div");a.className="arr";a.textContent="→";rail.appendChild(a);}
+    const el=document.createElement("div");el.className="st"+(n.cls?" "+n.cls:"");
+    el.innerHTML=`<div class="lab">${n.lab}</div><div class="sh">${n.sh}</div>`;
+    if(n.tip){el.addEventListener("mousemove",ev=>showTip(n.tip,ev));el.addEventListener("mouseleave",hideTip);}
+    rail.appendChild(el);
+  });
+  body.appendChild(rail);
+
+  const CODE=[
+    ["def get_dropmodel(act=nn.ReLU, nfs=(16, 32, 64, 128, 256, 512),",""],
+    ["                  norm=nn.BatchNorm2d, drop=0.0):",""],
+    ["    layers = [",""],
+    ["        ResBlock(1, 16, ks=5, stride=1, act=act, norm=norm),",""],
+    ["        nn.Dropout2d(drop),   <span class='cm'># ← channel-wise · (bs, 16, 28, 28)</span>","hlc"],
+    ["    ]",""],
+    ["    layers += [ResBlock(nfs[i], nfs[i+1], act=act,",""],
+    ["                        norm=norm, stride=2)",""],
+    ["               for i in range(len(nfs)-1)]",""],
+    ["    layers += [",""],
+    ["        nn.Flatten(),",""],
+    ["        Dropout(drop),        <span class='cm'># ← element-wise · (bs, 512)</span>","hld"],
+    ["        nn.Linear(nfs[-1], 10, bias=False),",""],
+    ["        nn.BatchNorm1d(10),",""],
+    ["    ]",""],
+    ["    return nn.Sequential(*layers)",""]
+  ].map(([t,c])=>`<span class="cl ${c}">${t}</span>`).join("");
+
+  body.insertAdjacentHTML("beforeend",`
+  <div style="display:grid;grid-template-columns:590px 1fr;gap:14px;align-items:stretch">
+    <div>
+      <div class="rowlab" style="margin-bottom:5px"><b>the full code</b> — only the two highlighted lines are dropout</div>
+      <pre class="code">${CODE}</pre>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;justify-content:space-between">
+      <div class="co c1"><b class="mono" style="color:var(--teal)">Why nn.Dropout2d exactly here</b> — this is the
+        <b>first moment feature maps exist</b>: 16 detectors, each a 28×28 map of correlated pixels. Dropping a whole map
+        means the network sometimes trains without one of its low-level detectors (an edge, a curve, a stroke) — so it
+        can never over-rely on any single one. Element-wise dropout here would do almost nothing: neighbours leak the
+        missing values right back (proof in tab ⑥).</div>
+      <div class="co c2"><b class="mono" style="color:var(--orange)">Why Dropout exactly here</b> — after
+        <code>Flatten()</code> the tensor is a flat <b>(bs, 512)</b> feature vector feeding the classifier, which holds the
+        most easily-overfit decisions. Zeroing individual features right before the <code>Linear</code> forces the classifier
+        to spread its evidence across many features instead of memorising a few. "Drop a channel" is meaningless here —
+        there are no channels left.</div>
+      <div class="keybox"><b>Why nowhere else?</b> On the <b>input</b> it would be catastrophic — the image has 1 channel,
+        so Dropout2d would delete the whole picture with probability p. <b>Deep in the stride-2 stack</b> the maps shrink
+        28→14→7→4→2→1 px: at 1×1 a "channel" is a single number, so Dropout2d degenerates into plain Dropout — and the
+        head's Dropout already covers that end. The two dropouts <b>bracket the network</b>: channel-wise where maps are
+        large and spatial, element-wise where features are flat.</div>
+    </div>
+  </div>
+  <div class="explain" style="text-align:center"><p>Footnotes: the capital-D <code>Dropout</code> is the course's own
+  re-implementation of <code>nn.Dropout</code> (identical behaviour) · <code>drop=0.0</code> by default, so dropout is opt-in ·
+  <code>model.eval()</code> turns both highlighted lines into the identity — flip the toggle above and see it in tabs ③–⑤.</p></div>`);
+  viz.appendChild(body);
+}
+
+/* ================= TAB 6 — quiz ================= */
+const QUIZ=[
+  {q:"With p = 0.1 on the real (1, 16, 28, 28) activation, how many values does each layer zero on average?",
+   a:`<b>Both ≈ 1,254 values — with opposite structure.</b><br>
+   <code>nn.Dropout</code>: 10% of 16×28×28 = 12,544 → ~1,254 <b>scattered pixels</b>; every map keeps ~90% of its pixels.<br>
+   <code>nn.Dropout2d</code>: 10% of 16 channels → ~1.6 <b>whole maps</b> × 784 ≈ 1,254 values too — concentrated into feature maps that vanish completely.<br>
+   Same count, different effect: recoverable noise vs. a missing detector.`},
+  {q:"Why not use Dropout2d before the final Linear layer instead of plain Dropout?",
+   a:`After <code>nn.Flatten()</code> the tensor is <b>(bs, 512)</b> — channel and spatial dimensions no longer exist, so
+   "drop a whole channel" is meaningless; <code>Dropout2d</code> expects <b>(N, C, H, W)</b>. The motivation is gone too:
+   adjacent entries of a flat vector are <b>unrelated features</b>, not correlated neighbours, so element-wise dropout
+   regularizes properly there.`},
+  {q:"What do both layers do when you call model.eval()?",
+   a:`<b>Nothing — they become the identity.</b> No zeroing, no 1/(1−p) scaling (the toggle above shows it live).
+   Because training already scaled survivors by 1/(1−p), the <b>expected</b> activation magnitude matches between
+   train and eval, so the network behaves consistently at inference.`},
+  {q:"Why are survivors multiplied by 1/(1−p) at all?",
+   a:`Zeroing a fraction p of values shrinks the average signal to (1−p) of its strength. Scaling survivors by
+   1/(1−p) restores it: <b>E[output] = E[input]</b> — watch the "mean: in → out" pill on tabs ③–④ hug the original
+   mean at any p. Without it, every downstream layer would see weaker inputs in training than at test time.`}
+];
+function renderTab6(){
+  const {viz}=layout(true);
+  vizHeader(viz,"Check yourself — click a card to reveal the answer",`<span class="badge">4 questions</span>`);
+  const grid=document.createElement("div");grid.className="quizgrid";
+  QUIZ.forEach(item=>{
+    const card=document.createElement("div");card.className="qcard";
+    card.innerHTML=`<div class="q">${item.q}</div><div class="a">${item.a}</div><div class="revealhint">click to reveal ▸</div>`;
+    card.addEventListener("click",()=>card.classList.toggle("open"));
+    grid.appendChild(card);
+  });
+  viz.appendChild(grid);
+}
+
+/* ================= render dispatch ================= */
+function render(animate){
+  clearTimers();hideTip();
+  $('scaleval').textContent=training?("×"+scaleOf().toFixed(2)):"— eval";
+  $('controlbar').classList.toggle("dimmed",tab===6);
+  $('btnreplay').style.visibility=(tab===2||tab===3)?"visible":"hidden";
+  if(tab===0)renderModelTab();      /* ① in the model */
+  else if(tab===1)renderTab0();     /* ② the tensor */
+  else if(tab===2)renderDropTab('e',animate);  /* ③ dropout */
+  else if(tab===3)renderDropTab('c',animate);  /* ④ dropout2d */
+  else if(tab===4)renderTab3();     /* ⑤ compare */
+  else if(tab===5)renderTab4();     /* ⑥ why channels */
+  else renderTab6();                /* ⑦ quiz */
+}
+
+/* ================= wiring ================= */
+document.querySelectorAll('#tabs button').forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+    tab=+b.dataset.t;
+    render(tab===2||tab===3); /* animate the drop when entering a dropout tab */
+  });
+});
+$('pslider').addEventListener("input",()=>{
+  p=parseFloat($('pslider').value);
+  $('pval').textContent=p.toFixed(2);
+  render(false);
+});
+$('btnresample').addEventListener("click",()=>{maskSeed++;resample();render(tab===2||tab===3);});
+$('btnreplay').addEventListener("click",()=>render(true));
+$('btntrain').addEventListener("click",function(){
+  training=true;this.classList.add("on");$('btneval').classList.remove("on");render(false);
+});
+$('btneval').addEventListener("click",function(){
+  training=false;this.classList.add("on");$('btntrain').classList.remove("on");render(false);
+});
+$('scalepill').addEventListener("mousemove",ev=>{
+  const s=scaleOf();
+  showTip(training
+    ?`<span class="tt">Why ×${s.toFixed(2)}?</span><br>Dropping ${Math.round(p*100)}% of the values makes the layer's total signal ${Math.round(p*100)}% quieter. Multiplying each survivor by 1/(1−${p.toFixed(2)}) = ${s.toFixed(2)} restores the original volume.<br><span class="mono">p=0.9 → 1 in 10 survives → ×10 louder</span>`
+    :`<span class="tt">eval mode</span><br>Nothing is dropped, so nothing needs scaling — values pass through unchanged.`,ev);
+});
+$('scalepill').addEventListener("mouseleave",hideTip);
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowRight"||e.key==="ArrowLeft"){
+    const nt=(tab+(e.key==="ArrowRight"?1:-1)+7)%7;
+    document.querySelector(`#tabs button[data-t="${nt}"]`).click();
+  }
+});
+
+/* ================= fit-to-viewport scaling (no scrolling, ever) ================= */
+const stage=$('stage');
+function fit(){
+  const s=Math.min(window.innerWidth/1280,window.innerHeight/800);
+  stage.style.transform=`scale(${Math.min(s,1.6)})`;
+}
+window.addEventListener("resize",fit);
+fit();
+
+/* let a notebook iframe embed size itself sensibly */
+function postH(){
+  if(window.parent!==window){
+    window.parent.postMessage({type:'ce-frame-height',height:810},'*');
+    window.parent.postMessage({type:'ae-frame-height',height:810},'*');
+  }
+}
+window.addEventListener('load',postH);setTimeout(postH,300);
+
+render(false);
+})();
+</script>
+</body>
+</html>
