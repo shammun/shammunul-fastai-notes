@@ -8844,19 +8844,19 @@ $$\hat{\mathbf{x}}_0 = \frac{\mathbf{x}_t - \sqrt{1-\bar{\alpha}_t}\,\boldsymbol
 <span class="n">xt_coeff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">α</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">b̄_t1</span> <span class="o">/</span> <span class="n">b̄_t</span>
 </pre></div>
 <p>These come directly from the posterior mean formula $\tilde{\mu}_t$ from Eq. (7) of the paper:</p>
-$$\tilde{\mu}_t = \underbrace{\frac{\sqrt{\bar{\alpha}_{t-1}}\,\beta_t}{1-\bar{\alpha}_t}}_{\texttt{x0\_coeff}} \hat{\mathbf{x}}_0 + \underbrace{\frac{\sqrt{\alpha_t}(1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t}}_{\texttt{xt\_coeff}} \mathbf{x}_t$$<p>They control how much weight to give the clean image estimate vs the current noisy image. At large $t$ (lots of noise), <code>x0_coeff</code> dominates &mdash; we rely heavily on the model's estimate of $\mathbf{x}_0$. At small $t$ (nearly clean), <code>xt_coeff</code> dominates &mdash; we mostly trust what we already have.</p>
+$$\tilde{\mu}_t = \underbrace{\frac{\sqrt{\bar{\alpha}_{t-1}}\,\beta_t}{1-\bar{\alpha}_t}}_{\texttt{x0_coeff}} \hat{\mathbf{x}}_0 + \underbrace{\frac{\sqrt{\alpha_t}(1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t}}_{\texttt{xt_coeff}} \mathbf{x}_t$$<p>They control how much weight to give the clean image estimate vs the current noisy image. At large $t$ (lots of noise), <code>x0_coeff</code> dominates &mdash; we rely heavily on the model's estimate of $\mathbf{x}_0$. At small $t$ (nearly clean), <code>xt_coeff</code> dominates &mdash; we mostly trust what we already have.</p>
 <p><strong>Step 6 &mdash; Compute $\mathbf{x}_{t-1}$:</strong></p>
 <div class="highlight"><pre><span></span><span class="n">x_t</span> <span class="o">=</span> <span class="n">x_0_hat</span> <span class="o">*</span> <span class="n">x0_coeff</span> <span class="o">+</span> <span class="n">x_t</span> <span class="o">*</span> <span class="n">xt_coeff</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">σ</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">z</span>
 </pre></div>
 <p>This is Algorithm 2 from the paper:</p>
-$$\mathbf{x}_{t-1} = \texttt{x0\_coeff} \cdot \hat{\mathbf{x}}_0 + \texttt{xt\_coeff} \cdot \mathbf{x}_t + \sigma_t \mathbf{z}$$<p>The $\sigma_t \mathbf{z}$ term adds a small amount of fresh noise back &mdash; this is intentional and comes from the stochastic nature of the reverse process. At $t=0$ we set $\mathbf{z} = 0$ so no noise is added in the very last step.</p>
+$$\mathbf{x}_{t-1} = \texttt{x0_coeff} \cdot \hat{\mathbf{x}}_0 + \texttt{xt_coeff} \cdot \mathbf{x}_t + \sigma_t \mathbf{z}$$<p>The $\sigma_t \mathbf{z}$ term adds a small amount of fresh noise back &mdash; this is intentional and comes from the stochastic nature of the reverse process. At $t=0$ we set $\mathbf{z} = 0$ so no noise is added in the very last step.</p>
 <hr/>
 <h3 id="Step-6-in-Compact-Form:-$%5Cmathbf%7Bx%7D_%7Bt-1%7D-=-%5Ctilde%7B%5Cmu%7D_t-+-%5Csigma_t-%5Cmathbf%7Bz%7D$">Step 6 in Compact Form: $\mathbf{x}_{t-1} = \tilde{\mu}_t + \sigma_t \mathbf{z}$<a class="anchor-link" href="#Step-6-in-Compact-Form:-$%5Cmathbf%7Bx%7D_%7Bt-1%7D-=-%5Ctilde%7B%5Cmu%7D_t-+-%5Csigma_t-%5Cmathbf%7Bz%7D$">¶</a></h3><p>The Step 6 formula is actually just the reparameterization trick applied to the posterior Gaussian. From Eq. (6) of the paper, the true posterior is:</p>
 $$q(\mathbf{x}_{t-1}|\mathbf{x}_t, \mathbf{x}_0) = \mathcal{N}(\mathbf{x}_{t-1};\; \tilde{\mu}_t,\; \tilde{\beta}_t \mathbf{I})$$<p>To <strong>sample</strong> from any Gaussian $\mathcal{N}(\mu, \sigma^2)$, you use the reparameterization trick:</p>
 $$\text{sample} = \mu + \sigma \cdot \mathbf{z}, \qquad \mathbf{z} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$$<p>So sampling $\mathbf{x}_{t-1}$ from the reverse posterior is exactly:</p>
 $$\mathbf{x}_{t-1} = \tilde{\mu}_t + \sigma_t \mathbf{z}$$<p>And since $\tilde{\mu}_t$ expands into its two components from Eq. (7):</p>
-$$\tilde{\mu}_t = \underbrace{\frac{\sqrt{\bar{\alpha}_{t-1}}\,\beta_t}{1-\bar{\alpha}_t}}_{\texttt{x0\_coeff}} \hat{\mathbf{x}}_0 + \underbrace{\frac{\sqrt{\alpha_t}(1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t}}_{\texttt{xt\_coeff}} \mathbf{x}_t$$<p>Substituting gives the full code form:</p>
-$$\mathbf{x}_{t-1} = \underbrace{\texttt{x0\_coeff} \cdot \hat{\mathbf{x}}_0 + \texttt{xt\_coeff} \cdot \mathbf{x}_t}_{\tilde{\mu}_t} + \sigma_t \mathbf{z}$$<p>So Jeremy's code is not doing anything extra &mdash; it just writes $\tilde{\mu}_t$ expanded rather than compact. The two forms are identical.</p>
+$$\tilde{\mu}_t = \underbrace{\frac{\sqrt{\bar{\alpha}_{t-1}}\,\beta_t}{1-\bar{\alpha}_t}}_{\texttt{x0_coeff}} \hat{\mathbf{x}}_0 + \underbrace{\frac{\sqrt{\alpha_t}(1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t}}_{\texttt{xt_coeff}} \mathbf{x}_t$$<p>Substituting gives the full code form:</p>
+$$\mathbf{x}_{t-1} = \underbrace{\texttt{x0_coeff} \cdot \hat{\mathbf{x}}_0 + \texttt{xt_coeff} \cdot \mathbf{x}_t}_{\tilde{\mu}_t} + \sigma_t \mathbf{z}$$<p>So Jeremy's code is not doing anything extra &mdash; it just writes $\tilde{\mu}_t$ expanded rather than compact. The two forms are identical.</p>
 <p><strong>Why $\sigma_t$ and not $\tilde{\beta}_t$ directly?</strong> Because $\tilde{\beta}_t$ is the variance and $\sigma_t$ is the standard deviation. The reparameterization trick multiplies by the standard deviation, not the variance:</p>
 $$\sigma_t = \sqrt{\tilde{\beta}_t}$$<p>In Jeremy's code he uses the simpler fixed choice $\sigma_t = \sqrt{\beta_t}$ rather than $\sqrt{\tilde{\beta}_t}$, which is one of the two valid options discussed in Section 6 of the paper:</p>
 <div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">σ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">β</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>   <span class="c1"># σ_t = &radic;β_t</span>
@@ -8994,7 +8994,7 @@ torch.randn &rarr; [1.1, -0.2, ...]  &rarr;   image of a sneaker
 <td>The model learned the right denoising direction, so trajectories land in plausible image space</td>
 </tr>
 <tr>
-<td>What is $\mathbf{x}_{t-1} = \texttt{x0\_coeff}\cdot\hat{\mathbf{x}}_0 + \texttt{xt\_coeff}\cdot\mathbf{x}_t + \sigma_t\mathbf{z}$?</td>
+<td>What is $\mathbf{x}_{t-1} = \texttt{x0_coeff}\cdot\hat{\mathbf{x}}_0 + \texttt{xt_coeff}\cdot\mathbf{x}_t + \sigma_t\mathbf{z}$?</td>
 <td>Just $\tilde{\mu}_t + \sigma_t\mathbf{z}$ &mdash; the reparameterization trick applied to the posterior Gaussian</td>
 </tr>
 </tbody>
@@ -9445,7 +9445,7 @@ $$x_0 \text{ coefficient} = \frac{\sqrt{\bar{\alpha}_{t-1}} \cdot (1-\alpha_t)}{
 <h3 id="Step-9:-Compute-x_%7Bt-1%7D">Step 9: Compute x_{t-1}<a class="anchor-link" href="#Step-9:-Compute-x_%7Bt-1%7D">¶</a></h3><div class="highlight"><pre><span></span><span class="n">x_t</span> <span class="o">=</span> <span class="n">x_0_hat</span> <span class="o">*</span> <span class="n">x0_coeff</span> <span class="o">+</span> <span class="n">x_t</span> <span class="o">*</span> <span class="n">xt_coeff</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">σ</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">z</span>
 </pre></div>
 <p><strong>This implements Equation 3:</strong></p>
-$$x_{t-1} = \text{x0\_coeff} \cdot \hat{x}_0 + \text{xt\_coeff} \cdot x_t + \sigma_t \cdot z$$<p>Breaking it down:</p>
+$$x_{t-1} = \text{x0_coeff} \cdot \hat{x}_0 + \text{xt_coeff} \cdot x_t + \sigma_t \cdot z$$<p>Breaking it down:</p>
 <table>
 <thead>
 <tr>
