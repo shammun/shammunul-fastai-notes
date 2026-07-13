@@ -8438,21 +8438,21 @@ Output: (batch, 1, 32, 32)
 <div class="highlight hl-python"><pre><span></span><span class="k">class</span> <span class="nc">DDPMCB</span><span class="p">(</span><span class="n">TrainCB</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Denoising Diffusion Probabilistic Model Callback.</span>
-<span class="sd">    </span>
+
 <span class="sd">    This callback handles:</span>
 <span class="sd">    1. Setting up the noise schedule (β, α, ᾱ, σ)</span>
 <span class="sd">    2. Adding noise to images during training (forward process)</span>
 <span class="sd">    3. Sampling new images after training (reverse process)</span>
 <span class="sd">    """</span>
-    
+
     <span class="c1"># order determines when this callback runs relative to others</span>
     <span class="c1"># We need it to run AFTER DeviceCB (which moves data to GPU)</span>
     <span class="n">order</span> <span class="o">=</span> <span class="n">DeviceCB</span><span class="o">.</span><span class="n">order</span> <span class="o">+</span> <span class="mi">1</span>
-    
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_steps</span><span class="p">,</span> <span class="n">beta_min</span><span class="p">,</span> <span class="n">beta_max</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Initialize the DDPM callback.</span>
-<span class="sd">        </span>
+
 <span class="sd">        Parameters:</span>
 <span class="sd">        -----------</span>
 <span class="sd">        n_steps : int</span>
@@ -8463,26 +8463,26 @@ Output: (batch, 1, 32, 32)
 <span class="sd">            Maximum variance (at t=T), typically 0.02</span>
 <span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>  <span class="c1"># Call parent class constructor</span>
-        
+
         <span class="c1"># Store the parameters</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span> <span class="o">=</span> <span class="n">n_steps</span>        <span class="c1"># Total number of timesteps (T)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">βmin</span> <span class="o">=</span> <span class="n">beta_min</span>          <span class="c1"># Minimum beta value</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">βmax</span> <span class="o">=</span> <span class="n">beta_max</span>          <span class="c1"># Maximum beta value</span>
-        
+
         <span class="c1"># ================================================================</span>
         <span class="c1"># VARIANCE SCHEDULE SETUP</span>
         <span class="c1"># ================================================================</span>
-        
+
         <span class="c1"># β (beta): Variance schedule - linearly increases from βmin to βmax</span>
         <span class="c1"># torch.linspace creates n_steps evenly spaced values from βmin to βmax</span>
         <span class="c1"># Shape: (n_steps,) = (1000,)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">β</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">βmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">βmax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">)</span>
-        
+
         <span class="c1"># α (alpha): How much of the signal (image) to keep at each step</span>
         <span class="c1"># α = 1 - β, so as β increases, α decreases</span>
         <span class="c1"># Shape: (n_steps,) = (1000,)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">α</span> <span class="o">=</span> <span class="mf">1.</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">β</span>
-        
+
         <span class="c1"># ᾱ (alpha bar): Cumulative product of α</span>
         <span class="c1"># ᾱ_t = α_1 * α_2 * ... * α_t</span>
         <span class="c1"># This tells us the TOTAL signal remaining after t steps</span>
@@ -8490,42 +8490,50 @@ Output: (batch, 1, 32, 32)
         <span class="c1"># Example: cumprod([2, 3, 4]) = [2, 6, 24]</span>
         <span class="c1"># Shape: (n_steps,) = (1000,)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cumprod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">α</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-        
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        self.α is a 1D tensor of shape (n_steps,), so dim=0 is its only dimension — the one running along the timesteps.</span>
+<span class="sd">        dim=0 tells cumprod to accumulate the product along that timestep axis, giving ᾱ_t = α_1·α_2·…·α_t at each position.</span>
+<span class="sd">        It's needed because torch.cumprod requires you to specify which dimension to accumulate over — there's no default. Even</span>
+<span class="sd">        though a 1D tensor has only one possible axis, you must state it explicitly or the call errors out. For a 1D tensor dim=0</span>
+<span class="sd">        and dim=-1 are equivalent here.</span>
+<span class="sd">        """</span>
+
         <span class="c1"># σ (sigma): Standard deviation of noise to add during sampling</span>
-        <span class="c1"># σ = &radic;β</span>
+        <span class="c1"># σ = √β</span>
         <span class="c1"># Shape: (n_steps,) = (1000,)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">σ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">β</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        How to get predictions from the model.</span>
-<span class="sd">        </span>
+
 <span class="sd">        The model takes (noisy_image, timestep) and outputs a prediction.</span>
 <span class="sd">        The .sample attribute extracts the actual tensor from the model output.</span>
-<span class="sd">        </span>
+
 <span class="sd">        Parameters:</span>
 <span class="sd">        -----------</span>
 <span class="sd">        learn : Learner</span>
 <span class="sd">            The learner object containing model and batch data</span>
 <span class="sd">        """</span>
-        <span class="c1"># learn.batch[0] is the tuple (noisy_image, timestep) because learn.batch is ((xt, t), ε) and </span>
+        <span class="c1"># learn.batch[0] is the tuple (noisy_image, timestep) because learn.batch is ((xt, t), ε) and</span>
         <span class="c1"># is defined inside before_batch method below</span>
         <span class="c1"># *learn.batch[0] unpacks it as two separate arguments</span>
-        <span class="c1"># .sample extracts the output tensor from the model's output object -- this sample method is defined </span>
+        <span class="c1"># .sample extracts the output tensor from the model's output object -- this sample method is defined</span>
         <span class="c1"># in the diffusers library in HuggingFace</span>
+        <span class="c1"># diffusion UNet takes two things, the input and time step</span>
         <span class="n">learn</span><span class="o">.</span><span class="n">preds</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">sample</span>
-    
+
     <span class="k">def</span> <span class="nf">before_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Called before each training batch.</span>
-<span class="sd">        </span>
+
 <span class="sd">        This is where we implement the FORWARD DIFFUSION PROCESS:</span>
 <span class="sd">        1. Get the clean images</span>
 <span class="sd">        2. Generate random noise</span>
 <span class="sd">        3. Pick random timesteps</span>
-<span class="sd">        4. Create noisy images using the formula: xₜ = &radic;(ᾱₜ)*x₀ + &radic;(1-ᾱₜ)*ε</span>
+<span class="sd">        4. Create noisy images using the formula: xₜ = √(ᾱₜ)*x₀ + √(1-ᾱₜ)*ε</span>
 <span class="sd">        5. Set up the batch for training</span>
-<span class="sd">        </span>
+
 <span class="sd">        Parameters:</span>
 <span class="sd">        -----------</span>
 <span class="sd">        learn : Learner</span>
@@ -8533,7 +8541,7 @@ Output: (batch, 1, 32, 32)
 <span class="sd">        """</span>
         <span class="c1"># Get the device (CPU or GPU) where our data is</span>
         <span class="n">device</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">device</span>
-        
+
         <span class="c1"># ================================================================</span>
         <span class="c1"># STEP 1: Generate random noise (ε)</span>
         <span class="c1"># ================================================================</span>
@@ -8542,20 +8550,20 @@ Output: (batch, 1, 32, 32)
         <span class="c1"># Shape: same as input images (batch_size, 1, 32, 32)</span>
         <span class="n">ε</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span> <span class="c1"># the actual noise</span>
         <span class="c1"># the actual noise we are adding and this is also the target, we try to predict the noise in the image</span>
-        
+
         <span class="c1"># ================================================================</span>
         <span class="c1"># STEP 2: Get the original clean images (x₀)</span>
         <span class="c1"># ================================================================</span>
         <span class="n">x0</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># Shape: (batch_size, 1, 32, 32)</span>
         <span class="c1"># learn.batch = (images, labels)</span>
         <span class="c1"># So learn.batch[0] gives us the batch of images. We call this batch x0</span>
-        
+
         <span class="c1"># Move ᾱ to the same device as our data (important for GPU training)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
-        
+
         <span class="c1"># Get batch size</span>
         <span class="n">n</span> <span class="o">=</span> <span class="n">x0</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># Number of images in this batch</span>
-        
+
         <span class="c1"># ================================================================</span>
         <span class="c1"># STEP 3: Select random timesteps for each image</span>
         <span class="c1"># ================================================================</span>
@@ -8571,7 +8579,7 @@ Output: (batch, 1, 32, 32)
         <span class="c1">#        img0 img1 img2 img3</span>
         <span class="c1">#        gets gets gets gets</span>
         <span class="c1">#        t=42 t=731 t=156 t=908</span>
-        
+
         <span class="c1"># ================================================================</span>
         <span class="c1"># STEP 4: Get ᾱ values for the selected timesteps</span>
         <span class="c1"># ================================================================</span>
@@ -8580,32 +8588,32 @@ Output: (batch, 1, 32, 32)
         <span class="c1"># This allows element-wise multiplication with images of shape (batch_size, 1, 32, 32)</span>
         <span class="n">ᾱ_t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
         <span class="c1"># Shape: (batch_size, 1, 1, 1)</span>
-        
+
         <span class="c1"># ================================================================</span>
         <span class="c1"># STEP 5: Create noisy images using the forward diffusion formula</span>
         <span class="c1"># ================================================================</span>
-        <span class="c1"># Formula: xₜ = &radic;(ᾱₜ) * x₀ + &radic;(1-ᾱₜ) * ε</span>
+        <span class="c1"># Formula: xₜ = √(ᾱₜ) * x₀ + √(1-ᾱₜ) * ε</span>
         <span class="c1"># - ᾱ_t.sqrt() * x0: The "signal" part (scaled original image)</span>
         <span class="c1"># - (1-ᾱ_t).sqrt() * ε: The "noise" part (scaled random noise)</span>
         <span class="n">xt</span> <span class="o">=</span> <span class="n">ᾱ_t</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">ᾱ_t</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">ε</span>
         <span class="c1"># Shape: (batch_size, 1, 32, 32)</span>
-        
+
         <span class="c1"># ================================================================</span>
         <span class="c1"># STEP 6: Set up the batch for training</span>
         <span class="c1"># ================================================================</span>
         <span class="c1"># Model input: (noisy_image, timestep)</span>
         <span class="c1"># Target (ground truth): the noise ε that was added</span>
         <span class="c1"># The model will learn to predict ε from xt and t</span>
-        <span class="n">learn</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="p">((</span><span class="n">xt</span><span class="p">,</span> <span class="n">t</span><span class="p">),</span> <span class="n">ε</span><span class="p">)</span>
+        <span class="n">learn</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="p">((</span><span class="n">xt</span><span class="p">,</span> <span class="n">t</span><span class="p">),</span> <span class="n">ε</span><span class="p">)</span> <span class="c1"># target is learn.batch[1] because in *learn.batch[self.n_inp:] self.n_inp is 1</span>
         <span class="c1"># so our target is learn.batch[1] which is ε</span>
-    
+
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>  <span class="c1"># Disable gradient computation (we don't need it for sampling)</span>
     <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">sz</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">"""</span>
 <span class="sd">        Generate new images using the REVERSE DIFFUSION PROCESS.</span>
-<span class="sd">        </span>
+
 <span class="sd">        Starting from pure random noise, we iteratively denoise to get images.</span>
-<span class="sd">        </span>
+
 <span class="sd">        Parameters:</span>
 <span class="sd">        -----------</span>
 <span class="sd">        model : nn.Module</span>
@@ -8619,59 +8627,61 @@ Output: (batch, 1, 32, 32)
 <span class="sd">            #     |   |   └────── Height: 32 pixels</span>
 <span class="sd">            #     |   └────────── Channels: 1 (grayscale)</span>
 <span class="sd">            #     └────────────── Batch size: 16 images to generate</span>
-<span class="sd">            </span>
+
 <span class="sd">        Returns:</span>
 <span class="sd">        --------</span>
 <span class="sd">        preds : list</span>
 <span class="sd">            List of tensors, one for each timestep, showing the denoising process</span>
 <span class="sd">        """</span>
         <span class="c1"># Get the device from the model's parameters</span>
-        <span class="n">device</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span><span class="o">.</span><span class="n">device</span> 
+        <span class="n">device</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span><span class="o">.</span><span class="n">device</span>
         <span class="c1"># model.parameters() returns an iterator over the model's parameters</span>
         <span class="c1"># next(model.parameters()) returns the first parameter of the model</span>
         <span class="c1"># .device returns the device (CPU or GPU) where the parameter is stored</span>
-        
+
         <span class="c1"># ================================================================</span>
         <span class="c1"># STEP 1: Start with pure random noise (x_T)</span>
         <span class="c1"># ================================================================</span>
         <span class="n">x_t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">sz</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span> <span class="c1"># So based on the values of this, we will generate different images</span>
         <span class="c1"># So, every time we have different random noise, we will generate different images</span>
         <span class="c1"># So there will be no control over what type of images we generate as it all depends on the random noise we start with</span>
-        
+
         <span class="c1"># List to store intermediate results for visualization</span>
         <span class="n">preds</span> <span class="o">=</span> <span class="p">[]</span>
-        
+
         <span class="c1"># ================================================================</span>
         <span class="c1"># STEP 2: Iterate backwards through timesteps (T-1 to 0)</span>
         <span class="c1"># ================================================================</span>
         <span class="c1"># reversed(range(n)) goes from n-1 down to 0</span>
         <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">)):</span>
-            
+
             <span class="c1"># Create a batch of the same timestep for all images</span>
             <span class="c1"># Shape: (batch_size,) all filled with value t</span>
             <span class="n">t_batch</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">x_t</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],),</span> <span class="n">t</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
-            
+
             <span class="c1"># Add noise z for all steps except the final one (t=0)</span>
             <span class="c1"># At t=0, we don't add noise (z=0)</span>
             <span class="n">z</span> <span class="o">=</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">x_t</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x_t</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
-            
+
             <span class="c1"># Get ᾱ for the previous timestep (t-1)</span>
             <span class="c1"># For t=0, we use 1 (meaning the original image has full signal)</span>
             <span class="n">ᾱ_t1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span><span class="p">[</span><span class="n">t</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-            
+
             <span class="c1"># Cumulative noise variance at timestep t</span>
             <span class="n">b̄_t</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
-            
+
             <span class="c1"># Cumulative noise variance at timestep t-1</span>
             <span class="n">b̄_t1</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">ᾱ_t1</span>
-            
+
             <span class="c1"># ================================================================</span>
             <span class="c1"># STEP 3: Get noise prediction from the model</span>
             <span class="c1"># ================================================================</span>
-            <span class="n">noise_pred</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">x_t</span><span class="p">,</span> <span class="n">t_batch</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span> <span class="c1"># call the model on inputs or current noisy image x_t and timestep t_batch</span>
+            <span class="n">noise_pred</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">x_t</span><span class="p">,</span> <span class="n">t_batch</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span>
             <span class="c1"># Calls Unet2DModel</span>
+            <span class="c1"># call the model on inputs or current noisy image x_t and timestep t_batch</span>
+            <span class="c1"># HuggingFace requires .sample</span>
 <span class="w">            </span><span class="sd">"""</span>
-<span class="sd">            </span>
+
 <span class="sd">            from diffusers import UNet2DModel</span>
 
 <span class="sd">            # Create the U-Net model</span>
@@ -8689,28 +8699,28 @@ Output: (batch, 1, 32, 32)
             <span class="c1"># ================================================================</span>
             <span class="c1"># STEP 4: Estimate the clean image (x₀) from current noisy image</span>
             <span class="c1"># ================================================================</span>
-            <span class="c1"># Rearranging the forward formula: x₀ = (xₜ - &radic;(1-ᾱₜ)*ε) / &radic;(ᾱₜ)</span>
+            <span class="c1"># Rearranging the forward formula: x₀ = (xₜ - √(1-ᾱₜ)*ε) / √(ᾱₜ)</span>
             <span class="c1"># We use our noise prediction in place of the true ε</span>
             <span class="c1"># .clamp(-1, 1) keeps values in valid range</span>
             <span class="n">x_0_hat</span> <span class="o">=</span> <span class="p">((</span><span class="n">x_t</span> <span class="o">-</span> <span class="n">b̄_t</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">noise_pred</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">sqrt</span><span class="p">())</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-            
+
             <span class="c1"># ================================================================</span>
             <span class="c1"># STEP 5: Calculate coefficients for the sampling formula</span>
             <span class="c1"># ================================================================</span>
             <span class="c1"># These coefficients come from the DDPM paper's posterior distribution</span>
             <span class="n">x0_coeff</span> <span class="o">=</span> <span class="n">ᾱ_t1</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">α</span><span class="p">[</span><span class="n">t</span><span class="p">])</span> <span class="o">/</span> <span class="n">b̄_t</span>
             <span class="n">xt_coeff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">α</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">b̄_t1</span> <span class="o">/</span> <span class="n">b̄_t</span>
-            
+
             <span class="c1"># ================================================================</span>
             <span class="c1"># STEP 6: Compute x_{t-1} (one step denoised)</span>
             <span class="c1"># ================================================================</span>
             <span class="c1"># x_{t-1} = x0_coeff * x₀_hat + xt_coeff * xₜ + σₜ * z</span>
             <span class="n">x_t</span> <span class="o">=</span> <span class="n">x_0_hat</span> <span class="o">*</span> <span class="n">x0_coeff</span> <span class="o">+</span> <span class="n">x_t</span> <span class="o">*</span> <span class="n">xt_coeff</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">σ</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">z</span>
-            
+
             <span class="c1"># Store the current state for visualization</span>
             <span class="n">preds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x_t</span><span class="o">.</span><span class="n">cpu</span><span class="p">())</span> <span class="c1"># the last value of the preds gives us the final generated image</span>
             <span class="c1"># preds[-1]  # Final generated images (all 16 of them) where 16 is the batch size</span>
-            <span class="c1"># So every 16 images generated is completely random and all the new images's label or type depend </span>
+            <span class="c1"># So every 16 images generated is completely random and all the new images's label or type depend</span>
             <span class="c1"># on from what random noise it started generating from</span>
 
         <span class="k">return</span> <span class="n">preds</span>
@@ -8804,6 +8814,126 @@ Output: (batch, 1, 32, 32)
 <li><code>learn.batch[1]</code> = training target = <code>ε</code> &mdash; the noise we want the model to predict</li>
 </ul>
 <p>The rest of the training loop (loss computation, backprop) then works automatically without any other changes, because it always reads from <code>learn.batch[0]</code> for inputs and <code>learn.batch[1]</code> for targets.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=t-batch-explainer">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="Understanding-t_batch">Understanding <code>t_batch</code><a class="anchor-link" href="#Understanding-t_batch">¶</a></h2><div class="highlight"><pre><span></span><span class="n">t_batch</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">x_t</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],),</span> <span class="n">t</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+</pre></div>
+<h3 id="What-it-does">What it does<a class="anchor-link" href="#What-it-does">¶</a></h3><p>Creates a 1D tensor of length <code>x_t.shape[0]</code> (the batch size, e.g. 16) where <strong>every element equals the current timestep <code>t</code></strong>.</p>
+<p>For example, if <code>t = 843</code> and we're generating 16 images, it produces:</p>
+<pre><code>tensor([843, 843, 843, ..., 843])   # 16 copies
+</code></pre>
+<h3 id="How-it-does-it">How it does it<a class="anchor-link" href="#How-it-does-it">¶</a></h3><p><code>torch.full(size, fill_value)</code> makes a tensor of the given shape filled entirely with one value.</p>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Value</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>size</code></td>
+<td><code>(x_t.shape[0],)</code> = <code>(16,)</code></td>
+<td>one entry per image in the batch</td>
+</tr>
+<tr>
+<td><code>fill_value</code></td>
+<td><code>t</code></td>
+<td>the current timestep</td>
+</tr>
+<tr>
+<td><code>dtype=torch.long</code></td>
+<td>integer</td>
+<td>timesteps are integer indices</td>
+</tr>
+<tr>
+<td><code>device=device</code></td>
+<td>GPU/CPU</td>
+<td>keeps it on the same device as <code>x_t</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="Why-length-=-batch-size">Why length = batch size<a class="anchor-link" href="#Why-length-=-batch-size">¶</a></h3><p>During sampling, <strong>all images in the batch are at the same timestep</strong> in the reverse loop (unlike training, where each image got its own random <code>t</code>). But the model still needs one timestep value <strong>per image</strong>, so the single <code>t</code> is broadcast into a per-image vector.</p>
+<h3 id="How-it-is-used-later">How it is used later<a class="anchor-link" href="#How-it-is-used-later">¶</a></h3><p>It is fed to the model on the next line:</p>
+<div class="highlight"><pre><span></span><span class="n">noise_pred</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">x_t</span><span class="p">,</span> <span class="n">t_batch</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span>
+</pre></div>
+<p>The U-Net takes:</p>
+<ul>
+<li><code>x_t</code> of shape <code>(16, 1, 32, 32)</code> — the noisy images</li>
+<li><code>t_batch</code> of shape <code>(16,)</code> — the timestep for each image</li>
+</ul>
+<p>Internally the model uses each image's timestep to build a <strong>time embedding</strong>, which conditions the network so it knows how much noise to expect at that step. The shapes must align — one timestep entry per image — which is exactly why <code>t_batch</code> is sized to the batch dimension rather than passed as a scalar.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=alphabar-indexing-explainer">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="How-Indexing-%E1%BE%B1-(alpha-bar)-by-t-Works,-and-What-.reshape(-1,-1,-1,-1)-Does">How Indexing <code>ᾱ</code> (alpha bar) by <code>t</code> Works, and What <code>.reshape(-1, 1, 1, 1)</code> Does<a class="anchor-link" href="#How-Indexing-%E1%BE%B1-(alpha-bar)-by-t-Works,-and-What-.reshape(-1,-1,-1,-1)-Does">¶</a></h1><p><code>self.ᾱ</code> is defined in <code>__init__</code> as a <strong>1D</strong> tensor:</p>
+<div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">ᾱ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cumprod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">α</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>   <span class="c1"># shape (n_steps,) = (1000,)</span>
+</pre></div>
+<p>and <code>t</code> is defined in <code>before_batch</code> as a tensor of timesteps, one per image:</p>
+<div class="highlight"><pre><span></span><span class="n">t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>  <span class="c1"># shape (n,)</span>
+</pre></div>
+<p>The key idea is <strong>PyTorch's advanced (tensor) indexing</strong>: when you index a 1D tensor with <em>another tensor</em> of indices, you get back one value per index, arranged in the shape of the index tensor.</p>
+<hr/>
+<h2 id="Setup:-example-values">Setup: example values<a class="anchor-link" href="#Setup:-example-values">¶</a></h2><p>Suppose <code>n_steps = 1000</code>. Here is a small slice of <code>self.ᾱ</code>:</p>
+<pre><code>self.ᾱ  =  tensor([0.9999, 0.9997, 0.9994, ..., 0.0041, 0.0040])
+            index:     0       1       2          998    999
+</code></pre>
+<p>It is 1D, shape <code>(1000,)</code>. Think of it as a <strong>lookup table</strong>: position <code>i</code> holds ᾱ at timestep <code>i</code>.</p>
+<p>Now say the batch has <code>n = 4</code> images, and:</p>
+<div class="highlight"><pre><span></span><span class="n">t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mi">42</span><span class="p">,</span> <span class="mi">731</span><span class="p">,</span> <span class="mi">156</span><span class="p">,</span> <span class="mi">908</span><span class="p">])</span>   <span class="c1"># shape (4,)</span>
+</pre></div>
+<hr/>
+<h2 id="Step-1-%E2%80%94-self.%E1%BE%B1%5Bt%5D">Step 1 — <code>self.ᾱ[t]</code><a class="anchor-link" href="#Step-1-%E2%80%94-self.%E1%BE%B1%5Bt%5D">¶</a></h2><p><code>t</code> is <strong>not</strong> a single integer; it is a tensor of 4 integers. PyTorch reads it as "fetch the value at each of these positions and return them in the same shape as <code>t</code>":</p>
+<pre><code>self.ᾱ[t]  -&gt;  [ self.ᾱ[42], self.ᾱ[731], self.ᾱ[156], self.ᾱ[908] ]
+           -&gt;  tensor([0.9773, 0.1120, 0.9021, 0.0389])   # shape (4,)
+</code></pre>
+<p>So indexing a 1D tensor by a 1D tensor of length 4 gives a <strong>1D tensor of length 4</strong> — one ᾱ value per image. <code>t</code> being "multidimensional" is not a problem: the result simply takes <code>t</code>'s shape. Here <code>t</code> is <code>(4,)</code>, so the result is <code>(4,)</code>.</p>
+<blockquote>
+<p>If <code>t</code> were shape <code>(4, 5)</code>, then <code>self.ᾱ[t]</code> would be <code>(4, 5)</code>. The output always mirrors the index tensor's shape.</p>
+</blockquote>
+<hr/>
+<h2 id="Step-2-%E2%80%94-.reshape(-1,-1,-1,-1)">Step 2 — <code>.reshape(-1, 1, 1, 1)</code><a class="anchor-link" href="#Step-2-%E2%80%94-.reshape(-1,-1,-1,-1)">¶</a></h2><p>Now we have <code>tensor([0.9773, 0.1120, 0.9021, 0.0389])</code>, shape <code>(4,)</code>. The <code>-1</code> means "infer this dimension," so with three trailing <code>1</code>s it becomes shape <code>(4, 1, 1, 1)</code>:</p>
+<pre><code>shape (4,)                    shape (4, 1, 1, 1)
+[0.9773,          reshape      [[[[0.9773]]],
+ 0.1120,          -------&gt;       [[[0.1120]]],
+ 0.9021,                         [[[0.9021]]],
+ 0.0389]                         [[[0.0389]]]]
+</code></pre>
+<p>Same four numbers, just nested so each sits in its own <code>(1, 1, 1)</code> slot.</p>
+<hr/>
+<h2 id="Why-the-(4,-1,-1,-1)-shape?-%E2%80%94-Broadcasting">Why the <code>(4, 1, 1, 1)</code> shape? — Broadcasting<a class="anchor-link" href="#Why-the-(4,-1,-1,-1)-shape?-%E2%80%94-Broadcasting">¶</a></h2><p>The images <code>x0</code> have shape <code>(4, 1, 32, 32)</code> = <code>(batch, channels, height, width)</code>. In the next line:</p>
+<div class="highlight"><pre><span></span><span class="n">xt</span> <span class="o">=</span> <span class="n">ᾱ_t</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">ᾱ_t</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">ε</span>
+</pre></div>
+<p>you need to multiply <strong>each image by its own single ᾱ value</strong>. Broadcasting lines up dimensions from the right:</p>
+<pre><code>ᾱ_t :  (4, 1, 1,  1)
+x0  :  (4, 1, 32, 32)
+        ^  ^  ^    ^
+   batch 4  the 1s stretch to 32, 32
+</code></pre>
+<p>The three <code>1</code>s stretch (broadcast) to <code>32, 32</code>, so image 0 gets multiplied everywhere by <code>0.9773</code>, image 1 by <code>0.1120</code>, and so on. Every pixel of image <code>i</code> is scaled by that image's single scalar ᾱ value.</p>
+<p>Without the reshape, <code>ᾱ_t</code> would be shape <code>(4,)</code> and PyTorch could not align it against <code>(4, 1, 32, 32)</code> — you would get a broadcasting error or wrong-axis multiplication.</p>
+<hr/>
+<h2 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h2><ul>
+<li><code>self.ᾱ</code> is a 1D <strong>lookup table</strong> of 1000 values.</li>
+<li>Indexing it with the tensor <code>t</code> (one timestep per image) pulls out one value per image; the result takes <code>t</code>'s shape -&gt; <code>(batch,)</code>.</li>
+<li><code>.reshape(-1, 1, 1, 1)</code> turns <code>(batch,)</code> into <code>(batch, 1, 1, 1)</code> so it broadcasts cleanly against the <code>(batch, 1, 32, 32)</code> images, scaling each image by its own ᾱ.</li>
+</ul>
 </div>
 </div>
 </div>
@@ -9051,6 +9181,383 @@ torch.randn &rarr; [1.1, -0.2, ...]  &rarr;   image of a sneaker
 </li>
 <li>After all steps, we have a clean generated image!</li>
 </ol>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=noise-pred-mseloss-explainer">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="How-noise_pred-=-learn.model(x_t,-t_batch).sample-Produces-a-Noise-Prediction,-and-How-MSELoss-Compares-It-Against-the-True-Noise">How <code>noise_pred = learn.model(x_t, t_batch).sample</code> Produces a Noise Prediction, and How MSELoss Compares It Against the True Noise<a class="anchor-link" href="#How-noise_pred-=-learn.model(x_t,-t_batch).sample-Produces-a-Noise-Prediction,-and-How-MSELoss-Compares-It-Against-the-True-Noise">¶</a></h1><p>There are three questions bundled here:</p>
+<ol>
+<li><strong>How does calling the U-Net give a "noise prediction"?</strong></li>
+<li><strong>How does <code>nn.MSELoss()</code> end up comparing the model's noise prediction against the true noise <code>ε</code> — who wires up its two arguments?</strong></li>
+<li><strong>What actually happens <em>inside</em> the U-Net when <code>model(x_t, t)</code> runs — how are <code>x_t</code> and <code>t</code> each used?</strong></li>
+</ol>
+<p>The answer to (2) is the crux, and it lives inside the <code>miniai</code> <code>Learner</code>'s training loop, not in the notebook. (3) is the mechanical detail that makes (1) concrete. Let's trace the whole path.</p>
+<hr/>
+<h2 id="Part-1-%E2%80%94-Why-the-model's-output-is-a-noise-prediction">Part 1 — Why the model's output <em>is</em> a noise prediction<a class="anchor-link" href="#Part-1-%E2%80%94-Why-the-model's-output-is-a-noise-prediction">¶</a></h2><p>Nothing about <code>UNet2DModel</code> inherently makes it output "noise." It is just a neural network:</p>
+<div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">UNet2DModel</span><span class="p">(</span><span class="n">in_channels</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">out_channels</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">block_out_channels</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">))</span>
+</pre></div>
+<ul>
+<li><code>in_channels=1</code>  -&gt; it takes a 1-channel (grayscale) image, e.g. <code>x_t</code> of shape <code>(batch, 1, 32, 32)</code></li>
+<li><code>out_channels=1</code> -&gt; it produces a 1-channel tensor of the <strong>same</strong> shape <code>(batch, 1, 32, 32)</code></li>
+<li>It <strong>also</strong> takes the timestep <code>t_batch</code> (shape <code>(batch,)</code>), which it turns into a time embedding so the network knows "how noisy" the input is supposed to be.</li>
+</ul>
+<p>So the raw call:</p>
+<div class="highlight"><pre><span></span><span class="n">out</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">x_t</span><span class="p">,</span> <span class="n">t_batch</span><span class="p">)</span>
+</pre></div>
+<p>returns a HuggingFace output object (a small wrapper). The actual tensor is pulled out with <code>.sample</code>:</p>
+<div class="highlight"><pre><span></span><span class="n">noise_pred</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">x_t</span><span class="p">,</span> <span class="n">t_batch</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span>   <span class="c1"># shape (batch, 1, 32, 32)</span>
+</pre></div>
+<blockquote>
+<p><code>.sample</code> here is just the name HuggingFace <code>diffusers</code> gives to "the main output tensor." It has nothing to do with the <code>sample()</code> method in <code>DDPMCB</code>. Same word, unrelated meaning.</p>
+</blockquote>
+<p><strong>Why is that tensor a "noise prediction"?</strong> Only because we <em>train</em> it to be one. The output is a same-shaped image tensor; it becomes a noise prediction purely because the loss forces <code>model(x_t, t) ≈ ε</code>. If we had trained it against a different target, the same architecture would predict that instead. The meaning comes from the <strong>target</strong>, which is Part 2. (The full internal mechanics of the call are in Part 3.)</p>
+<hr/>
+<h2 id="Part-2-%E2%80%94-The-wiring:-how-MSELoss-gets-(noise_pred,-true_noise)-as-its-two-arguments">Part 2 — The wiring: how MSELoss gets (noise_pred, true_noise) as its two arguments<a class="anchor-link" href="#Part-2-%E2%80%94-The-wiring:-how-MSELoss-gets-(noise_pred,-true_noise)-as-its-two-arguments">¶</a></h2><p>This is the crux. The connection is made by the <code>miniai</code> <code>Learner</code> training loop calling <strong>callback methods in a fixed order</strong>. Here is the relevant skeleton of <code>miniai.learner</code>:</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">TrainCB</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_inp</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span> <span class="o">=</span> <span class="n">n_inp</span>
+    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>  <span class="n">learn</span><span class="o">.</span><span class="n">preds</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span><span class="p">])</span>
+    <span class="k">def</span> <span class="nf">get_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss</span>  <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss_func</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span><span class="p">,</span> <span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span><span class="p">:])</span>
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>     <span class="n">learn</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">zero_grad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span><span class="n">learn</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+
+<span class="k">class</span> <span class="nc">Learner</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">dls</span><span class="p">,</span> <span class="n">loss_func</span><span class="p">,</span> <span class="n">lr</span><span class="p">,</span> <span class="n">cbs</span><span class="p">,</span> <span class="n">opt_func</span><span class="o">=</span><span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">):</span> <span class="o">...</span>
+    <span class="k">def</span> <span class="nf">one_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">predict</span><span class="p">()</span>        <span class="c1"># -&gt; fills self.preds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'after_predict'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_loss</span><span class="p">()</span>       <span class="c1"># -&gt; fills self.loss</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'after_loss'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">_one_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># before_batch callbacks run first (this is where DDPMCB rewrites the batch!)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'before_batch'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">one_batch</span><span class="p">()</span>
+</pre></div>
+<p><code>predict</code>, <code>get_loss</code>, <code>backward</code>, <code>step</code>, <code>zero_grad</code> on the <code>Learner</code> delegate to whichever callback defines them (that is what <code>TrainCB</code> / <code>DDPMCB</code> provide). So the effective per-batch sequence is:</p>
+<pre><code>before_batch  -&gt;  predict  -&gt;  get_loss  -&gt;  backward  -&gt;  step  -&gt;  zero_grad
+</code></pre>
+<p>Now follow the data through that sequence for DDPM.</p>
+<h3 id="Sequence,-step-by-step">Sequence, step by step<a class="anchor-link" href="#Sequence,-step-by-step">¶</a></h3><p><strong>(0) Dataloader hands over the raw batch.</strong> Originally:</p>
+<div class="highlight"><pre><span></span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>          <span class="c1"># standard classification-style batch</span>
+</pre></div>
+<p><strong>(1) <code>DDPMCB.before_batch</code> REWRITES the batch.</strong> This is the key move. It throws away the labels and builds the DDPM training pair:</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">before_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+    <span class="n">ε</span>  <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>                       <span class="c1"># the true noise  &lt;-- becomes the TARGET</span>
+    <span class="n">x0</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>                         <span class="c1"># clean images</span>
+    <span class="o">...</span> <span class="n">pick</span> <span class="n">random</span> <span class="n">t</span><span class="p">,</span> <span class="n">compute</span> <span class="n">xt</span> <span class="o">...</span>
+    <span class="n">xt</span> <span class="o">=</span> <span class="n">ᾱ_t</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span><span class="o">*</span><span class="n">x0</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">ᾱ_t</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span><span class="o">*</span><span class="n">ε</span>       <span class="c1"># noisy image</span>
+    <span class="n">learn</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="p">((</span><span class="n">xt</span><span class="p">,</span> <span class="n">t</span><span class="p">),</span> <span class="n">ε</span><span class="p">)</span>                  <span class="c1"># &lt;-- new structure</span>
+</pre></div>
+<p>After this line:</p>
+<pre><code>learn.batch      = ((xt, t), ε)
+learn.batch[0]   = (xt, t)     &lt;- the model INPUTS
+learn.batch[1]   = ε           &lt;- the TARGET (true noise)
+</code></pre>
+<p><strong>(2) <code>DDPMCB.predict</code> runs the model on the inputs.</strong> <code>DDPMCB</code> overrides the default <code>predict</code>:</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+    <span class="n">learn</span><span class="o">.</span><span class="n">preds</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">sample</span>
+    <span class="c1">#                          ^^^^^^^^^^^^^^^</span>
+    <span class="c1">#             *learn.batch[0] unpacks (xt, t) -&gt; model(xt, t)</span>
+</pre></div>
+<p>So:</p>
+<div class="highlight"><pre><span></span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">xt</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span>   <span class="c1"># the NOISE PREDICTION, shape (batch,1,32,32)</span>
+</pre></div>
+<p><code>learn.preds</code> now holds the model's predicted noise. (What happens inside this call is Part 3.)</p>
+<p><strong>(3) <code>get_loss</code> calls the loss function.</strong> This method is <strong>not</strong> overridden by <code>DDPMCB</code>, so the inherited <code>TrainCB.get_loss</code> runs, with <code>n_inp = 1</code>:</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+    <span class="n">learn</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss_func</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span><span class="p">,</span> <span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span><span class="p">:])</span>
+</pre></div>
+<p>Substitute the pieces:</p>
+<ul>
+<li><code>learn.loss_func</code> = <code>nn.MSELoss()</code> (passed into <code>Learner(...)</code>)</li>
+<li><code>learn.preds</code>     = the noise prediction  (from step 2)</li>
+<li><code>self.n_inp</code>      = 1, so <code>learn.batch[1:]</code> = <code>(ε,)</code>, and <code>*</code> unpacks it to <code>ε</code></li>
+</ul>
+<p>Which expands to exactly:</p>
+<div class="highlight"><pre><span></span><span class="n">learn</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">()(</span><span class="n">noise_pred</span><span class="p">,</span> <span class="n">ε</span><span class="p">)</span>
+<span class="c1">#                          ^^^^^^^^^^  ^</span>
+<span class="c1">#                          prediction  true noise</span>
+</pre></div>
+<p><strong>There it is.</strong> <code>MSELoss</code>'s first argument is the model's noise prediction, its second argument is the true noise <code>ε</code>. Nobody typed that call directly — it falls out of:</p>
+<ul>
+<li><code>before_batch</code> putting <code>ε</code> at <code>learn.batch[1]</code>, and</li>
+<li>the generic <code>get_loss</code> formula <code>loss_func(preds, *batch[n_inp:])</code>.</li>
+</ul>
+<p><strong>(4) backward / step / zero_grad</strong> then push the gradient of that MSE back through the U-Net, nudging its weights so that next time <code>model(xt, t)</code> lands closer to <code>ε</code>. Repeated over many batches, "the output" becomes "a good noise prediction" — which is the whole reason we can <em>call</em> it a noise prediction.</p>
+<hr/>
+<h2 id="The-one-line-answer-to-%22which-line-makes-it-happen?%22">The one-line answer to "which line makes it happen?"<a class="anchor-link" href="#The-one-line-answer-to-%22which-line-makes-it-happen?%22">¶</a></h2><p>Two lines, working together:</p>
+<div class="highlight"><pre><span></span><span class="c1"># in DDPMCB.before_batch  -- defines WHAT the target is</span>
+<span class="n">learn</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="p">((</span><span class="n">xt</span><span class="p">,</span> <span class="n">t</span><span class="p">),</span> <span class="n">ε</span><span class="p">)</span>          <span class="c1"># ε is placed as the target at batch[1]</span>
+
+<span class="c1"># inherited TrainCB.get_loss  -- defines HOW prediction &amp; target meet the loss</span>
+<span class="n">learn</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss_func</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span><span class="p">,</span> <span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+<span class="c1">#            = nn.MSELoss()(noise_pred, ε)</span>
+</pre></div>
+<p><code>MSELoss</code> "knows" the argument order only because <code>get_loss</code> always passes <code>(preds, target)</code> in that order — it is a fixed convention of the training loop, and DDPM plugs into it by making <code>preds = predicted noise</code> and <code>target = true noise</code>.</p>
+<hr/>
+<h2 id="Where-is-get_loss-actually-defined?-(And-why,-even-though-TrainCB-is-never-in-cbs)">Where is <code>get_loss</code> actually defined? (And why, even though <code>TrainCB</code> is never in <code>cbs</code>)<a class="anchor-link" href="#Where-is-get_loss-actually-defined?-(And-why,-even-though-TrainCB-is-never-in-cbs)">¶</a></h2><h3 id="The-key-point:-DDPMCB-inherits-from-TrainCB">The key point: <code>DDPMCB</code> <strong>inherits from</strong> <code>TrainCB</code><a class="anchor-link" href="#The-key-point:-DDPMCB-inherits-from-TrainCB">¶</a></h3><p>Look at the very first line of the class definition in the notebook:</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">DDPMCB</span><span class="p">(</span><span class="n">TrainCB</span><span class="p">):</span>     <span class="c1">#  &lt;-- DDPMCB IS-A TrainCB</span>
+    <span class="o">...</span>
+</pre></div>
+<p><strong>This is the crux.</strong> When you create <code>ddpm_cb = DDPMCB(...)</code>, that object is not <em>only</em> a <code>DDPMCB</code> — by inheritance it is also a full <code>TrainCB</code>. It carries every method <code>TrainCB</code> defines, unless <code>DDPMCB</code> chooses to override it. So even though the training setup never lists a bare <code>TrainCB()</code>:</p>
+<div class="highlight"><pre><span></span><span class="n">ddpm_cb</span> <span class="o">=</span> <span class="n">DDPMCB</span><span class="p">(</span><span class="n">n_steps</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">beta_min</span><span class="o">=</span><span class="mf">0.0001</span><span class="p">,</span> <span class="n">beta_max</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
+<span class="n">cbs</span> <span class="o">=</span> <span class="p">[</span><span class="n">ddpm_cb</span><span class="p">,</span> <span class="n">DeviceCB</span><span class="p">(),</span> <span class="n">ProgressCB</span><span class="p">(</span><span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="n">MetricsCB</span><span class="p">(),</span> <span class="n">BatchSchedCB</span><span class="p">(</span><span class="n">sched</span><span class="p">)]</span>
+<span class="n">learn</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dls</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">lr</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="n">cbs</span><span class="p">,</span> <span class="n">opt_func</span><span class="o">=</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">)</span>
+<span class="c1">#                                          ^^^^^^^^^^^^ MSELoss lives here</span>
+</pre></div>
+<p>...the <code>TrainCB</code> behavior is still fully present in the list — it's baked into <code>ddpm_cb</code>. <strong>You don't add a separate <code>TrainCB()</code> because <code>ddpm_cb</code> already IS one.</strong> (Adding a bare <code>TrainCB()</code> alongside would be wrong: two callbacks both defining <code>predict</code>/<code>get_loss</code> would collide.)</p>
+<h3 id="What-DDPMCB-keeps,-overrides,-and-adds">What DDPMCB keeps, overrides, and adds<a class="anchor-link" href="#What-DDPMCB-keeps,-overrides,-and-adds">¶</a></h3><pre><code>Callback
+   |
+TrainCB                    &lt;- defines: predict, get_loss, backward, step, zero_grad
+   |
+DDPMCB   =  ddpm_cb        &lt;- __init__   : OVERRIDDEN (sets up β/α/ᾱ/σ schedule)
+   |                          predict    : OVERRIDDEN (adds .sample, unpacks (xt,t))
+   |                          before_batch: ADDED     (forward diffusion, rewrites batch)
+   |                          sample     : ADDED       (reverse diffusion)
+   |                          get_loss   : INHERITED unchanged from TrainCB  &lt;=== the loss line
+   |                          backward   : INHERITED unchanged from TrainCB
+   |                          step       : INHERITED unchanged from TrainCB
+   |                          zero_grad  : INHERITED unchanged from TrainCB
+   |
+cbs = [ddpm_cb, DeviceCB(), ProgressCB(...), MetricsCB(), BatchSchedCB(...)]
+</code></pre>
+<p><code>DDPMCB</code> deliberately does <strong>not</strong> override <code>get_loss</code> — the generic <code>TrainCB</code> version already does the right thing once <code>before_batch</code> has placed <code>ε</code> at <code>learn.batch[1]</code>. So the loss comparison runs from <code>TrainCB.get_loss</code>, reached by inheritance through <code>ddpm_cb</code>.</p>
+<h3 id="Where-the-source-lives">Where the source lives<a class="anchor-link" href="#Where-the-source-lives">¶</a></h3><p><code>get_loss</code> is <strong>not</strong> in this notebook. It is a method on <strong><code>TrainCB</code></strong>, which lives in the <code>miniai</code> library the fast.ai course builds from scratch:</p>
+<ul>
+<li>Library module: <strong><code>miniai/learner.py</code></strong> (imported by <code>from miniai.learner import *</code> near the top of the notebook).</li>
+<li>That module is generated with <code>nbdev</code> from the course notebook <strong><code>nbs/09_learner.ipynb</code></strong> in the <code>fastai/course22p2</code> repo — the original source where <code>TrainCB</code> is written.</li>
+</ul>
+<p>The full <code>TrainCB</code> as defined in <code>miniai/learner.py</code>:</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">TrainCB</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_inp</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span> <span class="o">=</span> <span class="n">n_inp</span>
+    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>  <span class="n">learn</span><span class="o">.</span><span class="n">preds</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span><span class="p">])</span>
+    <span class="k">def</span> <span class="nf">get_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss</span>  <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss_func</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span><span class="p">,</span> <span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span><span class="p">:])</span>
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>     <span class="n">learn</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">zero_grad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span><span class="n">learn</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+</pre></div>
+<p>Two things worth noting about this definition:</p>
+<ol>
+<li><p><strong><code>n_inp</code> is what makes multi-input models work.</strong> It was added to the course <em>after</em> the original lesson specifically so a model can take more than one input (or produce more than one output). With <code>n_inp=1</code> (the default):</p>
+<ul>
+<li><code>learn.batch[:1]</code> = the inputs <code>(xt, t)</code> -&gt; <code>predict</code> calls <code>model(xt, t)</code></li>
+<li><code>learn.batch[1:]</code> = the target <code>(ε,)</code> -&gt; <code>get_loss</code> calls <code>loss_func(preds, ε)</code></li>
+</ul>
+<p>This is exactly why DDPM can pack <strong>two</strong> inputs <code>(xt, t)</code> into <code>learn.batch[0]</code> as a tuple and still have everything line up: <code>predict</code> unpacks that tuple, and <code>get_loss</code> treats everything after the first slot as the target.</p>
+</li>
+<li><p><strong>It's the <em>inherited</em> <code>get_loss</code> that runs, not an overridden one.</strong> Because <code>DDPMCB</code> doesn't define its own <code>get_loss</code>, Python's method resolution walks up to <code>TrainCB.get_loss</code>. So the loss line you see conceptually as <code>MSELoss(noise_pred, ε)</code> is physically the one line inside <code>TrainCB</code> in <code>miniai/learner.py</code>.</p>
+</li>
+</ol>
+<blockquote>
+<p><strong>How <code>learn.get_loss()</code> reaches <code>TrainCB.get_loss</code>.</strong> The <code>Learner</code> doesn't have its own <code>get_loss</code> body either — calling <code>learn.get_loss()</code> dispatches through the callback system (<code>self.callback('get_loss')</code> / <code>run_cbs</code>), which scans the callbacks for one that defines <code>get_loss</code> and runs it. When it checks <code>ddpm_cb</code>, the method is present (inherited from <code>TrainCB</code>), so it runs. Python doesn't distinguish "inherited" from "defined here" — <code>hasattr(ddpm_cb, 'get_loss')</code> is <code>True</code> either way. So the chain is: <code>Learner.one_batch</code> -&gt; dispatch <code>'get_loss'</code> -&gt; <code>ddpm_cb</code>'s inherited <code>TrainCB.get_loss</code> -&gt; <code>learn.loss_func(...)</code> = <code>nn.MSELoss()(noise_pred, ε)</code>.</p>
+</blockquote>
+<hr/>
+<h2 id="Part-3-%E2%80%94-Inside-the-call:-how-x_t-and-t-flow-through-the-U-Net">Part 3 — Inside the call: how <code>x_t</code> and <code>t</code> flow through the U-Net<a class="anchor-link" href="#Part-3-%E2%80%94-Inside-the-call:-how-x_t-and-t-flow-through-the-U-Net">¶</a></h2><p>Part 2 showed that the loss is what <em>gives</em> the output its meaning. Part 3 shows what the network physically does to produce that output. The key idea:</p>
+<blockquote>
+<p><code>x_t</code> is the thing being <strong>transformed</strong> (down to a compressed representation and back up, same shape out as in), and <code>t</code> is a <strong>conditioning signal</strong> injected as a vector into every block so the network's behavior adapts to the noise level.</p>
+</blockquote>
+<p>There are <strong>two inputs used in completely different ways</strong>. Keep them separate:</p>
+<ul>
+<li><code>x_t</code> — an actual image tensor <code>(B, 1, 32, 32)</code>. It gets convolved, downsampled, upsampled — physically transformed.</li>
+<li><code>t</code>  — a vector of integers <code>(B,)</code>, one timestep per image. It is <strong>never</strong> convolved. It is turned into an embedding vector and <em>added into</em> the image features at every block, steering the computation.</li>
+</ul>
+<h3 id="The-two-paths,-side-by-side">The two paths, side by side<a class="anchor-link" href="#The-two-paths,-side-by-side">¶</a></h3><pre><code>  IMAGE PATH (x_t)                       TIME PATH (t)
+  ----------------                       --------------
+  (B,1,32,32)                            (B,)  e.g. [843, 12, 500, ...]
+       |                                      |
+   input conv                          sinusoidal (Fourier) embedding
+       |                                      |            -&gt; (B, 32)
+  (B,32,32,32)                          small MLP: Linear -&gt; SiLU -&gt; Linear
+       |                                      |            -&gt; (B, 128)   "time vector"
+       |                                      |
+       |   &lt;============ injected into every ResNet block ==============&gt;
+       |                          (added to the feature map)
+       v
+  encoder / bottleneck / decoder
+       |
+   output conv
+       |
+  (B,1,32,32)  = model output  -&gt;  .sample
+</code></pre>
+<p>The time vector is computed <strong>once</strong> at the top, then handed to <strong>every</strong> ResNet block on both the way down and the way up.</p>
+<h3 id="A-%E2%80%94-The-time-path:-how-t-becomes-a-conditioning-vector">A — The time path: how <code>t</code> becomes a conditioning vector<a class="anchor-link" href="#A-%E2%80%94-The-time-path:-how-t-becomes-a-conditioning-vector">¶</a></h3><p><strong>A1. Sinusoidal (Fourier) features.</strong> Each integer timestep is expanded into a smooth vector of sines and cosines at many frequencies (the same idea as positional encodings in transformers):</p>
+<pre><code>t: (B,)  -&gt;  Timesteps (sinusoidal)  -&gt;  (B, 32)
+</code></pre>
+<p>Why sinusoids and not the raw integer? A raw scalar like <code>843</code> is a terrible network input — the model can't easily tell <code>842</code> from <code>843</code> from <code>840</code>, and the scale is arbitrary. Sinusoidal features turn the number into a rich, continuous, high-dimensional signature where nearby timesteps have nearby (but distinguishable) vectors. This gives the network a smooth notion of "how far along the noising process we are."</p>
+<p><strong>A2. A small MLP.</strong> Those raw sinusoids pass through a tiny learned network to mix them into a useful embedding:</p>
+<pre><code>(B, 32)  -&gt;  Linear -&gt; SiLU -&gt; Linear  -&gt;  (B, 128)   # the "time vector"
+</code></pre>
+<p>Now every image in the batch has a 128-dimensional vector encoding its timestep. Call it <code>temb</code>.</p>
+<p><strong>That is the entirety of how <code>t</code> is "used": it is converted into <code>temb</code> and then broadcast-added into feature maps inside each block.</strong> It never touches a convolution directly.</p>
+<h3 id="B-%E2%80%94-The-image-path:-how-x_t-is-transformed">B — The image path: how <code>x_t</code> is transformed<a class="anchor-link" href="#B-%E2%80%94-The-image-path:-how-x_t-is-transformed">¶</a></h3><p><strong>B1. Input projection.</strong> A first convolution lifts the 1-channel image to the first width (32 channels):</p>
+<pre><code>x_t: (B, 1, 32, 32)  -&gt;  conv  -&gt;  (B, 32, 32, 32)
+</code></pre>
+<p><strong>B2. Encoder (downsampling) — <code>block_out_channels=(32, 64, 128, 128)</code>.</strong> Each level runs ResNet block(s), then downsamples (halves H and W, raises channels). Spatial detail is traded for semantic/context capacity:</p>
+<pre><code>level 0:  (B, 32,  32, 32)
+level 1:  (B, 64,  16, 16)
+level 2:  (B, 128, 8,  8)
+level 3:  (B, 128, 4,  4)   &lt;- bottleneck (most compressed)
+</code></pre>
+<p>At each level the output is also saved as a <strong>skip connection</strong> for the decoder.</p>
+<p><strong>B3. Bottleneck (mid block).</strong> At the smallest resolution the network has the widest receptive field — each position summarizes a large area of the image. ResNet (+ attention) blocks process <code>(B, 128, 4, 4)</code> here. This is where global structure is reasoned about.</p>
+<p><strong>B4. Decoder (upsampling).</strong> Mirror of the encoder. At each level: upsample, <strong>concatenate the matching encoder skip connection</strong> (restores fine detail the downsampling threw away), then ResNet block(s):</p>
+<pre><code>(B, 128, 4,  4)
+(B, 128, 8,  8)   + skip from level 2
+(B, 64,  16, 16)  + skip from level 1
+(B, 32,  32, 32)  + skip from level 0
+</code></pre>
+<p>The skip connections are why it's a "U": information can shortcut across the U instead of squeezing through the bottleneck, so sharp spatial detail survives.</p>
+<p><strong>B5. Output projection.</strong> A final normalization + convolution maps back to <code>out_channels=1</code>:</p>
+<pre><code>(B, 32, 32, 32)  -&gt;  conv  -&gt;  (B, 1, 32, 32)
+</code></pre>
+<p>Same shape as the input <code>x_t</code>. <code>diffusers</code> wraps it in a <code>UNet2DOutput</code>; <code>.sample</code> pulls out this tensor.</p>
+<h3 id="C-%E2%80%94-Where-the-two-paths-MEET-(the-crucial-part)">C — Where the two paths MEET (the crucial part)<a class="anchor-link" href="#C-%E2%80%94-Where-the-two-paths-MEET-(the-crucial-part)">¶</a></h3><p>The paths meet <strong>inside every ResNet block</strong>. A convolution can only accept a feature map, but a ResNet block's <code>forward</code> accepts <em>both</em> the feature map <strong>and</strong> <code>temb</code>. Schematically:</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">resnet_block</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">temb</span><span class="p">):</span>          <span class="c1"># h = image features (B, C, H, W);  temb = (B, 128)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">conv1</span><span class="p">(</span><span class="n">norm1</span><span class="p">(</span><span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">silu</span><span class="p">())</span>      <span class="c1"># process the image features</span>
+
+    <span class="c1"># ---- inject time here ----</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">time_proj</span><span class="p">(</span><span class="n">temb</span><span class="o">.</span><span class="n">silu</span><span class="p">())</span>      <span class="c1"># Linear: (B, 128) -&gt; (B, C)   match channel count</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">t</span><span class="p">[:,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>         <span class="c1"># reshape to (B, C, 1, 1) so it broadcasts over H,W</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">t</span>                       <span class="c1"># ADD the time signal to every spatial location</span>
+    <span class="c1"># --------------------------</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">conv2</span><span class="p">(</span><span class="n">norm2</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">silu</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">skip</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>              <span class="c1"># residual connection</span>
+</pre></div>
+<p>Two details that make this work:</p>
+<ol>
+<li><p><strong>A per-block <code>Linear</code> reprojects <code>temb</code> from 128 down to that block's channel count <code>C</code>.</strong> Level 1 needs a <code>(B, 64)</code> time signal, level 2 needs <code>(B, 128)</code>, etc. Each block has its own little projection so the time vector fits its width.</p>
+</li>
+<li><p><strong>Broadcasting adds the same time signal to every pixel.</strong> Reshaping to <code>(B, C, 1, 1)</code> and adding to <code>(B, C, H, W)</code> means every spatial position of channel <code>c</code> gets shifted by the same time-dependent amount <code>t[b, c]</code>. So the timestep uniformly biases the features — it tells the whole feature map "you are at noise level 843."</p>
+</li>
+</ol>
+<blockquote>
+<p>Some configs use <code>scale_shift</code> (a.k.a. FiLM) instead of a plain add: the time projection produces <strong>two</strong> vectors <code>(scale, shift)</code> and the block computes <code>x * (1 + scale) + shift</code>. Same idea — time modulates the features — just multiplicatively as well as additively. The notebook's default is the additive form above.</p>
+</blockquote>
+<p><strong>This is the mechanism behind "conditioning."</strong> The identical <code>x_t</code> fed with <code>t=50</code> versus <code>t=900</code> produces different <code>temb</code>, hence different additive shifts in every block, hence a different output. The network has learned that at high <code>t</code> almost everything is noise (predict aggressively) while at low <code>t</code> the image is nearly clean (predict little). Without <code>t</code>, the network wouldn't know how much noise to expect and couldn't do the job.</p>
+<h3 id="D-%E2%80%94-Why-the-final-tensor-%22is%22-the-noise-prediction">D — Why the final tensor "is" the noise prediction<a class="anchor-link" href="#D-%E2%80%94-Why-the-final-tensor-%22is%22-the-noise-prediction">¶</a></h3><p>Nothing in steps B1–B5 forces the output to be noise. They would run identically no matter what we trained against — the architecture just maps <code>(image, time) -&gt; same-shaped image</code>. The output acquires the meaning "predicted noise" <strong>only</strong> because of the target set in <code>before_batch</code> and the loss in <code>get_loss</code> (Part 2):</p>
+<div class="highlight"><pre><span></span><span class="c1"># DDPMCB.before_batch:   learn.batch = ((xt, t), ε)      # target = ε, the true noise</span>
+<span class="c1"># TrainCB.get_loss:      loss = MSELoss(model(xt,t).sample, ε)</span>
+</pre></div>
+<p>Gradient descent pushes <code>model(xt, t).sample</code> toward <code>ε</code> on every batch. After training, "the output" and "the noise" coincide — so we <em>call</em> it a noise prediction. Change the target to <code>x0</code> and the very same U-Net would instead learn to output the clean image. <strong>The meaning is 100% in the target, 0% in the architecture.</strong></p>
+<h3 id="One-screen-summary-of-the-internal-flow">One-screen summary of the internal flow<a class="anchor-link" href="#One-screen-summary-of-the-internal-flow">¶</a></h3><pre><code>t (B,)  --sinusoidal--&gt;  (B,32)  --MLP--&gt;  temb (B,128)
+                                              |
+                                (per-block Linear -&gt; (B,C), broadcast-add)
+                                              |
+x_t (B,1,32,32) --conv--&gt; encoder --&gt; bottleneck --&gt; decoder --conv--&gt; (B,1,32,32)
+                    (every ResNet block adds temb to its features)         |
+                                                                          .sample
+                                                                           |
+                                        trained so this == ε  (via MSELoss target)
+                                                                           |
+                                                            =&gt; "noise prediction"
+</code></pre>
+<hr/>
+<h2 id="Full-per-batch-flow-at-a-glance">Full per-batch flow at a glance<a class="anchor-link" href="#Full-per-batch-flow-at-a-glance">¶</a></h2><pre><code>dataloader        : learn.batch = (images, labels)
+      |
+before_batch      : ε = randn();  xt = √ᾱ·x0 + √(1-ᾱ)·ε
+(DDPMCB)          : learn.batch = ((xt, t), ε)      # target ε set here
+      |
+predict           : learn.preds = model(xt, t).sample   # noise prediction (Part 3)
+(DDPMCB)
+      |
+get_loss          : learn.loss = MSELoss(learn.preds, ε)  # compare here
+(TrainCB, n_inp=1)
+      |
+backward/step     : update U-Net weights so model(xt,t) -&gt; ε
+</code></pre>
+<p>Every batch, a fresh random <code>ε</code> and <code>t</code> are drawn, so the network sees the denoising task at all noise levels and learns to predict the noise component of any <code>xt</code>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=timestep-coverage-puzzle">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="The-Timestep-Coverage-Puzzle:-Training-Noises-Each-Image-to-Only-One-Random-t-per-Epoch,-Yet-Sampling-Needs-the-Model-to-Denoise-at-ALL-1000-Levels-%E2%80%94-How?">The Timestep-Coverage Puzzle: Training Noises Each Image to Only One Random <code>t</code> per Epoch, Yet Sampling Needs the Model to Denoise at ALL 1000 Levels — How?<a class="anchor-link" href="#The-Timestep-Coverage-Puzzle:-Training-Noises-Each-Image-to-Only-One-Random-t-per-Epoch,-Yet-Sampling-Needs-the-Model-to-Denoise-at-ALL-1000-Levels-%E2%80%94-How?">¶</a></h2><blockquote>
+<p><strong>If you are reading this cold, you may not yet see that there is a problem at all.</strong> This note first <em>builds</em> the confusion carefully from the exact lines of code, because the confusion is subtle and easy to miss — and easy to fall back into months later. Then it resolves it. If you have ever wondered "wait, how does single-timestep training possibly prepare the model for a full 1000-step reverse process?", this is for you.</p>
+</blockquote>
+<hr/>
+<h2 id="Step-1-%E2%80%94-The-setup:-two-methods,-two-very-different-uses-of-t">Step 1 — The setup: two methods, two very different uses of <code>t</code><a class="anchor-link" href="#Step-1-%E2%80%94-The-setup:-two-methods,-two-very-different-uses-of-t">¶</a></h2><h3 id="(A)-In-before_batch-(training),-each-image-gets-ONE-random-timestep">(A) In <code>before_batch</code> (training), each image gets ONE random timestep<a class="anchor-link" href="#(A)-In-before_batch-(training),-each-image-gets-ONE-random-timestep">¶</a></h3><p>Inside <code>DDPMCB.before_batch</code>, this line runs during training:</p>
+<div class="highlight"><pre><span></span><span class="c1"># STEP 3: Select random timesteps for each image</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,),</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+</pre></div>
+<p>Each image in the batch gets its <strong>own single random</strong> timestep. Then the batch is built as:</p>
+<div class="highlight"><pre><span></span><span class="n">xt</span> <span class="o">=</span> <span class="n">ᾱ_t</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">ᾱ_t</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">ε</span>    <span class="c1"># noise each image to ITS t</span>
+<span class="n">learn</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="p">((</span><span class="n">xt</span><span class="p">,</span> <span class="n">t</span><span class="p">),</span> <span class="n">ε</span><span class="p">)</span>                       <span class="c1"># target = the noise ε</span>
+</pre></div>
+<p>So in one training step, image #37 is noised to (say) <code>t=12</code> and the model is asked to predict the noise at that one level. <strong>One image, one level, one training example.</strong></p>
+<h3 id="(B)-In-sample-(generation),-the-model-is-called-at-EVERY-timestep,-in-sequence">(B) In <code>sample</code> (generation), the model is called at EVERY timestep, in sequence<a class="anchor-link" href="#(B)-In-sample-(generation),-the-model-is-called-at-EVERY-timestep,-in-sequence">¶</a></h3><p>Inside <code>DDPMCB.sample</code>, generation starts from pure noise and walks <em>down</em> through all timesteps:</p>
+<div class="highlight"><pre><span></span><span class="n">x_t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">sz</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>             <span class="c1"># start: pure random noise</span>
+
+<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">)):</span>          <span class="c1"># t = 999, 998, ..., 1, 0  (ALL of them)</span>
+    <span class="n">t_batch</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">x_t</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],),</span> <span class="n">t</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+    <span class="n">noise_pred</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">x_t</span><span class="p">,</span> <span class="n">t_batch</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span>  <span class="c1"># model must work at THIS t</span>
+    <span class="o">...</span>                                            <span class="c1"># use noise_pred to denoise one step</span>
+</pre></div>
+<p>Here the model is called <strong>1000 times in a row</strong>, once at every level from 999 down to 0, each call feeding into the next.</p>
+<hr/>
+<h2 id="Step-2-%E2%80%94-The-confusion,-stated-precisely">Step 2 — The confusion, stated precisely<a class="anchor-link" href="#Step-2-%E2%80%94-The-confusion,-stated-precisely">¶</a></h2><p>Put (A) and (B) side by side and the tension is obvious:</p>
+<ul>
+<li><strong>Training (A):</strong> any given image is noised to just <strong>one</strong> random <code>t</code> per epoch. With, say, 5 epochs, image #37 is ever noised only ~<strong>5 times</strong>, to ~5 random levels. It is <em>never</em> walked through all 1000 levels.</li>
+<li><strong>Sampling (B):</strong> the reverse loop demands a model that can predict noise correctly at <strong>all 1000 levels in sequence</strong>.</li>
+</ul>
+<p>So the natural, and seemingly airtight, objection is:</p>
+<blockquote>
+<p>"Each image is only ever noised to a handful of timesteps during training. <code>before_batch</code> fires once per batch, each image appears once per epoch, so over 5 epochs each image sees only ~5 noise levels. How on earth does the model then know how to denoise at <em>every</em> level 0–999 that sampling requires? Nothing ever showed image #37 at level 500, or 501, or 502..."</p>
+</blockquote>
+<p><strong>This objection is correct about single images.</strong> That is the trap: the true fact ("each image sees only ~5 levels") <em>feels</em> like it should block the model from learning all levels. Holding onto that fact while assuming it applies to the wrong subject is the whole confusion.</p>
+<hr/>
+<h2 id="Step-3-%E2%80%94-The-one-word-that-dissolves-it:-coverage-is-ACROSS-IMAGES,-not-within-one-image">Step 3 — The one word that dissolves it: coverage is ACROSS IMAGES, not within one image<a class="anchor-link" href="#Step-3-%E2%80%94-The-one-word-that-dissolves-it:-coverage-is-ACROSS-IMAGES,-not-within-one-image">¶</a></h2><p>The mistake is asking the wrong question. The model never needs <em>one image</em> to visit all 1000 levels. It needs <em>the training set as a whole</em> to visit all 1000 levels — and it does, easily.</p>
+<p>The reason is this detail in the <code>before_batch</code> line: <code>t</code> is drawn <strong>fresh for every image in every batch</strong>, <code>n</code> values at a time (not one value shared by the batch):</p>
+<div class="highlight"><pre><span></span><span class="n">t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_steps</span><span class="p">,</span> <span class="p">(</span><span class="n">n</span><span class="p">,),</span> <span class="o">...</span><span class="p">)</span>   <span class="c1"># n independent draws, one PER image</span>
+<span class="c1">#                                    ^^^</span>
+</pre></div>
+<h3 id="Count-the-draws">Count the draws<a class="anchor-link" href="#Count-the-draws">¶</a></h3><p>Fashion-MNIST has 60,000 training images.</p>
+<ul>
+<li><strong>Per epoch:</strong> every image is processed once, each drawing its own <code>t</code> -&gt; <strong>60,000</strong> timestep draws per epoch.</li>
+<li><strong>Over 5 epochs:</strong> 60,000 × 5 = <strong>300,000</strong> timestep draws total.</li>
+</ul>
+<p>Those 300,000 values are uniform random integers in <code>[0, 999]</code>. Spread across 1000 possible levels, <strong>each level gets hit ~300 times</strong> — by <em>different</em> images:</p>
+<pre><code>image #37     at  t=12
+image #4188   at  t=13
+image #52001  at  t=14
+image #900    at  t=15
+...           ...
+(every level 0–999 is covered hundreds of times, by whichever images landed there)
+</code></pre>
+<p>Each <em>individual</em> image contributes only ~5 of these pairs — exactly as the objection says. But <strong>pooled across all 60,000 images, the pairs blanket the entire 0–999 range densely.</strong> Level 500 was seen — just not by image #37; by thousands of <em>other</em> images.</p>
+<hr/>
+<h2 id="Step-4-%E2%80%94-Why-dataset-wide-coverage-is-all-the-model-needs">Step 4 — Why dataset-wide coverage is all the model needs<a class="anchor-link" href="#Step-4-%E2%80%94-Why-dataset-wide-coverage-is-all-the-model-needs">¶</a></h2><p>The model is not memorizing "image #37's noise at level 12." It is fitting <strong>one shared function</strong>:</p>
+<blockquote>
+<p>f(noisy_image, t) -&gt; predicted noise</p>
+</blockquote>
+<p>For that, it is irrelevant that image #37 personally visited only 5 levels. What matters is that <strong>level 12 was taught at all</strong> — by image #37 and hundreds of others; <strong>level 500 was taught at all</strong> — by hundreds of other images; and so on for every level.</p>
+<p>Because all images share statistical structure (edges, smooth regions, shapes, textures), what the model learns about denoising level 500 from thousands of images generalizes to <em>any</em> image at level 500 — including ones that never personally appeared at that level. The function is level-aware and image-general.</p>
+<p>That single function is exactly what the sampling loop in (B) needs, because the loop just calls <code>f</code> once at each level <code>t = 999, ..., 0</code>.</p>
+<hr/>
+<h2 id="The-resolution-in-one-line">The resolution in one line<a class="anchor-link" href="#The-resolution-in-one-line">¶</a></h2><p>Each image is noised to only ~5 timesteps over 5 epochs (<strong>true, and this is what makes the puzzle feel unanswerable</strong>) — but the <strong>dataset as a whole covers all 1000 timesteps densely</strong>, because every image in every batch draws its <em>own</em> random <code>t</code> (~300,000 draws over 5 epochs). The model learns a single denoising function from that pooled, dataset-wide coverage, and that one function applies to any image at any level — which is precisely what the 1000-step reverse loop calls on.</p>
+<p><strong>The trap to remember (note to future self):</strong> "coverage of all timesteps" is a property of the <em>dataset across images</em>, never of any <em>single image</em>. The objection quietly swaps those two subjects. Once you put the subject back — the dataset, not the image — the contradiction disappears.</p>
+<hr/>
+<h2 id="Quick-side-answers-to-related-sub-questions">Quick side-answers to related sub-questions<a class="anchor-link" href="#Quick-side-answers-to-related-sub-questions">¶</a></h2><ul>
+<li><p><strong>Does <code>sample</code> call <code>before_batch</code>?</strong> No. <code>before_batch</code> is a training callback fired by the <code>Learner</code>'s fit loop. <code>sample</code> is a standalone <code>@torch.no_grad()</code> method you call manually after training — no <code>learn.batch</code>, no <code>ε</code>, no loss. It only does repeated forward passes through the already-trained model.</p>
+</li>
+<li><p><strong>Why is single-random-<code>t</code> training even valid (instead of simulating the full chain)?</strong> The DDPM forward formula <code>xt = √ᾱ_t·x0 + √(1-ᾱ_t)·ε</code> lets you jump directly to any timestep in one shot. So a single random <code>(x0, t, ε)</code> is a valid, unbiased training example for level <code>t</code>. Sampling many random <code>t</code> across the dataset covers the whole chain in expectation — no need to ever simulate all 1000 steps during training. It is a training-efficiency trick, and it is mathematically sound.</p>
+</li>
+</ul>
 </div>
 </div>
 </div>
