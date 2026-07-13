@@ -1,0 +1,330 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feature stack → Gram matrix, in 3D</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:920px;line-height:1.45;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);margin-bottom:8px;flex-wrap:wrap;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:100px;accent-color:var(--ac);}
+  .sv{font-family:monospace;font-weight:700;color:var(--ac);}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12.5px;font-weight:700;margin:0 0 6px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .main{display:flex;gap:12px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  #c3d{border-radius:10px;background:linear-gradient(180deg,#f8faff,#eef3fb);cursor:grab;display:block;}
+  .inlegend{font-size:10.5px;color:var(--soft);text-align:center;margin-top:5px;}
+  .inlegend b.i{color:var(--in);} .inlegend b.o{color:var(--out);} .inlegend b.a{color:var(--ac);}
+  .gg{display:grid;grid-template-columns:22px repeat(6,37px);gap:3px;align-items:center;justify-items:center;}
+  .gh{font-family:monospace;font-size:9.5px;color:var(--soft);font-weight:700;transition:color .2s;}
+  .gh.hc{color:var(--in);} .gh.hd{color:var(--out);}
+  .gc{width:37px;height:29px;border:1.5px solid var(--line);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:10px;font-weight:700;cursor:pointer;background:#fff;transition:all .2s;}
+  .gc:hover{border-color:var(--ac);}
+  .gc.next{border:2px dashed var(--ac);animation:pulse 1s infinite;}
+  .gc.just{animation:fillpop .5s;}
+  @keyframes pulse{50%{box-shadow:0 0 0 4px rgba(123,92,214,.25);}}
+  @keyframes fillpop{0%{transform:scale(1.35);box-shadow:0 0 0 5px rgba(123,92,214,.35);}100%{transform:scale(1);}}
+  .hud{margin-top:9px;background:#f4f7fd;border-radius:9px;padding:8px 11px;font-size:12px;line-height:1.55;min-height:74px;max-width:300px;}
+  .hud b.i{color:var(--in);} .hud b.o{color:var(--out);} .hud b.a{color:var(--ac);}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:8px;}
+  label{user-select:none;cursor:pointer;}
+</style></head><body>
+<h1>From a stack of feature maps to the Gram matrix — one cell at a time</h1>
+<p class="sub">A VGG layer hands style loss a <b>stack of C feature maps</b> (here 6 toy maps, 8×8). For each table cell the recipe <b>pulls two maps out of the stack</b>, multiplies them cell-by-cell, averages the 64 products into <b>one number</b>, and drops it into G. <b>Press ▶ Play</b> to watch every cell get built — or <b>click two planes</b> (or any G cell) to compute the pair you want. Drag to orbit.</p>
+
+<div class="selrow">
+  <button class="play" id="play">▶ Play</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <label><input type="checkbox" id="rot"> auto-rotate</label>
+  · speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="sv" id="spv">1×</span>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap">the stack: x — shape (6, 8, 8) <small>click a plane to pick <b style="color:var(--in)">c</b>, another to pick <b style="color:var(--out)">d</b></small></div>
+    <canvas id="c3d" width="490" height="410"></canvas>
+    <div class="inlegend"><b class="i">orange lift = channel c</b> · <b class="o">teal lift = channel d</b> · <b class="a">purple plane = their 64 products → averaged → one number</b></div>
+  </div>
+  <div class="card">
+    <div class="cap">G = einsum('chw, dhw → cd') / 64 <small>6 channels → a 6×6 table · symmetric</small></div>
+    <div class="gg" id="gg"></div>
+    <div class="hud" id="hud">Press <b class="a">▶ Play</b> — the animation will announce each target cell, pull the two source planes out of the stack, and fly their averaged product into the table.</div>
+  </div>
+</div>
+<div class="legend">the toy patterns are rigged: ch 0 &amp; ch 1 are both “vertical-ish” and ch 2 &amp; ch 4 both “diagonal-ish” — watch their cells come out big · in the notebook this happens at C = 64…512, all pairs in one <code>einsum</code></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+if(typeof THREE==='undefined'){
+  const cv=$('c3d'),d=document.createElement('div');
+  d.style.cssText='width:490px;height:410px;display:flex;align-items:center;justify-content:center;color:#5a6b86;font-size:13px;text-align:center;padding:20px;';
+  d.innerHTML='3D library could not load (offline?).<br>The G table on the right still works — click its cells.';
+  cv.replaceWith(d);
+}
+const C=6,S=8;
+// rigged patterns: (0,1) correlated vertical, (2,4) correlated diagonal, 3 dots, 5 horizontal
+function mk(f){const m=[];for(let y=0;y<S;y++){m.push([]);for(let x=0;x<S;x++)m[y].push(Math.max(0,Math.min(1,f(x,y))));}return m;}
+const MAPS=[
+ mk((x,y)=> (x%3===1)?0.95:0.06),                       // ch0 vertical stripes
+ mk((x,y)=> (x%3===1)?0.75:((x%3===2)?0.25:0.06)),      // ch1 vertical-ish (correlated w/ ch0)
+ mk((x,y)=> (Math.abs(x-y)<1.5)?0.9:0.05),              // ch2 main diagonal
+ mk((x,y)=> ((x*31+y*17)%11<2)?0.85:0.04),              // ch3 sparse dots
+ mk((x,y)=> (Math.abs(x-y)<2.5)?0.7:0.05),              // ch4 diagonal-ish (correlated w/ ch2)
+ mk((x,y)=> (y%3===1)?0.9:0.06)];                       // ch5 horizontal stripes
+const G=[];for(let i=0;i<C;i++){G.push([]);for(let j=0;j<C;j++){let s=0;
+  for(let y=0;y<S;y++)for(let x=0;x<S;x++)s+=MAPS[i][y][x]*MAPS[j][y][x];G[i].push(s/(S*S));}}
+const GMAX=Math.max(...G.flat());
+
+// ---------- HTML G grid ----------
+let done={};const key=(a,b)=>a+','+b;
+let curC=-1,curD=-1,phase='idle';
+function renderG(justKey){
+  let h='<div></div>';
+  for(let j=0;j<C;j++)h+=`<div class="gh ${phase!=='idle'&&j===curD?'hd':''}">d${j}</div>`;
+  for(let i=0;i<C;i++){
+    h+=`<div class="gh ${phase!=='idle'&&i===curC?'hc':''}">c${i}</div>`;
+    for(let j=0;j<C;j++){
+      const dn=done[key(i,j)],v=G[i][j];
+      const isNext=(phase!=='idle'&&phase!=='fillDone')&&i===curC&&j===curD&&!dn;
+      h+=`<div class="gc ${isNext?'next':''} ${justKey===key(i,j)?'just':''}" data-c="${i}" data-d="${j}"
+        style="${dn?`background:rgba(123,92,214,${0.08+v/GMAX*0.6});border-color:#c9bdf0;color:${v/GMAX>0.55?'#fff':'#4a3b80'}`:''}">${dn?v.toFixed(2):'·'}</div>`;
+    }
+  }
+  $('gg').innerHTML=h;
+  [...$('gg').querySelectorAll('.gc')].forEach(el=>el.onclick=()=>{
+    stopPlay();
+    const a=+el.dataset.c,b2=+el.dataset.d;
+    if(window.startSeq)window.startSeq(a,b2,true);
+    else{done[key(a,b2)]=1;done[key(b2,a)]=1;renderG(key(a,b2));}});
+}
+function hud(t){$('hud').innerHTML=t;}
+renderG();
+
+// ---------- three.js scene ----------
+let seq=null, playing=false, queue=[], pending=-1, speed=1;
+function stopPlay(){playing=false;$('play').textContent='▶ Play';queue=[];}
+if(typeof THREE!=='undefined'){(function(){
+const cv=$('c3d');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+renderer.setSize(490,410,false);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(40,490/410,0.1,100);
+scene.add(new THREE.AmbientLight(0xffffff,0.95));
+const dl=new THREE.DirectionalLight(0xffffff,0.35);dl.position.set(3,6,8);scene.add(dl);
+
+// textures
+function mapTexture(i){
+  const c=document.createElement('canvas');c.width=256;c.height=256;const x=c.getContext('2d');
+  x.fillStyle='#fdfdff';x.fillRect(0,0,256,256);
+  const cs=256/S;
+  for(let y=0;y<S;y++)for(let xx=0;xx<S;xx++){
+    const v=MAPS[i][y][xx];
+    x.fillStyle=`rgba(90,74,160,${0.06+v*0.84})`;
+    x.fillRect(xx*cs+1,y*cs+1,cs-2,cs-2);}
+  x.strokeStyle='#cfd8ea';x.lineWidth=8;x.strokeRect(0,0,256,256);
+  const t=new THREE.CanvasTexture(c);return t;
+}
+function prodTexture(i,j){
+  const c=document.createElement('canvas');c.width=256;c.height=256;const x=c.getContext('2d');
+  x.fillStyle='#fdfdff';x.fillRect(0,0,256,256);
+  const cs=256/S;
+  for(let y=0;y<S;y++)for(let xx=0;xx<S;xx++){
+    const v=MAPS[i][y][xx]*MAPS[j][y][xx];
+    x.fillStyle=`rgba(123,92,214,${0.05+Math.min(1,v)*0.9})`;
+    x.fillRect(xx*cs+1,y*cs+1,cs-2,cs-2);}
+  x.strokeStyle='#7b5cd6';x.lineWidth=10;x.strokeRect(0,0,256,256);
+  return new THREE.CanvasTexture(c);
+}
+function labelTexture(txt,color){
+  const c=document.createElement('canvas');c.width=128;c.height=56;const x=c.getContext('2d');
+  x.font='bold 34px monospace';x.textAlign='center';x.textBaseline='middle';
+  x.fillStyle=color;x.fillText(txt,64,30);
+  return new THREE.CanvasTexture(c);
+}
+
+const HOME=i=>new THREE.Vector3(0,-0.3,(i-(C-1)/2)*0.85);
+const LIFT_C=new THREE.Vector3(-1.6,2.05,0.4), LIFT_D=new THREE.Vector3(1.6,2.05,0.4);
+const planes=[],labels=[],glows=[];
+for(let i=0;i<C;i++){
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(2.3,2.3),
+    new THREE.MeshBasicMaterial({map:mapTexture(i),side:THREE.DoubleSide,transparent:true}));
+  m.position.copy(HOME(i));m.userData.ch=i;scene.add(m);planes.push(m);
+  const g=new THREE.Mesh(new THREE.PlaneGeometry(2.55,2.55),
+    new THREE.MeshBasicMaterial({color:0xf6921e,side:THREE.DoubleSide,transparent:true,opacity:0}));
+  g.position.copy(HOME(i));g.position.z-=0.03;scene.add(g);glows.push(g);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture('ch '+i,'#25324a'),transparent:true}));
+  sp.scale.set(1.05,0.46,1);sp.position.copy(HOME(i)).add(new THREE.Vector3(0,1.32,0));
+  scene.add(sp);labels.push(sp);
+}
+let prod=null;
+
+// camera orbit (manual spherical drag)
+let theta=0.9,phi=1.18,R=9.2,drag=false,px=0,py=0;
+function cam(){camera.position.set(R*Math.sin(phi)*Math.cos(theta),R*Math.cos(phi),R*Math.sin(phi)*Math.sin(theta));
+  camera.lookAt(0,0.7,0);}
+cv.addEventListener('pointerdown',e=>{drag=true;px=e.clientX;py=e.clientY;cv.style.cursor='grabbing';});
+addEventListener('pointerup',()=>{drag=false;cv.style.cursor='grab';});
+addEventListener('pointermove',e=>{if(!drag)return;
+  theta+=(e.clientX-px)*0.008;phi=Math.min(2.6,Math.max(0.4,phi-(e.clientY-py)*0.008));
+  px=e.clientX;py=e.clientY;});
+
+// picking
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect();
+  mouse.x=((e.clientX-r.left)/r.width)*2-1;mouse.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(mouse,camera);
+  const hit=ray.intersectObjects(planes)[0];
+  if(!hit||seq)return;
+  const i=hit.object.userData.ch;
+  if(pending<0){pending=i;
+    glows[i].material.color.set(0xf6921e);glows[i].material.opacity=0.9;
+    planes[i].position.y=HOME(i).y+0.5;glows[i].position.copy(planes[i].position);glows[i].position.z-=0.03;
+    labels[i].position.copy(planes[i].position).add(new THREE.Vector3(0,1.32,0));
+    labels[i].material.map=labelTexture('ch '+i,'#f6921e');
+    hud(`picked <b class="i">ch ${i}</b> as c — now <b>click a second plane</b> to pick d (same plane twice is allowed: that computes the diagonal G[${i},${i}]).`);
+  } else {const c0=pending;pending=-1;stopPlay();startSeq(c0,i,true);}
+});
+
+// ---------- the choreography ----------
+const PH=[['target',0.8],['lift',0.7],['prod',1.2],['fly',0.8],['fill',0.35],['ret',0.6]];
+let t0=0,phIdx=0;
+window.startSeq=startSeq;
+function startSeq(c0,d0,fromClick){
+  // clear pending state
+  if(pending>=0){resetPlane(pending);pending=-1;}
+  curC=c0;curD=d0;phIdx=0;phase='target';t0=performance.now();
+  seq={c:c0,d:d0};
+  renderG();
+  hud(`<b class="a">next: G[${c0},${d0}]</b> — pull <b class="i">ch ${c0}</b> and <b class="o">ch ${d0}</b> out of the stack…`);
+}
+function resetPlane(i){
+  planes[i].position.copy(HOME(i));glows[i].material.opacity=0;
+  glows[i].position.copy(HOME(i));glows[i].position.z-=0.03;
+  labels[i].position.copy(HOME(i)).add(new THREE.Vector3(0,1.32,0));
+  labels[i].material.map=labelTexture('ch '+i,'#25324a');
+}
+const lerpV=(a,b,t)=>new THREE.Vector3().lerpVectors(a,b,t);
+const ease=t=>1-Math.pow(1-t,3);
+function interp(i){ // interpretation sentence for G[c][d]
+  const v=G[seq.c][seq.d],r=v/GMAX;
+  if(seq.c===seq.d)return `diagonal: how active ch ${seq.c}'s pattern is overall`;
+  if(r>0.5)return `<b>big</b> — these two patterns fire in the same cells (co-occur)`;
+  if(r>0.22)return `moderate — some overlap, mostly separate`;
+  return `small — they almost never fire at the same spot`;
+}
+function stepSeq(now){
+  if(!seq)return;
+  const dur=PH[phIdx][1]/speed*1000, t=Math.min(1,(now-t0)/dur), e=ease(t);
+  const {c,d}=seq;
+  if(phase==='lift'){
+    planes[c].position.copy(lerpV(HOME(c),LIFT_C,e));
+    if(d!==c)planes[d].position.copy(lerpV(HOME(d),LIFT_D,e));
+    else planes[c].position.copy(lerpV(HOME(c),new THREE.Vector3(0,2.05,0.4),e));
+    glows[c].material.color.set(0xf6921e);glows[c].material.opacity=0.9*e;
+    if(d!==c){glows[d].material.color.set(0x16a3a3);glows[d].material.opacity=0.9*e;}
+  }
+  if(phase==='prod'&&prod){
+    const s=Math.min(1.0,t<0.5?e*1.05:1.05-(e-0.5)*0.15);
+    prod.scale.set(Math.max(0.01,s),Math.max(0.01,s),1);
+    prod.material.opacity=Math.min(1,t*2.2);
+  }
+  if(phase==='fly'&&prod){
+    prod.position.copy(lerpV(new THREE.Vector3(0,2.85,0.6),new THREE.Vector3(4.6,1.9,0.6),e));
+    const s=1.0*(1-e)+0.05;prod.scale.set(s,s,1);
+  }
+  if(phase==='ret'){
+    planes[c].position.copy(lerpV(LIFT_C,HOME(c),e));
+    if(d!==c)planes[d].position.copy(lerpV(LIFT_D,HOME(d),e));
+    else planes[c].position.copy(lerpV(new THREE.Vector3(0,2.05,0.4),HOME(c),e));
+    glows[c].material.opacity=0.9*(1-e);if(d!==c)glows[d].material.opacity=0.9*(1-e);
+  }
+  // glow + label follow planes
+  [c,d].forEach((i,which)=>{
+    glows[i].position.copy(planes[i].position);glows[i].position.z-=0.03;
+    labels[i].position.copy(planes[i].position).add(new THREE.Vector3(0,1.32,0));
+  });
+  if(t>=1){ // phase transitions
+    phIdx++;
+    if(phIdx>=PH.length){ // sequence over
+      seq=null;phase='idle';renderG();
+      if(playing)nextInQueue();
+      else hud(`Done. Click two planes, or any table cell — or ▶ Play to finish the whole table.`);
+      return;
+    }
+    phase=PH[phIdx][0];t0=now;
+    if(phase==='lift'){
+      labels[c].material.map=labelTexture('ch '+c,'#f6921e');
+      if(d!==c)labels[d].material.map=labelTexture('ch '+d,'#16a3a3');
+      hud(`lifting <b class="i">ch ${c}</b> (orange) and <b class="o">ch ${d}</b> (teal) out of the stack — these are the ONLY two maps this cell looks at.`);
+    }
+    if(phase==='prod'){
+      if(prod){scene.remove(prod);prod=null;}
+      prod=new THREE.Mesh(new THREE.PlaneGeometry(2.3,2.3),
+        new THREE.MeshBasicMaterial({map:prodTexture(c,d),side:THREE.DoubleSide,transparent:true,opacity:0}));
+      prod.position.set(0,2.85,0.6);prod.scale.set(0.01,0.01,1);scene.add(prod);
+      hud(`<b class="a">multiply cell-by-cell</b> → the purple plane. A product is big only where <b>BOTH</b> maps are bright. Then average the 64 products.`);
+    }
+    if(phase==='fly'){
+      hud(`that average is <b>ONE number</b> — it flies out of the stack and into the table →`);
+    }
+    if(phase==='fill'){
+      if(prod){scene.remove(prod);prod=null;}
+      done[key(c,d)]=1;done[key(d,c)]=1;
+      renderG(key(c,d));
+      hud(`<b class="a">G[${c},${d}] = ${G[c][d].toFixed(2)}</b> — ${interp()}.${c!==d?` Symmetry writes the same number into G[${d},${c}] for free.`:''}`);
+    }
+    if(phase==='ret'){/* planes tween home */}
+  }
+}
+function nextInQueue(){
+  if(queue.length===0){stopPlay();hud(`<b>Table complete.</b> Read it: bright cells = patterns that co-occur — style loss will force the trainable image to reproduce exactly these co-occurrence strengths. Drag to orbit, ↺ Reset to run it again.`);renderG();return;}
+  const [c0,d0]=queue.shift();startSeq(c0,d0);
+}
+$('play').onclick=()=>{
+  if(playing){stopPlay();return;}
+  playing=true;$('play').textContent='⏸ Pause';
+  queue=[];for(let i=0;i<C;i++)for(let j=i;j<C;j++)if(!done[key(i,j)])queue.push([i,j]);
+  if(!seq)nextInQueue();
+};
+$('reset').onclick=()=>{stopPlay();done={};seq=null;phase='idle';
+  if(prod){scene.remove(prod);prod=null;}
+  for(let i=0;i<C;i++)resetPlane(i);
+  if(pending>=0)pending=-1;
+  renderG();hud(`Reset. Press <b class="a">▶ Play</b> or click two planes.`);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('rot').onchange=()=>{};
+
+(function loop(now){
+  requestAnimationFrame(loop);
+  if($('rot').checked&&!drag)theta+=0.003;
+  cam();
+  if(seq)stepSeq(now||performance.now());
+  renderer.render(scene,camera);
+})(performance.now());
+})();} else {
+  // no THREE: still allow the table to be explored by click
+  $('play').onclick=()=>{for(let i=0;i<C;i++)for(let j=0;j<C;j++)done[key(i,j)]=1;renderG();};
+  $('reset').onclick=()=>{done={};renderG();};
+}
+
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+</style>
+</body></html>

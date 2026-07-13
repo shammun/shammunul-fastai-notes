@@ -1,0 +1,227 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Normalization &amp; Broadcasting — the whole story at a glance</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:900px;line-height:1.45;}
+  .chips{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:5px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:4px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);margin-bottom:9px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .step,.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .step.off{opacity:.35;cursor:default;}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .sv{font-family:monospace;font-weight:700;color:var(--ac);}
+
+  /* ---- storyboard: all five stages visible at once ---- */
+  .board{max-width:960px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(285px,1fr));gap:10px;}
+  .st{background:#fff;border:2px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);
+      transition:opacity .25s,border-color .25s,box-shadow .25s;position:relative;cursor:pointer;}
+  .st .t{font-size:12px;font-weight:700;margin-bottom:6px;color:var(--soft);}
+  .st.on{border-color:var(--ac);box-shadow:0 8px 22px rgba(123,92,214,.22);}
+  .st.on .t{color:var(--ac);}
+  .st.dim{opacity:.42;filter:saturate(.55);}
+  .st .body{min-height:118px;}
+
+  .mchip{display:inline-flex;align-items:center;justify-content:center;width:44px;height:26px;border-radius:7px;color:#fff;font-family:monospace;font-weight:700;font-size:11px;box-shadow:0 2px 6px rgba(0,0,0,.14);}
+  .mR{background:#c85050;} .mG{background:#3f9954;} .mB{background:#4a6fd0;}
+  .shrow{display:flex;align-items:center;font-family:monospace;font-size:11.5px;font-weight:700;margin:3px 0;}
+  .shrow .lbl{font-size:9.5px;color:var(--soft);font-weight:400;width:88px;text-align:right;margin-right:6px;font-family:"Segoe UI",system-ui,sans-serif;}
+  .shbox{border:1.5px solid var(--line);background:#f7f9fd;border-radius:6px;padding:3px 7px;margin:0 2px;min-width:38px;text-align:center;}
+  .shbox.ok{border-color:#3f9954;background:#eef8f0;color:#2c7a3e;}
+  .shbox.bad{border-color:var(--neg);background:#fdeeee;color:var(--neg);}
+  .shbox.one{border-color:var(--ac);background:#f3effc;color:var(--ac);}
+  .shbox.ghost{visibility:hidden;}
+  .vrd{font-size:10.5px;font-weight:700;margin-top:2px;}
+  .err{background:#fdeeee;border:1.5px solid #f0bcbc;color:#a33;border-radius:8px;padding:5px 8px;font-family:monospace;font-size:9.5px;line-height:1.45;margin-top:6px;}
+  .colstack{display:flex;flex-direction:column;gap:3px;align-items:center;}
+  .tile{display:grid;grid-template-columns:repeat(4,30px);gap:3px;}
+  .tile div{height:20px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:#c85050;color:#fff;font-family:monospace;font-size:8.5px;font-weight:700;}
+  .st.on .tile div{opacity:0;animation:pop .3s forwards;}
+  @keyframes pop{from{transform:scale(.4);}to{opacity:1;transform:scale(1);}}
+  .grid2{display:grid;grid-template-columns:repeat(2,32px);gap:3px;}
+  .grid2 div{height:22px;display:flex;align-items:center;justify-content:center;border-radius:5px;font-family:monospace;font-size:9px;font-weight:700;background:#f7f9fd;border:1px solid var(--line);}
+  .bars .b{display:flex;align-items:center;gap:5px;margin:4px 0;font-size:9px;font-family:monospace;}
+  .track{position:relative;width:150px;height:10px;background:#f2f5fb;border:1px solid var(--line);border-radius:5px;}
+  .fill{position:absolute;top:1px;bottom:1px;border-radius:4px;}
+  .zero{position:absolute;top:-2px;bottom:-2px;width:2px;background:#25324a;}
+  .note{font-size:10.5px;color:var(--soft);line-height:1.45;margin-top:5px;}
+  .flow{display:flex;gap:6px;align-items:center;}
+  .arrowdn{text-align:center;font-size:15px;color:var(--ac);margin:1px 0;}
+
+  .plain{max-width:960px;margin:9px auto 0;background:#fff;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:10px;padding:8px 13px;font-size:12.5px;line-height:1.55;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .plain b.k{color:var(--ac);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:960px;margin:8px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;} .code .num{color:#f6b86e;} .code .er{color:#ff9d9d;}
+  .code .dead{opacity:.45;text-decoration:line-through;text-decoration-color:#8fa3c8;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>Feed VGG the diet it grew up on — <code>(im − mean) / std</code></h1>
+<p class="sub">VGG16 was trained on photos that were all <b>normalized per colour channel</b>, so ours must be too — but the image is a <code>(3, 256, 256)</code> block and the mean is just <b>3 numbers</b>. Making those shapes cooperate is <b>broadcasting</b>. The whole story stays on screen below; <b>▶ Play or Step</b> moves the spotlight through it (or click any panel to jump).</p>
+
+<div class="chips" id="chips"></div>
+<div class="selrow">
+  <button class="step" id="bk">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="step" id="fw">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  · speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="sv" id="spv">1×</span>
+</div>
+
+<div class="board" id="board"></div>
+<div class="plain" id="plain"></div>
+<div class="code" id="code"></div>
+<div class="legend">the rule, in one line: PyTorch lines shapes up <b>from the right</b>; equal dims match, a <b>1</b> stretches for free, anything else → error</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const NAMES=['① why normalize?','② the crash','③ reshape(3,1,1)','④ stretch for free','⑤ subtract & divide'];
+let st=0, playing=false, timer=null, speed=1;
+
+const chipsEl=$('chips');
+NAMES.forEach((n,i)=>{const b=document.createElement('button');b.className='chip';b.textContent=n;
+  b.onclick=()=>{setPlay(false);st=i;render();};chipsEl.appendChild(b);});
+
+// ---- the five always-visible panels ----
+const meanChips=()=>`<span class="mchip mR">.485</span> <span class="mchip mG">.456</span> <span class="mchip mB">.406</span>`;
+const stdChips =()=>`<span class="mchip mR">.229</span> <span class="mchip mG">.224</span> <span class="mchip mB">.225</span>`;
+
+const PANELS=[
+// ①
+()=>`<div class="body">
+  <div style="font-size:10.5px;color:var(--soft)">measured once over ALL of ImageNet:</div>
+  <div style="font-family:monospace;font-size:10.5px;margin:4px 0">mean ${meanChips()}</div>
+  <div style="font-family:monospace;font-size:10.5px">std&nbsp;&nbsp; ${stdChips()}</div>
+  <div class="note">Training photos were centred &amp; rescaled per channel, so inside VGG <b>0 = “average colour”</b>. Our raw pixels are all in [0, 1] — <b style="color:var(--neg)">all positive → “everything too bright” → garbage features</b>.</div>
+</div>`,
+// ②
+()=>`<div class="body">
+  <div class="shrow"><span class="lbl">im.shape</span><span class="shbox">3</span><span class="shbox">256</span><span class="shbox bad">256</span></div>
+  <div class="shrow"><span class="lbl">mean.shape</span><span class="shbox ghost">·</span><span class="shbox ghost">·</span><span class="shbox bad">3</span></div>
+  <div class="vrd" style="color:var(--neg)">aligned from the RIGHT → 3 vs 256 → ✗</div>
+  <div class="err">RuntimeError: The size of tensor a (256) must match the size of tensor b (3) at non-singleton dimension 2</div>
+</div>`,
+// ③
+()=>`<div class="body">
+  <div class="flow" style="justify-content:center">
+    <div style="text-align:center">
+      <div style="display:flex;gap:3px">${meanChips()}</div>
+      <div class="arrowdn">↓ .reshape(3,1,1)</div>
+      <div class="colstack"><span class="mchip mR">.485</span><span class="mchip mG">.456</span><span class="mchip mB">.406</span></div>
+    </div>
+    <div>
+      <div class="shrow"><span class="lbl" style="width:38px">im</span><span class="shbox ok">3</span><span class="shbox one">256</span><span class="shbox one">256</span></div>
+      <div class="shrow"><span class="lbl" style="width:38px">mean</span><span class="shbox ok">3</span><span class="shbox one">1</span><span class="shbox one">1</span></div>
+      <div class="vrd"><span style="color:#2c7a3e">3=3 ✓</span> · <span style="color:var(--ac)">1 vs 256 ✓ ×2</span></div>
+    </div>
+  </div>
+  <div class="note">same 3 numbers, standing in a column — one per colour plane. Every aligned position is now legal.</div>
+</div>`,
+// ④
+()=>{let cells='';for(let i=0;i<16;i++)cells+=`<div style="animation-delay:${i*40}ms">.485</div>`;
+ return `<div class="body">
+  <div class="flow" style="justify-content:center;gap:10px">
+    <span class="mchip mR">.485</span><span style="color:var(--ac);font-weight:700">→</span>
+    <div><div class="tile">${cells}</div>
+    <div style="font-size:9px;color:var(--soft);text-align:center;margin-top:2px">…out to a full 256×256 plane</div></div>
+  </div>
+  <div class="note">Broadcasting: each mean value acts like a whole constant plane — .485 meets every red pixel. <b style="color:var(--ac)">Nothing is copied in memory</b>; one line does 196,608 subtractions.</div>
+</div>`;},
+// ⑤
+()=>{
+ const raw=[[0.80,0.30],[0.62,0.51]];
+ const cen=raw.map(r=>r.map(v=>v-0.485)), nor=cen.map(r=>r.map(v=>v/0.229));
+ const g=a=>`<div class="grid2">${a.flat().map(v=>`<div>${v.toFixed(2)}</div>`).join('')}</div>`;
+ return `<div class="body">
+  <div style="font-size:9.5px;color:var(--soft);text-align:center">zoom: top-left 2×2 of the <b style="color:#c85050">red</b> plane</div>
+  <div class="flow" style="justify-content:center;gap:5px;margin-top:3px">
+    ${g(raw)}<div style="font-family:monospace;font-size:8.5px">−.485<br>→</div>${g(cen)}<div style="font-family:monospace;font-size:8.5px">÷.229<br>→</div>${g(nor)}
+  </div>
+  <div class="bars" style="margin-top:6px">
+    ${[['R','#c85050',-2.12,2.25],['G','#3f9954',-2.04,2.43],['B','#4a6fd0',-1.80,2.64]].map(([n,c,lo,hi])=>{
+      const L=-2.8,H=2.8,pc=v=>((v-L)/(H-L)*100);
+      return `<div class="b"><b style="color:${c};width:9px">${n}</b>
+        <div class="track"><div class="zero" style="left:${pc(0)}%"></div>
+        <div class="fill" style="background:${c};opacity:.85;left:${pc(lo)}%;width:${pc(hi)-pc(lo)}%"></div></div>
+        <span>[${lo.toFixed(2)}, ${hi.toFixed(2)}]</span></div>`;}).join('')}
+    <div style="font-size:9px;color:var(--soft)">tick = 0 → “average colour” now sits at zero, like in training</div>
+  </div>
+</div>`;}
+];
+
+const PLAIN=[
+ `<b class="k">① In plain words:</b> VGG doesn’t see “a photo”, it sees numbers — and its weights only make sense on the <b>scale it was trained on</b>. Raw [0, 1] pixels are the wrong units, so before anything else the notebook subtracts the ImageNet mean and divides by the ImageNet std.`,
+ `<b class="k">② In plain words:</b> the naive <code>im − imagenet_mean</code> explodes because PyTorch doesn’t know our 3 means “channels”. It lines shapes up <b>from the right-hand end</b>, so mean’s 3 gets compared with the image’s last dim — the 256 <i>columns</i>. 3 ≠ 256 and neither is 1 → error.`,
+ `<b class="k">③ In plain words:</b> <code>.reshape(3, 1, 1)</code> changes no data — it re-labels the 3 numbers as a tiny <b>3-deep, 1×1 image</b>. Aligned from the right, every position is now legal: 3 matches 3, and the two 1s are allowed to stretch.`,
+ `<b class="k">④ In plain words:</b> broadcasting auto-stretches every size-1 dim to whatever it faces — each mean value behaves like a full constant plane, <b>without allocating memory</b>. This one idiom (stats shaped <code>(C,1,1)</code>) appears all over deep learning code.`,
+ `<b class="k">⑤ In plain words:</b> subtract → the channel average becomes <b>0</b>; divide → “one std of colour” becomes <b>1</b>. The ranges the notebook prints (≈ −2.12 to +2.64) are just [0,1] in ImageNet units. VGG is finally eating its training diet — <i>now</i> its features mean something.`];
+
+function code(){
+  const dead=st>=3; // once fixed, the crashing line is history
+  const L=[
+   `imagenet_mean = torch.tensor([<span class="num">0.485</span>, <span class="num">0.456</span>, <span class="num">0.406</span>])  <span class="cm"># shape (3,)</span>`,
+   `imagenet_std  = torch.tensor([<span class="num">0.229</span>, <span class="num">0.224</span>, <span class="num">0.225</span>])`,
+   `<span class="${dead?'dead':''}">normed = (content_im - imagenet_mean)              <span class="er"># 💥 RuntimeError${dead?' — replaced below':'!'}</span></span>`,
+   `mean = imagenet_mean.reshape(<span class="num">3</span>, <span class="num">1</span>, <span class="num">1</span>)   std = imagenet_std.reshape(<span class="num">3</span>, <span class="num">1</span>, <span class="num">1</span>)`,
+   `normed = (content_im - mean) / std   <span class="cm"># broadcasting does the rest — range ≈ [-2.12, +2.64]</span>`];
+  const hl=[0,2,3,4,4][st];
+  $('code').innerHTML=L.map((t,i)=>i===hl?`<span class="hl">${t}</span>`:t).join('\n');
+}
+
+function buildBoard(){
+  const b=$('board');b.innerHTML='';
+  for(let i=0;i<5;i++){
+    const d=document.createElement('div');d.className='st';d.dataset.i=i;
+    d.innerHTML=`<div class="t">${NAMES[i]}</div>${PANELS[i]()}`;
+    d.onclick=()=>{setPlay(false);st=i;render();};
+    b.appendChild(d);
+  }
+}
+buildBoard();
+
+function render(){
+  [...chipsEl.children].forEach((c,i)=>c.classList.toggle('on',i===st));
+  [...$('board').children].forEach((d,i)=>{
+    const wasOn=d.classList.contains('on');
+    d.classList.toggle('on',i===st);
+    d.classList.toggle('dim',i!==st);
+    if(i===st&&!wasOn){ // re-inject to replay entrance animations
+      d.innerHTML=`<div class="t">${NAMES[i]}</div>${PANELS[i]()}`;
+    }
+  });
+  $('plain').innerHTML=PLAIN[st];
+  $('fw').classList.toggle('off',st===4);
+  $('bk').classList.toggle('off',st===0);
+  code();
+}
+function setPlay(p){playing=p;$('play').textContent=p?'⏸ Pause':'▶ Play';
+  clearInterval(timer);
+  if(p)timer=setInterval(()=>{if(st>=4){setPlay(false);return;}st++;render();},3200/speed);}
+$('play').onclick=()=>{if(!playing&&st===4)st=0;setPlay(!playing);render();};
+$('fw').onclick=()=>{if(st>=4)return;setPlay(false);st++;render();};
+$('bk').onclick=()=>{if(st<=0)return;setPlay(false);st--;render();};
+$('reset').onclick=()=>{setPlay(false);st=0;render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(playing)setPlay(true);};
+render();
+
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+</style>
+</body></html>

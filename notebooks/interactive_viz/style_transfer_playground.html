@@ -1,0 +1,293 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Style Transfer Playground</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:930px;line-height:1.45;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:4px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:4px 11px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  input[type=range]{width:120px;accent-color:var(--ac);}
+  .sv{font-family:monospace;font-weight:700;color:var(--ac);min-width:40px;display:inline-block;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;margin-top:6px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  canvas{display:block;border-radius:8px;border:1px solid var(--line);}
+  .inputs{display:flex;flex-direction:column;gap:10px;}
+  .tl{display:flex;gap:6px;justify-content:center;margin-top:8px;flex-wrap:wrap;}
+  .tl .chip{font-size:11px;padding:3px 9px;}
+  .lossnote{margin-top:6px;text-align:center;font-family:monospace;font-size:11.5px;background:#f4f7fd;border-radius:8px;padding:5px 9px;}
+  .lossnote .cl{color:var(--in);font-weight:700;} .lossnote .sl{color:var(--out);font-weight:700;}
+  .sim{max-width:760px;margin:8px auto 0;background:#fff8ec;border:1.5px solid #f2dcb0;color:#8a6210;border-radius:10px;font-size:11.5px;padding:7px 12px;text-align:center;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:880px;margin:8px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;} .code .num{color:#f6b86e;} .code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .legend b.i{color:var(--in);} .legend b.o{color:var(--out);} .legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>Style Transfer Playground — turn the knobs the notebook turns</h1>
+<p class="sub">The final experiments all trade the same three choices: <b>where you start</b> (content image vs pure noise), <b>how loud the style loss is</b> (the notebook multiplies it, e.g. <code>style_loss(x) * 0.2</code>), and <b>which layers guard the content</b>. Set them below, press ▶, and <b>click the loss curves or the iteration chips</b> to jump anywhere in the optimization.</p>
+
+<div class="selrow">
+  start from:
+  <button class="chip on" id="scC">content image</button>
+  <button class="chip" id="scN">random noise</button>
+  <span class="div"></span>
+  content layers:
+  <button class="chip on" id="clL">late (18, 25)</button>
+  <button class="chip" id="clE">early (1, 6)</button>
+</div>
+<div class="selrow">
+  style weight <input id="sw" type="range" min="0" max="3" step="0.1" value="1"><span class="sv" id="swv">1.0×</span>
+  <span class="div"></span>
+  <button class="play" id="play">▶ Play</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="sv" id="spv">1×</span>
+</div>
+
+<div class="main">
+  <div class="inputs">
+    <div class="card">
+      <div class="cap" style="color:var(--in)">content_im <small>WHAT</small></div>
+      <canvas id="cc" width="130" height="130"></canvas>
+    </div>
+    <div class="card">
+      <div class="cap" style="color:var(--out)">style_im <small>HOW</small></div>
+      <canvas id="sc" width="130" height="130"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">model.t at iteration <span id="itv">0</span> / 150 <small>the trainable image itself</small></div>
+    <canvas id="rc" width="280" height="280"></canvas>
+    <div class="tl" id="tl"></div>
+  </div>
+  <div class="card">
+    <div class="cap">the two losses <small>click anywhere on the plot to jump to that iteration</small></div>
+    <canvas id="lc" width="290" height="200"></canvas>
+    <div class="lossnote" id="ln"><span class="cl">— content loss</span> &nbsp; <span class="sl">— style loss</span></div>
+  </div>
+</div>
+
+<div class="sim">⚠️ This is a <b>hand-made simulation for intuition</b> — real style transfer runs VGG16 + backprop on a GPU (the notebook code below). The qualitative behaviour (what each knob does, which loss falls when) mirrors the real runs.</div>
+<div class="code" id="code"></div>
+<div class="legend">try: noise start + early layers → near-photocopy · noise start + late layers + loud style → dreamy repaint · content start → fastest, most faithful (the notebook\u2019s favourite)</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const NIT=150;
+let iter=0, startNoise=false, earlyLayers=false, sw=1.0, speed=1, playing=false, timer=null;
+let noiseSeed=[];
+function reseed(){noiseSeed=Array.from({length:4096},()=>Math.random());}
+reseed();
+
+function drawContent(x,S){
+  x.fillStyle='#cfe6ff';x.fillRect(0,0,S,S*0.55);
+  x.fillStyle='#bfe3bf';x.fillRect(0,S*0.55,S,S*0.45);
+  x.fillStyle='#ffd35c';x.beginPath();x.arc(S*0.8,S*0.16,S*0.08,0,7);x.fill();
+  x.fillStyle='#e8b06a';x.fillRect(S*0.3,S*0.36,S*0.34,S*0.42);
+  x.fillStyle='#c96f4a';x.beginPath();x.moveTo(S*0.26,S*0.36);x.lineTo(S*0.47,S*0.18);x.lineTo(S*0.68,S*0.36);x.fill();
+  x.fillStyle='#8a5a33';x.fillRect(S*0.42,S*0.6,S*0.1,S*0.18);
+  x.fillStyle='#9fd4f0';x.fillRect(S*0.54,S*0.44,S*0.08,S*0.08);
+}
+// ---- shared "Starry Night"-inspired style_im (same painting as the pipeline overview) ----
+function drawStyleIm(x,S,H){H=H||S;
+  const g=x.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#17245e');g.addColorStop(.55,'#2a4a8c');g.addColorStop(1,'#0f1a45');
+  x.fillStyle=g;x.fillRect(0,0,S,H);
+  let seed=7;const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);
+  const cx1=S*0.34,cy1=H*0.30,cx2=S*0.78,cy2=H*0.42;
+  const cols=['#8fb7e8','#5f88c9','#cfe0f5','#3d5fa8','#a9c6ee','#77a3dd'];
+  x.lineCap='round';
+  for(let i=0;i<280;i++){
+    let px=rnd()*S,py=rnd()*H*0.8;
+    x.strokeStyle=cols[(rnd()*cols.length)|0];
+    x.lineWidth=Math.max(1,S*0.006+rnd()*S*0.008);
+    x.globalAlpha=0.45+rnd()*0.4;
+    x.beginPath();x.moveTo(px,py);
+    for(let k=0;k<6;k++){
+      const d1=Math.hypot(px-cx1,py-cy1),d2=Math.hypot(px-cx2,py-cy2);
+      const cc=d1<d2?[cx1,cy1]:[cx2,cy2];
+      const a=Math.atan2(py-cc[1],px-cc[0])+Math.PI/2;
+      px+=Math.cos(a)*S*0.02;py+=Math.sin(a)*S*0.02;x.lineTo(px,py);}
+    x.stroke();
+  }
+  x.globalAlpha=1;
+  [[0.15,0.16,0.05],[0.5,0.10,0.032],[0.34,0.30,0.024],[0.64,0.22,0.02],[0.9,0.13,0.028]].forEach(p=>{
+    const sx=p[0]*S,sy=p[1]*H,r=p[2]*S;
+    x.strokeStyle='rgba(255,225,130,.55)';x.lineWidth=Math.max(1.1,S*0.009);
+    x.beginPath();x.arc(sx,sy,r*2.1,0,7);x.stroke();
+    x.strokeStyle='rgba(255,225,130,.28)';x.beginPath();x.arc(sx,sy,r*3.1,0,7);x.stroke();
+    const rg=x.createRadialGradient(sx,sy,0,sx,sy,r);
+    rg.addColorStop(0,'#fff6cf');rg.addColorStop(1,'#f2c94c');
+    x.fillStyle=rg;x.beginPath();x.arc(sx,sy,r,0,7);x.fill();});
+  const mx=S*0.78,my=H*0.42,rg2=x.createRadialGradient(mx,my,0,mx,my,S*0.07);
+  rg2.addColorStop(0,'#fff3c0');rg2.addColorStop(1,'#f6c94c');
+  x.fillStyle=rg2;x.beginPath();x.arc(mx,my,S*0.055,0,7);x.fill();
+  x.strokeStyle='rgba(255,230,150,.5)';x.lineWidth=Math.max(1.1,S*0.011);
+  x.beginPath();x.arc(mx,my,S*0.085,0,7);x.stroke();
+  x.fillStyle='#0d1633';x.beginPath();x.moveTo(0,H);x.lineTo(0,H*0.82);
+  x.quadraticCurveTo(S*0.28,H*0.70,S*0.55,H*0.83);
+  x.quadraticCurveTo(S*0.8,H*0.94,S,H*0.84);x.lineTo(S,H);x.closePath();x.fill();
+  x.fillStyle='#0a1128';x.beginPath();
+  x.moveTo(S*0.10,H);x.quadraticCurveTo(S*0.045,H*0.55,S*0.105,H*0.30);
+  x.quadraticCurveTo(S*0.165,H*0.55,S*0.15,H);x.closePath();x.fill();
+}
+// painterly filter: brush dabs that FOLLOW the style's swirls but SAMPLE the content's
+// colors underneath (nudged toward the painting's palette) -> a genuine mix of the two.
+function paintify(x,S,strength,phase){
+  if(strength<=0.02)return;
+  const img=x.getImageData(0,0,S,S),D=img.data;
+  let seed=13+((phase|0)%9);const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);
+  const pal=[[42,74,140],[143,183,232],[242,201,76],[15,26,69],[207,224,245],[95,136,201]];
+  const cx1=S*0.35,cy1=S*0.28;x.lineCap='round';
+  const N=Math.round(1.9*S*Math.min(1,strength));
+  for(let i=0;i<N;i++){
+    const px0=rnd()*S,py0=rnd()*S,id2=(((py0|0)*S)+(px0|0))*4;
+    let r=D[id2],g=D[id2+1],b=D[id2+2],best=pal[0],bd=1e9;
+    for(const p of pal){const d=(p[0]-r)**2+(p[1]-g)**2+(p[2]-b)**2;if(d<bd){bd=d;best=p;}}
+    const m=0.5*Math.min(1,strength);
+    r=(r*(1-m)+best[0]*m)|0;g=(g*(1-m)+best[1]*m)|0;b=(b*(1-m)+best[2]*m)|0;
+    x.strokeStyle=`rgba(${r},${g},${b},${0.45+0.35*rnd()})`;
+    x.lineWidth=Math.max(1.2,S*0.007+rnd()*S*0.009);
+    let px=px0,py=py0;x.beginPath();x.moveTo(px,py);
+    for(let k=0;k<4;k++){
+      const a=Math.atan2(py-cy1,px-cx1)+Math.PI/2+0.35*Math.sin((px+py)/S*7);
+      px+=Math.cos(a)*S*0.02;py+=Math.sin(a)*S*0.02;x.lineTo(px,py);}
+    x.stroke();
+  }
+  if(strength>0.45){ // the sun grows Starry-Night halo rings
+    x.strokeStyle=`rgba(255,220,110,${Math.min(0.8,strength-0.4)})`;
+    x.lineWidth=Math.max(1.4,S*0.012);
+    x.beginPath();x.arc(S*0.8,S*0.16,S*0.115,0,7);x.stroke();
+    x.beginPath();x.arc(S*0.8,S*0.16,S*0.15,0,7);x.stroke();
+  }
+}
+(function(){const x=$('cc').getContext('2d');drawContent(x,130);
+  const y=$('sc').getContext('2d');drawStyleIm(y,130,130);})();
+
+// dynamics (all in 0..1 progress terms)
+function contentMatch(k){ // how much the content structure is in place
+  const rate = earlyLayers? 0.05 : 0.035;
+  const base = startNoise? 1-Math.exp(-rate*k) : 1;
+  return base;
+}
+function styleAmt(k){ // stylization strength on screen
+  const target=Math.min(1, sw/1.2);
+  return target*(1-Math.exp(-0.03*k));
+}
+function contentLoss(k){
+  const w = earlyLayers? 1.15:1.0;
+  const start = startNoise? 3.0 : 0.15;
+  const settle = startNoise? (earlyLayers?0.12:0.35) : 0.15 + 0.25*styleAmt(NIT)* (earlyLayers?0.4:1);
+  // style pushing content loss slightly up over time when heavy
+  const drift = 0.18*sw*(1-Math.exp(-0.02*k))*(earlyLayers?0.4:1);
+  return w*(settle + (start-settle)*Math.exp(-0.05*k)) + (startNoise?0:drift);
+}
+function styleLoss(k){
+  const start=2.6*Math.max(0.15,sw);
+  const settle=0.25*Math.max(0.15,sw)*(earlyLayers?1.5:1);
+  return settle+(start-settle)*Math.exp(-0.035*k);
+}
+function drawResult(){
+  const c=$('rc'),x=c.getContext('2d'),S=280,k=iter;
+  x.clearRect(0,0,S,S);
+  drawContent(x,S);
+  const cm=contentMatch(k);
+  if(cm<1){ // noise overlay while structure not recovered
+    const im=x.getImageData(0,0,S,S),d2=im.data,na=1-cm;
+    for(let i=0;i<d2.length;i+=4){const n=noiseSeed[(i/4)%4096]*255;
+      d2[i]=d2[i]*(1-na)+n*na; d2[i+1]=d2[i+1]*(1-na)+((n*1.7)%255)*na; d2[i+2]=d2[i+2]*(1-na)+((n*2.3)%255)*na;}
+    x.putImageData(im,0,0);
+  }
+  // early content layers "pin" texture too, so they resist restyling
+  const resist=(earlyLayers&&!startNoise)?0.5:1;
+  const sa=styleAmt(k)*cm*resist;
+  if(sa>0.02){
+    // gentle cool colour-cast first (Gram matching pulls global colour stats)...
+    x.save();x.globalCompositeOperation='multiply';x.globalAlpha=Math.min(0.22,sa*0.25);
+    x.fillStyle='#2a4a8c';x.fillRect(0,0,S,S);x.restore();
+    // ...then swirl brush dabs sampling the content's own colours (stable per iteration bucket)
+    paintify(x,S,sa,Math.floor(k/8));
+  }
+  $('itv').textContent=k;
+}
+function drawLoss(){
+  const c=$('lc'),x=c.getContext('2d');x.clearRect(0,0,290,200);
+  x.strokeStyle='#dde5f2';x.beginPath();x.moveTo(32,10);x.lineTo(32,172);x.lineTo(282,172);x.stroke();
+  x.fillStyle='#5a6b86';x.font='10px monospace';
+  x.fillText('loss',2,14);x.fillText('0',26,182);x.fillText('150',268,182);x.fillText('iter',255,196);
+  const m=Math.max(contentLoss(0),styleLoss(0),0.5);
+  function plot(fn,col){x.strokeStyle=col;x.lineWidth=2;x.beginPath();
+    for(let k=0;k<=NIT;k++){const px=32+k/NIT*250,py=172-(fn(k)/m)*158;k?x.lineTo(px,py):x.moveTo(px,py);}x.stroke();x.lineWidth=1;}
+  plot(contentLoss,'#f6921e');plot(styleLoss,'#16a3a3');
+  const px=32+iter/NIT*250;
+  x.strokeStyle='#7b5cd6';x.setLineDash([3,3]);x.beginPath();x.moveTo(px,10);x.lineTo(px,172);x.stroke();x.setLineDash([]);
+  [[contentLoss,'#f6921e'],[styleLoss,'#16a3a3']].forEach(([fn,col])=>{
+    x.fillStyle='#7b5cd6';x.beginPath();x.arc(px,172-(fn(iter)/m)*158,4,0,7);x.fill();});
+  $('ln').innerHTML=`<span class="cl">content ${contentLoss(iter).toFixed(2)}</span> &nbsp;+&nbsp; <span class="sl">style ${styleLoss(iter).toFixed(2)} × w</span> &nbsp;=&nbsp; total ${(contentLoss(iter)+styleLoss(iter)).toFixed(2)}`;
+}
+$('lc').onclick=e=>{const r=$('lc').getBoundingClientRect();
+  const k=Math.round(((e.clientX-r.left)*(290/r.width)-32)/250*NIT);
+  setPlay(false);iter=Math.max(0,Math.min(NIT,k));renderAll();};
+
+// timeline chips
+const MARKS=[0,20,50,90,150];
+(function(){const t=$('tl');MARKS.forEach(k=>{
+  const b=document.createElement('button');b.className='chip';b.textContent='iter '+k;
+  b.onclick=()=>{setPlay(false);iter=k;renderAll();};t.appendChild(b);});})();
+
+function code(){
+  const w=sw.toFixed(1), tl=earlyLayers?'(1, 6)':'(18, 25)';
+  const init=startNoise?'torch.rand_like(content_im)':'content_im.clone()';
+  const phase = iter===0?0 : iter<NIT?1:2;
+  const L=[
+   `<span class="cm"># the notebook\u2019s final recipe — with YOUR current knob settings</span>`,
+   `model = TensorModel(${init})`,
+   `content_loss = ContentLossToTarget(content_im, target_layers=${tl})`,
+   `style_loss   = StyleLossToTarget(style_im)`,
+   `<span class="fn">def</span> combined_loss(x): <span class="fn">return</span> content_loss(x) + style_loss(x) * <span class="num">${w}</span>`,
+   `learn = Learner(model, get_dummy_dls(<span class="num">150</span>), combined_loss, lr=<span class="num">5e-2</span>,`,
+   `                cbs=[ImageOptCB()], opt_func=torch.optim.Adam)`,
+   `learn.fit(<span class="num">1</span>)   <span class="cm"># ${iter===0?'about to start':'iteration '+iter+' of 150'} — each batch nudges model.t once</span>`];
+  const hl = phase===0?1 : phase===1?7 : 4;
+  $('code').innerHTML=L.map((t,i)=>i===hl?`<span class="hl">${t}</span>`:t).join('\n');
+}
+function renderAll(){drawResult();drawLoss();code();
+  $('scC').classList.toggle('on',!startNoise);$('scN').classList.toggle('on',startNoise);
+  $('clL').classList.toggle('on',!earlyLayers);$('clE').classList.toggle('on',earlyLayers);}
+function setPlay(p){playing=p;$('play').textContent=p?'\u23F8 Pause':'\u25B6 Play';
+  clearInterval(timer);if(p)timer=setInterval(()=>{iter++;if(iter>=NIT){iter=NIT;setPlay(false);}renderAll();},60/speed);}
+$('scC').onclick=()=>{startNoise=false;renderAll();};
+$('scN').onclick=()=>{startNoise=true;renderAll();};
+$('clL').onclick=()=>{earlyLayers=false;renderAll();};
+$('clE').onclick=()=>{earlyLayers=true;renderAll();};
+$('sw').oninput=e=>{sw=+e.target.value;$('swv').textContent=sw.toFixed(1)+'\u00D7';renderAll();};
+$('play').onclick=()=>setPlay(!playing);
+$('reset').onclick=()=>{setPlay(false);iter=0;reseed();renderAll();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'\u00D7';if(playing)setPlay(true);};
+renderAll();
+
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+</style>
+</body></html>

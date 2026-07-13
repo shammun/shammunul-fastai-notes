@@ -1,0 +1,299 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Gram Matrix, gently</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:930px;line-height:1.45;}
+  .chips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:5px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:4px 10px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);margin-bottom:8px;flex-wrap:wrap;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .step,.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .shuf{background:#fdf3e3;color:#9c6a12;border:1.5px solid #f0d9ae;}
+  input[type=range]{width:100px;accent-color:var(--ac);}
+  .sv{font-family:monospace;font-weight:700;color:var(--ac);}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12.5px;font-weight:700;margin:0 0 6px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .main{display:flex;gap:12px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .dim{opacity:.35;filter:saturate(.4);transition:opacity .3s;}
+
+  .maps{display:grid;grid-template-columns:repeat(2,auto);gap:9px;}
+  .map{border:2.5px solid var(--line);border-radius:10px;padding:6px;transition:border-color .2s, box-shadow .2s;cursor:pointer;}
+  .map.selc{border-color:var(--in);box-shadow:0 0 0 3px rgba(246,146,30,.2);}
+  .map.seld{border-color:var(--out);box-shadow:0 0 0 3px rgba(22,163,163,.2);}
+  .map .mt{font-size:10.5px;font-weight:700;text-align:center;margin-bottom:3px;}
+  .m3{display:grid;grid-template-columns:repeat(3,26px);gap:2px;}
+  .m3 div{height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:10.5px;font-weight:700;}
+
+  .rows .fr{display:flex;align-items:center;gap:4px;margin:4px 0;cursor:pointer;border-radius:8px;padding:2px 4px;transition:background .15s;}
+  .rows .fr:hover{background:#f4f7fd;}
+  .rows .fr.selc{background:#fdf1e2;} .rows .fr.seld{background:#e6f6f6;}
+  .rows .rl{font-family:monospace;font-size:10.5px;font-weight:700;width:34px;}
+  .cell{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:9.5px;font-weight:700;transition:transform .15s, box-shadow .15s;}
+  .cell.hot{transform:scale(1.28);box-shadow:0 0 0 2.5px var(--ac);z-index:2;}
+  .sumline{font-family:monospace;font-size:12px;background:#f4f7fd;border-radius:8px;padding:6px 9px;margin-top:6px;min-height:30px;}
+  .sumline b{color:var(--ac);}
+
+  .gg{display:grid;grid-template-columns:26px repeat(4,50px);gap:4px;align-items:center;justify-items:center;}
+  .gh{font-family:monospace;font-size:10px;color:var(--soft);font-weight:700;transition:color .2s;}
+  .gh.hc{color:var(--in);} .gh.hd{color:var(--out);}
+  .gc{width:50px;height:37px;border:1.5px solid var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:11.5px;font-weight:700;cursor:pointer;background:#fff;transition:all .2s;}
+  .gc:hover{border-color:var(--ac);}
+  .gc.next{border:2px dashed var(--ac);animation:pulse 1s infinite;}
+  @keyframes pulse{50%{box-shadow:0 0 0 4px rgba(123,92,214,.25);}}
+  .meaning{font-size:11.5px;background:#f4f7fd;border-radius:8px;padding:6px 9px;margin-top:7px;max-width:250px;line-height:1.5;min-height:52px;}
+  .banner{max-width:930px;margin:9px auto 0;border-radius:10px;padding:8px 13px;font-size:12.5px;line-height:1.55;background:#f4f7fd;}
+  .banner.win{background:#e9f7ef;border:1.5px solid #bfe3cd;color:#20603a;font-weight:600;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:930px;margin:8px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;} .code .num{color:#f6b86e;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);} .legend b.o{color:var(--out);}
+  .mini{display:grid;grid-template-columns:repeat(4,30px);gap:2px;}
+  .mini div{height:22px;border:1px solid var(--line);border-radius:4px;font-family:monospace;font-size:8.5px;display:flex;align-items:center;justify-content:center;font-weight:700;}
+</style></head><body>
+<h1>The Gram matrix — a “fires-together” table</h1>
+<p class="sub"><b>Style ≈ which patterns show up together, regardless of where.</b> The Gram matrix is exactly that, as a table: entry <b>G[c, d]</b> asks <i>“when detector c fires at some spot, does detector d fire at the same spot?”</i> Big number = they co-occur a lot. Here it is at toy scale — <b>4 detectors on a 3×3 grid → a 4×4 table</b>. Press ▶ Play for the guided tour, click any table cell to see it computed, and don’t miss the 🔀 shuffle proof at the end.</p>
+
+<div class="chips" id="chips"></div>
+<div class="selrow">
+  <button class="step" id="bk">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="step" id="fw">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <button class="shuf" id="shuf">🔀 Shuffle pixel positions</button>
+  · speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="sv" id="spv">1×</span>
+</div>
+
+<div class="main">
+  <div class="card" id="cardMaps">
+    <div class="cap">4 pattern detectors <small>each reports, per grid cell, “my pattern is here this strongly”</small></div>
+    <div class="maps" id="maps"></div>
+  </div>
+  <div class="card" id="cardRows">
+    <div class="cap">flatten: each map → a list of 9 <small>x.reshape(4, −1) · click a row twice: 1st = <b style="color:var(--in)">c</b>, 2nd = <b style="color:var(--out)">d</b></small></div>
+    <div class="rows" id="rows"></div>
+    <div class="sumline" id="sumline"></div>
+  </div>
+  <div class="card" id="cardG">
+    <div class="cap">the table: G (4×4) <small>click any cell to watch it being computed</small></div>
+    <div class="gg" id="gg"></div>
+    <div class="meaning" id="meaning"></div>
+  </div>
+</div>
+
+<div class="banner" id="banner"></div>
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = detector c</b> · <b class="o">teal = detector d</b> · purple = the product being summed / the cell being written · in the notebook C is 64–512, so real Grams are up to 512×512 — same recipe</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const NAMES=['① meet the detectors','② flatten to lists','③ compare two lists','④ fill the table','⑤ the shuffle proof'];
+// detector personas + maps designed so ch0 & ch3 (both "vertical") co-fire strongly
+const CH=[
+ {name:'ch 0 · │ vertical edges', col:'#c85050', m:[[0,3,0],[0,3,0],[0,3,0]]},
+ {name:'ch 1 · ─ horizontal edges',col:'#3f9954', m:[[0,0,0],[2,2,2],[0,0,0]]},
+ {name:'ch 2 · ⟍ diagonals',       col:'#4a6fd0', m:[[3,0,0],[0,3,0],[0,0,3]]},
+ {name:'ch 3 · │ vertical (again)',col:'#b8862c', m:[[0,2,0],[0,2,1],[0,2,0]]}];
+let perm=[0,1,2,3,4,5,6,7,8];           // pixel-position permutation (identity until shuffled)
+const flat=c=>{const f=CH[c].m.flat();return perm.map(p=>f[p]);};
+const gval=(c,d)=>{const a=flat(c),b=flat(d);let s=0;for(let k=0;k<9;k++)s+=a[k]*b[k];return s/9;};
+
+let st=0, c=0, d=3, k=-1, done={}, playing=false, timer=null, speed=1, shuffled=false, gBefore=null, banner='';
+const key=(a,b)=>a+','+b;
+
+const chipsEl=$('chips');
+NAMES.forEach((n,i)=>{const b=document.createElement('button');b.className='chip';b.textContent=n;
+ b.onclick=()=>{setPlay(false);goStage(i);};chipsEl.appendChild(b);});
+
+function goStage(i){
+  st=i;k=-1;
+  if(st===3){ // fill: compute everything not yet done, keep animation to play
+    // leave; play will animate. Step-through fills instantly:
+  }
+  if(st===4 && !shuffled){banner='';}
+  render();
+}
+
+function heat(v,base){ // v 0..3 -> rgba of base color
+  const a=Math.min(1,v/3);
+  return `rgba(${base},${0.12+a*0.78})`;
+}
+function renderMaps(){
+  $('maps').innerHTML=CH.map((ch,i)=>{
+    const f=flat(i);
+    return `<div class="map ${i===c&&st>=2?'selc':''} ${i===d&&st>=2?'seld':''}" data-i="${i}">
+      <div class="mt" style="color:${ch.col}">${ch.name}</div>
+      <div class="m3">${f.map(v=>`<div style="background:${v?`rgba(90,74,160,${0.18+v/3*0.72})`:'#f7f9fd'};color:${v>1.5?'#fff':'#8a97b3'}">${v}</div>`).join('')}</div>
+    </div>`;}).join('');
+  [...$('maps').children].forEach(el=>el.onclick=()=>pickRow(+el.dataset.i));
+}
+function renderRows(){
+  if(st<1){$('rows').innerHTML='<div style="font-size:11.5px;color:var(--soft);padding:20px 6px;max-width:250px;line-height:1.6">…appears at step ② — first meet the four detectors on the left. Notice <b style="color:#c85050">ch 0</b> and <b style="color:#b8862c">ch 3</b> light up the <b>same middle column</b>: both are vertical-stroke detectors. Remember that.</div>';$('sumline').textContent='';return;}
+  let h='';
+  for(let i=0;i<4;i++){
+    const f=flat(i);
+    h+=`<div class="fr ${i===c&&st>=2?'selc':''} ${i===d&&st>=2?'seld':''}" data-i="${i}">
+      <span class="rl" style="color:${CH[i].col}">f[${i}]</span>
+      ${f.map((v,j)=>`<div class="cell ${st===2&&j===k&&(i===c||i===d)?'hot':''}" style="background:${v?`rgba(90,74,160,${0.18+v/3*0.72})`:'#f7f9fd'};color:${v>1.5?'#fff':'#8a97b3'}">${v}</div>`).join('')}
+    </div>`;
+  }
+  if(st>=2){
+    const a=flat(c),b=flat(d);
+    h+=`<div class="fr" style="cursor:default"><span class="rl" style="color:var(--ac)">c·d</span>
+      ${a.map((v,j)=>{const p=v*b[j],show=st>2||j<=k;
+        return `<div class="cell ${st===2&&j===k?'hot':''}" style="background:${show&&p?`rgba(123,92,214,${0.2+Math.min(1,p/9)*0.7})`:'#f7f9fd'};color:${show&&p>4?'#fff':show?'#6b57a8':'#c6cede'}">${show?p:'·'}</div>`;}).join('')}
+    </div>`;
+  }
+  $('rows').innerHTML=h;
+  [...$('rows').querySelectorAll('.fr[data-i]')].forEach(el=>el.onclick=()=>pickRow(+el.dataset.i));
+  // sum line
+  if(st===2){
+    const a=flat(c),b=flat(d);let s=0;const parts=[];
+    for(let j=0;j<=Math.min(k,8);j++){const p=a[j]*b[j];s+=p;if(p)parts.push(p);}
+    if(k<0)$('sumline').innerHTML=`multiply the two lists <b>position by position</b> — press Step ⏭ or ▶`;
+    else if(k<8)$('sumline').innerHTML=`position ${k}: ${a[k]} × ${b[k]} = <b>${a[k]*b[k]}</b> &nbsp;·&nbsp; running sum = <b>${s}</b>`;
+    else $('sumline').innerHTML=`sum = ${parts.join(' + ')||0} = <b>${s}</b> &nbsp;→&nbsp; ÷ 9 positions → <b>G[${c},${d}] = ${(s/9).toFixed(2)}</b>`;
+  } else if(st===1){$('sumline').innerHTML='same 9 numbers per map — nothing lost, WHERE is now just “position in the list”.';}
+  else $('sumline').innerHTML='';
+}
+function renderG(){
+  let h='<div></div>';
+  for(let j=0;j<4;j++)h+=`<div class="gh ${st>=2&&j===d?'hd':''}">d=${j}</div>`;
+  for(let i=0;i<4;i++){
+    h+=`<div class="gh ${st>=2&&i===c?'hc':''}">c=${i}</div>`;
+    for(let j=0;j<4;j++){
+      const dn=done[key(i,j)],v=gval(i,j);
+      const isNext=st===2&&i===c&&j===d&&!dn;
+      h+=`<div class="gc ${isNext?'next':''}" data-c="${i}" data-d="${j}"
+        style="${dn?`background:rgba(123,92,214,${0.08+v/3*0.55});border-color:#c9bdf0;color:${v>1.6?'#fff':'#4a3b80'}`:''}">${dn?v.toFixed(2):'·'}</div>`;
+    }
+  }
+  $('gg').innerHTML=h;
+  [...$('gg').querySelectorAll('.gc')].forEach(el=>el.onclick=()=>{
+    setPlay(false);c=+el.dataset.c;d=+el.dataset.d;st=2;k=-1;render();});
+  // meaning
+  const v=gval(c,d);
+  let m='';
+  if(st<2)m='Each cell will hold one “do these two fire together?” score.';
+  else if(!done[key(c,d)]&&k<8)m=`computing <b>G[${c},${d}]</b>: detector <b style="color:var(--in)">${c}</b> vs detector <b style="color:var(--out)">${d}</b>…`;
+  else{
+    if(c===d)m=`<b>G[${c},${c}] = ${v.toFixed(2)}</b> — a diagonal cell: detector ${c} vs itself = “how much does this pattern appear at all?”`;
+    else if(v>=1.5)m=`<b>G[${c},${d}] = ${v.toFixed(2)} — big!</b> Detectors ${c} and ${d} fire in the <b>same places</b> (both love vertical strokes). Their patterns co-occur → that’s a style fact.`;
+    else if(v>=0.9)m=`<b>G[${c},${d}] = ${v.toFixed(2)}</b> — moderate: they overlap at some positions (like the centre cell) but mostly live apart.`;
+    else m=`<b>G[${c},${d}] = ${v.toFixed(2)}</b> — small: these two patterns hardly ever appear at the same spot.`;
+  }
+  $('meaning').innerHTML=m;
+}
+function renderBanner(){
+  const B=[
+   `<b>Step ① — the cast.</b> After a VGG layer, the image has become C feature maps — one per pattern detector. Our toy has 4 detectors on a 3×3 grid; the notebook’s layers have 64–512 detectors on grids up to 256×256. Brighter cell = “my pattern is here, strongly”.`,
+   `<b>Step ② — flatten.</b> <code>x.reshape(C, −1)</code> unrolls each 3×3 map into a list of 9. The numbers are untouched — we’ve only agreed to read positions left-to-right. This sets up the next step, which is just “multiply two lists”.`,
+   `<b>Step ③ — one table cell.</b> To score how much detectors ${c} and ${d} fire together: multiply their lists <b>position by position</b> (a product is big only where BOTH are big), add everything up, divide by the 9 positions. One number. That is the entire Gram recipe.`,
+   `<b>Step ④ — the whole table.</b> Repeat for every pair of detectors → a C×C table. Note it’s symmetric (c·d = d·c) and the diagonal is each detector’s own overall activity. This table — not the maps! — is what style loss compares.`,
+   banner||`<b>Step ⑤ — the punchline.</b> Press <b>🔀 Shuffle pixel positions</b>: every map gets scrambled by the <i>same</i> random shuffle — the image becomes unrecognizable noise…so what happens to G?`];
+  const el=$('banner');el.className='banner'+(st===4&&shuffled?' win':'');el.innerHTML=B[st];
+}
+function renderCode(){
+  const L=[
+   `<span class="cm"># x = activations at one VGG layer, shape (C, H, W) — here (4, 3, 3)</span>`,
+   `f = x.reshape(<span class="num">4</span>, -<span class="num">1</span>)                       <span class="cm"># (4, 9): each map → a list</span>`,
+   `G = torch.einsum(<span class="cm">'chw, dhw -> cd'</span>, x, x) / (h*w)  <span class="cm"># all pairs at once</span>`,
+   `G = (f @ f.T) / <span class="num">9</span>                        <span class="cm"># identical result via matmul</span>`,
+   `<span class="cm"># style_loss compares G(model.t) to G(style_im) — never the maps themselves</span>`];
+  const hl=[0,1,2,2,4][st];
+  $('code').innerHTML=L.map((t,i)=>i===hl?`<span class="hl">${t}</span>`:t).join('\n');
+}
+function render(){
+  [...chipsEl.children].forEach((el,i)=>el.classList.toggle('on',i===st));
+  $('cardRows').classList.toggle('dim',st<1);
+  $('cardG').classList.toggle('dim',st<2);
+  renderMaps();renderRows();renderG();renderBanner();renderCode();
+}
+let pickNext='c';
+function pickRow(i){
+  setPlay(false);
+  if(st<2)st=2;
+  if(pickNext==='c'){c=i;pickNext='d';}
+  else{d=i;pickNext='c';}
+  k=-1;render();
+}
+
+function stepFw(){
+  if(st===2){
+    if(k<8){k++;render();return;}
+    done[key(c,d)]=1;done[key(d,c)]=1;render();
+    goStage(3);fillAllInstant();return;
+  }
+  if(st===3){fillAllInstant();goStage(4);return;}
+  if(st===4){doShuffle();return;}
+  goStage(st+1);
+}
+function fillAllInstant(){for(let i=0;i<4;i++)for(let j=0;j<4;j++)done[key(i,j)]=1;render();}
+
+function setPlay(p){playing=p;$('play').textContent=p?'⏸ Pause':'▶ Play';clearTimeout(timer);if(p)tick();}
+function tick(){
+  if(!playing)return;
+  let delay=2600;
+  if(st===2){
+    if(k<8){k++;delay=430;}
+    else{done[key(c,d)]=1;done[key(d,c)]=1;st=3;k=-1;delay=1400;}
+  } else if(st===3){
+    // fill next missing cell
+    let f=null;
+    outer:for(let i=0;i<4;i++)for(let j=0;j<4;j++)if(!done[key(i,j)]){f=[i,j];break outer;}
+    if(f){c=f[0];d=f[1];done[key(c,d)]=1;done[key(d,c)]=1;delay=460;}
+    else{st=4;delay=2200;}
+  } else if(st===4){
+    if(!shuffled){doShuffle();setPlay(false);render();return;}
+    setPlay(false);render();return;
+  } else {st++; if(st===2)k=-1; delay=2800;}
+  render();
+  timer=setTimeout(tick,delay/speed);
+}
+function doShuffle(){
+  setPlay(false);
+  gBefore=[];for(let i=0;i<4;i++){gBefore.push([]);for(let j=0;j<4;j++)gBefore[i].push(gval(i,j));}
+  // random permutation, same for all channels
+  perm=[...Array(9).keys()];
+  for(let i=8;i>0;i--){const j=(Math.random()*(i+1))|0;[perm[i],perm[j]]=[perm[j],perm[i]];}
+  shuffled=true;st=4;fillAllInstant();
+  const mini=g=>`<div class="mini">${g.flat().map(v=>`<div>${v.toFixed(2)}</div>`).join('')}</div>`;
+  const gAfter=[];for(let i=0;i<4;i++){gAfter.push([]);for(let j=0;j<4;j++)gAfter[i].push(gval(i,j));}
+  banner=`<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <div><div style="font-size:10.5px;color:var(--soft)">G before shuffle</div>${mini(gBefore)}</div>
+    <div style="font-size:20px">=</div>
+    <div><div style="font-size:10.5px;color:var(--soft)">G after shuffle</div>${mini(gAfter)}</div>
+    <div style="flex:1;min-width:230px"><b>Identical, to the last digit</b> — the maps on the left are now scrambled nonsense, yet every “fires-together” score survived, because each position still holds the same <i>combination</i> of detector values. <b>The Gram matrix never knew WHERE — only WHAT-goes-with-WHAT.</b> That is why matching Grams copies brushwork &amp; palette without copying the painting’s layout. (↺ Reset to un-shuffle.)</div>
+  </div>`;
+  render();
+}
+$('shuf').onclick=doShuffle;
+$('play').onclick=()=>{if(!playing&&st===4&&shuffled){/*restart*/}setPlay(!playing);};
+$('fw').onclick=()=>{setPlay(false);stepFw();};
+$('bk').onclick=()=>{setPlay(false);if(st===2&&k>=0){k--;render();}else goStage(Math.max(0,st-1));};
+$('reset').onclick=()=>{setPlay(false);st=0;k=-1;c=0;d=3;done={};perm=[0,1,2,3,4,5,6,7,8];shuffled=false;banner='';render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+render();
+
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+</style>
+</body></html>

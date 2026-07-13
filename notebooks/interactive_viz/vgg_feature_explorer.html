@@ -1,0 +1,368 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>vgg16.features — a clickable ruler over all 31 layers</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--conv:#7b5cd6;--relu:#16a3a3;--pool:#f6921e;--ac:#7b5cd6;--bg:#eef3fb;--warm:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  html,body{overflow-x:hidden;}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 14px;min-height:0;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 10px;max-width:940px;line-height:1.45;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12.5px;font-weight:700;margin:0 0 7px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;margin-top:1px;}
+  button{font-family:inherit;font-weight:700;font-size:12px;border:none;border-radius:9px;padding:6px 12px;cursor:pointer;}
+  .preset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .preset:hover{border-color:var(--ac);color:var(--ac);}
+  .preset.on{background:var(--ac);color:#fff;border-color:var(--ac);}
+  .presets{display:flex;gap:7px;align-items:center;justify-content:center;flex-wrap:wrap;margin-bottom:10px;font-size:11.5px;color:var(--soft);}
+  .presets code{font-family:monospace;font-size:11px;}
+
+  /* ---- the ruler ---- */
+  .ruler{margin-bottom:11px;}
+  .blk{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+  .blabel{width:112px;flex:none;text-align:right;font-size:10.5px;color:var(--soft);font-weight:700;line-height:1.25;}
+  .blabel small{display:block;font-weight:400;font-size:9.5px;}
+  .chips{display:flex;gap:4px;flex-wrap:wrap;}
+  .chip{min-width:52px;border:1.5px solid var(--line);border-radius:8px;background:#fff;padding:3px 5px;cursor:pointer;text-align:center;transition:all .16s;}
+  .chip .i{font-family:monospace;font-size:11px;font-weight:700;display:block;line-height:1.15;}
+  .chip .t{font-size:8.5px;color:var(--soft);letter-spacing:.03em;display:block;}
+  .chip.conv .i{color:var(--conv);} .chip.relu .i{color:var(--relu);} .chip.pool .i{color:var(--pool);}
+  .chip:hover{border-color:var(--ac);transform:translateY(-1px);}
+  .chip.focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(123,92,214,.18);}
+  .chip.sel{background:linear-gradient(180deg,#faf7ff,#f1ecfd);border-color:var(--ac);border-width:2px;}
+  .chip.sel .t::after{content:" ★";color:var(--ac);}
+
+  .main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;align-items:start;}
+  body.ce-narrow .main{grid-template-columns:1fr;}
+  .row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px dashed var(--line);}
+  .row:last-child{border-bottom:none;}
+  .row b{font-family:monospace;color:var(--ac);}
+  .shape{font-family:monospace;font-weight:700;font-size:14px;color:var(--ac);text-align:center;padding:6px 0 4px;}
+  .desc{background:#f4f7fd;border-radius:9px;padding:8px 10px;font-size:11.5px;line-height:1.5;color:var(--ink);margin-top:8px;min-height:78px;}
+  .desc b{color:var(--ac);}
+  canvas{display:block;border-radius:9px;background:#fff;}
+  .rfwrap{display:flex;gap:10px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .cvcap{font-size:10px;color:var(--soft);text-align:center;margin-top:4px;line-height:1.35;}
+  .cvcap b{color:var(--ink);}
+  .pct{font-family:monospace;font-weight:700;color:var(--warm);}
+  .chart{margin-top:11px;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:10px;line-height:1.5;}
+  .legend b.c{color:var(--conv);} .legend b.r{color:var(--relu);} .legend b.p{color:var(--pool);}
+  .selbar{font-size:11.5px;color:var(--soft);text-align:center;margin-bottom:8px;}
+  .selbar code{background:#f1ecfd;color:var(--ac);font-weight:700;padding:2px 7px;border-radius:6px;font-family:monospace;font-size:12px;}
+</style></head><body>
+
+<h1>Inside <code style="font-family:monospace">vgg16.features</code> — click any of the 31 layers</h1>
+<p class="sub">This is the exact module the notebook loads with <code>timm.create_model('vgg16', pretrained=True).features</code>, and the exact one <code>calc_features</code> walks with <code>vgg16[:max(target_layers)+1]</code>. Click a layer to see the <b>feature-map shape</b> it hands back for our 256&times;256 input, its <b>receptive field</b> (how much of the photo a single activation can see), and a mock of <b>what content loss at that depth can still pin down</b>. The presets load the notebook's real <code>target_layers</code>.</p>
+
+<div class="presets">
+  <span>presets:</span>
+  <button class="preset" data-p="18,25">content <code>(18, 25)</code></button>
+  <button class="preset" data-p="1,6">early / perceptual <code>(1, 6)</code></button>
+  <button class="preset" data-p="6,18,25">more layers <code>(6, 18, 25)</code></button>
+  <button class="preset" data-p="1,6,11,18,25">style <code>(1, 6, 11, 18, 25)</code></button>
+  <button class="preset" data-p="">clear</button>
+</div>
+
+<div class="selbar">selected <code>target_layers</code> = <code id="selcode">(18, 25)</code> &middot; <span id="selnote">the notebook's default content layers &mdash; two deep ReLUs</span></div>
+
+<div class="ruler card" id="ruler"></div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap">layer detail <small>what <code>calc_features</code> would grab here</small></div>
+    <div class="shape" id="shape">&mdash;</div>
+    <div class="row"><span>module</span><b id="mod">&mdash;</b></div>
+    <div class="row"><span>block</span><b id="blk">&mdash;</b></div>
+    <div class="row"><span>channels <span style="color:var(--soft)">C</span></span><b id="chn">&mdash;</b></div>
+    <div class="row"><span>spatial <span style="color:var(--soft)">H&times;W</span></span><b id="sp">&mdash;</b></div>
+    <div class="row"><span>activations</span><b id="act">&mdash;</b></div>
+    <div class="row"><span>receptive field</span><b id="rf">&mdash;</b></div>
+    <div class="desc" id="desc"></div>
+  </div>
+
+  <div class="card">
+    <div class="cap">receptive field <small>one activation, drawn to scale on the 256&times;256 input</small></div>
+    <div class="rfwrap">
+      <div>
+        <canvas id="rfc" width="238" height="238"></canvas>
+        <div class="cvcap">the <b style="color:#d64545">red box</b> is what <b>one</b> number in this feature map sees<br>&rarr; <span class="pct" id="rfpct">&mdash;</span> of the image area</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cap">what content loss can pin down here <small>mock reconstruction &mdash; illustration, not a real inversion</small></div>
+    <div class="rfwrap">
+      <div>
+        <canvas id="orig" width="112" height="112"></canvas>
+        <div class="cvcap">the content image<br><b>content_im</b></div>
+      </div>
+      <div>
+        <canvas id="rec" width="112" height="112"></canvas>
+        <div class="cvcap">matched at <b id="reclab">layer 18</b><br><span id="recnote">layout survives, pixels don't</span></div>
+      </div>
+    </div>
+    <div class="desc" id="desc2"></div>
+  </div>
+</div>
+
+<div class="card chart">
+  <div class="cap">the whole stack at a glance <small>spatial size collapses 256&rarr;8 while channels grow 64&rarr;512 &mdash; that trade is <i>why</i> deep layers hold layout instead of pixels</small></div>
+  <canvas id="chart" width="1200" height="150" style="width:100%;height:150px;"></canvas>
+</div>
+
+<div class="legend">
+  <b class="c">purple = Conv2d</b> &middot; <b class="r">teal = ReLU</b> &middot; <b class="p">orange = MaxPool2d</b> &middot; ★ = in the current <code>target_layers</code><br>
+  the notebook always targets <b>ReLU</b> indices (1, 6, 11, 18, 25) &mdash; post-activation features are the standard choice in Gatys et al.; a Conv index would work too, it is just less common.
+</div>
+
+<script>
+/* ---------------- the real vgg16.features, layer by layer ---------------- */
+/* Conv 3x3 s1 p1, MaxPool 2x2 s2. RF math: conv -> r += 2*j ; pool -> r += j, j *= 2. */
+const SPEC = [
+  ["Conv2d(3, 64, 3x3)","conv",1],   ["ReLU(inplace)","relu",1],
+  ["Conv2d(64, 64, 3x3)","conv",1],  ["ReLU(inplace)","relu",1],
+  ["MaxPool2d(2, 2)","pool",1],
+  ["Conv2d(64, 128, 3x3)","conv",2], ["ReLU(inplace)","relu",2],
+  ["Conv2d(128, 128, 3x3)","conv",2],["ReLU(inplace)","relu",2],
+  ["MaxPool2d(2, 2)","pool",2],
+  ["Conv2d(128, 256, 3x3)","conv",3],["ReLU(inplace)","relu",3],
+  ["Conv2d(256, 256, 3x3)","conv",3],["ReLU(inplace)","relu",3],
+  ["Conv2d(256, 256, 3x3)","conv",3],["ReLU(inplace)","relu",3],
+  ["MaxPool2d(2, 2)","pool",3],
+  ["Conv2d(256, 512, 3x3)","conv",4],["ReLU(inplace)","relu",4],
+  ["Conv2d(512, 512, 3x3)","conv",4],["ReLU(inplace)","relu",4],
+  ["Conv2d(512, 512, 3x3)","conv",4],["ReLU(inplace)","relu",4],
+  ["MaxPool2d(2, 2)","pool",4],
+  ["Conv2d(512, 512, 3x3)","conv",5],["ReLU(inplace)","relu",5],
+  ["Conv2d(512, 512, 3x3)","conv",5],["ReLU(inplace)","relu",5],
+  ["Conv2d(512, 512, 3x3)","conv",5],["ReLU(inplace)","relu",5],
+  ["MaxPool2d(2, 2)","pool",5]
+];
+const IN = 256;
+const L = [];
+(function build(){
+  let C = 3, S = IN, r = 1, j = 1;                 // channels, spatial, receptive field, jump
+  for (let i = 0; i < SPEC.length; i++){
+    const [name, kind, block] = SPEC[i];
+    if (kind === "conv"){ C = +name.match(/,\s*(\d+),/)[1]; r += 2*j; }
+    else if (kind === "pool"){ S = S/2; r += j; j *= 2; }
+    L.push({i, name, kind, block, C, S, rf: Math.min(r, IN), jump: j});
+  }
+})();
+
+const BLOCKS = [
+  ["block 1", "64 ch @ 256&times;256"], ["block 2", "128 ch @ 128&times;128"],
+  ["block 3", "256 ch @ 64&times;64"],  ["block 4", "512 ch @ 32&times;32"],
+  ["block 5", "512 ch @ 16&times;16"]
+];
+const DESC = {
+  1: ["<b>raw edges and colour blobs.</b> A 3&times;3 kernel on the pixels themselves &mdash; the receptive field is a few pixels wide, so an activation here is essentially <i>a filtered pixel</i>. Content loss at this depth is barely different from an MSE on the image: it pins down <b>exact position and exact colour</b>. That is precisely why the notebook's <code>target_layers=(1, 6)</code> perceptual experiment produces something close to the original photo.",
+      "still basically the photo"],
+  2: ["<b>edge junctions, corners, simple textures.</b> Two pooling steps in and the receptive field is a couple of dozen pixels &mdash; wide enough to combine edges into strokes, narrow enough that <i>where</i> the stroke sits still matters. This is the classic <b>style</b> depth: local texture, no object identity.",
+      "strokes and texture, position still tight"],
+  3: ["<b>motifs and parts.</b> A 24&times;24-pixel receptive field &mdash; about a tenth of the image width &mdash; over 256 channels. Wide enough that activations respond to repeated patterns (brick, foliage, window-like corners) rather than single edges, but the 64&times;64 grid still holds position tightly. Layer 11 sits here, the middle of the notebook's 5-layer style set.",
+      "motifs are legible, pixels are not"],
+  4: ["<b>object parts and layout.</b> 512 channels over a 32&times;32 grid, each activation seeing a 60&times;60 window &mdash; roughly a quarter of the image width. Exact colour and fine texture are largely gone; what survives is <i>what is where</i>. This is layer <b>18</b>, half of the notebook's default <code>target_layers=(18, 25)</code>, and it is why matching features here lets the pixels repaint themselves while the composition stays put.",
+      "layout locked, pixels free to repaint"],
+  5: ["<b>global composition.</b> A 16&times;16 grid whose activations each see a 132&times;132 window &mdash; over half the image width, so neighbouring activations overlap heavily. Content loss here constrains little that is local, only the coarse arrangement. Layer <b>25</b> lives here; paired with 18 it gives the notebook a content term that says <i>&ldquo;keep the scene, surrender the paint.&rdquo;</i>",
+      "only the coarse scene remains"]
+};
+
+/* ---------------- state ---------------- */
+let sel = new Set([18, 25]);
+let focus = 18;
+const $ = id => document.getElementById(id);
+const NOTES = {
+  "18,25": "the notebook's default content layers &mdash; two deep ReLUs",
+  "1,6": "the early perceptual experiment &mdash; almost an MSE on pixels",
+  "6,18,25": "the &ldquo;more layers&rdquo; content run &mdash; adds a mid-level term",
+  "1,6,11,18,25": "the 5-layer <b>style</b> set fed to <code>calc_grams</code>",
+  "": "nothing selected &mdash; click any layer chip"
+};
+
+/* ---------------- the ruler ---------------- */
+(function ruler(){
+  let h = "";
+  for (let b = 1; b <= 5; b++){
+    h += '<div class="blk"><div class="blabel">' + BLOCKS[b-1][0] + '<small>' + BLOCKS[b-1][1] + '</small></div><div class="chips">';
+    L.filter(l => l.block === b).forEach(l => {
+      const t = l.kind === "conv" ? "conv" : (l.kind === "relu" ? "relu" : "pool");
+      h += '<div class="chip ' + l.kind + '" data-i="' + l.i + '"><span class="i">' + l.i + '</span><span class="t">' + t + '</span></div>';
+    });
+    h += "</div></div>";
+  }
+  $("ruler").innerHTML = h;
+  $("ruler").querySelectorAll(".chip").forEach(c => {
+    c.onclick = () => { const i = +c.dataset.i; focus = i; sel.has(i) ? sel.delete(i) : sel.add(i); paint(); };
+  });
+})();
+
+document.querySelectorAll(".preset").forEach(b => {
+  b.onclick = () => {
+    const p = b.dataset.p;
+    sel = new Set(p ? p.split(",").map(Number) : []);
+    if (sel.size) focus = Math.max(...sel);
+    paint();
+  };
+});
+
+/* ---------------- the content image (synthetic, but a real scene) ---------------- */
+const SRC = document.createElement("canvas"); SRC.width = SRC.height = 256;
+(function drawScene(){
+  const g = SRC.getContext("2d");
+  const sky = g.createLinearGradient(0, 0, 0, 150);
+  sky.addColorStop(0, "#5b86c9"); sky.addColorStop(1, "#cfe0f5");
+  g.fillStyle = sky; g.fillRect(0, 0, 256, 256);
+  g.fillStyle = "#ffd66b"; g.beginPath(); g.arc(196, 46, 24, 0, 7); g.fill();   // sun
+  g.fillStyle = "#8fb98a"; g.beginPath();                                        // hills
+  g.moveTo(0, 176); g.quadraticCurveTo(70, 122, 138, 172); g.quadraticCurveTo(200, 206, 256, 158);
+  g.lineTo(256, 256); g.lineTo(0, 256); g.fill();
+  g.fillStyle = "#6b9a67"; g.fillRect(0, 196, 256, 60);                          // field
+  g.fillStyle = "#e8e2d6"; g.fillRect(58, 150, 78, 62);                          // house
+  g.fillStyle = "#b5514c"; g.beginPath();                                        // roof
+  g.moveTo(48, 152); g.lineTo(97, 116); g.lineTo(146, 152); g.fill();
+  g.fillStyle = "#4a6d94"; g.fillRect(72, 166, 20, 20); g.fillRect(104, 166, 20, 20);  // windows
+  g.fillStyle = "#7a5c3e"; g.fillRect(88, 190, 18, 22);                          // door
+  g.fillStyle = "#5c7f58"; g.beginPath(); g.arc(200, 186, 26, 0, 7); g.fill();   // tree
+  g.fillStyle = "#7a5c3e"; g.fillRect(196, 194, 8, 30);
+  for (let k = 0; k < 380; k++){                                                 // grass grain
+    g.fillStyle = "rgba(40,80,40," + (0.05 + Math.random() * 0.14).toFixed(2) + ")";
+    g.fillRect(Math.random() * 256, 200 + Math.random() * 56, 2, 2);
+  }
+})();
+(function () {                                                                   // the "original" thumbnail
+  const c = $("orig").getContext("2d");
+  c.imageSmoothingEnabled = true;
+  c.drawImage(SRC, 0, 0, 112, 112);
+})();
+
+/* Mock reconstruction: what a content loss at layer i still constrains.
+   Two effects, both real consequences of the layer's shape:
+     (1) the feature grid is S x S -> spatial detail below that scale is unconstrained,
+     (2) deeper = more invariant to exact colour/texture -> let colour drift, add grain. */
+function reconstruct(l){
+  const c = $("rec"), g = c.getContext("2d");
+  const S = l.S, depth = l.i / 30;
+  const tmp = document.createElement("canvas"); tmp.width = tmp.height = S;
+  const tg = tmp.getContext("2d");
+  tg.imageSmoothingEnabled = true;
+  tg.drawImage(SRC, 0, 0, S, S);                       // (1) collapse to the feature grid
+  g.imageSmoothingEnabled = S <= 32;
+  g.clearRect(0, 0, 112, 112);
+  g.drawImage(tmp, 0, 0, 112, 112);                    // back up to display size
+
+  const px = g.getImageData(0, 0, 112, 112), d = px.data;
+  const drift = Math.pow(depth, 1.6);                  // (2) colour/texture invariance grows with depth
+  for (let k = 0; k < d.length; k += 4){
+    const lum = 0.299 * d[k] + 0.587 * d[k+1] + 0.114 * d[k+2];
+    const n = (Math.random() - 0.5) * 90 * drift;      // texture the loss no longer pins
+    for (let ch = 0; ch < 3; ch++){
+      const towards = lum + (ch === 0 ? 26 : ch === 2 ? -20 : 4) * drift * 1.6;  // hue slides free
+      d[k+ch] = Math.max(0, Math.min(255, d[k+ch] * (1 - 0.72 * drift) + towards * 0.72 * drift + n));
+    }
+  }
+  g.putImageData(px, 0, 0);
+}
+
+/* ---------------- receptive-field canvas ---------------- */
+function drawRF(l){
+  const c = $("rfc"), g = c.getContext("2d"), W = 238, s = W / IN;
+  g.clearRect(0, 0, W, W);
+  g.imageSmoothingEnabled = true;
+  g.globalAlpha = 0.9; g.drawImage(SRC, 0, 0, W, W); g.globalAlpha = 1;
+
+  const grid = l.S, step = W / grid;                   // the feature grid this layer outputs
+  if (grid <= 64){
+    g.strokeStyle = "rgba(255,255,255,.55)"; g.lineWidth = 1;
+    for (let k = 1; k < grid; k++){
+      g.beginPath(); g.moveTo(k*step, 0); g.lineTo(k*step, W); g.stroke();
+      g.beginPath(); g.moveTo(0, k*step); g.lineTo(W, k*step); g.stroke();
+    }
+  }
+  const rf = l.rf * s, cx = W/2, cy = W/2;             // one activation's receptive field, centred
+  g.fillStyle = "rgba(0,0,0,.34)"; g.fillRect(0, 0, W, W);
+  g.save(); g.beginPath();
+  g.rect(Math.max(0, cx - rf/2), Math.max(0, cy - rf/2), Math.min(rf, W), Math.min(rf, W));
+  g.clip(); g.globalAlpha = 1; g.drawImage(SRC, 0, 0, W, W); g.restore();
+
+  g.strokeStyle = "#d64545"; g.lineWidth = 2.5;
+  g.strokeRect(Math.max(0, cx - rf/2), Math.max(0, cy - rf/2), Math.min(rf, W), Math.min(rf, W));
+  g.fillStyle = "#d64545"; g.beginPath(); g.arc(cx, cy, 2.6, 0, 7); g.fill();
+  g.fillStyle = "#fff"; g.font = "bold 10px monospace";
+  g.fillText(l.rf + "×" + l.rf + " px", 6, W - 7);
+  g.fillText("feature grid " + grid + "×" + grid, 6, 14);
+}
+
+/* ---------------- the whole-stack chart ---------------- */
+function drawChart(){
+  const c = $("chart"), g = c.getContext("2d"), W = 1200, H = 150, pad = 26;
+  g.clearRect(0, 0, W, H);
+  const bw = (W - 2*pad) / 31;
+  L.forEach(l => {
+    const x = pad + l.i * bw;
+    const hs = (l.S / IN) * 92;                       // spatial size, linear
+    const hc = (Math.log2(l.C) / 9) * 92;             // channels, log
+    g.fillStyle = "rgba(22,163,163,.22)"; g.fillRect(x + 2, H - 30 - hs, bw - 4, hs);
+    g.fillStyle = "rgba(123,92,214,.55)"; g.fillRect(x + bw*0.3, H - 30 - hc, bw*0.4, hc);
+    if (sel.has(l.i)){
+      g.fillStyle = "rgba(214,69,69,.10)"; g.fillRect(x, 6, bw, H - 34);
+      g.strokeStyle = "#d64545"; g.lineWidth = 1.5; g.strokeRect(x + .5, 6, bw - 1, H - 34);
+    }
+    if (l.i === focus){ g.strokeStyle = "#7b5cd6"; g.lineWidth = 2; g.strokeRect(x + .5, 4, bw - 1, H - 32); }
+    g.fillStyle = l.i === focus ? "#7b5cd6" : "#5a6b86";
+    g.font = (l.i === focus ? "bold " : "") + "9px monospace";
+    g.textAlign = "center"; g.fillText(l.i, x + bw/2, H - 16);
+  });
+  g.textAlign = "left"; g.font = "bold 10px 'Segoe UI',sans-serif";
+  g.fillStyle = "#16a3a3"; g.fillText("spatial H×W  (256 → 8)", pad, 15);
+  g.fillStyle = "#7b5cd6"; g.fillText("channels C  (64 → 512, log)", pad + 150, 15);
+  g.fillStyle = "#d64545"; g.fillText("red = current target_layers", pad + 330, 15);
+}
+
+/* ---------------- paint ---------------- */
+function paint(){
+  const l = L[focus];
+  document.querySelectorAll(".chip").forEach(c => {
+    const i = +c.dataset.i;
+    c.classList.toggle("sel", sel.has(i));
+    c.classList.toggle("focus", i === focus);
+  });
+  const key = [...sel].sort((a,b) => a-b).join(",");
+  document.querySelectorAll(".preset").forEach(b => b.classList.toggle("on", b.dataset.p === key));
+  $("selcode").textContent = sel.size ? "(" + [...sel].sort((a,b)=>a-b).join(", ") + ")" : "()";
+  $("selnote").innerHTML = NOTES[key] !== undefined ? NOTES[key]
+    : (sel.size + " layer" + (sel.size === 1 ? "" : "s") + " selected &mdash; your own mix");
+
+  $("shape").textContent = "(" + l.C + ", " + l.S + ", " + l.S + ")";
+  $("mod").textContent = "vgg16[" + l.i + "]";
+  $("blk").textContent = "block " + l.block;
+  $("chn").textContent = l.C;
+  $("sp").textContent = l.S + " × " + l.S;
+  $("act").textContent = (l.C * l.S * l.S).toLocaleString();
+  $("rf").textContent = l.rf + " × " + l.rf + " px";
+  $("rfpct").textContent = (100 * Math.min(1, (l.rf * l.rf) / (IN * IN))).toFixed(1) + "%";
+
+  const d = DESC[l.block];
+  $("desc").innerHTML = "<b>" + l.name + "</b> &mdash; " + d[0];
+  $("reclab").textContent = "layer " + l.i;
+  $("recnote").textContent = d[1];
+  $("desc2").innerHTML = "Content loss compares a <b>(" + l.C + ", " + l.S + ", " + l.S + ")</b> tensor, not pixels. Anything finer than the "
+    + l.S + "×" + l.S + " grid — and, at this depth, most of the exact colour — is simply <b>not in the loss</b>, so the optimizer is free to repaint it. That freedom is the room the style loss moves into.";
+
+  drawRF(l); reconstruct(l); drawChart();
+  postH();
+}
+
+/* ---------------- height broadcaster (embedding page auto-fits us) ---------------- */
+function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+function postH(){ if (window.parent !== window) window.parent.postMessage({type:'ce-frame-height', height: ch()}, '*'); }
+function reflow(){ document.body.classList.toggle('ce-narrow', window.innerWidth < 900); }
+function up(){ reflow(); postH(); }
+addEventListener('load', up); addEventListener('resize', up);
+if (window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+reflow(); paint(); setTimeout(up, 150); setTimeout(up, 600);
+</script>
+</body></html>

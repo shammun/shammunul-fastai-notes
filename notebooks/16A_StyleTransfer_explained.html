@@ -2,8 +2,8 @@
 
 <html lang="en">
 <head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
 <title>16A_StyleTransfer_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
@@ -7525,6 +7525,8 @@ a.anchor-link {
   </a>
 </div>
 <main>
+
+<main>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=intro-header">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7562,6 +7564,79 @@ a.anchor-link {
 </div>
 </div>
 </div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=c34df417">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE VISUALIZATIONS -- setup (run this cell ONCE).</span>
+<span class="c1"># Each "🎮 Interactive" cell below loads a standalone HTML file from the</span>
+<span class="c1"># published copy on GitHub Pages, in an isolated &lt;iframe&gt; (its CSS/JS can't leak</span>
+<span class="c1"># into the notebook). It is shown FULL WIDTH and auto-fits its content height.</span>
+<span class="c1"># No local files needed -- the visualizations are read from GitHub.</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+
+<span class="k">def</span> <span class="nf">show_viz</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"600px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Embed an interactive visualization full width; it auto-fits its height.</span>
+<span class="sd">    `path` may be a bare 'interactive_viz/&lt;file&gt;.html' (resolved to the GitHub</span>
+<span class="sd">    Pages copy) or a full https URL."""</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="s2">"https://shammun.github.io/shammunul-fastai-notes/notebooks/"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"http"</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">path</span>
+    <span class="k">return</span> <span class="n">HTML</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'&lt;iframe src="</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">" loading="lazy" allowfullscreen '</span>
+        <span class="sa">f</span><span class="s1">'style="width:100%;height:</span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s1">;border:1px solid #dde5f2;border-radius:12px;'</span>
+        <span class="sa">f</span><span class="s1">'box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"&gt;&lt;/iframe&gt;'</span>
+        <span class="s1">'&lt;script&gt;addEventListener("message",function(e){'</span>
+        <span class="s1">'if(e.data&amp;&amp;e.data.type==="ce-frame-height"&amp;&amp;e.data.height&gt;50){'</span>
+        <span class="s1">'var fs=document.querySelectorAll("iframe");for(var i=0;i&lt;fs.length;i++){'</span>
+        <span class="s1">'if(fs[i].contentWindow===e.source){fs[i].style.height=e.data.height+"px";break;}}}});&lt;/script&gt;'</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cffd0df2">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Before-any-code:-watch-the-whole-algorithm-once">🎮 Before any code: watch the whole algorithm once<a class="anchor-link" href="#%F0%9F%8E%AE-Before-any-code:-watch-the-whole-algorithm-once">¶</a></h3><p>Style transfer has an unusual shape: <strong>nothing in the network trains &mdash; the image itself does.</strong> The interactive below walks the full loop in six clickable stages (the three images &rarr; frozen VGG16 &rarr; content loss &rarr; style loss &rarr; one combined number &rarr; gradients landing on the <em>pixels</em>). Press <strong>▶ Play</strong> to loop whole optimization iterations and watch the noise thumbnail turn into a stylized image. Every box in the diagram is clickable, and the code panel underneath always shows the exact notebook code for the lit-up stage &mdash; all of which you'll build piece by piece below.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=589135fc">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/nst_pipeline_overview.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># The complete NST pipeline as 6 clickable stages with synced notebook code.</span>
+<span class="c1"># ▶ Play loops optimization iterations -- watch model.t evolve from noise to art.</span>
+<span class="c1"># Click any box in the diagram (or the stage chips) to jump to that stage.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/nst_pipeline_overview.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"700px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/nst_pipeline_overview.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:700px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=fc9313c9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -8211,41 +8286,12 @@ Image optimization: Trainable image &rarr; Fixed model &rarr; Output &rarr; Loss
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Style transfer optimization &mdash; watch a canvas paint itself</h3>
-  <p class="ce-interactive-hint">Style transfer treats pixels as variables, not weights. We don't train a network &mdash; we update an image by gradient descent so its content loss + style loss is small. Watch a noisy canvas iteratively morph toward a target image as gradient descent runs.</p>
-  <div class="opt-widget">
-    <div class="opt-canvases">
-      <div>
-        <div class="opt-label">Target</div>
-        <canvas id="opt-target" width="96" height="96" style="image-rendering:pixelated; background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
-      </div>
-      <div class="opt-arrow">&rarr;</div>
-      <div>
-        <div class="opt-label">Current (step <span id="opt-step">0</span>)</div>
-        <canvas id="opt-current" width="96" height="96" style="image-rendering:pixelated; background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
-      </div>
-      <div class="opt-arrow">|</div>
-      <div>
-        <div class="opt-label">Loss</div>
-        <canvas id="opt-loss" width="180" height="96" style="background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
-      </div>
-    </div>
-    <div class="ms-controls">
-      <button id="opt-run" class="ms-btn">Run optimization</button>
-      <button id="opt-reset" class="ms-btn ms-secondary">Reset</button>
-      <label>Learning rate: <span id="opt-lr-val" class="ms-val">0.08</span></label>
-      <input id="opt-lr" type="range" min="0.01" max="0.3" step="0.01" value="0.08">
-    </div>
-  </div>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=simple-mse-header">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-
 <h3 id="Demo:-Simple-MSE-Loss-Optimization">Demo: Simple MSE Loss Optimization<a class="anchor-link" href="#Demo:-Simple-MSE-Loss-Optimization">¶</a></h3><p>Let's first test our setup with a simple loss: Mean Squared Error (MSE) between our optimizable image and the content image. This will try to recreate the content image pixel-by-pixel.</p>
 </div>
 </div>
@@ -8475,7 +8521,42 @@ The random noise should gradually transform to look like the content image!</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=948b05b9">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d886d87d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-pixels-ARE-the-parameters">🎮 Interactive: pixels ARE the parameters<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-pixels-ARE-the-parameters">¶</a></h3><p>Everything above (<code>TensorModel</code>, <code>ImageOptCB</code>, the closure, the 100 steps) exists to make one inversion work: <strong>the optimizer's parameter tensor is the image.</strong> The lab below runs that exact MSE demo on a 9&times;9 image so you can see every moving part: forward just <em>returns the pixels</em>, the loss compares them to the target, <code>backward()</code> puts a gradient on <em>every pixel</em> (red = too bright, blue = too dark), and <code>step()</code> nudges them. <strong>Click anywhere on the loss curve to jump to that iteration</strong>, and drag the lr slider to feel why the curve is an exponential decay.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=15600dfa">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/pixels_as_parameters.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># A 9x9 noise image gradient-descends toward a target '7' under plain MSE --</span>
+<span class="c1"># the notebook's loss_fn_mse demo in slow motion (4 stages per iteration).</span>
+<span class="c1"># CLICK the loss curve to jump to any iteration; lr + speed sliders included.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/pixels_as_parameters.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"740px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/pixels_as_parameters.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:740px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=948b05b9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8857,7 +8938,42 @@ Step 149: same loop, no image saved
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=5fe122af">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4044d619">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-explore-all-31-layers-of-vgg16.features">🎮 Interactive: explore all 31 layers of <code>vgg16.features</code><a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-explore-all-31-layers-of-vgg16.features">¶</a></h3><p>Instead of reading the printed architecture, click through it. The strip below is the real VGG16 <code>features</code> module (Conv &rarr; ReLU &rarr; MaxPool, five blocks). For any layer you get the output shape for our 256&times;256 input, the <strong>receptive field</strong> (how much of the photo one activation can see &mdash; the key to why deep layers capture <em>layout</em> rather than <em>pixels</em>), and a mock reconstruction showing what content loss at that layer can still pin down. The preset buttons load the exact <code>target_layers</code> this notebook uses: <code>(18, 25)</code>, the early <code>(1, 6)</code> experiment, and the 5-layer style set.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=345fd8ba">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/vgg_feature_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Clickable ruler over all 31 layers of vgg16.features: output shapes,</span>
+<span class="c1"># receptive fields, and what each depth responds to (edges -&gt; parts -&gt; layout).</span>
+<span class="c1"># Preset buttons load the notebook's actual target_layers choices.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/vgg_feature_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1260px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/vgg_feature_explorer.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:1260px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=5fe122af">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9022,7 +9138,42 @@ Mean reshaped:(3, 1, 1)       # Can broadcast!
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=6e8ca4b4">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7c02c948">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-broadcasting,-one-stage-at-a-time">🎮 Interactive: broadcasting, one stage at a time<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-broadcasting,-one-stage-at-a-time">¶</a></h3><p>The error above and its <code>.reshape(3, 1, 1)</code> fix are pure <strong>broadcasting rules</strong>: shapes align <strong>right-to-left</strong>, and only size-<code>1</code> dims stretch. Step through the four stages below &mdash; the clash, the reshape, the (free!) stretch, and the final <code>(im − mean) / std</code> &mdash; and watch the per-channel value ranges move from <code>[0, 1]</code> to the <code>[−2.12, +2.64]</code> the notebook prints.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=08f18abf">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/vgg_normalization_broadcast.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Why (im - imagenet_mean) crashes and .reshape(3,1,1) fixes it: 4 stages</span>
+<span class="c1"># with the real RuntimeError, the right-to-left alignment rule, and the</span>
+<span class="c1"># per-channel range bars moving from [0,1] to [-2.12, +2.64].</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/vgg_normalization_broadcast.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/vgg_normalization_broadcast.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=6e8ca4b4">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10066,31 +10217,40 @@ so: result[f, g] = sum over s of:  t[f, s] * t[g, s]
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Why a Gram matrix captures style</h3>
-  <p class="ce-interactive-hint">A feature map has shape <code>C&times;H&times;W</code>: C channels detecting C different features. The Gram matrix <code>G[i,j] = &lt;f<sub>i</sub>, f<sub>j</sub>&gt;</code> measures how often features i and j co-occur, <em>regardless of where</em>. <strong>Spatial information is destroyed; correlation structure is preserved &mdash; and "correlation between feature detectors" is exactly what we mean by style.</strong></p>
-  <div class="gm-widget">
-    <div class="gm-row">
-      <div>
-        <div class="gm-label">Feature maps (3 channels)</div>
-        <div class="gm-channels" id="gm-channels"></div>
-      </div>
-      <div class="gm-arrow">&rarr;</div>
-      <div>
-        <div class="gm-label">Gram matrix G = F &middot; F<sup>T</sup></div>
-        <div class="gm-matrix" id="gm-matrix"></div>
-      </div>
-    </div>
-    <div class="ms-controls">
-      <button class="ms-btn gm-pat" data-p="0">Stripes</button>
-      <button class="ms-btn gm-pat" data-p="1">Dots</button>
-      <button class="ms-btn gm-pat" data-p="2">Mixed</button>
-      <button class="ms-btn ms-secondary" id="gm-shuffle">Shuffle spatial positions</button>
-    </div>
-    <p style="margin-top: 12px; font-size: 0.88em; color: var(--ce-text-muted, #697386);">
-      <strong>The "shuffle" trick:</strong> randomly permute pixel positions within each feature map and recompute the Gram matrix. <em>It doesn't change.</em> That's the proof: G captures co-occurrence statistics, not the actual layout. Style is preserved; content isn't.
-    </p>
-  </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d455677f">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-build-a-Gram-matrix-by-hand">🎮 Interactive: build a Gram matrix by hand<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-build-a-Gram-matrix-by-hand">¶</a></h3><p>This is the single most important idea in the notebook, so here it is at toy scale: <strong>4 channels of 3&times;3 feature maps &rarr; a 4&times;4 Gram matrix.</strong> Watch each map flatten into a row, then every row get dotted with every row. <strong>Click any cell of G to compute it</strong>, toggle between the <code>einsum</code> and <code>f @ f.T</code> code (identical math), switch the <code>÷ (H·W)</code> normalization on and off &mdash; and then press <strong>🔀 Shuffle pixel positions</strong>: every feature map scrambles, but G doesn't change by a single digit. That invariance <em>is</em> why Gram matrices capture style but not layout.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=0710dc0d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/gram_matrix_lab.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Toy Gram matrix: 4 channels x (3x3) -&gt; 4x4 G. Stages: flatten -&gt; pick pair</span>
+<span class="c1"># -&gt; multiply &amp; sum -&gt; write G[c,d]. Click any G cell to compute it; toggle</span>
+<span class="c1"># einsum vs f@f.T; press 'Shuffle pixels' to PROVE spatial invariance.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/gram_matrix_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"790px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/gram_matrix_lab.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:790px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d31dbe7f">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -10098,7 +10258,6 @@ so: result[f, g] = sum over s of:  t[f, s] * t[g, s]
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-
 <h3 id="Computing-Gram-Matrices-for-Style-Transfer">Computing Gram Matrices for Style Transfer<a class="anchor-link" href="#Computing-Gram-Matrices-for-Style-Transfer">¶</a></h3><p>Now let's load a style image and compute its Gram matrices.</p>
 </div>
 </div>
@@ -10515,7 +10674,42 @@ calc_grams returns: [5 Gram matrices, all 2D tensors]
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=4f598361">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=508138e7">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive-(3D):-the-tensor-the-Gram-matrix-eats">🎮 Interactive (3D): the tensor the Gram matrix eats<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-(3D):-the-tensor-the-Gram-matrix-eats">¶</a></h3><p>The shapes above (<code>(64, 64)</code>, &hellip;, <code>(512, 512)</code>) come from collapsing a 3-D activation tensor. Below is that tensor in actual 3-D: a stack of C channel planes (<strong>drag to rotate</strong>). <strong>Click one plane, then another</strong> &mdash; their element-wise product flashes and collapses into a single purple cell of G. Diagonal cells are a channel's own energy; off-diagonals measure <em>co-firing</em>. Note how H&times;W vanishes completely &mdash; G's size depends only on C, which is exactly why every layer's Gram is square.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ffa362ee">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/gram_3d_channels.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># three.js: drag-rotate a stack of 6 channel planes (8x8 each); click two</span>
+<span class="c1"># planes to watch their product collapse into one cell of the 6x6 Gram.</span>
+<span class="c1"># NOTE: needs internet access (loads three.js from cdnjs).</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/gram_3d_channels.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1030px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/gram_3d_channels.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:1030px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=4f598361">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10993,6 +11187,41 @@ An image that has the <strong>structure of the face</strong> but the <strong>tex
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=97a0122f">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-playground-for-these-experiments">🎮 Interactive: the playground for these experiments<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-playground-for-these-experiments">¶</a></h3><p>The last few cells all pulled the same three levers: <strong>starting point</strong> (content copy vs random noise), <strong>style-loss weight</strong> (e.g. <code>style_loss(x) * 0.2</code> &mdash; try the slider), and <strong>which layers guard the content</strong> (<code>(18, 25)</code> vs <code>(1, 6)</code>). The simulation below lets you re-run the whole sweep instantly: press ▶, watch the content and style losses fall at different speeds, and <strong>click the loss plot or the iteration chips</strong> to jump anywhere in the run. (It's a hand-built intuition machine, not a real VGG &mdash; the code panel shows what the real run would be.)</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=4a27802f">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/style_transfer_playground.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Simulation of the notebook's final experiments: start from content vs noise,</span>
+<span class="c1"># style-weight slider, early-vs-late content layers, dual loss curves.</span>
+<span class="c1"># CLICK the loss plot or iteration chips to jump to any point in the run.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/style_transfer_playground.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/style_transfer_playground.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d898d839">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -11248,285 +11477,15 @@ An image that has the <strong>structure of the face</strong> but the <strong>tex
 </div>
 </div>
 </div>
-<style>
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--ce-purple, #6c5ce7); height: 6px; touch-action: manipulation; }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 50px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactive .ms-btn.ms-secondary { background: transparent; color: var(--ce-purple, #6c5ce7); border: 1px solid var(--ce-purple, #6c5ce7); box-shadow: none; }
-
-/* Gram matrix widget */
-.gm-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.gm-row { display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
-.gm-label { font-family: var(--ce-font-heading, serif); text-align: center; font-weight: 600; color: var(--ce-purple-dark, #4f3dd0); margin-bottom: 6px; font-size: 0.9em; }
-.gm-channels { display: flex; gap: 4px; }
-.gm-channels canvas { image-rendering: pixelated; border: 1px solid #d1d5db; border-radius: 4px; background: white; }
-.gm-arrow { font-size: 1.6em; color: var(--ce-text-muted, #697386); }
-.gm-matrix { display: grid; grid-template-columns: repeat(3, 36px); grid-template-rows: repeat(3, 36px); gap: 2px; background: #d1d5db; padding: 2px; border-radius: 4px; }
-.gm-matrix .gm-cell { background: white; display: flex; align-items: center; justify-content: center; font-family: var(--ce-font-mono, monospace); font-size: 0.78em; transition: background 0.3s; }
-
-/* Optimization widget */
-.opt-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.opt-canvases { display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
-.opt-label { font-family: var(--ce-font-heading, serif); text-align: center; font-weight: 600; color: var(--ce-purple-dark, #4f3dd0); margin-bottom: 4px; font-size: 0.88em; }
-.opt-arrow { font-size: 1.6em; color: var(--ce-text-muted, #697386); }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-// ============================================================================
-// Interactive 1: Gram matrix
-// ============================================================================
-(function gramMatrix() {
-  var channelsEl = document.getElementById('gm-channels');
-  if (!channelsEl) return;
-  var matrixEl = document.getElementById('gm-matrix');
-
-  var SZ = 16;
-
-  var PATTERNS = [
-    // Stripes: ch0 = horizontal, ch1 = vertical, ch2 = empty
-    function() {
-      var ch = [zeros(), zeros(), zeros()];
-      for (var i = 0; i < SZ; i++) for (var j = 0; j < SZ; j++) {
-        ch[0][i][j] = (i % 4 < 2) ? 1 : 0;
-        ch[1][i][j] = (j % 4 < 2) ? 1 : 0;
-        ch[2][i][j] = 0.1;
-      }
-      return ch;
-    },
-    // Dots: ch0 and ch1 light up at same places (correlated)
-    function() {
-      var ch = [zeros(), zeros(), zeros()];
-      for (var i = 0; i < SZ; i++) for (var j = 0; j < SZ; j++) {
-        if ((i + 2) % 4 === 0 && (j + 2) % 4 === 0) { ch[0][i][j] = 1; ch[1][i][j] = 0.8; }
-        ch[2][i][j] = 0.15;
-      }
-      return ch;
-    },
-    // Mixed: ch0 stripes, ch2 dots, ch1 sparse
-    function() {
-      var ch = [zeros(), zeros(), zeros()];
-      for (var i = 0; i < SZ; i++) for (var j = 0; j < SZ; j++) {
-        ch[0][i][j] = (i % 4 < 2) ? 1 : 0;
-        ch[2][i][j] = ((i % 5 === 0) && (j % 5 === 0)) ? 1 : 0;
-        ch[1][i][j] = Math.random() < 0.05 ? 1 : 0;
-      }
-      return ch;
-    },
-  ];
-  function zeros() { var m = []; for (var i = 0; i < SZ; i++) m.push(new Array(SZ).fill(0)); return m; }
-
-  var current = 0;
-  var shuffled = false;
-  var fmaps;
-
-  function gram(maps) {
-    var C = maps.length;
-    var G = []; for (var i = 0; i < C; i++) G.push(new Array(C).fill(0));
-    for (var i = 0; i < C; i++) for (var j = 0; j < C; j++) {
-      var s = 0;
-      for (var y = 0; y < SZ; y++) for (var x = 0; x < SZ; x++) s += maps[i][y][x] * maps[j][y][x];
-      G[i][j] = s / (SZ * SZ);
-    }
-    return G;
-  }
-
-  function shuffleSpatial(maps) {
-    // Permute positions consistently across channels
-    var perm = [];
-    for (var i = 0; i < SZ * SZ; i++) perm.push(i);
-    for (var i = perm.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
-      var t = perm[i]; perm[i] = perm[j]; perm[j] = t;
-    }
-    return maps.map(function(m) {
-      var flat = [];
-      for (var i = 0; i < SZ; i++) for (var j = 0; j < SZ; j++) flat.push(m[i][j]);
-      var shuffled = perm.map(function(idx) { return flat[idx]; });
-      var out = [];
-      for (var i = 0; i < SZ; i++) {
-        var row = [];
-        for (var j = 0; j < SZ; j++) row.push(shuffled[i * SZ + j]);
-        out.push(row);
-      }
-      return out;
-    });
-  }
-
-  function drawChannel(canvas, map, hue) {
-    var ctx = canvas.getContext('2d');
-    canvas.width = 80; canvas.height = 80;
-    var cellW = 80 / SZ, cellH = 80 / SZ;
-    for (var i = 0; i < SZ; i++) for (var j = 0; j < SZ; j++) {
-      var v = map[i][j];
-      ctx.fillStyle = 'hsl(' + hue + ', 60%, ' + (88 - v * 50) + '%)';
-      ctx.fillRect(j * cellW, i * cellH, Math.ceil(cellW), Math.ceil(cellH));
-    }
-  }
-
-  function render(maps) {
-    channelsEl.innerHTML = '';
-    var hues = [10, 200, 130];
-    for (var c = 0; c < 3; c++) {
-      var cv = document.createElement('canvas');
-      drawChannel(cv, maps[c], hues[c]);
-      channelsEl.appendChild(cv);
-    }
-    var G = gram(maps);
-    var mx = 0;
-    for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) if (G[i][j] > mx) mx = G[i][j];
-    var html = '';
-    for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) {
-      var n = G[i][j] / (mx || 1);
-      html += '<div class="gm-cell" style="background: hsl(255, 60%, ' + (95 - n * 50) + '%); ">' + G[i][j].toFixed(2) + '</div>';
-    }
-    matrixEl.innerHTML = html;
-  }
-
-  function loadPattern(idx) {
-    current = idx;
-    shuffled = false;
-    fmaps = PATTERNS[idx]();
-    Array.prototype.forEach.call(document.querySelectorAll('.gm-pat'), function(b, i) {
-      b.classList.toggle('active', i === idx);
-    });
-    render(fmaps);
-  }
-
-  document.querySelectorAll('.gm-pat').forEach(function(b) {
-    b.addEventListener('click', function() { loadPattern(parseInt(b.dataset.p)); });
-  });
-  document.getElementById('gm-shuffle').addEventListener('click', function() {
-    fmaps = shuffleSpatial(fmaps);
-    render(fmaps);
-  });
-
-  loadPattern(0);
-})();
-
-// ============================================================================
-// Interactive 2: Pixel-space gradient descent
-// ============================================================================
-(function pixelDescent() {
-  var targetCv = document.getElementById('opt-target');
-  if (!targetCv) return;
-  var curCv = document.getElementById('opt-current');
-  var lossCv = document.getElementById('opt-loss');
-  var stepLbl = document.getElementById('opt-step');
-
-  var SZ = 24;
-  var target = [];
-  for (var i = 0; i < SZ; i++) {
-    var row = [];
-    for (var j = 0; j < SZ; j++) {
-      var r = Math.sqrt((i - 12) * (i - 12) + (j - 12) * (j - 12));
-      row.push(r < 8 ? 0.85 : 0.15);
-    }
-    target.push(row);
-  }
-
-  var current = [];
-  var losses = [];
-  var step = 0;
-  var lr = 0.08;
-  var running = false;
-  var rafId = null;
-
-  function reset() {
-    current = [];
-    for (var i = 0; i < SZ; i++) {
-      var row = [];
-      for (var j = 0; j < SZ; j++) row.push(Math.random() * 0.5 + 0.25);
-      current.push(row);
-    }
-    losses = [];
-    step = 0;
-    running = false;
-    cancelAnimationFrame(rafId);
-    document.getElementById('opt-run').textContent = 'Run optimization';
-    render();
-  }
-
-  function descentStep() {
-    var loss = 0;
-    for (var i = 0; i < SZ; i++) {
-      for (var j = 0; j < SZ; j++) {
-        var d = current[i][j] - target[i][j];
-        loss += d * d;
-        current[i][j] -= lr * 2 * d;
-      }
-    }
-    loss /= (SZ * SZ);
-    losses.push(loss);
-    step++;
-    return loss;
-  }
-
-  function draw(canvas, mat) {
-    var ctx = canvas.getContext('2d');
-    var W = canvas.width, H = canvas.height;
-    var cellW = W / SZ, cellH = H / SZ;
-    for (var i = 0; i < SZ; i++) for (var j = 0; j < SZ; j++) {
-      var g = Math.round(Math.max(0, Math.min(1, mat[i][j])) * 255);
-      ctx.fillStyle = 'rgb(' + g + ',' + g + ',' + g + ')';
-      ctx.fillRect(j * cellW, i * cellH, Math.ceil(cellW), Math.ceil(cellH));
-    }
-  }
-
-  function drawLoss() {
-    var ctx = lossCv.getContext('2d');
-    var W = lossCv.width, H = lossCv.height;
-    ctx.clearRect(0, 0, W, H);
-    if (losses.length < 2) return;
-    var max = Math.max.apply(null, losses);
-    ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (var i = 0; i < losses.length; i++) {
-      var x = (i / Math.max(losses.length - 1, 1)) * (W - 4) + 2;
-      var y = H - 4 - (losses[i] / max) * (H - 8);
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-    ctx.fillStyle = '#6b7280'; ctx.font = '10px monospace';
-    ctx.fillText('loss', 4, 12);
-  }
-
-  function render() {
-    draw(targetCv, target);
-    draw(curCv, current);
-    drawLoss();
-    stepLbl.textContent = step;
-  }
-
-  function tick() {
-    if (!running) return;
-    for (var k = 0; k < 4; k++) descentStep();
-    render();
-    if (step < 240) rafId = requestAnimationFrame(tick);
-    else { running = false; document.getElementById('opt-run').textContent = 'Done'; }
-  }
-
-  document.getElementById('opt-lr').addEventListener('input', function(e) {
-    lr = parseFloat(e.target.value);
-    document.getElementById('opt-lr-val').textContent = lr.toFixed(2);
-  });
-  document.getElementById('opt-run').addEventListener('click', function() {
-    if (running) { running = false; document.getElementById('opt-run').textContent = 'Run optimization'; return; }
-    if (step >= 240) reset();
-    running = true;
-    document.getElementById('opt-run').textContent = 'Pause';
-    tick();
-  });
-  document.getElementById('opt-reset').addEventListener('click', reset);
-
-  reset();
-})();
-
+<script id="ce-fullbleed-resize">
+(function(){
+  function fit(f){ try{var d=f.contentDocument; if(d&&d.body){var h=Math.ceil(Math.max(d.body.scrollHeight,d.body.offsetHeight)); if(h>50){f.style.height=(h+8)+"px";return true;}}}catch(e){} return false; }
+  function all(){ document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(fit); }
+  addEventListener("message",function(e){ if(!e.data||e.data.type!=="ce-frame-height"||!(e.data.height>50))return;
+    var ifr=document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)");
+    for(var i=0;i<ifr.length;i++){ if(ifr[i].contentWindow===e.source){ ifr[i].style.height=(e.data.height+8)+"px"; break; } } });
+  document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(function(f){ f.addEventListener("load",function(){fit(f);setTimeout(function(){fit(f);},400);setTimeout(function(){fit(f);},1200);}); });
+  addEventListener("resize",all); setInterval(all,1500); all();
 })();
 </script>
 </main>

@@ -1,0 +1,345 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neural Style Transfer — The Whole Pipeline</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:920px;line-height:1.45;}
+  .stagebar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 10px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:4px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .iter{font-family:monospace;font-weight:700;color:var(--out);}
+  .wrap{max-width:1000px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);padding:6px 8px 2px;}
+  svg text{font-family:"Segoe UI",system-ui,sans-serif;}
+  .story{max-width:900px;margin:7px auto 0;background:#f4f7fd;border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.5;color:var(--ink);min-height:54px;}
+  .story b.i{color:var(--in);} .story b.o{color:var(--out);} .story b.a{color:var(--ac);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:900px;margin:8px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;} .code .num{color:#f6b86e;} .code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .legend b.i{color:var(--in);} .legend b.o{color:var(--out);} .legend b.a{color:var(--ac);}
+  .dim{opacity:.18;transition:opacity .3s;} .lit{opacity:1;transition:opacity .3s;}
+  .flowdash{stroke-dasharray:6 5;animation:dash 1s linear infinite;}
+  @keyframes dash{to{stroke-dashoffset:-11;}}
+</style></head><body>
+<h1>Neural Style Transfer — the whole pipeline in one picture</h1>
+<p class="sub">One frozen network, one trainable <b>image</b>. We push three images through <b>VGG16</b>, compare their features two different ways, and use the gradients to repaint the pixels. Click a stage chip (or any box in the diagram), or press <b>▶ Play</b> to loop full optimization iterations and watch the noise turn into art.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① The three images</button>
+  <button class="chip" id="st1">② Frozen VGG16</button>
+  <button class="chip" id="st2">③ Content loss</button>
+  <button class="chip" id="st3">④ Style loss (Gram)</button>
+  <button class="chip" id="st4">⑤ Add them up</button>
+  <button class="chip" id="st5">⑥ Backprop → pixels</button>
+</div>
+
+<div class="selrow">
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  iteration <span class="iter" id="iterv">0</span>/60
+</div>
+
+<div class="wrap">
+<svg id="svg" viewBox="0 0 1000 356" style="width:100%;height:auto;display:block">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 z" fill="#8a97b3"/></marker>
+    <marker id="arrA" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 z" fill="#7b5cd6"/></marker>
+  </defs>
+
+  <!-- content image -->
+  <g id="gContent" class="lit" style="cursor:pointer">
+    <rect x="14" y="14" width="120" height="96" rx="10" fill="#fff" stroke="#f6921e" stroke-width="2.5"/>
+    <g transform="translate(22,22)">
+      <rect width="104" height="52" fill="#cfe6ff"/><circle cx="86" cy="14" r="9" fill="#ffd35c"/>
+      <rect y="52" width="104" height="28" fill="#bfe3bf"/>
+      <rect x="18" y="34" width="40" height="46" fill="#e8b06a"/><polygon points="14,34 38,16 62,34" fill="#c96f4a"/>
+      <rect x="30" y="58" width="12" height="22" fill="#8a5a33"/>
+    </g>
+    <text x="74" y="126" text-anchor="middle" font-size="12" font-weight="700" fill="#f6921e">content_im</text>
+    <text x="74" y="140" text-anchor="middle" font-size="10" fill="#5a6b86">WHAT should be in the picture</text>
+  </g>
+
+  <!-- style image -->
+  <g id="gStyle" class="lit" style="cursor:pointer">
+    <rect x="14" y="152" width="120" height="96" rx="10" fill="#fff" stroke="#16a3a3" stroke-width="2.5"/>
+    <image id="styleImg" x="22" y="160" width="104" height="80" preserveAspectRatio="none"/>
+    <text x="74" y="264" text-anchor="middle" font-size="12" font-weight="700" fill="#16a3a3">style_im</text>
+    <text x="74" y="278" text-anchor="middle" font-size="10" fill="#5a6b86">HOW it should be painted</text>
+  </g>
+
+  <!-- optimizable image -->
+  <g id="gX" class="lit" style="cursor:pointer">
+    <rect x="14" y="286" width="120" height="60" rx="10" fill="#fff" stroke="#7b5cd6" stroke-width="3"/>
+    <image id="xImg" x="20" y="291" width="50" height="50" preserveAspectRatio="none"/>
+    <text x="102" y="308" text-anchor="middle" font-size="11.5" font-weight="700" fill="#7b5cd6">model.t</text>
+    <text x="102" y="321" text-anchor="middle" font-size="9.5" fill="#5a6b86">the ONLY thing</text>
+    <text x="102" y="332" text-anchor="middle" font-size="9.5" fill="#5a6b86">that trains</text>
+  </g>
+
+  <!-- arrows into VGG -->
+  <g id="gFlowIn" class="dim">
+    <path d="M136,62 C210,62 220,118 292,128" fill="none" stroke="#8a97b3" stroke-width="2.5" marker-end="url(#arr)" class="flowdash"/>
+    <path d="M136,200 C210,200 220,176 292,166" fill="none" stroke="#8a97b3" stroke-width="2.5" marker-end="url(#arr)" class="flowdash"/>
+    <path d="M136,316 C220,316 230,210 292,192" fill="none" stroke="#8a97b3" stroke-width="2.5" marker-end="url(#arr)" class="flowdash"/>
+  </g>
+
+  <!-- VGG16 -->
+  <g id="gVGG" class="dim" style="cursor:pointer">
+    <rect x="296" y="96" width="180" height="140" rx="12" fill="#f7f9fd" stroke="#dde5f2" stroke-width="2"/>
+    <text x="386" y="118" text-anchor="middle" font-size="13" font-weight="700" fill="#25324a">VGG16.features ❄</text>
+    <text x="386" y="132" text-anchor="middle" font-size="9.5" fill="#5a6b86">pretrained · frozen · just a feature ruler</text>
+    <g id="vggBars"></g>
+    <text x="322" y="228" font-size="9" fill="#5a6b86">edges</text>
+    <text x="418" y="228" font-size="9" fill="#5a6b86">objects</text>
+  </g>
+
+  <!-- content loss -->
+  <g id="gCL" class="dim" style="cursor:pointer">
+    <rect x="540" y="30" width="210" height="92" rx="12" fill="#fff" stroke="#f6921e" stroke-width="2.5"/>
+    <text x="645" y="52" text-anchor="middle" font-size="12.5" font-weight="700" fill="#f6921e">Content loss</text>
+    <text x="645" y="70" text-anchor="middle" font-size="10.5" fill="#25324a">MSE( feats(model.t), feats(content) )</text>
+    <text x="645" y="86" text-anchor="middle" font-size="10" fill="#5a6b86">deep layers (18, 25) → layout &amp; shapes</text>
+    <text x="645" y="102" text-anchor="middle" font-size="10" fill="#5a6b86">compares features <tspan font-weight="700">pixel-position by position</tspan></text>
+  </g>
+
+  <!-- style loss -->
+  <g id="gSL" class="dim" style="cursor:pointer">
+    <rect x="540" y="140" width="210" height="92" rx="12" fill="#fff" stroke="#16a3a3" stroke-width="2.5"/>
+    <text x="645" y="162" text-anchor="middle" font-size="12.5" font-weight="700" fill="#16a3a3">Style loss</text>
+    <text x="645" y="180" text-anchor="middle" font-size="10.5" fill="#25324a">MSE( Gram(model.t), Gram(style) )</text>
+    <text x="645" y="196" text-anchor="middle" font-size="10" fill="#5a6b86">layers (1, 6, 11, 18, 25) → texture &amp; color</text>
+    <text x="645" y="212" text-anchor="middle" font-size="10" fill="#5a6b86">Gram throws away <tspan font-weight="700">WHERE</tspan>, keeps <tspan font-weight="700">WHICH-together</tspan></text>
+  </g>
+
+  <g id="gFlowLoss" class="dim">
+    <path d="M478,130 C510,110 510,90 536,76" fill="none" stroke="#f6921e" stroke-width="2.5" marker-end="url(#arr)" class="flowdash"/>
+    <path d="M478,200 C510,196 510,188 536,186" fill="none" stroke="#16a3a3" stroke-width="2.5" marker-end="url(#arr)" class="flowdash"/>
+  </g>
+
+  <!-- total loss -->
+  <g id="gTot" class="dim" style="cursor:pointer">
+    <rect x="800" y="92" width="186" height="88" rx="12" fill="#fff" stroke="#7b5cd6" stroke-width="2.5"/>
+    <text x="893" y="116" text-anchor="middle" font-size="12.5" font-weight="700" fill="#7b5cd6">Total loss</text>
+    <text x="893" y="136" text-anchor="middle" font-size="11" fill="#25324a">content + style</text>
+    <text x="893" y="154" text-anchor="middle" font-size="11" font-family="monospace" font-weight="700" fill="#25324a" id="lossVal">loss = —</text>
+    <text x="893" y="170" text-anchor="middle" font-size="9.5" fill="#5a6b86">one number to shrink</text>
+  </g>
+  <g id="gFlowTot" class="dim">
+    <path d="M752,76 C780,80 780,100 796,112" fill="none" stroke="#8a97b3" stroke-width="2.5" marker-end="url(#arr)" class="flowdash"/>
+    <path d="M752,186 C780,182 780,162 796,152" fill="none" stroke="#8a97b3" stroke-width="2.5" marker-end="url(#arr)" class="flowdash"/>
+  </g>
+
+  <!-- backprop -->
+  <g id="gBack" class="dim">
+    <path d="M893,184 C893,320 380,344 140,330" fill="none" stroke="#7b5cd6" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrA)" class="flowdash"/>
+    <text x="560" y="326" text-anchor="middle" font-size="11" font-weight="700" fill="#7b5cd6">loss.backward() — gradients flow THROUGH frozen VGG, land on the pixels · opt.step() nudges them</text>
+  </g>
+</svg>
+</div>
+
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = content</b> &nbsp;·&nbsp; <b class="o">teal = style</b> &nbsp;·&nbsp; <b class="a">purple = the trainable image + its updates</b> &nbsp;·&nbsp; VGG never changes — only <b class="a">model.t</b> does</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let stage=0, iter=0, playing=false, timer=null, speed=1;
+const NIT=60;
+
+// ---- shared "Starry Night"-inspired style_im (same painting in all notebook visuals) ----
+function drawStyleIm(x,S,H){H=H||S;
+  const g=x.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#17245e');g.addColorStop(.55,'#2a4a8c');g.addColorStop(1,'#0f1a45');
+  x.fillStyle=g;x.fillRect(0,0,S,H);
+  let seed=7;const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);
+  const cx1=S*0.34,cy1=H*0.30,cx2=S*0.78,cy2=H*0.42;
+  const cols=['#8fb7e8','#5f88c9','#cfe0f5','#3d5fa8','#a9c6ee','#77a3dd'];
+  x.lineCap='round';
+  for(let i=0;i<280;i++){
+    let px=rnd()*S,py=rnd()*H*0.8;
+    x.strokeStyle=cols[(rnd()*cols.length)|0];
+    x.lineWidth=Math.max(1,S*0.006+rnd()*S*0.008);
+    x.globalAlpha=0.45+rnd()*0.4;
+    x.beginPath();x.moveTo(px,py);
+    for(let k=0;k<6;k++){
+      const d1=Math.hypot(px-cx1,py-cy1),d2=Math.hypot(px-cx2,py-cy2);
+      const cc=d1<d2?[cx1,cy1]:[cx2,cy2];
+      const a=Math.atan2(py-cc[1],px-cc[0])+Math.PI/2;
+      px+=Math.cos(a)*S*0.02;py+=Math.sin(a)*S*0.02;x.lineTo(px,py);
+    }
+    x.stroke();
+  }
+  x.globalAlpha=1;
+  [[0.15,0.16,0.05],[0.5,0.10,0.032],[0.34,0.30,0.024],[0.64,0.22,0.02],[0.9,0.13,0.028]].forEach(p=>{
+    const sx=p[0]*S,sy=p[1]*H,r=p[2]*S;
+    x.strokeStyle='rgba(255,225,130,.55)';x.lineWidth=Math.max(1.1,S*0.009);
+    x.beginPath();x.arc(sx,sy,r*2.1,0,7);x.stroke();
+    x.strokeStyle='rgba(255,225,130,.28)';x.beginPath();x.arc(sx,sy,r*3.1,0,7);x.stroke();
+    const rg=x.createRadialGradient(sx,sy,0,sx,sy,r);
+    rg.addColorStop(0,'#fff6cf');rg.addColorStop(1,'#f2c94c');
+    x.fillStyle=rg;x.beginPath();x.arc(sx,sy,r,0,7);x.fill();});
+  const mx=S*0.78,my=H*0.42,rg2=x.createRadialGradient(mx,my,0,mx,my,S*0.07);
+  rg2.addColorStop(0,'#fff3c0');rg2.addColorStop(1,'#f6c94c');
+  x.fillStyle=rg2;x.beginPath();x.arc(mx,my,S*0.055,0,7);x.fill();
+  x.strokeStyle='rgba(255,230,150,.5)';x.lineWidth=Math.max(1.1,S*0.011);
+  x.beginPath();x.arc(mx,my,S*0.085,0,7);x.stroke();
+  x.fillStyle='#0d1633';x.beginPath();x.moveTo(0,H);x.lineTo(0,H*0.82);
+  x.quadraticCurveTo(S*0.28,H*0.70,S*0.55,H*0.83);
+  x.quadraticCurveTo(S*0.8,H*0.94,S,H*0.84);x.lineTo(S,H);x.closePath();x.fill();
+  x.fillStyle='#0a1128';x.beginPath();
+  x.moveTo(S*0.10,H);x.quadraticCurveTo(S*0.045,H*0.55,S*0.105,H*0.30);
+  x.quadraticCurveTo(S*0.165,H*0.55,S*0.15,H);x.closePath();x.fill();
+}
+// painterly filter: repaint the CURRENT canvas with style-palette brush dabs that
+// follow swirl flow but keep the underlying content colors -> a real content+style mix
+function paintify(x,S,strength,phase){
+  if(strength<=0.02)return;
+  const img=x.getImageData(0,0,S,S),D=img.data;
+  let seed=13+((phase|0)%9);const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);
+  const pal=[[42,74,140],[143,183,232],[242,201,76],[15,26,69],[207,224,245],[95,136,201]];
+  const cx1=S*0.35,cy1=S*0.28;x.lineCap='round';
+  const N=Math.round(1.6*S*Math.min(1,strength));
+  for(let i=0;i<N;i++){
+    const px0=rnd()*S,py0=rnd()*S,id2=(((py0|0)*S)+(px0|0))*4;
+    let r=D[id2],g=D[id2+1],b=D[id2+2],best=pal[0],bd=1e9;
+    for(const p of pal){const d=(p[0]-r)**2+(p[1]-g)**2+(p[2]-b)**2;if(d<bd){bd=d;best=p;}}
+    const m=0.5*Math.min(1,strength);
+    r=(r*(1-m)+best[0]*m)|0;g=(g*(1-m)+best[1]*m)|0;b=(b*(1-m)+best[2]*m)|0;
+    x.strokeStyle=`rgba(${r},${g},${b},${0.45+0.35*rnd()})`;
+    x.lineWidth=Math.max(1.1,S*0.007+rnd()*S*0.009);
+    let px=px0,py=py0;x.beginPath();x.moveTo(px,py);
+    for(let k=0;k<4;k++){
+      const a=Math.atan2(py-cy1,px-cx1)+Math.PI/2+0.35*Math.sin((px+py)/S*7);
+      px+=Math.cos(a)*S*0.02;py+=Math.sin(a)*S*0.02;x.lineTo(px,py);}
+    x.stroke();
+  }
+  if(strength>0.45){ // the sun grows Starry-Night halos
+    x.strokeStyle=`rgba(255,220,110,${Math.min(0.8,strength-0.4)})`;
+    x.lineWidth=Math.max(1.3,S*0.012);
+    x.beginPath();x.arc(S*0.8,S*0.16,S*0.115,0,7);x.stroke();
+    x.beginPath();x.arc(S*0.8,S*0.16,S*0.15,0,7);x.stroke();
+  }
+}
+// style thumbnail for the diagram
+(function(){const c=document.createElement('canvas');c.width=104;c.height=80;
+ drawStyleIm(c.getContext('2d'),104,80);$('styleImg').setAttribute('href',c.toDataURL());})();
+
+// VGG bars
+(function(){let s='';const w=[16,16,13,13,10,10,10,8,8,8,6,6,6];let x=310;
+ for(let i=0;i<w.length;i++){const h=88-i*4;s+=`<rect x="${x}" y="${144+(88-h)/2}" width="${w[i]}" height="${h}" rx="3" fill="${i%3===2?'#f6921e':'#c9bdf0'}" opacity="${.55+.03*i}"/>`;x+=w[i]-4;}
+ $('vggBars').innerHTML=s;})();
+
+// evolving model.t thumbnail: noise -> stylized content scene
+const cv=document.createElement('canvas');cv.width=50;cv.height=50;const cx2=cv.getContext('2d');
+function drawX(t){ // t in 0..1
+  // content scene
+  cx2.fillStyle='#cfe6ff';cx2.fillRect(0,0,50,26);
+  cx2.fillStyle='#bfe3bf';cx2.fillRect(0,26,50,24);
+  cx2.fillStyle='#e8b06a';cx2.fillRect(9,17,19,23);
+  cx2.fillStyle='#c96f4a';cx2.beginPath();cx2.moveTo(7,17);cx2.lineTo(18,8);cx2.lineTo(30,17);cx2.fill();
+  cx2.fillStyle='#ffd35c';cx2.beginPath();cx2.arc(40,8,4,0,7);cx2.fill();
+  // noise overlay fading out (structure recovered first...)
+  const na=Math.max(0,1-t*1.6);
+  if(na>0){const im=cx2.getImageData(0,0,50,50),d=im.data;
+    for(let i=0;i<d.length;i+=4){const n=(Math.random()*255)|0;
+      d[i]=d[i]*(1-na)+n*na;d[i+1]=d[i+1]*(1-na)+((n*7)%255)*na;d[i+2]=d[i+2]*(1-na)+((n*13)%255)*na;}
+    cx2.putImageData(im,0,0);}
+  // ...then Starry-Night brushwork repaints it (same painterly mix as the playground)
+  paintify(cx2,50,Math.max(0,(t-0.25)/0.7),Math.floor(t*8));
+  $('xImg').setAttribute('href',cv.toDataURL());
+}
+
+const GROUPS={0:['gContent','gStyle','gX'],1:['gContent','gStyle','gX','gFlowIn','gVGG'],
+ 2:['gContent','gX','gFlowIn','gVGG','gFlowLoss','gCL'],3:['gStyle','gX','gFlowIn','gVGG','gFlowLoss','gSL'],
+ 4:['gCL','gSL','gFlowTot','gTot'],5:['gTot','gBack','gX']};
+const ALL=['gContent','gStyle','gX','gFlowIn','gVGG','gCL','gSL','gFlowLoss','gTot','gFlowTot','gBack'];
+
+const STORY=[
+ 'Three images. <b class="i">content_im</b> says WHAT (a photo — here, a little house). <b class="o">style_im</b> says HOW (an artwork\u2019s brushwork). And <b class="a">model.t</b> is a tensor of raw pixels wrapped in <code>TensorModel</code> — it starts as noise and it is the <i>only</i> thing with <code>requires_grad=True</code>.',
+ 'All three go through the <b>same frozen VGG16</b>. We never train it — we only read its intermediate activations (\u201cfeatures\u201d). Early layers respond to edges &amp; color blobs; deep layers respond to object parts. VGG is our measuring instrument.',
+ '<b class="i">Content loss</b> compares deep features (layers 18, 25) of <b class="a">model.t</b> vs <b class="i">content_im</b> at the <i>same spatial positions</i>: \u201cis there still a roof-ish thing up there?\u201d Deep layers forgive exact pixels but insist on layout.',
+ '<b class="o">Style loss</b> first squashes each feature map into a <b>Gram matrix</b> — channel-vs-channel correlations with the WHERE summed away — then compares Grams of <b class="a">model.t</b> vs <b class="o">style_im</b> across 5 layers: \u201cdo swirly-blue strokes co-occur here like in the painting, anywhere at all?\u201d',
+ 'Add the two numbers: <code>loss = content_loss(im) + style_loss(im)</code>. One scalar. Every trade-off in style transfer is a tug-of-war inside this sum — scale style loss up and the painting wins, scale it down and the photo wins.',
+ '<code>loss.backward()</code> sends gradients back through frozen VGG all the way to the <b class="a">pixels</b>, and <code>opt.step()</code> nudges every pixel a little. Repeat ~100 times. Press ▶ Play to watch <b class="a">model.t</b> evolve — that IS the output image; there is no generator network.'];
+
+const CODE=[
+ [`<span class="cm"># \u2460 the players — the \u201cmodel\u201d is literally just an image tensor</span>`,
+  `content_im = download_image(url).to(def_device)      <span class="cm"># WHAT</span>`,
+  `style_im   = download_image(style_url).to(def_device) <span class="cm"># HOW</span>`,
+  `model = TensorModel(torch.rand_like(content_im))     <span class="cm"># trainable pixels!</span>`],
+ [`<span class="cm"># \u2461 a frozen, pretrained feature ruler</span>`,
+  `vgg16 = timm.create_model(<span class="num">'vgg16'</span>, pretrained=<span class="num">True</span>).to(def_device).features`,
+  `feats = calc_features(imgs, target_layers=(<span class="num">18</span>, <span class="num">25</span>))  <span class="cm"># read activations mid-network</span>`],
+ [`<span class="cm"># \u2462 content: match deep features at the same positions</span>`,
+  `loss = ContentLossToTarget(content_im, target_layers=(<span class="num">18</span>, <span class="num">25</span>))`,
+  `<span class="cm">#   inside: sum of F.mse_loss(f1, f2) over the chosen layers</span>`],
+ [`<span class="cm"># \u2463 style: match Gram matrices (channel co-occurrence, no positions)</span>`,
+  `style_loss = StyleLossToTarget(style_im)   <span class="cm"># layers (1, 6, 11, 18, 25)</span>`,
+  `<span class="cm">#   inside: grams = torch.einsum('chw, dhw -> cd', x, x) / (h*w)</span>`],
+ [`<span class="cm"># \u2464 one combined objective</span>`,
+  `<span class="fn">def</span> combined_loss(x):`,
+  `    <span class="fn">return</span> loss(x) + style_loss(x)     <span class="cm"># content + style</span>`],
+ [`<span class="cm"># \u2465 optimize the IMAGE — ImageOptCB feeds model.t to the loss</span>`,
+  `learn = Learner(model, get_dummy_dls(<span class="num">100</span>), combined_loss,`,
+  `                lr=<span class="num">1e-2</span>, cbs=[ImageOptCB()], opt_func=torch.optim.Adam)`,
+  `learn.fit(<span class="num">1</span>)   <span class="cm"># 100 batches = 100 nudges of the pixels</span>`]];
+
+function render(){
+  ALL.forEach(g=>{const el=$(g);el.classList.toggle('lit',GROUPS[stage].includes(g));el.classList.toggle('dim',!GROUPS[stage].includes(g));});
+  [0,1,2,3,4,5].forEach(i=>$('st'+i).classList.toggle('on',i===stage));
+  $('story').innerHTML=STORY[stage];
+  $('code').innerHTML=CODE[stage].join('\n');
+  $('iterv').textContent=iter;
+  const t=iter/NIT;
+  const l=(3.2*Math.exp(-3.2*t)+0.25).toFixed(2);
+  $('lossVal').textContent = iter===0 ? 'loss = —' : 'loss \u2248 '+l;
+  drawX(t);
+}
+function step(d){
+  stage+=d;
+  if(stage>5){stage=0; if(iter<NIT) iter++;}
+  if(stage<0){stage=5; if(iter>0) iter--;}
+  render();
+}
+function setPlay(p){playing=p;$('play').textContent=p?'\u23F8 Pause':'\u25B6 Play';
+  clearInterval(timer); if(p) timer=setInterval(()=>{step(1); if(iter>=NIT&&stage===5) setPlay(false);}, 850/speed);}
+[0,1,2,3,4,5].forEach(i=>$('st'+i).onclick=()=>{setPlay(false);stage=i;render();});
+[['gContent',0],['gStyle',0],['gX',0],['gVGG',1],['gCL',2],['gSL',3],['gTot',4]].forEach(([g,s])=>$(g).onclick=()=>{setPlay(false);stage=s;render();});
+$('fwd').onclick=()=>{setPlay(false);step(1);};
+$('back').onclick=()=>{setPlay(false);step(-1);};
+$('play').onclick=()=>setPlay(!playing);
+$('reset').onclick=()=>{setPlay(false);stage=0;iter=0;render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'\u00D7';if(playing)setPlay(true);};
+render();
+
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+</style>
+</body></html>

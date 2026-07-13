@@ -1,0 +1,196 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixels ARE the Parameters</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:920px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:4px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv,.lrv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;margin-top:2px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .grid{display:grid;gap:2px;grid-template-columns:repeat(9,24px);}
+  .cell{width:24px;height:24px;border-radius:4px;border:1px solid #eef2f8;position:relative;}
+  .gcell{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+  canvas{display:block;border-radius:8px;}
+  .lossbox{margin-top:6px;text-align:center;font-family:monospace;font-size:12px;background:#f4f7fd;border-radius:8px;padding:5px 9px;line-height:1.5;}
+  .lossbox .v{font-weight:700;color:var(--ac);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:860px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;} .code .num{color:#f6b86e;} .code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .legend b.i{color:var(--in);} .legend b.o{color:var(--out);} .legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>Pixels ARE the parameters — <code>TensorModel</code> in slow motion</h1>
+<p class="sub">In normal training we fix the data and learn the <i>weights</i>. Style transfer flips it: the network is frozen and the <b>image itself</b> is the parameter tensor. Here a 9×9 noise image gradient-descends toward a target under plain MSE — exactly the notebook\u2019s <code>loss_fn_mse</code> demo. Watch one iteration = 4 stages, and <b>click anywhere on the loss curve</b> to jump to that iteration.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① forward: output = the pixels</button>
+  <button class="chip" id="st1">② loss = MSE(pixels, target)</button>
+  <button class="chip" id="st2">③ backward: grad on every pixel</button>
+  <button class="chip" id="st3">④ opt.step(): nudge pixels</button>
+</div>
+
+<div class="selrow">
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset (new noise)</button>
+  <span class="div"></span>
+  lr <input id="lr" type="range" min="0.05" max="0.5" step="0.05" value="0.2"><span class="lrv" id="lrv">0.20</span>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">model.t — trainable pixels <small>iteration <span id="iterv">0</span> · this IS the output</small></div>
+    <div class="grid" id="tg"></div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--in)">target image <small>a tiny “7” — never changes</small></div>
+    <div class="grid" id="gg"></div>
+  </div>
+  <div class="card" id="gradCard">
+    <div class="cap" style="color:var(--neg)">gradient ∂loss/∂pixel <small>red = “decrease me”, blue = “increase me”</small></div>
+    <div class="grid" id="dg"></div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--out)">loss curve <small>click any point to JUMP to that iteration</small></div>
+    <canvas id="lc" width="260" height="170"></canvas>
+    <div class="lossbox" id="lossbox">loss = …</div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend"><b class="a">purple grid = the parameters being learned</b> &nbsp;·&nbsp; <b class="i">orange = fixed target</b> &nbsp;·&nbsp; there are exactly <b>81 parameters</b> here — the notebook\u2019s version has 3×256×256 = <b>196,608</b>, same idea</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=9, NP=N*N, NIT=40;
+const TGT=[
+ 0,0,0,0,0,0,0,0,0,
+ 0,.6,.9,.9,.9,.9,.8,0,0,
+ 0,0,0,0,0,.8,.9,0,0,
+ 0,0,0,0,.7,.9,0,0,0,
+ 0,0,0,.6,.9,.3,0,0,0,
+ 0,0,0,.9,.8,0,0,0,0,
+ 0,0,.7,.9,0,0,0,0,0,
+ 0,0,.9,.6,0,0,0,0,0,
+ 0,0,0,0,0,0,0,0,0];
+let t0=[], stage=0, iter=0, lr=0.2, speed=1, playing=false, timer=null;
+function newNoise(){t0=Array.from({length:NP},()=>Math.random());}
+newNoise();
+// closed form: with grad = 2(t-target)/NP and plain SGD, t_k = target + (t0-target)*f^k
+// use an "effective" contraction so the curve is lively: f = 1 - lr (lr slider is the effective step)
+function f(){return 1-lr;}
+function pixAt(k){const fk=Math.pow(f(),k);return t0.map((v,i)=>TGT[i]+(v-TGT[i])*fk);}
+function lossAt(k){const p=pixAt(k);let s=0;for(let i=0;i<NP;i++){const d=p[i]-TGT[i];s+=d*d;}return s/NP;}
+
+function mkGrid(id){const g=$(id);g.innerHTML='';for(let i=0;i<NP;i++){const d=document.createElement('div');d.className='cell';g.appendChild(d);}}
+['tg','gg','dg'].forEach(mkGrid);
+(function(){const g=$('gg').children;for(let i=0;i<NP;i++){const v=TGT[i];g[i].style.background=`rgb(${255-v*215},${255-v*175},${255-v*95})`;}})();
+
+function gray(v){const x=Math.max(0,Math.min(1,v));const c=Math.round(30+ x*0 + (1-x)*0);
+  // purple-tinted grayscale: dark purple for high values
+  const r=Math.round(255-x*180), gch=Math.round(255-x*195), b=Math.round(255-x*90);
+  return `rgb(${r},${gch},${b})`;}
+
+function drawCurve(){
+  const c=$('lc'),x=c.getContext('2d');x.clearRect(0,0,260,170);
+  x.strokeStyle='#dde5f2';x.beginPath();x.moveTo(30,10);x.lineTo(30,145);x.lineTo(250,145);x.stroke();
+  x.fillStyle='#5a6b86';x.font='10px monospace';
+  const l0=lossAt(0);
+  x.fillText(l0.toFixed(2),2,16);x.fillText('0',2,148);x.fillText('iter',230,160);x.fillText('0',28,158);x.fillText(String(NIT),240,158);
+  x.strokeStyle='#16a3a3';x.lineWidth=2;x.beginPath();
+  for(let k=0;k<=NIT;k++){const px=30+k/NIT*218, py=145-(lossAt(k)/l0)*130;k?x.lineTo(px,py):x.moveTo(px,py);}
+  x.stroke();x.lineWidth=1;
+  const px=30+iter/NIT*218, py=145-(lossAt(iter)/l0)*130;
+  x.fillStyle='#7b5cd6';x.beginPath();x.arc(px,py,5,0,7);x.fill();
+  x.strokeStyle='#7b5cd6';x.setLineDash([3,3]);x.beginPath();x.moveTo(px,py);x.lineTo(px,145);x.stroke();x.setLineDash([]);
+}
+$('lc').onclick=e=>{const r=$('lc').getBoundingClientRect();
+  const k=Math.round(((e.clientX-r.left)*(260/r.width)-30)/218*NIT);
+  setPlay(false);iter=Math.max(0,Math.min(NIT,k));stage=0;render();};
+
+const CODE=[
+ [`<span class="cm"># \u2460 forward — TensorModel just returns its pixels (no layers!)</span>`,
+  `<span class="fn">class</span> TensorModel(nn.Module):`,
+  `    <span class="fn">def</span> __init__(self, t): self.t = nn.Parameter(t.clone())`,
+  `    <span class="fn">def</span> forward(self, x=<span class="num">0</span>): <span class="fn">return</span> self.t   <span class="cm"># \u2190 output IS the image</span>`],
+ [`<span class="cm"># \u2461 loss — how far is every pixel from the target, on average?</span>`,
+  `<span class="fn">def</span> loss_fn_mse(im):`,
+  `    <span class="fn">return</span> F.mse_loss(im, content_im)   <span class="cm"># mean((im - target)\u00B2)</span>`],
+ [`<span class="cm"># \u2462 backward — MSE grad is simply 2\u00B7(pixel \u2212 target)/N per pixel</span>`,
+  `self.learn.loss.backward()   <span class="cm"># from ImageOptCB / TrainCB</span>`,
+  `<span class="cm"># too-bright pixels get a red \u201cgo down\u201d, too-dark get a blue \u201cgo up\u201d</span>`],
+ [`<span class="cm"># \u2463 step — the optimizer nudges every pixel against its gradient</span>`,
+  `self.learn.opt.step()`,
+  `self.learn.opt.zero_grad()   <span class="cm"># \u2026then repeat: fit(1) = 100 of these loops</span>`]];
+
+function render(){
+  const p=pixAt(iter), pn=pixAt(iter+1);
+  const tgc=$('tg').children, dgc=$('dg').children;
+  for(let i=0;i<NP;i++){
+    const shown = (stage===3 && iter<NIT) ? pn[i] : p[i];
+    tgc[i].style.background=gray(shown);
+    const g2=2*(p[i]-TGT[i])/NP, a=Math.min(1,Math.abs(g2)*NP*1.6);
+    dgc[i].style.background = stage>=2 ? (g2>0?`rgba(214,69,69,${a})`:`rgba(58,110,220,${a})`) : '#f7f9fd';
+  }
+  $('gradCard').style.opacity = stage>=2 ? 1 : .35;
+  [0,1,2,3].forEach(i=>$('st'+i).classList.toggle('on',i===stage));
+  $('iterv').textContent=iter;
+  const L=lossAt(iter);
+  $('lossbox').innerHTML = stage>=1
+    ? `loss = mean((t \u2212 target)\u00B2) = <span class="v">${L.toFixed(4)}</span>${stage===3&&iter<NIT?` \u2192 next: <span class="v">${lossAt(iter+1).toFixed(4)}</span>`:''}`
+    : `81 pixels out \u2192 waiting for the loss\u2026`;
+  const hl=stage+ (stage>0?1:1); // highlight main line per block
+  $('code').innerHTML=CODE[stage].map((t,i)=>{
+    const main= stage===0?3 : stage===1?2 : stage===2?1 : 1;
+    return i===main?`<span class="hl">${t}</span>`:t;}).join('\n');
+  drawCurve();
+}
+function step(d){
+  if(d>0){stage++;if(stage>3){stage=0;if(iter<NIT)iter++;else{setPlay(false);stage=3;}}}
+  else{stage--;if(stage<0){stage=3;if(iter>0)iter--;else stage=0;}}
+  render();
+}
+function setPlay(pl){playing=pl;$('play').textContent=pl?'\u23F8 Pause':'\u25B6 Play';
+  clearInterval(timer);if(pl)timer=setInterval(()=>step(1),480/speed);}
+[0,1,2,3].forEach(i=>$('st'+i).onclick=()=>{setPlay(false);stage=i;render();});
+$('fwd').onclick=()=>{setPlay(false);step(1);};
+$('back').onclick=()=>{setPlay(false);step(-1);};
+$('play').onclick=()=>setPlay(!playing);
+$('reset').onclick=()=>{setPlay(false);newNoise();iter=0;stage=0;render();};
+$('lr').oninput=e=>{lr=+e.target.value;$('lrv').textContent=lr.toFixed(2);render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'\u00D7';if(playing)setPlay(true);};
+render();
+
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  .grid>*{min-width:0}
+</style>
+</body></html>
