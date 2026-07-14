@@ -1,0 +1,225 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circular Padding in 3D — the grid lives on a torus</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:920px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  input[type=range]{width:150px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:40px;display:inline-block;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .wrap3d{max-width:960px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);padding:8px;}
+  #stage{width:100%;height:430px;border-radius:8px;overflow:hidden;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:grab;position:relative;}
+  #stage:active{cursor:grabbing;}
+  .hint{position:absolute;right:10px;bottom:8px;font-size:10.5px;color:var(--soft);background:rgba(255,255,255,.85);border-radius:8px;padding:3px 8px;pointer-events:none;}
+  .explain{max-width:920px;margin:8px auto 0;font-size:12px;color:var(--soft);background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 12px;line-height:1.5;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .explain b.o{color:var(--out);} .explain b.i{color:var(--in);} .explain b.a{color:var(--ac);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:920px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+</style></head><body>
+<h1>Why "circular padding"? Because the grid secretly lives on a donut 🍩</h1>
+<p class="sub"><code style="background:#ece7fb;border-radius:5px;padding:1px 5px">F.pad(y, [1,1,1,1], 'circular')</code> makes the <b style="color:var(--in)">left edge neighbor the right edge</b> and the <b style="color:var(--in)">top neighbor the bottom</b>. That is <i>exactly</i> the same as gluing the edges together — fold a sheet into a cylinder, then bend the cylinder into a <b>torus</b>. Watch a live cellular automaton run on the sheet while you fold it: gliders that "fall off" one edge re-enter on the other, and on the torus you can see there was never an edge at all. <b>Drag to rotate</b>, scroll to zoom.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="s0">① Flat sheet (edges highlighted)</button>
+  <button class="chip" id="s1">② Roll → cylinder (left meets right)</button>
+  <button class="chip" id="s2">③ Bend → torus (top meets bottom)</button>
+</div>
+<div class="selrow">
+  fold <input id="fold" type="range" min="0" max="2" step="0.01" value="0"><span class="speedv" id="fv">0.00</span>
+  <span class="div"></span>
+  <button class="play" id="foldbtn">▶ Auto-fold</button>
+  <span class="div"></span>
+  CA speed <input id="speed" type="range" min="0" max="4" step="0.25" value="1" style="width:100px"><span class="speedv" id="spv">1×</span>
+  <button class="reset" id="reset">↺ Reset view</button>
+</div>
+
+<div class="wrap3d"><div id="stage"><div class="hint">drag = rotate · scroll = zoom</div></div></div>
+
+<div class="explain" id="explain"><b class="i">Orange stripes</b> mark the left/right edges; <b class="a">purple stripes</b> mark top/bottom. On the flat sheet they look far apart — but circular padding treats them as touching. Fold to see it become literally true.</div>
+
+<div class="code" id="code"></div>
+<div class="legend">this is why our NCA textures are <b>seamless &amp; tileable</b> — the pattern has to flow continuously across the "edges", because on the torus there are none</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+if(typeof THREE==='undefined'){
+  document.getElementById('stage').innerHTML=
+   '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--soft);font-size:13px;text-align:center;padding:20px">3D library (three.js) could not load — this visualization needs internet access to cdnjs.cloudflare.com.<br>Everything else in the notebook still works!</div>';
+  throw new Error('three.js not loaded');
+}
+// ---------- tiny CA (Game of Life with gliders) drawn to a canvas texture ----------
+const GN=28;
+let ca=Array.from({length:GN},()=>Array(GN).fill(0));
+function seed(){
+  ca=Array.from({length:GN},()=>Array(GN).fill(0));
+  const glider=[[0,1],[1,2],[2,0],[2,1],[2,2]];
+  glider.forEach(([r,c])=>ca[(r+3)%GN][(c+3)%GN]=1);
+  glider.forEach(([r,c])=>ca[(r+14)%GN][(c+16)%GN]=1);
+  const lwss=[[0,0],[0,3],[1,4],[2,0],[2,4],[3,1],[3,2],[3,3],[3,4]];
+  lwss.forEach(([r,c])=>ca[(r+20)%GN][(c+6)%GN]=1);
+}
+function stepCA(){
+  const ng=Array.from({length:GN},()=>Array(GN).fill(0));
+  for(let r=0;r<GN;r++)for(let c=0;c<GN;c++){
+    let n=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){if(!i&&!j)continue;
+      n+=ca[(r+i+GN)%GN][(c+j+GN)%GN];}
+    ng[r][c]=(n===3||(ca[r][c]&&n===2))?1:0;}
+  ca=ng;
+}
+const tex=document.createElement('canvas'); tex.width=tex.height=GN*12;
+const tctx=tex.getContext('2d');
+function drawTex(){
+  const s=12;
+  tctx.fillStyle='#f8fbff'; tctx.fillRect(0,0,tex.width,tex.height);
+  for(let r=0;r<GN;r++)for(let c=0;c<GN;c++){
+    if(ca[r][c]){tctx.fillStyle='#16a3a3';tctx.fillRect(c*s+1,r*s+1,s-2,s-2);}}
+  tctx.strokeStyle='#dde5f2'; tctx.lineWidth=1;
+  for(let i=0;i<=GN;i++){tctx.beginPath();tctx.moveTo(i*s,0);tctx.lineTo(i*s,tex.height);tctx.stroke();
+    tctx.beginPath();tctx.moveTo(0,i*s);tctx.lineTo(tex.width,i*s);tctx.stroke();}
+  // edge stripes: orange = left/right (u-seam), purple = top/bottom (v-seam)
+  tctx.fillStyle='rgba(246,146,30,.85)';
+  tctx.fillRect(0,0,4,tex.height); tctx.fillRect(tex.width-4,0,4,tex.height);
+  tctx.fillStyle='rgba(123,92,214,.85)';
+  tctx.fillRect(0,0,tex.width,4); tctx.fillRect(0,tex.height-4,tex.width,4);
+  texture.needsUpdate=true;
+}
+// ---------- three.js scene ----------
+const stage=$('stage');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+stage.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(42,1,0.1,100);
+camera.position.set(0,2.2,7.4);
+scene.add(new THREE.AmbientLight(0xffffff,0.75));
+const dl=new THREE.DirectionalLight(0xffffff,0.55); dl.position.set(3,5,4); scene.add(dl);
+const texture=new THREE.CanvasTexture(tex);
+
+const W=2*Math.PI, H=2*Math.PI;          // sheet dims = circumferences
+const SU=120, SV=120;
+const geo=new THREE.PlaneBufferGeometry(W,H,SU,SV);
+const mat=new THREE.MeshLambertMaterial({map:texture,side:THREE.DoubleSide});
+const mesh=new THREE.Mesh(geo,mat);
+const group=new THREE.Group(); group.add(mesh); scene.add(group);
+group.rotation.x=-0.45;
+const base=geo.attributes.position.array.slice();  // flat sheet coords
+
+function morph(t){
+  // t in [0,1]: roll x into a circle (plane→cylinder)
+  // t in [1,2]: bend y into a circle (cylinder→torus)
+  const t1=Math.min(t,1), t2=Math.max(t-1,0);
+  const p=geo.attributes.position.array;
+  const k1=t1*(2*Math.PI)/W, k2=t2*(2*Math.PI)/H;
+  for(let i=0;i<p.length;i+=3){
+    let x=base[i], y=base[i+1], z=0;
+    if(k1>1e-6){const r1=1/k1, th=x*k1; x=r1*Math.sin(th); z=r1*Math.cos(th)-r1;}
+    if(k2>1e-6){const r2=1/k2, ph=y*k2;
+      y=(r2+z)*Math.sin(ph); z=(r2+z)*Math.cos(ph)-r2;}
+    p[i]=x; p[i+1]=y; p[i+2]=z;
+  }
+  geo.attributes.position.needsUpdate=true;
+  geo.computeVertexNormals();
+  // recentre + scale so it stays framed
+  const s = 1 - 0.30*t1 - 0.12*t2;
+  mesh.scale.set(s,s,s);
+  mesh.position.z = (t1>0?0.9*t1:0) - 0.35*t2;
+}
+
+// interactions
+let dragging=false,lx=0,ly=0;
+stage.addEventListener('mousedown',e=>{dragging=true;lx=e.clientX;ly=e.clientY;});
+addEventListener('mousemove',e=>{if(!dragging)return;
+  group.rotation.y+=(e.clientX-lx)*0.007; group.rotation.x+=(e.clientY-ly)*0.007;
+  lx=e.clientX; ly=e.clientY;});
+addEventListener('mouseup',()=>dragging=false);
+stage.addEventListener('wheel',e=>{e.preventDefault();
+  camera.position.z=Math.min(14,Math.max(3.5,camera.position.z+e.deltaY*0.004));},{passive:false});
+stage.addEventListener('touchstart',e=>{if(e.touches.length===1){dragging=true;lx=e.touches[0].clientX;ly=e.touches[0].clientY;}},{passive:true});
+stage.addEventListener('touchmove',e=>{if(dragging&&e.touches.length===1){
+  group.rotation.y+=(e.touches[0].clientX-lx)*0.007;group.rotation.x+=(e.touches[0].clientY-ly)*0.007;
+  lx=e.touches[0].clientX;ly=e.touches[0].clientY;}},{passive:true});
+addEventListener('touchend',()=>dragging=false);
+
+function resize(){
+  const w=stage.clientWidth,h=stage.clientHeight;
+  renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();}
+addEventListener('resize',resize);
+
+// fold control
+let fold=0, folding=false, foldDir=1;
+function setFold(t,fromSlider){
+  fold=Math.max(0,Math.min(2,t));
+  if(!fromSlider)$('fold').value=fold;
+  $('fv').textContent=fold.toFixed(2);
+  morph(fold);
+  const st=fold<0.5?0:(fold<1.5?1:2);
+  [0,1,2].forEach(i=>$('s'+i).classList.toggle('on',i===st));
+  const EX={
+   0:'<b class="i">Orange stripes</b> = left/right edges, <b class="a">purple stripes</b> = top/bottom. Circular padding says these already touch — the fold just makes it visible.',
+   1:'The sheet is now a <b>cylinder</b>: the two orange edges have merged into one seam. A glider crossing the old "right edge" simply keeps going. Column index wraps: <code>c % N</code>.',
+   2:'Now it\u2019s a <b>torus</b>: purple edges merged too. Every cell has a full 3×3 neighborhood — <b>no cell is special, no border artifacts</b>. Both indices wrap: <code>(r % N, c % N)</code>.'};
+  $('explain').innerHTML=EX[st];
+  renderCode(st);
+}
+function renderCode(st){
+  const L=[
+   `<span class="cm"># from perchannel_conv — pad by 1 on all sides, but CIRCULARLY:</span>`,
+   `y = F.<span class="fn">pad</span>(y, [<span class="num">1, 1, 1, 1</span>], <span class="num">'circular'</span>)`,
+   `<span class="cm"># 'circular' means index arithmetic is modular:</span>`,
+   `<span class="cm">#   stage ② —</span> neighbor_left  of col <span class="num">0</span>   is col <span class="num">N-1</span>   <span class="cm"># left ↔ right glued</span>`,
+   `<span class="cm">#   stage ③ —</span> neighbor_up    of row <span class="num">0</span>   is row <span class="num">N-1</span>   <span class="cm"># top ↔ bottom glued</span>`,
+   `<span class="cm"># flat array + modular indexing  ≡  a grid drawn on a torus</span>`];
+  const hl=st===0?1:(st===1?3:4);
+  $('code').innerHTML=L.map((t,i)=>i===hl?`<span class="hl">${t}</span>`:t).join('\n');
+}
+$('fold').oninput=e=>{folding=false;$('foldbtn').textContent='▶ Auto-fold';setFold(+e.target.value,true);};
+$('foldbtn').onclick=()=>{folding=!folding;
+  if(folding&&fold>=2)fold=0;
+  foldDir = fold>=2?-1:1;
+  $('foldbtn').textContent=folding?'⏸ Pause':'▶ Auto-fold';};
+[0,1,2].forEach(i=>$('s'+i).onclick=()=>{folding=false;$('foldbtn').textContent='▶ Auto-fold';setFold([0,1,2][i]);});
+$('reset').onclick=()=>{group.rotation.set(-0.45,0,0);camera.position.set(0,2.2,7.4);};
+let caSpeed=1;
+$('speed').oninput=e=>{caSpeed=+e.target.value;$('spv').textContent=caSpeed+'×';};
+
+// loops
+let acc=0,last=performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=now-last; last=now;
+  if(folding){setFold(fold+foldDir*dt*0.00045);
+    if(fold>=2||fold<=0){folding=false;$('foldbtn').textContent='▶ Auto-fold';}}
+  if(caSpeed>0){acc+=dt*caSpeed;
+    if(acc>240){stepCA();drawTex();acc=0;}}
+  if(!dragging) group.rotation.y+=0.0012;
+  renderer.render(scene,camera);
+}
+seed(); drawTex(); resize(); setFold(0); requestAnimationFrame(loop);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

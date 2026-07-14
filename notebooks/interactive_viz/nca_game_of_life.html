@@ -1,0 +1,323 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game of Life Lab — classic cellular automata</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:940px;line-height:1.5;}
+  .howto{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:0 auto 8px;max-width:960px;}
+  .howto .h{background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 11px;font-size:11.5px;color:var(--soft);box-shadow:0 3px 10px rgba(123,92,214,.06);max-width:300px;line-height:1.45;}
+  .howto .h b{color:var(--ac);}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:7px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .chip:disabled{opacity:.45;cursor:not-allowed;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:4px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  select{font-family:inherit;font-size:12px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:4px 7px;background:#fff;cursor:pointer;max-width:280px;}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .pdesc{text-align:center;font-size:11.5px;color:var(--soft);max-width:860px;margin:0 auto 8px;line-height:1.5;background:#fff;border:1px dashed var(--line);border-radius:10px;padding:6px 12px;}
+  .pdesc b{color:var(--in);}
+  /* the narration card */
+  .story{max-width:960px;margin:0 auto 10px;background:linear-gradient(180deg,#fbfaff,#f6f3ff);border:1.5px solid #d8cdf3;border-radius:12px;padding:9px 14px;font-size:12.5px;line-height:1.6;box-shadow:0 6px 16px rgba(123,92,214,.10);}
+  .story .tag{font-weight:800;color:var(--ac);font-size:11px;letter-spacing:.4px;}
+  .story b.alive{color:var(--out);} .story b.dead{color:var(--neg);} .story b.n{color:var(--in);} .story b.ac{color:var(--ac);}
+  .story .commit{background:var(--out);color:#fff;margin-left:8px;padding:5px 14px;border-radius:8px;font-size:12px;animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(22,163,163,.45);}50%{box-shadow:0 0 0 7px rgba(22,163,163,0);}}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;margin-top:2px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  #board{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  #board .c{width:20px;height:20px;background:#f7f9fd;cursor:pointer;transition:background .1s;position:relative;}
+  #board .c.a{background:var(--out);}
+  #board .c.sel{outline:3px solid var(--ac);outline-offset:-2px;z-index:3;}
+  #board .c.nb{outline:2.5px solid var(--in);outline-offset:-2px;z-index:2;}
+  /* PREVIEW of next generation (nothing committed yet) */
+  #board .c.willborn{background:#bff0e8;outline:2px dashed #12a08e;outline-offset:-2px;}
+  #board .c.willdie{background:#f6c9c9;outline:2px dashed var(--neg);outline-offset:-2px;}
+  #board .c.willdie.a{background:#e79a9a;}
+  #board .c.born{background:#8fe0d6;}
+  #board .c.dies{background:#f3b6b6;}
+  .rulet{border-collapse:collapse;font-size:11.5px;margin:2px auto 0;}
+  .rulet td,.rulet th{border:1px solid var(--line);padding:4px 8px;text-align:left;}
+  .rulet th{background:#f4f7fd;font-size:11px;}
+  .rulet tr.hl td{background:rgba(123,92,214,.16);font-weight:700;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:860px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;line-height:1.5;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.r{color:var(--neg);}
+  @media (max-width:900px){#board .c{width:15px;height:15px;}}
+</style></head><body>
+<h1>Game of Life Lab — a world where every cell follows one tiny rule</h1>
+<p class="sub">This grid is a tiny universe. Each square ("cell") is either <b style="color:var(--out)">alive (teal)</b> or dead (white). Time moves in ticks called <b>generations</b>. At every tick, <i>every</i> cell looks at its <b style="color:var(--in)">8 surrounding neighbors</b>, counts how many are alive, and one rule table decides whether it lives or dies next. That's the entire program — no one is in charge, yet shapes glide, blink, and explode. This "local rules → global behavior" trick is exactly what our Neural CA is built on.</p>
+
+<div class="howto">
+  <div class="h"><b>1.</b> Click any cell on the grid (alive or dead — both are interesting).</div>
+  <div class="h"><b>2.</b> Click the stage chips <b>① → ② → ③ → ④</b> in order — the panel below narrates each step.</div>
+  <div class="h"><b>3.</b> Then press <b>▶ Play</b> and watch the same 4 steps repeat automatically, fast.</div>
+</div>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① Pick one cell</button>
+  <button class="chip" id="st1">② Count its 8 live neighbors</button>
+  <button class="chip" id="st2">③ Look up the rule → its fate</button>
+  <button class="chip" id="st3">④ Now do that for ALL cells</button>
+</div>
+
+<div class="selrow">
+  starting pattern: <select id="preset">
+    <option value="glider">glider — a shape that WALKS</option>
+    <option value="blinker">blinker — simplest "animation" (3 cells)</option>
+    <option value="block">block — completely frozen (why?)</option>
+    <option value="pulsar">pulsar — a big blinking "chandelier"</option>
+    <option value="rpent">r-pentomino — 5 cells → total chaos</option>
+    <option value="lwss">spaceship — bigger walker</option>
+    <option value="soup">random soup — 30% alive at random</option>
+    <option value="empty">empty — draw your own (shift-drag)</option>
+  </select>
+  &nbsp;·&nbsp; speed <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="stepbtn">Step 1 generation ⏭</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+<div class="pdesc" id="pdesc"></div>
+
+<div class="story" id="story"></div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" style="color:var(--out)">The grid (18×18, edges wrap around) <small>generation <span style="font-family:monospace;font-weight:700;color:var(--ac)" id="gen">0</span> · click a cell to inspect it · shift-drag to paint</small></div>
+    <div id="board"></div>
+  </div>
+  <div class="card" style="max-width:330px">
+    <div class="cap" style="color:var(--ac)">The rule table (called "B3/S23") <small>this is the ENTIRE program — nothing else exists</small></div>
+    <table class="rulet" id="rt">
+      <tr><th>my state now</th><th>live neighbors</th><th>my state next tick</th></tr>
+      <tr id="r0"><td>alive</td><td>0 or 1</td><td>dead <span style="color:var(--soft)">(loneliness)</span></td></tr>
+      <tr id="r1"><td>alive</td><td>2 or 3</td><td>alive <span style="color:var(--soft)">(survives)</span></td></tr>
+      <tr id="r2"><td>alive</td><td>4 – 8</td><td>dead <span style="color:var(--soft)">(overcrowding)</span></td></tr>
+      <tr id="r3"><td>dead</td><td>exactly 3</td><td>alive <span style="color:var(--soft)">(birth!)</span></td></tr>
+      <tr id="r4"><td>dead</td><td>anything else</td><td>stays dead</td></tr>
+    </table>
+    <div style="font-size:11px;color:var(--soft);margin-top:7px;line-height:1.5">"B3/S23" is just shorthand: <b>B</b>orn with 3 neighbors, <b>S</b>urvive with 2 or 3. When you trace a cell in stage ③, its matching row lights up purple here.</div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend">
+  <b class="a">purple outline = the cell you're inspecting</b> · <b class="i">orange outlines = its 8 neighbors</b> (near an edge they wrap to the far side!) · <b class="o">teal = alive</b><br>
+  in stage ④'s preview: <b class="o">green dashed = will be BORN</b>, <b class="r">red dashed = will DIE</b> — nothing changes until you press <b>✓ apply</b>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=18;
+let g=[], gen=0, sel=null, phase=0, timer=null, speed=1, painting=false, paintVal=1;
+let pending=null;   // computed next generation waiting for "apply" in stage ④
+
+const PRESETS={
+ glider:[[2,3],[3,4],[4,2],[4,3],[4,4]],
+ blinker:[[8,8],[8,9],[8,10]],
+ block:[[8,8],[8,9],[9,8],[9,9]],
+ pulsar:(()=>{const base=[[2,4],[2,5],[2,6],[2,10],[2,11],[2,12],[4,2],[5,2],[6,2],[4,7],[5,7],[6,7],[4,9],[5,9],[6,9],[4,14],[5,14],[6,14],[7,4],[7,5],[7,6],[7,10],[7,11],[7,12],[9,4],[9,5],[9,6],[9,10],[9,11],[9,12],[10,2],[11,2],[12,2],[10,7],[11,7],[12,7],[10,9],[11,9],[12,9],[10,14],[11,14],[12,14],[14,4],[14,5],[14,6],[14,10],[14,11],[14,12]];
+   return base.map(([r,c])=>[r+1,c+1]);})(),
+ rpent:[[8,8],[8,9],[9,7],[9,8],[10,8]],
+ lwss:[[8,3],[8,6],[9,7],[10,3],[10,7],[11,4],[11,5],[11,6],[11,7]],
+};
+
+const PDESC={
+ glider:`The <b>glider</b> is 5 cells arranged so that applying the rule over and over makes the whole shape <b>move</b>: after 4 generations it looks identical but has shifted one square diagonally. Nobody told it to walk — walking is a side-effect of the rule table. <i>Try:</i> press ▶ Play; when it reaches an edge, watch it wrap to the other side (the grid is a donut).`,
+ blinker:`The <b>blinker</b> is the simplest moving thing: 3 cells in a row. The two end cells die of loneliness (1 neighbor) while the two cells above and below the middle get born (exactly 3 neighbors) — so the row flips vertical, then back. Period 2, forever. <i>Try:</i> click the middle cell, then trace stages ①→④ — it survives every time. Then trace an end cell.`,
+ block:`The <b>block</b> is a 2×2 square that never changes — a "still life". Every live cell has exactly 3 live neighbors (survives), and no dead cell around it has exactly 3 (no births). <i>Try:</i> verify that yourself! Click one of the 4 cells, then a dead cell touching the corner, and trace the stages.`,
+ pulsar:`The <b>pulsar</b> is a large symmetric pattern that cycles through 3 shapes and returns to the start — period 3. Watch how births and deaths chase each other around the arms. <i>Try:</i> press "Step 1 generation" three times and confirm it comes back.`,
+ rpent:`The <b>r-pentomino</b> is famous: just 5 cells, but it churns chaotically for over 1000 generations on an infinite grid before settling (on our small wrapping grid it stabilizes sooner). It shows how a tiny seed can generate enormous, unpredictable complexity. <i>Try:</i> ▶ Play at 4× speed and just watch.`,
+ lwss:`The <b>lightweight spaceship</b> is a bigger walker than the glider — it moves horizontally, re-forming itself every 4 generations. <i>Try:</i> ▶ Play and watch it cruise across (and wrap around) the grid.`,
+ soup:`<b>Random soup</b>: every cell starts alive with 30% chance. Watch structure crystallize out of noise — most of it dies, but blinkers, blocks and sometimes gliders survive. Every Reset gives a new universe. <i>Try:</i> ▶ Play, then Reset a few times.`,
+ empty:`<b>Empty canvas.</b> Hold <b>Shift and drag</b> (or right-click) to paint your own live cells, then press ▶ Play. Good first experiment: paint 3 cells in a row and see what happens.`,
+};
+
+function blank(){return Array.from({length:N},()=>Array(N).fill(0));}
+function loadPreset(name){
+  stop(); g=blank(); gen=0; sel=null; phase=0; pending=null;
+  if(name==='soup'){for(let r=0;r<N;r++)for(let c=0;c<N;c++)g[r][c]=Math.random()<0.3?1:0;}
+  else if(PRESETS[name]) PRESETS[name].forEach(([r,c])=>{if(r<N&&c<N)g[r][c]=1;});
+  $('pdesc').innerHTML=PDESC[name]||'';
+  render();
+}
+function neighbors(r,c){const out=[];for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+  if(!dr&&!dc)continue; out.push([(r+dr+N)%N,(c+dc+N)%N]);}return out;}
+function countN(r,c){return neighbors(r,c).reduce((s,[rr,cc])=>s+g[rr][cc],0);}
+function nextState(alive,n){return alive?(n===2||n===3?1:0):(n===3?1:0);}
+
+// compute the next generation WITHOUT applying it
+function computeNext(){
+  const ng=blank(); let born=[], lonely=[], crowded=[], survive=0;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const n=countN(r,c), a=g[r][c]; ng[r][c]=nextState(a,n);
+    if(!a&&ng[r][c])born.push([r,c]);
+    else if(a&&!ng[r][c]) (n<2?lonely:crowded).push([r,c]);
+    else if(a) survive++;
+  }
+  return {ng,born,lonely,crowded,survive};
+}
+function applyPending(flash){
+  if(!pending) pending=computeNext();
+  const {ng,born,lonely,crowded}=pending;
+  g=ng; gen++;
+  const wasSel = sel ? sel.slice() : null;
+  pending=null;
+  render();
+  if(flash){const B=$('board').children;
+    born.forEach(([r,c])=>B[r*N+c].classList.add('born'));
+    lonely.concat(crowded).forEach(([r,c])=>B[r*N+c].classList.add('dies'));
+    setTimeout(()=>{[...B].forEach(d=>d.classList.remove('born','dies'));},320/speed);}
+  return {born,lonely,crowded,wasSel};
+}
+
+function build(){
+  const b=$('board'); b.style.gridTemplateColumns=`repeat(${N},1fr)`; b.innerHTML='';
+  for(let i=0;i<N*N;i++){
+    const d=document.createElement('div'); d.className='c';
+    const r=(i/N)|0, c=i%N;
+    d.onmousedown=e=>{e.preventDefault();
+      if(e.shiftKey){painting=true;paintVal=g[r][c]?0:1;g[r][c]=paintVal;pending=null;render();}
+      else{sel=[r,c];phase=0;pending=null;render();}};
+    d.onmouseenter=()=>{if(painting){g[r][c]=paintVal;render();}};
+    d.oncontextmenu=e=>{e.preventDefault();g[r][c]=g[r][c]?0:1;pending=null;render();};
+    b.appendChild(d);
+  }
+  addEventListener('mouseup',()=>painting=false);
+}
+
+function ruleRowFor(alive,n){return alive ? (n<2?'r0':(n<4?'r1':'r2')) : (n===3?'r3':'r4');}
+function reasonFor(alive,n,nxt){
+  if(alive&&nxt) return `2 or 3 neighbors → it <b class="alive">SURVIVES</b>`;
+  if(alive&&!nxt) return n<2 ? `only <b class="n">${n}</b> neighbor${n===1?'':'s'} → it <b class="dead">DIES of loneliness</b>` : `<b class="n">${n}</b> neighbors is too many → it <b class="dead">DIES of overcrowding</b>`;
+  if(!alive&&nxt) return `exactly <b class="n">3</b> neighbors → a new cell is <b class="alive">BORN</b> here`;
+  return `<b class="n">${n}</b> neighbors (needs exactly 3) → it <b class="dead">stays dead</b>`;
+}
+
+function render(){
+  const B=$('board').children;
+  for(let i=0;i<N*N;i++){
+    const r=(i/N)|0,c=i%N,d=B[i];
+    d.classList.toggle('a',!!g[r][c]);
+    d.classList.remove('sel','nb','willborn','willdie');
+  }
+  $('gen').textContent=gen;
+  ['r0','r1','r2','r3','r4'].forEach(id=>$(id).classList.remove('hl'));
+
+  let story='';
+  if(!sel){
+    story=`<span class="tag">START HERE →</span> Click <b class="ac">any square on the grid</b> to follow it through one tick of the universe. Pick a <b class="alive">teal (alive)</b> cell to see if it survives, or a white (dead) one next to some teal ones to see if it gets born.`;
+  } else {
+    const [r,c]=sel; B[r*N+c].classList.add('sel');
+    const n=countN(r,c), alive=g[r][c], nxt=nextState(alive,n);
+    if(phase>=1) neighbors(r,c).forEach(([rr,cc])=>{const d=B[rr*N+cc]; if(!d.classList.contains('sel')) d.classList.add('nb');});
+    if(phase===0){
+      story=`<span class="tag">STAGE ① — PICK A CELL</span> You picked the cell at row <b>${r}</b>, column <b>${c}</b> (purple outline). Right now it is <b class="${alive?'alive':'dead'}">${alive?'ALIVE':'DEAD'}</b>. A cell knows nothing about the rest of the grid — its whole world is the 8 squares touching it. → Click <b class="ac">stage ②</b> to see those 8 neighbors.`;
+    }
+    if(phase===1){
+      story=`<span class="tag">STAGE ② — COUNT NEIGHBORS</span> The <b class="n">orange outlines</b> are your cell's 8 neighbors. ${nearEdge(r,c)?'Notice some are on the <b>opposite side of the grid</b> — the edges wrap around, like the surface of a donut (this is the "circular padding" our NCA uses). ':''}Count the teal ones: <b class="n">${n}</b> of the 8 are alive. That single number decides everything. → Click <b class="ac">stage ③</b>.`;
+    }
+    if(phase===2){
+      $(ruleRowFor(alive,n)).classList.add('hl');
+      story=`<span class="tag">STAGE ③ — LOOK UP THE RULE</span> Your cell is <b class="${alive?'alive':'dead'}">${alive?'ALIVE':'DEAD'}</b> with <b class="n">${n}</b> live neighbors. Find that row in the rule table (highlighted purple on the right): ${reasonFor(alive,n,nxt)}. Note: <b>nothing has happened yet</b> — this is just this one cell's plan for the next tick. → Click <b class="ac">stage ④</b>.`;
+    }
+    if(phase===3){
+      if(pending){
+        const {born,lonely,crowded,survive}=pending;
+        // preview overlay
+        pending.born.forEach(([rr,cc])=>B[rr*N+cc].classList.add('willborn'));
+        pending.lonely.concat(pending.crowded).forEach(([rr,cc])=>B[rr*N+cc].classList.add('willdie'));
+        const myFate = nextState(alive,n);
+        story=`<span class="tag">STAGE ④ — EVERY CELL, SIMULTANEOUSLY</span> All ${N*N} cells just ran the exact same 3 steps you traced, <b>each using the current grid</b>. This is the <b class="ac">preview</b> of the next generation: `
+        +`<b class="alive">${born.length} births</b> (green dashed — dead cells with exactly 3 neighbors), <b class="dead">${lonely.length} deaths from loneliness</b> and <b class="dead">${crowded.length} from overcrowding</b> (red dashed), ${survive} survivors. `
+        +`Your cell will ${myFate ? (alive?'<b class="alive">survive</b>':'<b class="alive">be born</b>') : (alive?'<b class="dead">die</b>':'<b class="dead">stay dead</b>')}. `
+        +`Decisions are made from the OLD grid and only then written all at once — a cell born this tick can't affect its neighbors until the NEXT tick. <button class="commit" id="commitb">✓ apply → generation ${gen+1}</button>`;
+      } else {
+        story=`<span class="tag">STAGE ④</span> applied! See below.`;
+      }
+    }
+  }
+  $('story').innerHTML=story;
+  const cb=$('commitb'); if(cb) cb.onclick=()=>{
+    const {born,lonely,crowded,wasSel}=applyPending(true);
+    let s=`<span class="tag">GENERATION ${gen} — DONE!</span> The grid swapped to the new state: <b class="alive">${born.length} born</b>, <b class="dead">${lonely.length+crowded.length} died</b>.`;
+    if(wasSel){const [r,c]=wasSel; s+=` Your cell (${r}, ${c}) is now <b class="${g[r][c]?'alive':'dead'}">${g[r][c]?'ALIVE':'DEAD'}</b> — exactly as the rule predicted.`;}
+    s+=` That's one full tick of this universe. Press <b class="ac">Step</b> to do another with a preview flash, or <b class="ac">▶ Play</b> to run many ticks fast — everything you'll see (walking gliders, blinking pulsars) is just this 4-stage loop repeating.`;
+    $('story').innerHTML=s;
+    [0,1,2,3].forEach(i=>$('st'+i).classList.remove('on'));
+  };
+  [0,1,2,3].forEach(i=>$('st'+i).classList.toggle('on',i===phase));
+  renderCode();
+}
+function nearEdge(r,c){return r===0||c===0||r===N-1||c===N-1;}
+
+function renderCode(){
+  const hasSel=!!sel; const r=hasSel?sel[0]:'r', c=hasSel?sel[1]:'c';
+  const n=hasSel?countN(sel[0],sel[1]):'n';
+  const L=[
+   `<span class="cm"># stage ① — every cell only sees itself + 8 neighbors (grid wraps: % N)</span>`,
+   `me = grid[<span class="num">${r}</span>, <span class="num">${c}</span>]`,
+   `<span class="cm"># stage ② — count live neighbors (indices wrap around the edges)</span>`,
+   `n = <span class="fn">sum</span>(grid[(<span class="num">${r}</span>+dr) % N, (<span class="num">${c}</span>+dc) % N] for dr,dc in EIGHT)   <span class="cm"># = ${n}</span>`,
+   `<span class="cm"># stage ③ — the whole rule table is 1 line: B3/S23</span>`,
+   `nxt = (n == <span class="num">3</span>) or (me and n == <span class="num">2</span>)`,
+   `<span class="cm"># stage ④ — plan into a NEW grid; swap only after ALL cells decided</span>`,
+   `new_grid[<span class="num">${r}</span>, <span class="num">${c}</span>] = nxt        <span class="cm"># synchronous update</span>`];
+  const hl=[1,3,5,7][phase];
+  $('code').innerHTML=L.map((t,i)=>i===hl?`<span class="hl">${t}</span>`:t).join('\n');
+}
+
+function setPhase(p){
+  stop();
+  if(!sel && p>0){
+    $('story').innerHTML=`<span class="tag">ONE THING FIRST →</span> Click <b class="ac">a cell on the grid</b>, then walk the stages ①→④ for it.`;
+    return;
+  }
+  phase=p;
+  pending = (p===3) ? computeNext() : null;
+  render();
+}
+[0,1,2,3].forEach(i=>$('st'+i).onclick=()=>setPhase(i));
+$('stepbtn').onclick=()=>{stop();pending=null;
+  const {born,lonely,crowded}=applyPending(true);
+  $('story').innerHTML=`<span class="tag">STEPPED → GENERATION ${gen}</span> One full tick: <b class="alive">${born.length} born</b> (green flash), <b class="dead">${lonely.length} died lonely, ${crowded.length} died overcrowded</b> (red flash). Every one of those was decided by the same rule table — click any changed cell and trace stages ①→③ on the NEW grid to verify its next move.`;
+};
+$('play').onclick=()=>{ if(timer){stop();return;}
+  $('play').textContent='⏸ Pause';
+  $('story').innerHTML=`<span class="tag">PLAYING…</span> The 4-stage loop is now repeating automatically, one full generation every tick. Watch how the pattern behaves — then hit <b class="ac">⏸ Pause</b> and click a cell to dissect why it did what it did.`;
+  timer=setInterval(()=>applyPending(false),380/speed);};
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+$('reset').onclick=()=>loadPreset($('preset').value);
+$('preset').onchange=e=>loadPreset(e.target.value);
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';
+  if(timer){stop();$('play').click();}};
+
+build(); loadPreset('glider');
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

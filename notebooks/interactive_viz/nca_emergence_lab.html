@@ -1,0 +1,167 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emergence Lab — local rules growing global textures, live</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  select{font-family:inherit;font-size:12px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:4px 7px;background:#fff;cursor:pointer;}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .mono{font-family:monospace;font-weight:700;color:var(--ac);min-width:44px;display:inline-block;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:90px;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;margin-top:2px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  #cv{border-radius:8px;border:1px solid var(--line);cursor:crosshair;display:block;width:420px;height:420px;}
+  .kgrid{display:grid;grid-template-columns:repeat(3,40px);gap:2px;margin:4px auto;}
+  .kcell{width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:12px;font-weight:700;border-radius:6px;background:#fbfdff;border:1px solid var(--line);}
+  .side{max-width:360px;font-size:12px;color:var(--soft);line-height:1.55;}
+  .side b{color:var(--ink);}
+  .eq{background:#f4f7fd;border-radius:8px;padding:7px 10px;font-family:monospace;font-size:11.5px;margin:6px 0;line-height:1.7;}
+  .eq .u{color:var(--in);font-weight:700;} .eq .v{color:var(--ac);font-weight:700;} .eq .l{color:var(--out);font-weight:700;}
+  .tiebox{background:#fff7ed;border:1px solid #f6d9ae;border-radius:8px;padding:7px 10px;margin-top:6px;font-size:11.5px;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .steps{font-family:monospace;font-weight:700;color:var(--out);}
+</style></head><body>
+<h1>Emergence Lab — a hand-written local rule growing textures in real time</h1>
+<p class="sub">Our NCA <b>learned</b> its update rule with gradient descent. But scientists have hand-designed such rules for decades. This is the <b>Gray–Scott reaction–diffusion</b> system: two chemicals U and V spread with the <b style="color:var(--out)">same 3×3 Laplacian our NCA uses</b> and react locally — nothing else. From those ~3 lines of math: coral, cell-division, worms, waves. <b>Click / drag on the canvas to inject chemical V</b> and watch patterns grow from your touch. Every preset is the <i>same rule</i> with two numbers changed.</p>
+
+<div class="selrow">
+  preset: <select id="preset">
+    <option value="coral">coral / maze (f=.055, k=.062)</option>
+    <option value="mitosis">mitosis — dividing cells (f=.037, k=.065)</option>
+    <option value="solitons">solitons — stable spots (f=.030, k=.060)</option>
+    <option value="worms">worms (f=.078, k=.061)</option>
+    <option value="waves">unstable waves (f=.014, k=.045)</option>
+  </select>
+  <span class="div"></span>
+  feed f <input id="f" type="range" min="0.010" max="0.090" step="0.001" value="0.055"><span class="mono" id="fv">.055</span>
+  kill k <input id="k" type="range" min="0.040" max="0.070" step="0.001" value="0.062"><span class="mono" id="kv">.062</span>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="1" max="30" step="1" value="10"><span class="mono" id="spv">10</span>
+  <button class="play" id="play">⏸ Pause</button>
+  <button class="reset" id="reset">↺ Reseed</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" style="color:var(--out)">The dish (200×200, wraps like a torus) <small>step <span class="steps" id="stepn">0</span> · click / drag to add chemical V</small></div>
+    <canvas id="cv" width="200" height="200"></canvas>
+  </div>
+  <div class="card side">
+    <div class="cap" style="color:var(--ac)">The ENTIRE rule, per cell, per step</div>
+    <div class="eq">
+      ∇² = Laplacian (3×3, same as NCA!):
+    </div>
+    <div class="kgrid">
+      <div class="kcell">.05</div><div class="kcell">.2</div><div class="kcell">.05</div>
+      <div class="kcell">.2</div><div class="kcell" style="color:var(--neg)">−1</div><div class="kcell">.2</div>
+      <div class="kcell">.05</div><div class="kcell">.2</div><div class="kcell">.05</div>
+    </div>
+    <div class="eq">
+      <span class="u">u</span> += D<sub>u</sub>·<span class="l">∇²u</span> − <span class="u">u</span><span class="v">v²</span> + f·(1−<span class="u">u</span>)<br>
+      <span class="v">v</span> += D<sub>v</sub>·<span class="l">∇²v</span> + <span class="u">u</span><span class="v">v²</span> − (f+k)·<span class="v">v</span>
+    </div>
+    Read it as: <b>diffuse</b> (spread to neighbors via the Laplacian), <b>react</b> (u + 2v → 3v), <b>feed</b> new u, <b>kill</b> some v. Each cell only ever sees its 3×3 neighborhood — exactly like an NCA cell — yet coherent structure appears at the scale of the <i>whole dish</i>. That gap between the size of the rule and the size of the pattern is <b>emergence</b>.
+    <div class="tiebox">🧠 <b>The NCA connection:</b> Gray–Scott is a cellular automaton whose "brain" is these 2 fixed equations. Our NCA replaces them with a <b>168-parameter neural network</b> and uses gradient descent to <i>search</i> for a rule whose emergent pattern matches a target style image. Same perceive-locally-update-locally loop; learned instead of hand-designed.</div>
+  </div>
+</div>
+<div class="legend">dark = chemical U dominates · <b style="color:var(--out)">teal/bright = chemical V structures</b> · try dragging f and k mid-simulation — you're moving through a "phase space" of universes with different physics</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=200;
+let U=new Float32Array(N*N), V=new Float32Array(N*N);
+let U2=new Float32Array(N*N), V2=new Float32Array(N*N);
+let f=0.055, k=0.062, Du=0.16, Dv=0.08, running=true, spd=10, steps=0;
+const cv=$('cv'), ctx=cv.getContext('2d'), img=ctx.createImageData(N,N);
+
+function seed(){
+  U.fill(1); V.fill(0); steps=0;
+  for(let n=0;n<7;n++){
+    const cx=20+Math.random()*(N-40), cy=20+Math.random()*(N-40);
+    blob(cx,cy,5);}
+}
+function blob(cx,cy,r){
+  for(let y=-r;y<=r;y++)for(let x=-r;x<=r;x++){
+    if(x*x+y*y<=r*r){
+      const xx=((cx+x|0)+N)%N, yy=((cy+y|0)+N)%N;
+      V[yy*N+xx]=0.9; U[yy*N+xx]=0.4;}}
+}
+function lap(A,i,x,y){
+  const xm=(x-1+N)%N, xp=(x+1)%N, ym=(y-1+N)%N, yp=(y+1)%N;
+  return A[y*N+xm]*0.2 + A[y*N+xp]*0.2 + A[ym*N+x]*0.2 + A[yp*N+x]*0.2
+       + A[ym*N+xm]*0.05 + A[ym*N+xp]*0.05 + A[yp*N+xm]*0.05 + A[yp*N+xp]*0.05
+       - A[i];
+}
+function step(){
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const i=y*N+x, u=U[i], v=V[i], uvv=u*v*v;
+    U2[i]=u + Du*lap(U,i,x,y)*4 - uvv + f*(1-u);
+    V2[i]=v + Dv*lap(V,i,x,y)*4 + uvv - (f+k)*v;
+  }
+  [U,U2]=[U2,U]; [V,V2]=[V2,V]; steps++;
+}
+function draw(){
+  for(let i=0;i<N*N;i++){
+    const v=Math.min(1,V[i]*2.4), u=U[i];
+    const t=Math.max(0,Math.min(1,v));
+    // dark navy → teal → white
+    img.data[i*4]  =Math.round(18+t*(t>0.6? 200*(t-0.6)/0.4+120 : 100*t));
+    img.data[i*4+1]=Math.round(30+t*190);
+    img.data[i*4+2]=Math.round(52+t*175);
+    img.data[i*4+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+  $('stepn').textContent=steps;
+}
+// painting
+let down=false;
+function paint(e){
+  const r=cv.getBoundingClientRect();
+  const x=(e.clientX-r.left)/r.width*N, y=(e.clientY-r.top)/r.height*N;
+  blob(x,y,4);
+}
+cv.onmousedown=e=>{down=true;paint(e);};
+cv.onmousemove=e=>{if(down)paint(e);};
+addEventListener('mouseup',()=>down=false);
+cv.addEventListener('touchstart',e=>{paint(e.touches[0]);e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{paint(e.touches[0]);e.preventDefault();},{passive:false});
+
+const PRE={coral:[.055,.062],mitosis:[.037,.065],solitons:[.030,.060],worms:[.078,.061],waves:[.014,.045]};
+$('preset').onchange=e=>{[f,k]=PRE[e.target.value];sync();seed();};
+function sync(){$('f').value=f;$('k').value=k;$('fv').textContent=f.toFixed(3).slice(1);$('kv').textContent=k.toFixed(3).slice(1);}
+$('f').oninput=e=>{f=+e.target.value;$('fv').textContent=f.toFixed(3).slice(1);};
+$('k').oninput=e=>{k=+e.target.value;$('kv').textContent=k.toFixed(3).slice(1);};
+$('speed').oninput=e=>{spd=+e.target.value;$('spv').textContent=spd;};
+$('play').onclick=()=>{running=!running;$('play').textContent=running?'⏸ Pause':'▶ Play';};
+$('reset').onclick=seed;
+
+function loop(){
+  requestAnimationFrame(loop);
+  if(running)for(let i=0;i<spd;i++)step();
+  draw();
+}
+seed(); sync(); loop();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  @media (max-width:900px){#cv{width:100% !important;height:auto !important}}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

@@ -1,0 +1,247 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perception Filter Lab — how an NCA cell "sees"</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  select{font-family:inherit;font-size:12px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:4px 7px;background:#fff;cursor:pointer;}
+  input[type=range]{width:100px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .togg{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .togg.on{background:var(--in);border-color:var(--in);color:#fff;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;margin-top:2px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .grid{display:grid;gap:2px;}
+  .cell{width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-family:"SF Mono",Consolas,monospace;font-size:10px;border-radius:5px;border:1px solid #eef2f8;position:relative;}
+  .ig .cell{cursor:pointer;}
+  .ig .cell.win{outline:3px solid var(--in);outline-offset:-2px;z-index:2;}
+  .ig .cell.ghost{outline:3px dashed var(--in);outline-offset:-2px;z-index:2;}
+  .og .cell{cursor:pointer;background:#f7f9fd;color:#b9c4d8;}
+  .og .cell.done{font-weight:700;}
+  .og .cell.cur{outline:3px solid var(--ac);outline-offset:-2px;z-index:2;}
+  .kg .cell{width:36px;height:36px;font-size:12px;font-weight:700;background:#fbfdff;}
+  .fchips{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:5px;}
+  .fchip{font-size:11.5px;font-weight:700;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:10px;padding:4px 9px;cursor:pointer;}
+  .fchip.on{border-color:var(--out);background:var(--out);color:#fff;}
+  .sumbox{margin-top:6px;text-align:center;font-family:monospace;font-size:11.5px;background:#f4f7fd;border-radius:8px;padding:5px 9px;line-height:1.5;}
+  .thumbrow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px;}
+  .thumb{text-align:center;font-size:10.5px;color:var(--soft);font-weight:700;}
+  .thumb .tg{display:grid;grid-template-columns:repeat(7,13px);gap:1px;margin:3px auto 0;}
+  .thumb .tc{width:13px;height:13px;border-radius:2px;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:860px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+  @media (max-width:980px){.cell{width:24px;height:24px;font-size:8.5px;}.kg .cell{width:30px;height:30px;}}
+</style></head><body>
+<h1>Perception Filter Lab — how each NCA cell "sees" its neighborhood</h1>
+<p class="sub">Before the "brain" can think, each cell perceives its 3×3 neighborhood through <b>4 fixed filters</b>: <b>Identity</b> (my own value), <b>Sobel X</b> (change left→right), <b>Sobel Y</b> (change top→bottom), <b>Laplacian</b> (am I different from my surroundings?). Pick a filter and a pattern, press ▶, and <b>click any output cell</b> to see the exact arithmetic. Toggle <b style="color:var(--in)">circular padding</b> to see the wrap-around trick.</p>
+
+<div class="fchips">
+  filter:&nbsp;
+  <button class="fchip on" data-f="id">Identity</button>
+  <button class="fchip" data-f="sx">Sobel X</button>
+  <button class="fchip" data-f="sy">Sobel Y</button>
+  <button class="fchip" data-f="lap">Laplacian</button>
+</div>
+<div class="selrow">
+  pattern: <select id="psel">
+    <option value="vedge">vertical edge (dark | bright)</option>
+    <option value="hedge">horizontal edge</option>
+    <option value="blob">soft blob</option>
+    <option value="diag">diagonal stripe</option>
+    <option value="flat">flat (all same — spoiler: filters see nothing!)</option>
+  </select>
+  <span class="div"></span>
+  <button class="togg on" id="wrapT">circular padding: ON (torus)</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" style="color:var(--in)">Input channel (7×7) <small>one channel of the cell grid · click a pixel to jump there</small></div>
+    <div class="grid ig" id="ig" style="grid-template-columns:repeat(7,30px)"></div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">window ⊙ kernel <small id="fname">Identity — "just me"</small></div>
+    <div style="display:flex;gap:8px;align-items:center;justify-content:center">
+      <div class="grid kg" id="wg" style="grid-template-columns:repeat(3,36px)"></div>
+      <div style="font-size:18px;font-weight:700;color:var(--soft)">⊙</div>
+      <div class="grid kg" id="kg" style="grid-template-columns:repeat(3,36px)"></div>
+    </div>
+    <div class="sumbox" id="sumbox">…</div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--out)">Filter response (7×7) <small>same size — padding preserves shape · click to jump</small></div>
+    <div class="grid og" id="og" style="grid-template-columns:repeat(7,30px)"></div>
+  </div>
+</div>
+
+<div class="thumbrow" id="thumbs"></div>
+
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = 3×3 window (dashed = wrapped-in from the far edge!)</b> · <b class="a">purple = current output pixel</b> · <b class="o">teal = positive response</b>, red = negative · each of the 4 channels gets all 4 filters → <b>4 × 4 = 16 perception values per cell</b></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=7;
+const FILTERS={
+ id:{name:'Identity — "just me"',k:[[0,0,0],[0,1,0],[0,0,0]]},
+ sx:{name:'Sobel X — left→right change',k:[[-1,0,1],[-2,0,2],[-1,0,1]]},
+ sy:{name:'Sobel Y — top→bottom change',k:[[-1,-2,-1],[0,0,0],[1,2,1]]},
+ lap:{name:'Laplacian — "am I an outlier?"',k:[[1,2,1],[2,-12,2],[1,2,1]]}};
+const PATTERNS={
+ vedge:(r,c)=>c<=3?0.1:0.9,
+ hedge:(r,c)=>r<=3?0.9:0.1,
+ blob:(r,c)=>{const d=Math.hypot(r-3,c-3);return Math.max(0,1-d/3.2);},
+ diag:(r,c)=>((r+c)%4<2)?0.85:0.15,
+ flat:()=>0.5};
+let fkey='id', pkey='vedge', wrap=true;
+let IMG=[], pos=0, timer=null, speed=1, started=false;
+
+function makeImg(){IMG=Array.from({length:N},(_,r)=>Array.from({length:N},(_,c)=>+PATTERNS[pkey](r,c).toFixed(2)));}
+function px(r,c){ if(wrap) return IMG[(r+N)%N][(c+N)%N];
+  return (r<0||r>=N||c<0||c>=N)?0:IMG[r][c]; }
+function convAt(r,c){const k=FILTERS[fkey].k;let s=0;
+  for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)s+=px(r+i,c+j)*k[i+1][j+1];return s;}
+function maxAbs(fk){const k=FILTERS[fk].k;let m=1e-9;
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const s0=fkey;fkey=fk;m=Math.max(m,Math.abs(convAt(r,c)));fkey=s0;}return m;}
+function gray(v){const g=Math.round(247-v*205);return `rgb(${g},${g+2},${Math.min(255,g+8)})`;}
+function fcol(v){return v>0.55?'#fff':'#46546e';}
+function outColor(v,m){const t=Math.min(1,Math.abs(v)/m);
+  return v>=0?`rgba(22,163,163,${0.12+0.88*t})`:`rgba(214,69,69,${0.12+0.88*t})`;}
+
+function build(){
+  const ig=$('ig'); ig.innerHTML='';
+  for(let i=0;i<N*N;i++){const d=document.createElement('div');d.className='cell';
+    d.onclick=()=>{stop();pos=i;started=true;render();}; ig.appendChild(d);}
+  const og=$('og'); og.innerHTML='';
+  for(let i=0;i<N*N;i++){const d=document.createElement('div');d.className='cell';
+    d.onclick=()=>{stop();pos=i;started=true;render();}; og.appendChild(d);}
+  $('wg').innerHTML='<div class="cell"></div>'.repeat(9);
+  $('kg').innerHTML='<div class="cell"></div>'.repeat(9);
+}
+function fmt(v){return Number.isInteger(v)?String(v):v.toFixed(1).replace(/^(-?)0\./,'$1.');}
+
+function render(){
+  const r=(pos/N)|0, c=pos%N, k=FILTERS[fkey].k, m=maxAbs(fkey);
+  $('fname').textContent=FILTERS[fkey].name;
+  const IG=$('ig').children;
+  for(let i=0;i<N*N;i++){const rr=(i/N)|0,cc=i%N,d=IG[i];
+    d.style.background=gray(IMG[rr][cc]); d.style.color=fcol(IMG[rr][cc]);
+    d.textContent=IMG[rr][cc].toFixed(1).replace('0.','.');
+    d.classList.remove('win','ghost');}
+  // window highlight incl. wrapped ghosts
+  for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){
+    let rr=r+i, cc=c+j; const wrapped=(rr<0||rr>=N||cc<0||cc>=N);
+    if(wrapped&&!wrap)continue;
+    rr=(rr+N)%N; cc=(cc+N)%N;
+    IG[rr*N+cc].classList.add(wrapped?'ghost':'win');}
+  // kernel + window cards
+  const WG=$('wg').children, KG=$('kg').children;
+  let idx=0, s=0;
+  for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){
+    const v=px(r+i,c+j), kv=k[i+1][j+1]; s+=v*kv;
+    WG[idx].textContent=v.toFixed(1).replace('0.','.');
+    WG[idx].style.background=gray(v); WG[idx].style.color=fcol(v);
+    const wrapped=(r+i<0||r+i>=N||c+j<0||c+j>=N);
+    WG[idx].style.outline=wrapped?'2px dashed var(--in)':'none';
+    KG[idx].textContent=fmt(kv);
+    KG[idx].style.color=kv>0?'var(--out)':(kv<0?'var(--neg)':'#b9c4d8');
+    idx++;}
+  $('sumbox').innerHTML=`response[<b>${r}</b>,<b>${c}</b>] = Σ window ⊙ kernel = <b style="color:${s>=0?'var(--out)':'var(--neg)'}">${s.toFixed(2)}</b>`
+    +(fkey==='lap'?`<br><span style="color:var(--soft)">Laplacian ≈ "neighbors − 12×me" → 0 in flat areas, big where I differ</span>`
+    :fkey==='id'?`<br><span style="color:var(--soft)">identity just copies the center value through</span>`
+    :`<br><span style="color:var(--soft)">≈ 0 where the region is uniform, large across an edge</span>`);
+  // output grid: fill everything up to pos (scrub feel)
+  const OG=$('og').children;
+  for(let i=0;i<N*N;i++){const rr=(i/N)|0,cc=i%N,d=OG[i];
+    d.classList.toggle('cur',started&&i===pos);
+    if(started&&i<=pos){const v=convAt(rr,cc);d.classList.add('done');
+      d.textContent=Math.abs(v)<0.05?'0':v.toFixed(1);
+      d.style.background=outColor(v,m); d.style.color=Math.abs(v)/m>0.5?'#fff':'#46546e';}
+    else{d.classList.remove('done');d.textContent='·';d.style.background='#f7f9fd';d.style.color='#b9c4d8';}}
+  renderThumbs(); renderCode(r,c,s);
+}
+function renderThumbs(){
+  const T=$('thumbs'); T.innerHTML='';
+  const label={id:'Identity',sx:'Sobel X',sy:'Sobel Y',lap:'Laplacian'};
+  const inD=document.createElement('div');inD.className='thumb';
+  inD.innerHTML='input<div class="tg"></div>';
+  const g0=inD.querySelector('.tg');
+  for(let i=0;i<N*N;i++){const d=document.createElement('div');d.className='tc';
+    d.style.background=gray(IMG[(i/N)|0][i%N]);g0.appendChild(d);}
+  T.appendChild(inD);
+  Object.keys(FILTERS).forEach(fk=>{
+    const s0=fkey; fkey=fk; const m=maxAbs(fk);
+    const dv=document.createElement('div');dv.className='thumb';
+    dv.innerHTML=(fk===s0?`<b style="color:var(--out)">${label[fk]} ✓</b>`:label[fk])+'<div class="tg"></div>';
+    const gg=dv.querySelector('.tg');
+    for(let i=0;i<N*N;i++){const v=convAt((i/N)|0,i%N);
+      const d=document.createElement('div');d.className='tc';d.style.background=outColor(v,m);gg.appendChild(d);}
+    fkey=s0; dv.style.cursor='pointer'; dv.onclick=()=>setFilter(fk); T.appendChild(dv);});
+  const note=document.createElement('div');note.className='thumb';
+  note.style.maxWidth='150px';note.style.fontWeight='400';note.style.textAlign='left';
+  note.innerHTML='← all 4 run on <b>every</b> channel:<br>4 channels × 4 filters<br>= <b style="color:var(--ac)">16 numbers per cell</b><br>fed to the brain';
+  T.appendChild(note);
+}
+function renderCode(r,c,s){
+  const L=[
+   `<span class="cm"># perchannel_conv: the SAME 4 filters run on each of the 4 channels</span>`,
+   `y = x.reshape(-1, <span class="num">1</span>, h, w)                 <span class="cm"># treat every channel as its own image</span>`,
+   `y = F.<span class="fn">pad</span>(y, [<span class="num">1,1,1,1</span>], <span class="num">'${wrap?'circular':'constant'}'</span>)     <span class="cm"># ${wrap?'wrap-around: right edge feeds the left window!':'zeros at the border (edge artifacts)'}</span>`,
+   `y = F.<span class="fn">conv2d</span>(y, filters[:,<span class="num">None</span>])          <span class="cm"># response[${r},${c}] = ${s.toFixed(2)} for the ${fkey==='id'?'identity':fkey==='sx'?'Sobel X':fkey==='sy'?'Sobel Y':'Laplacian'} filter</span>`,
+   `<span class="cm"># output: (batch, 4 channels × 4 filters = 16, h, w) — perception done</span>`];
+  const hl = wrap?2:2;
+  $('code').innerHTML=L.map((t,i)=>i===3?`<span class="hl">${t}</span>`:t).join('\n');
+}
+function setFilter(fk){fkey=fk;
+  document.querySelectorAll('.fchip').forEach(b=>b.classList.toggle('on',b.dataset.f===fk));
+  render();}
+document.querySelectorAll('.fchip').forEach(b=>b.onclick=()=>setFilter(b.dataset.f));
+$('psel').onchange=e=>{pkey=e.target.value;makeImg();pos=0;started=false;stop();render();};
+$('wrapT').onclick=()=>{wrap=!wrap;$('wrapT').classList.toggle('on',wrap);
+  $('wrapT').textContent='circular padding: '+(wrap?'ON (torus)':'OFF (zeros)');render();};
+$('play').onclick=()=>{ if(timer){stop();return;}
+  started=true; $('play').textContent='⏸ Pause';
+  timer=setInterval(()=>{ if(pos>=N*N-1){stop();return;} pos++; render(); },260/speed);};
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+$('fwd').onclick=()=>{stop();started=true;if(pos<N*N-1)pos++;render();};
+$('reset').onclick=()=>{stop();pos=0;started=false;render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();$('play').click();}};
+
+makeImg(); build(); render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

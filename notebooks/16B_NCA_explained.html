@@ -2,8 +2,8 @@
 
 <html lang="en">
 <head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
 <title>16B_NCA_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
@@ -7525,6 +7525,8 @@ a.anchor-link {
   </a>
 </div>
 <main>
+
+<main>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=intro-header">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7649,6 +7651,58 @@ a.anchor-link {
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=359f18dc">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%9B%A0%EF%B8%8F-Interactive-visualizations-%E2%80%94-one-time-setup">🛠️ Interactive visualizations &mdash; one-time setup<a class="anchor-link" href="#%F0%9F%9B%A0%EF%B8%8F-Interactive-visualizations-%E2%80%94-one-time-setup">¶</a></h2><p>The cells marked <strong>🎮 Interactive</strong> below embed standalone HTML/JS visualizations
+(stored in the <code>interactive_viz/</code> folder next to this notebook, and published on
+GitHub Pages) at <strong>full width</strong>, auto-fitted to their content height.
+Run the next cell once, then run any 🎮 cell.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=4f757263">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE VISUALIZATIONS -- setup (run this cell ONCE).</span>
+<span class="c1"># Each "🎮 Interactive" cell below loads a standalone HTML file from the</span>
+<span class="c1"># published copy on GitHub Pages, in an isolated &lt;iframe&gt; (its CSS/JS can't leak</span>
+<span class="c1"># into the notebook). It is shown FULL WIDTH and auto-fits its content height.</span>
+<span class="c1"># No local files needed -- the visualizations are read from GitHub.</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+
+<span class="k">def</span> <span class="nf">show_viz</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"600px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Embed an interactive visualization full width; it auto-fits its height.</span>
+<span class="sd">    `path` may be a bare 'interactive_viz/&lt;file&gt;.html' (resolved to the GitHub</span>
+<span class="sd">    Pages copy) or a full https URL."""</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="s2">"https://shammun.github.io/shammunul-fastai-notes/notebooks/"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"http"</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">path</span>
+    <span class="k">return</span> <span class="n">HTML</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'&lt;iframe src="</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">" loading="lazy" allowfullscreen '</span>
+        <span class="sa">f</span><span class="s1">'style="width:100%;height:</span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s1">;border:1px solid #dde5f2;border-radius:12px;'</span>
+        <span class="sa">f</span><span class="s1">'box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"&gt;&lt;/iframe&gt;'</span>
+        <span class="s1">'&lt;script&gt;addEventListener("message",function(e){'</span>
+        <span class="s1">'if(e.data&amp;&amp;e.data.type==="ce-frame-height"&amp;&amp;e.data.height&gt;50){'</span>
+        <span class="s1">'var fs=document.querySelectorAll("iframe");for(var i=0;i&lt;fs.length;i++){'</span>
+        <span class="s1">'if(fs[i].contentWindow===e.source){fs[i].style.height=e.data.height+"px";break;}}}});&lt;/script&gt;'</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=8e10dcb0">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7703,22 +7757,59 @@ Step 0:        Step 1:        Step 2:        ...
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Conway's Game of Life &mdash; the simplest cellular automaton</h3>
-  <p class="ce-interactive-hint">Every cell looks at its 8 neighbors and updates by a fixed rule: alive cells with 2-3 neighbors survive, dead cells with exactly 3 neighbors come alive, everything else dies. <strong>Out of these three lines emerges arbitrarily complex behavior &mdash; gliders, oscillators, even universal computation.</strong> NCA replaces the fixed rule with a learned neural network.</p>
-  <div class="gol-widget">
-    <canvas id="gol-canvas" width="480" height="320"
-            style="width:100%; max-width:480px; height:auto; background:white; border:1px solid #e5e7eb; border-radius:6px; image-rendering: pixelated; touch-action: manipulation;"></canvas>
-    <div class="ms-controls">
-      <button id="gol-play" class="ms-btn">Play</button>
-      <button id="gol-step" class="ms-btn ms-secondary">Step</button>
-      <button id="gol-random" class="ms-btn ms-secondary">Random</button>
-      <button id="gol-glider" class="ms-btn ms-secondary">Glider</button>
-      <button id="gol-clear" class="ms-btn ms-secondary">Clear</button>
-      <span class="ms-val" id="gol-gen">gen: 0</span>
-    </div>
-    <p style="margin-top: 12px; font-size: 0.86em; color: var(--ce-text-muted, #697386);">Click cells to toggle them. Try "Glider" then Play to watch a self-propagating pattern walk across the grid.</p>
-  </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=792c813b">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Game-of-Life-Lab-%E2%80%94-one-tick-of-a-tiny-universe,-dissected">🎮 Interactive: Game of Life Lab &mdash; one tick of a tiny universe, dissected<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Game-of-Life-Lab-%E2%80%94-one-tick-of-a-tiny-universe,-dissected">¶</a></h3><p>Reading the rules is one thing &mdash; <strong>watching them run is another</strong>. The lab below is a live
+Game of Life designed to be understood with zero prior knowledge. The <strong>narration panel</strong>
+(purple box) tells you what is happening at every moment:</p>
+<ol>
+<li><strong>Click any cell</strong> on the grid (alive or dead &mdash; both are interesting).</li>
+<li>Walk the stage chips <strong>① &rarr; ② &rarr; ③ &rarr; ④</strong>: pick the cell &rarr; highlight and count its
+8 neighbors (watch them <strong>wrap around the edges</strong> &mdash; the same <em>circular padding</em> our NCA
+uses!) &rarr; look up its fate in the rule table (the matching row lights up) &rarr; then stage ④
+shows a <strong>frozen preview</strong> of the whole next generation: green-dashed cells will be born,
+red-dashed cells will die, with counts and reasons. <strong>Nothing changes until you press
+✓ apply</strong> &mdash; that pause is the point: every cell decides from the <em>current</em> grid, and all
+decisions are written at once (a <em>synchronous</em> update).</li>
+<li>Then press <strong>▶ Play</strong> to run that same 4-stage loop automatically, fast.</li>
+</ol>
+<p>Each <strong>starting pattern</strong> in the dropdown comes with its own explanation and a suggested
+experiment &mdash; start with the <em>blinker</em> (simplest possible "animation": 3 cells) and the
+<em>block</em> (a shape the rule can never change), then graduate to the <em>glider</em> and the
+<em>r-pentomino</em> (5 cells that erupt into chaos).</p>
+<p>The big idea to take away: the rule is <em>four lines</em> and each cell is <em>blind beyond its
+3&times;3 neighborhood</em> &mdash; yet gliders <strong>walk</strong> and structure appears at the scale of the whole
+grid. That gap between rule-size and pattern-size is <strong>emergence</strong>, and it's exactly what
+NCA exploits (with a <em>learned</em> rule instead of B3/S23).</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=270f71b1">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/nca_game_of_life.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/nca_game_of_life.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"840px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/nca_game_of_life.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:840px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=nca-concept">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -7726,7 +7817,6 @@ Step 0:        Step 1:        Step 2:        ...
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-
 <h3 id="Neural-Cellular-Automata-(NCA)">Neural Cellular Automata (NCA)<a class="anchor-link" href="#Neural-Cellular-Automata-(NCA)">¶</a></h3><p><strong>Neural Cellular Automata</strong> extend classic CA in two key ways:</p>
 <ol>
 <li><p><strong>Continuous states</strong>: Instead of binary (alive/dead), cells have continuous values (like RGB colors + extra channels)</p>
@@ -8080,38 +8170,12 @@ Step 0:        Step 1:        Step 2:        ...
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: NCA pattern growth from a single seed</h3>
-  <p class="ce-interactive-hint">A neural cellular automaton is Conway's rule, but with the rule learned by a tiny network. Start from a single live cell. Each step, every cell reads its 3&times;3 neighborhood and computes its next state via a learned update. After many steps, a complex pattern emerges &mdash; <strong>the network has learned to grow a target shape from a single seed</strong>.</p>
-  <div class="nca-widget">
-    <canvas id="nca-canvas" width="320" height="320"
-            style="width:100%; max-width:320px; height:auto; background:white; border:1px solid #e5e7eb; border-radius:6px; image-rendering: pixelated; touch-action: manipulation;"></canvas>
-    <div class="ms-controls">
-      <button id="nca-grow" class="ms-btn">Grow</button>
-      <button id="nca-reset" class="ms-btn ms-secondary">Reset to seed</button>
-      <button id="nca-damage" class="ms-btn ms-secondary">Damage (clear top half)</button>
-      <span class="ms-val" id="nca-step">step: 0</span>
-    </div>
-    <div class="ms-controls">
-      <label>Target pattern:</label>
-      <select id="nca-pat" class="vp-select">
-        <option value="flower">Flower</option>
-        <option value="ring">Ring</option>
-        <option value="checker">Checker</option>
-      </select>
-    </div>
-    <p style="margin-top: 12px; font-size: 0.86em; color: var(--ce-text-muted, #697386);">
-      <strong>What's special:</strong> watch the "Damage" feature. After growing, clear half the pattern &mdash; the model regenerates it. The same local update rule that grows the pattern also <em>heals</em> it. NCAs are inherently robust because every cell is only ever doing a local computation.
-    </p>
-  </div>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=nca-architecture">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-
 <h3 id="NCA-Architecture-Overview">NCA Architecture Overview<a class="anchor-link" href="#NCA-Architecture-Overview">¶</a></h3><p>Our NCA has two main components:</p>
 <ol>
 <li><strong>Perception</strong>: Each cell looks at its neighbors using convolution filters</li>
@@ -8345,7 +8409,53 @@ Step 0:        Step 1:        Step 2:        ...
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=959551c1">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9f9f0a6f">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Perception-Filter-Lab-%E2%80%94-see-exactly-what-each-filter-detects">🎮 Interactive: Perception Filter Lab &mdash; see exactly what each filter detects<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Perception-Filter-Lab-%E2%80%94-see-exactly-what-each-filter-detects">¶</a></h3><p>The table above tells you what the filters do &mdash; the lab below lets you <strong>verify it
+with your own eyes and your own arithmetic</strong>:</p>
+<ul>
+<li>Pick a <strong>filter</strong> (Identity / Sobel X / Sobel Y / Laplacian) and a <strong>pattern</strong>
+(edges, blob, diagonal, flat). Press ▶ to sweep the filter across the grid.</li>
+<li><strong>Click any output cell</strong> to see the exact 3&times;3 window, the element-wise products, and
+the sum &mdash; no magic, just multiply-and-add.</li>
+<li>Toggle <strong>circular padding</strong> on/off and watch the dashed orange "ghost" cells: with it ON,
+the window that hangs off the right edge grabs pixels from the <em>left</em> edge.</li>
+<li>Check the <strong>flat</strong> pattern: Sobels and Laplacian output exactly <strong>0</strong> everywhere.
+A cell in a uniform region literally <em>sees nothing</em> &mdash; it only perceives <strong>change</strong>.</li>
+<li>The thumbnail strip at the bottom shows all 4 filter responses at once; remember each
+of the 4 channels gets all 4 filters &rarr; <strong>4 &times; 4 = 16 perception values per cell</strong>.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=4d845917">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/nca_perception_filters.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/nca_perception_filters.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/nca_perception_filters.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=959551c1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8427,7 +8537,54 @@ Step 0:        Step 1:        Step 2:        ...
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=3ce11f0b">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2b233427">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive-(3D):-why-%22circular-padding%22-=-living-on-a-torus-%F0%9F%8D%A9">🎮 Interactive (3D): why "circular padding" = living on a torus 🍩<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-(3D):-why-%22circular-padding%22-=-living-on-a-torus-%F0%9F%8D%A9">¶</a></h3><p>The ASCII diagram above shows circular padding in 2D. But there's a deeper &mdash; and honestly
+more beautiful &mdash; way to see it: <strong>a grid with wrap-around edges is exactly a grid drawn on
+the surface of a donut (torus)</strong>.</p>
+<p>The 3D scene below (three.js &mdash; needs internet for the CDN) runs a live cellular automaton
+on a flat sheet while you <strong>fold the sheet up</strong>:</p>
+<ul>
+<li>Drag the <strong>fold slider</strong> (or press ▶ Auto-fold): the sheet first <strong>rolls into a
+cylinder</strong> (the two orange left/right edges merge into one seam), then <strong>bends into a
+torus</strong> (the purple top/bottom edges merge too).</li>
+<li>Watch the gliders: on the flat sheet they seem to "teleport" across edges; on the torus
+you can see they were <strong>never crossing an edge at all</strong> &mdash; there are no edges.</li>
+<li><strong>Drag to rotate, scroll to zoom.</strong></li>
+</ul>
+<p>This is also <em>why our NCA textures come out seamless and tileable</em>: the pattern must flow
+continuously across the "edges", because on the torus those edges don't exist.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=6ff9e64f">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/nca_torus_3d.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/nca_torus_3d.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/nca_torus_3d.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=3ce11f0b">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8872,7 +9029,7 @@ After:  (1, 4, 128, 128)
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ea916629">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ec4238b9">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8971,6 +9128,52 @@ After:  (1, 4, 128, 128)
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ef427c7d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-168-parameter-brain-%E2%80%94-Linear-layers-%E2%89%A1-1%C3%971-convolutions">🎮 Interactive: the 168-parameter brain &mdash; Linear layers ≡ 1&times;1 convolutions<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-168-parameter-brain-%E2%80%94-Linear-layers-%E2%89%A1-1%C3%971-convolutions">¶</a></h3><p>You've now seen the <em>same</em> brain written two ways with the <em>same</em> 168 parameters. The
+visualization below makes both claims tangible:</p>
+<ul>
+<li>The <strong>network diagram</strong> shows all of it: 16 inputs (color-grouped by channel) &rarr; 8 hidden
+(ReLU &mdash; gray nodes were clipped to zero) &rarr; 4 outputs (ΔR, ΔG, ΔB, Δhidden).
+<strong>Hover any neuron</strong> to light up its incoming weights (teal = positive, red = negative,
+thickness = magnitude). <strong>🎲 New input</strong> pushes a fresh perception vector through.</li>
+<li>Toggle <strong>nn.Linear vs. nn.Conv2d 1&times;1</strong> &mdash; the parameter table updates its shapes
+(<code>[8, 16]</code> vs <code>[8, 16, 1, 1]</code>) but the count and the math stay identical. A 1&times;1 conv
+<em>is</em> a Linear layer applied independently at every pixel.</li>
+<li>The <strong>training-progress slider</strong> shows why we zero-initialize <code>w2</code>: at 0%, every cell's
+update Δ is exactly <strong>0</strong>, so the untrained NCA starts perfectly stable instead of
+exploding into noise on step one.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=43aece2e">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/nca_brain_1x1conv.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/nca_brain_1x1conv.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"790px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/nca_brain_1x1conv.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:790px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=2ea86d61">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9132,6 +9335,55 @@ After:  (1, 4, 128, 128)
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=7e1b9ad9">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-one-NCA-step,-running-LIVE-in-your-browser">🎮 Interactive: one NCA step, running LIVE in your browser<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-one-NCA-step,-running-LIVE-in-your-browser">¶</a></h3><p>Everything in <code>SimpleCA.forward</code> &mdash; the perception filters, a 168-parameter brain, the
+random mask, the residual add &mdash; is <strong>re-implemented in JavaScript below and actually
+running</strong> on a 24&times;24 grid (with a <em>random, untrained</em> brain, so it doodles rather than
+paints spiderwebs &mdash; training is precisely the search for the 168 numbers that doodle
+<em>your target texture</em>).</p>
+<ul>
+<li>The four <strong>stage chips</strong> mirror the four lines of <code>forward</code>; click one to jump there and
+the highlighted code line follows. Use <strong>next stage ⏭</strong> to crawl through a single update.</li>
+<li>Panels light up as data flows: grid &rarr; <strong>① 16 perception maps</strong> &rarr; <strong>② proposed update Δ</strong>
+(teal = increase, red = decrease) &rarr; <strong>③ random mask</strong> (purple cells update this step)
+&rarr; <strong>④ back into the grid</strong>.</li>
+<li>Drag <strong>update_rate</strong>: at 1.0 all cells march in lock-step; at ~0.5 (the default in our
+model) updates are asynchronous &mdash; this randomness is what makes trained NCA textures
+robust and organic, since real cells don't share a global clock.</li>
+<li>Note the <strong>residual</strong> update <code>x = x + Δ·mask</code>: cells <em>nudge</em> themselves rather than being
+overwritten. Small smooth changes &rarr; stable dynamics and easy gradients.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=47043cae">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/nca_update_pipeline.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/nca_update_pipeline.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1000px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/nca_update_pipeline.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:1000px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ca693be1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9598,6 +9850,53 @@ Each iteration: Pick 4 random grids, evolve them, put them back
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=643fecd2">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-watch-the-pool-trick-keep-training-honest">🎮 Interactive: watch the pool trick keep training honest<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-watch-the-pool-trick-keep-training-honest">¶</a></h3><p>The pool is the least intuitive part of NCA training, so here it is <strong>animated end to
+end</strong>. Press <strong>▶ Play training</strong> and watch the 256-tile pool "ripen" from gray (fresh
+zeros) to teal (grids that have lived for thousands of NCA steps):</p>
+<ul>
+<li><strong>① sample 4</strong> grids (orange outlines) &mdash; <strong>② every 8th iteration, reset one to zeros</strong>
+(red outline) so the model never forgets how to <em>start</em> a texture from nothing &mdash;
+<strong>③ evolve them a random 32&ndash;96 steps</strong> &mdash; <strong>④ style loss</strong> against the target (watch the
+log-scale loss curve fall) &mdash; <strong>⑤ backprop, then normalize each parameter's gradient to
+unit length</strong> (compare the wild raw-gradient bar vs. the steady normalized one &mdash; that's
+what tames backprop through up to 96 chained steps) &mdash; <strong>⑥ write the batch back</strong>.</li>
+<li>Because grids go <em>back</em> into the pool, later iterations sample grids that are already
+very old &mdash; forcing the model to learn textures that <strong>stay</strong> good, not ones that look
+good only at one magic step count.</li>
+<li>Click any stage chip to jump straight to it; the highlighted <code>NCACB</code> code line follows.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ebca4c1e">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/nca_training_pool.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/nca_training_pool.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1090px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/nca_training_pool.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:1090px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=training-setup-header">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9811,7 +10110,56 @@ Each cell only looks at its 3&times;3 neighborhood, yet global patterns emerge!<
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ee39d551">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e786db45">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Emergence-Lab-%E2%80%94-grow-textures-from-local-rules,-live">🎮 Interactive: Emergence Lab &mdash; grow textures from local rules, live<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Emergence-Lab-%E2%80%94-grow-textures-from-local-rules,-live">¶</a></h3><p>You just watched <em>our</em> NCA grow a texture over 900 steps. To drive home that this isn't a
+neural-network parlor trick but a deep principle, here is a <strong>hand-designed</strong> cellular
+automaton doing the same thing in real time: the <strong>Gray&ndash;Scott reaction&ndash;diffusion</strong> system &mdash;
+the classic model of how animal coats, coral, and fingerprints pattern themselves.</p>
+<ul>
+<li>It uses the <strong>exact same 3&times;3 Laplacian filter as our NCA</strong>, plus two lines of chemistry.
+That's the entire rule. No training, no parameters beyond two numbers, <code>f</code> (feed) and
+<code>k</code> (kill).</li>
+<li><strong>Click and drag on the dish</strong> to inject chemical V and watch structure bloom from your
+touch. The grid wraps around &mdash; a torus again!</li>
+<li>Switch <strong>presets</strong> (coral, mitosis, solitons, worms, waves) or drag the <code>f</code>/<code>k</code> sliders
+<em>mid-simulation</em>: every preset is the <em>same rule</em> with two constants changed &mdash; you are
+scrubbing through a phase space of tiny universes with different physics.</li>
+</ul>
+<p><strong>The connection:</strong> Gray&ndash;Scott is what you get when a scientist <em>hand-writes</em> the cell
+brain. Our NCA replaces those two equations with a 168-parameter network and lets gradient
+descent <em>search</em> for the rule whose emergent pattern matches a target style image.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=87043ec8">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/nca_emergence_lab.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/nca_emergence_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/nca_emergence_lab.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ee39d551">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9963,249 +10311,15 @@ Each cell only looks at its 3&times;3 neighborhood, yet global patterns emerge!<
 </div>
 </div>
 </div>
-<style>
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--ce-purple, #6c5ce7); height: 6px; touch-action: manipulation; }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 50px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactive .ms-btn.ms-secondary { background: transparent; color: var(--ce-purple, #6c5ce7); border: 1px solid var(--ce-purple, #6c5ce7); box-shadow: none; }
-.ce-interactive .vp-select { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; background: white; font-family: var(--ce-font-mono, monospace); font-size: 0.9em; }
-.gol-widget, .nca-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-// ============================================================================
-// Interactive 1: Conway's Game of Life
-// ============================================================================
-(function gameOfLife() {
-  var canvas = document.getElementById('gol-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = 60, H = 40;
-  var cellW = canvas.width / W, cellH = canvas.height / H;
-
-  var grid = [], gen = 0;
-  function clear() { grid = []; for (var i = 0; i < H; i++) grid.push(new Array(W).fill(0)); gen = 0; render(); }
-  clear();
-
-  function randomize() {
-    for (var i = 0; i < H; i++) for (var j = 0; j < W; j++) {
-      grid[i][j] = Math.random() < 0.18 ? 1 : 0;
-    }
-    gen = 0; render();
-  }
-
-  function glider() {
-    clear();
-    // Glider pattern at (10, 10)
-    var p = [[0,1],[1,2],[2,0],[2,1],[2,2]];
-    p.forEach(function(c) { grid[10 + c[0]][10 + c[1]] = 1; });
-    render();
-  }
-
-  function step() {
-    var next = [];
-    for (var i = 0; i < H; i++) next.push(new Array(W).fill(0));
-    for (var i = 0; i < H; i++) {
-      for (var j = 0; j < W; j++) {
-        var n = 0;
-        for (var di = -1; di <= 1; di++) for (var dj = -1; dj <= 1; dj++) {
-          if (di === 0 && dj === 0) continue;
-          var ni = (i + di + H) % H, nj = (j + dj + W) % W;
-          n += grid[ni][nj];
-        }
-        if (grid[i][j] && (n === 2 || n === 3)) next[i][j] = 1;
-        else if (!grid[i][j] && n === 3) next[i][j] = 1;
-      }
-    }
-    grid = next; gen++;
-    render();
-  }
-
-  function render() {
-    ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#4f46e5';
-    for (var i = 0; i < H; i++) for (var j = 0; j < W; j++) {
-      if (grid[i][j]) ctx.fillRect(j * cellW, i * cellH, Math.ceil(cellW), Math.ceil(cellH));
-    }
-    ctx.strokeStyle = 'rgba(229, 231, 235, 0.5)'; ctx.lineWidth = 0.5;
-    for (var i = 0; i <= H; i += 4) {
-      ctx.beginPath(); ctx.moveTo(0, i * cellH); ctx.lineTo(canvas.width, i * cellH); ctx.stroke();
-    }
-    for (var j = 0; j <= W; j += 4) {
-      ctx.beginPath(); ctx.moveTo(j * cellW, 0); ctx.lineTo(j * cellW, canvas.height); ctx.stroke();
-    }
-    document.getElementById('gol-gen').textContent = 'gen: ' + gen;
-  }
-
-  var playing = false, timer = null;
-  document.getElementById('gol-play').addEventListener('click', function() {
-    if (playing) { clearInterval(timer); playing = false; this.textContent = 'Play'; return; }
-    playing = true; this.textContent = 'Pause';
-    timer = setInterval(step, 130);
-  });
-  document.getElementById('gol-step').addEventListener('click', step);
-  document.getElementById('gol-random').addEventListener('click', randomize);
-  document.getElementById('gol-glider').addEventListener('click', glider);
-  document.getElementById('gol-clear').addEventListener('click', clear);
-
-  canvas.addEventListener('click', function(e) {
-    var rect = canvas.getBoundingClientRect();
-    var x = (e.clientX - rect.left) / rect.width * canvas.width;
-    var y = (e.clientY - rect.top) / rect.height * canvas.height;
-    var j = Math.floor(x / cellW), i = Math.floor(y / cellH);
-    if (i >= 0 && i < H && j >= 0 && j < W) {
-      grid[i][j] = 1 - grid[i][j];
-      render();
-    }
-  });
-
-  glider();
-})();
-
-// ============================================================================
-// Interactive 2: NCA-style pattern growth
-// ============================================================================
-(function ncaGrow() {
-  var canvas = document.getElementById('nca-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var SZ = 40;
-  var cellW = canvas.width / SZ, cellH = canvas.height / SZ;
-
-  var grid = null;
-  var step = 0;
-  var rafId = null;
-  var running = false;
-
-  var TARGETS = {
-    flower: function() {
-      var t = [];
-      for (var i = 0; i < SZ; i++) {
-        var row = [];
-        for (var j = 0; j < SZ; j++) {
-          var dy = i - SZ / 2, dx = j - SZ / 2;
-          var r = Math.sqrt(dx * dx + dy * dy);
-          var theta = Math.atan2(dy, dx);
-          var petal = Math.cos(5 * theta);
-          row.push((r > 6 && r < 14 + 3 * petal) ? 1 : 0);
-        }
-        t.push(row);
-      }
-      return t;
-    },
-    ring: function() {
-      var t = [];
-      for (var i = 0; i < SZ; i++) {
-        var row = [];
-        for (var j = 0; j < SZ; j++) {
-          var r = Math.sqrt((i - SZ/2) * (i - SZ/2) + (j - SZ/2) * (j - SZ/2));
-          row.push((r > 10 && r < 15) ? 1 : 0);
-        }
-        t.push(row);
-      }
-      return t;
-    },
-    checker: function() {
-      var t = [];
-      for (var i = 0; i < SZ; i++) {
-        var row = [];
-        for (var j = 0; j < SZ; j++) {
-          var dy = i - SZ/2, dx = j - SZ/2;
-          var r = Math.sqrt(dx*dx + dy*dy);
-          var inside = r < 16;
-          row.push((inside && ((Math.floor((i + SZ/2) / 4) + Math.floor((j + SZ/2) / 4)) % 2 === 0)) ? 1 : 0);
-        }
-        t.push(row);
-      }
-      return t;
-    },
-  };
-
-  var target = TARGETS.flower();
-
-  function seed() {
-    grid = [];
-    for (var i = 0; i < SZ; i++) grid.push(new Array(SZ).fill(0));
-    grid[SZ / 2][SZ / 2] = 1;
-    step = 0;
-    render();
-  }
-
-  function ncaStep() {
-    // "Learned" update simulated: each cell moves toward its target value, but the
-    // movement is gated by having a live neighbor (so growth happens from existing cells).
-    var next = grid.map(function(r) { return r.slice(); });
-    for (var i = 0; i < SZ; i++) {
-      for (var j = 0; j < SZ; j++) {
-        var anyNeighborAlive = false;
-        for (var di = -1; di <= 1; di++) for (var dj = -1; dj <= 1; dj++) {
-          if (di === 0 && dj === 0) continue;
-          var ni = i + di, nj = j + dj;
-          if (ni >= 0 && ni < SZ && nj >= 0 && nj < SZ && grid[ni][nj] > 0.4) anyNeighborAlive = true;
-        }
-        if (anyNeighborAlive || grid[i][j] > 0.4) {
-          var delta = (target[i][j] - grid[i][j]) * 0.06 + (Math.random() - 0.5) * 0.02;
-          next[i][j] = Math.max(0, Math.min(1, grid[i][j] + delta));
-        }
-      }
-    }
-    grid = next;
-    step++;
-  }
-
-  function damage() {
-    for (var i = 0; i < SZ / 2; i++) {
-      for (var j = 0; j < SZ; j++) grid[i][j] = 0;
-    }
-    render();
-  }
-
-  function render() {
-    ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    for (var i = 0; i < SZ; i++) for (var j = 0; j < SZ; j++) {
-      var v = grid[i][j];
-      if (v > 0.05) {
-        var hue = 280 - v * 80; // purple -> teal
-        ctx.fillStyle = 'hsl(' + hue + ', 70%, ' + (85 - v * 30) + '%)';
-        ctx.fillRect(j * cellW, i * cellH, Math.ceil(cellW), Math.ceil(cellH));
-      }
-    }
-    document.getElementById('nca-step').textContent = 'step: ' + step;
-  }
-
-  function tick() {
-    if (!running) return;
-    for (var k = 0; k < 2; k++) ncaStep();
-    render();
-    if (step < 400) rafId = requestAnimationFrame(tick);
-    else { running = false; document.getElementById('nca-grow').textContent = 'Done'; }
-  }
-
-  document.getElementById('nca-grow').addEventListener('click', function() {
-    if (running) { running = false; cancelAnimationFrame(rafId); this.textContent = 'Grow'; return; }
-    running = true;
-    this.textContent = 'Pause';
-    tick();
-  });
-  document.getElementById('nca-reset').addEventListener('click', function() {
-    if (running) { running = false; cancelAnimationFrame(rafId); document.getElementById('nca-grow').textContent = 'Grow'; }
-    seed();
-  });
-  document.getElementById('nca-damage').addEventListener('click', damage);
-  document.getElementById('nca-pat').addEventListener('change', function(e) {
-    target = TARGETS[e.target.value]();
-    seed();
-  });
-
-  seed();
-})();
-
+<script id="ce-fullbleed-resize">
+(function(){
+  function fit(f){ try{var d=f.contentDocument; if(d&&d.body){var h=Math.ceil(Math.max(d.body.scrollHeight,d.body.offsetHeight)); if(h>50){f.style.height=(h+8)+"px";return true;}}}catch(e){} return false; }
+  function all(){ document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(fit); }
+  addEventListener("message",function(e){ if(!e.data||e.data.type!=="ce-frame-height"||!(e.data.height>50))return;
+    var ifr=document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)");
+    for(var i=0;i<ifr.length;i++){ if(ifr[i].contentWindow===e.source){ ifr[i].style.height=(e.data.height+8)+"px"; break; } } });
+  document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(function(f){ f.addEventListener("load",function(){fit(f);setTimeout(function(){fit(f);},400);setTimeout(function(){fit(f);},1200);}); });
+  addEventListener("resize",all); setInterval(all,1500); all();
 })();
 </script>
 </main>

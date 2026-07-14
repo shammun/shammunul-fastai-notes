@@ -1,0 +1,234 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One NCA Step, Live — perceive → think → mask → nudge</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  input[type=range]{width:100px;accent-color:var(--ac);}
+  .mono{font-family:monospace;font-weight:700;color:var(--ac);min-width:36px;display:inline-block;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .main{display:flex;gap:12px;justify-content:center;align-items:stretch;flex-wrap:wrap;margin-top:2px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);transition:box-shadow .2s,border-color .2s;}
+  .card.lit{border-color:var(--ac);box-shadow:0 0 0 2px rgba(123,92,214,.35),0 8px 20px rgba(123,92,214,.18);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  canvas.px{image-rendering:pixelated;border-radius:8px;border:1px solid var(--line);display:block;margin:0 auto;}
+  .arrow{align-self:center;font-size:20px;color:var(--soft);font-weight:700;padding:0 1px;}
+  .minirow{display:flex;gap:6px;justify-content:center;margin-top:5px;flex-wrap:wrap;}
+  .mini{text-align:center;font-size:9.5px;color:var(--soft);}
+  .statbox{margin-top:5px;text-align:center;font-family:monospace;font-size:11px;background:#f4f7fd;border-radius:8px;padding:4px 8px;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:920px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>One NCA step, running live — perceive → think → mask → nudge</h1>
+<p class="sub">This is a <b>real Neural CA computed in your browser</b>: 4 channels, the exact 4 perception filters, and a random 168-parameter brain (untrained — so it doodles rather than paints spiderwebs; training is what tunes those 168 numbers). Watch the four stages of <code style="background:#ece7fb;border-radius:5px;padding:1px 5px">SimpleCA.forward</code>: click a <b>stage chip</b> to jump to it, step stage-by-stage, or press ▶ to run whole steps. Try the <b>update-rate slider</b> — at 1.0 every cell updates in lock-step; at ~0.5 the randomness makes patterns organic.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① perceive: 4 filters × 4 ch → 16</button>
+  <button class="chip" id="st1">② brain: 16 → 8 → Δ(4)</button>
+  <button class="chip" id="st2">③ random mask (~update_rate)</button>
+  <button class="chip" id="st3">④ x = x + Δ ⊙ mask</button>
+</div>
+<div class="selrow">
+  update_rate <input id="urate" type="range" min="0.05" max="1" step="0.05" value="0.5"><span class="mono" id="urv">0.50</span>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="6" step="0.25" value="1"><span class="mono" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="stg">next stage ⏭</button>
+  <button class="stepb" id="stp">full step ⏭⏭</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="reset" id="reset">🎲 Reseed</button>
+</div>
+
+<div class="main">
+  <div class="card" id="cGrid">
+    <div class="cap" style="color:var(--in)">Cell grid x <small>RGB = ch 0–2 · step <span class="mono" id="stepn" style="min-width:0">0</span></small></div>
+    <canvas class="px" id="cvGrid" width="24" height="24" style="width:192px;height:192px"></canvas>
+    <div class="minirow"><div class="mini">hidden ch 3<br><canvas class="px" id="cvHid" width="24" height="24" style="width:66px;height:66px"></canvas></div></div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="card" id="cPerc">
+    <div class="cap" style="color:var(--ac)">① perception (16 maps) <small>4 filter responses shown for ch 0</small></div>
+    <div class="minirow">
+      <div class="mini">Identity<br><canvas class="px" id="cvP0" width="24" height="24" style="width:86px;height:86px"></canvas></div>
+      <div class="mini">Sobel X<br><canvas class="px" id="cvP1" width="24" height="24" style="width:86px;height:86px"></canvas></div>
+    </div>
+    <div class="minirow">
+      <div class="mini">Sobel Y<br><canvas class="px" id="cvP2" width="24" height="24" style="width:86px;height:86px"></canvas></div>
+      <div class="mini">Laplacian<br><canvas class="px" id="cvP3" width="24" height="24" style="width:86px;height:86px"></canvas></div>
+    </div>
+  </div>
+  <div class="arrow">→</div>
+  <div class="card" id="cDelta">
+    <div class="cap" style="color:var(--out)">② proposed update Δ <small>teal = increase · red = decrease (ch 0)</small></div>
+    <canvas class="px" id="cvD" width="24" height="24" style="width:192px;height:192px"></canvas>
+  </div>
+  <div class="arrow">→</div>
+  <div class="card" id="cMask">
+    <div class="cap" style="color:var(--ac)">③ random mask <small>purple cells update this step; <span id="mpct">~50%</span></small></div>
+    <canvas class="px" id="cvM" width="24" height="24" style="width:192px;height:192px"></canvas>
+    <div class="statbox" id="mstat">…</div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend"><b>why the random mask?</b> real cells don't share a clock — dropping the global "tick" makes the learned texture robust &amp; organic · <b>why x + Δ (residual)?</b> cells <i>nudge</i> themselves instead of being overwritten → tiny smooth changes, easy gradients · with W2 zero-init, the first Δ would be exactly 0</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=24, C=4, H=8;
+let seedv=7; function rnd(){seedv=(seedv*1664525+1013904223)>>>0;return seedv/4294967296;}
+function rn(s){return (rnd()*2-1)*s;}
+const K=[ [[0,0,0],[0,1,0],[0,0,0]],
+          [[-1,0,1],[-2,0,2],[-1,0,1]],
+          [[-1,-2,-1],[0,0,0],[1,2,1]],
+          [[1,2,1],[2,-12,2],[1,2,1]] ];
+let W1,B1,W2, x, P, D, M, step=0, phase=0, urate=0.5, speed=1, timer=null;
+function init(){
+  W1=Array.from({length:H},()=>Array.from({length:16},()=>rn(0.16)));
+  B1=Array.from({length:H},()=>rn(0.12));
+  W2=Array.from({length:C},()=>Array.from({length:H},()=>rn(0.45)));
+  x=Array.from({length:C},()=>Array.from({length:N},()=>Array.from({length:N},()=>rn(0.12))));
+  step=0; phase=0; P=null; D=null; M=null;
+  perceive(); think(); makeMask(); renderAll();
+}
+function perceive(){
+  P=[]; // 16 maps: for ch in 0..3 for f in 0..3
+  for(let c=0;c<C;c++)for(let f=0;f<4;f++){
+    const m=Array.from({length:N},()=>Array(N).fill(0));
+    for(let r=0;r<N;r++)for(let cc=0;cc<N;cc++){
+      let s=0;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)
+        s+=x[c][(r+i+N)%N][(cc+j+N)%N]*K[f][i+1][j+1];
+      m[r][cc]=s;}
+    P.push(m);}
+}
+function think(){
+  D=Array.from({length:C},()=>Array.from({length:N},()=>Array(N).fill(0)));
+  for(let r=0;r<N;r++)for(let cc=0;cc<N;cc++){
+    const h=[];
+    for(let i=0;i<H;i++){let s=B1[i];
+      for(let j=0;j<16;j++)s+=W1[i][j]*P[j][r][cc];
+      h.push(Math.max(0,s));}
+    for(let o=0;o<C;o++){let s=0;
+      for(let j=0;j<H;j++)s+=W2[o][j]*h[j];
+      D[o][r][cc]=s;}}
+}
+function makeMask(){
+  M=Array.from({length:N},()=>Array.from({length:N},()=>rnd()<urate?1:0));
+}
+function apply(){
+  for(let c=0;c<C;c++)for(let r=0;r<N;r++)for(let cc=0;cc<N;cc++){
+    x[c][r][cc]=Math.max(-1.6,Math.min(1.6,x[c][r][cc]+D[c][r][cc]*M[r][cc]*0.28));}
+  step++;
+}
+// ---- drawing ----
+function drawRGB(cv){
+  const ctx=$(cv).getContext('2d'), im=ctx.createImageData(N,N);
+  for(let r=0;r<N;r++)for(let cc=0;cc<N;cc++){const i=(r*N+cc)*4;
+    for(let c=0;c<3;c++)im.data[i+c]=Math.max(0,Math.min(255,(x[c][r][cc]*0.5+0.5)*255));
+    im.data[i+3]=255;}
+  ctx.putImageData(im,0,0);
+}
+function drawMono(cv,grid,scale){
+  const ctx=$(cv).getContext('2d'), im=ctx.createImageData(N,N);
+  for(let r=0;r<N;r++)for(let cc=0;cc<N;cc++){const i=(r*N+cc)*4;
+    const v=grid[r][cc]*scale;
+    if(v>=0){im.data[i]=247-v*225;im.data[i+1]=249-v*86;im.data[i+2]=253-v*90;}
+    else{im.data[i]=247+v*33;im.data[i+1]=249+v*180;im.data[i+2]=253+v*184;}
+    im.data[i+3]=255;}
+  ctx.putImageData(im,0,0);
+}
+function drawDiv(cv,grid){
+  const ctx=$(cv).getContext('2d'), im=ctx.createImageData(N,N);
+  let m=1e-6;for(let r=0;r<N;r++)for(let c=0;c<N;c++)m=Math.max(m,Math.abs(grid[r][c]));
+  for(let r=0;r<N;r++)for(let cc=0;cc<N;cc++){const i=(r*N+cc)*4;
+    const t=grid[r][cc]/m;
+    if(t>=0){im.data[i]=255-t*233;im.data[i+1]=255-t*92;im.data[i+2]=255-t*92;}
+    else{im.data[i]=255+t*41;im.data[i+1]=255+t*186;im.data[i+2]=255+t*186;}
+    im.data[i+3]=255;}
+  ctx.putImageData(im,0,0);
+}
+function drawMask(){
+  const ctx=$('cvM').getContext('2d'), im=ctx.createImageData(N,N);
+  let cnt=0;
+  for(let r=0;r<N;r++)for(let cc=0;cc<N;cc++){const i=(r*N+cc)*4;
+    if(M[r][cc]){im.data[i]=123;im.data[i+1]=92;im.data[i+2]=214;cnt++;}
+    else{im.data[i]=241;im.data[i+1]=244;im.data[i+2]=251;}
+    im.data[i+3]=255;}
+  ctx.putImageData(im,0,0);
+  $('mstat').innerHTML=`${cnt}/${N*N} cells drew &lt; ${urate.toFixed(2)} → will update (${Math.round(100*cnt/(N*N))}%)`;
+  $('mpct').textContent='~'+Math.round(urate*100)+'%';
+}
+function renderAll(){
+  drawRGB('cvGrid');
+  drawMono('cvHid',x[3],0.9);
+  ['cvP0','cvP1','cvP2','cvP3'].forEach((cv,f)=>drawDiv(cv,P[f]));  // ch0's four filters = P[0..3]
+  drawDiv('cvD',D[0]); drawMask();
+  $('stepn').textContent=step;
+  ['cGrid','cPerc','cDelta','cMask'].forEach((id,i)=>$(id).classList.toggle('lit',
+    (phase===0&&i===1)||(phase===1&&i===2)||(phase===2&&i===3)||(phase===3&&i===0)));
+  [0,1,2,3].forEach(i=>$('st'+i).classList.toggle('on',i===phase));
+  renderCode();
+}
+function renderCode(){
+  const L=[
+   `<span class="cm">def forward(self, x):                              # SimpleCA — one update step</span>`,
+   `    y = <span class="fn">perchannel_conv</span>(x, self.filters)        <span class="cm"># ① (b,4,h,w) → (b,16,h,w)</span>`,
+   `    y = self.w2(F.<span class="fn">relu</span>(self.w1(y)))            <span class="cm"># ② 1×1 convs: 16 → 8 → Δ(4)</span>`,
+   `    b, c, h, w = y.shape`,
+   `    update_mask = (torch.<span class="fn">rand</span>(b, <span class="num">1</span>, h, w) &lt; self.update_rate)  <span class="cm"># ③ keep ~${Math.round(urate*100)}%</span>`,
+   `    <span class="fn">return</span> x + y * update_mask                 <span class="cm"># ④ residual nudge — not overwrite!</span>`];
+  const hl=[1,2,4,5][phase];
+  $('code').innerHTML=L.map((t,i)=>i===hl?`<span class="hl">${t}</span>`:t).join('\n');
+}
+function nextStage(){
+  phase=(phase+1)%4;
+  if(phase===0){perceive();}
+  else if(phase===1){think();}
+  else if(phase===2){makeMask();}
+  else if(phase===3){apply();}
+  renderAll();
+}
+function fullStep(){ perceive(); think(); makeMask(); apply(); phase=3; renderAll(); }
+[0,1,2,3].forEach(i=>$('st'+i).onclick=()=>{stop();
+  // run stages up to i for the current step
+  while(phase!==i)nextStage(); renderAll();});
+$('stg').onclick=()=>{stop();nextStage();};
+$('stp').onclick=()=>{stop();fullStep();};
+$('play').onclick=()=>{ if(timer){stop();return;}
+  $('play').textContent='⏸ Pause';
+  timer=setInterval(fullStep,300/speed);};
+function stop(){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}
+$('reset').onclick=()=>{stop();init();};
+$('urate').oninput=e=>{urate=+e.target.value;$('urv').textContent=urate.toFixed(2);makeMask();renderAll();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();$('play').click();}};
+init();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

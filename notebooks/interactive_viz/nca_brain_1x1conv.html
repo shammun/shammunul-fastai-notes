@@ -1,0 +1,215 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The 168-Parameter Brain — Linear layers ≡ 1×1 convolutions</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:110px;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .vt{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .vt.on{background:var(--out);border-color:var(--out);color:#fff;}
+  input[type=range]{width:140px;accent-color:var(--ac);}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;margin-top:2px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  svg text{font-family:"SF Mono",Consolas,monospace;}
+  .ptab{border-collapse:collapse;font-size:11.5px;margin:0 auto;}
+  .ptab td,.ptab th{border:1px solid var(--line);padding:4px 9px;text-align:left;font-family:"SF Mono",Consolas,monospace;}
+  .ptab th{background:#f4f7fd;font-family:"Segoe UI",system-ui;}
+  .ptab tr{cursor:pointer;}
+  .ptab tr.hl td{background:rgba(123,92,214,.16);font-weight:700;}
+  .bigp{font-size:22px;font-weight:800;color:var(--ac);text-align:center;margin:6px 0 2px;}
+  .note{font-size:11px;color:var(--soft);text-align:center;line-height:1.45;}
+  .zbox{margin-top:8px;background:#f4f7fd;border-radius:10px;padding:8px 10px;font-size:11.5px;color:var(--soft);line-height:1.5;}
+  .bar{height:12px;background:#e8edf7;border-radius:6px;overflow:hidden;margin-top:4px;}
+  .bar>div{height:100%;background:linear-gradient(90deg,var(--out),var(--ac));border-radius:6px;transition:width .15s;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:900px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:5px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>The 168-Parameter Brain — one tiny network, run at every pixel</h1>
+<p class="sub">Every cell's <b style="color:var(--in)">16 perception values</b> go through the same tiny network — <b>16 → 8 (ReLU) → 4</b> — to produce the cell's <b style="color:var(--out)">update Δ(R, G, B, hidden)</b>. Whether you write it as <b>Linear layers</b> (flatten pixels into rows) or as <b>1×1 convolutions</b> (keep the grid), <i>the math is identical</i>. Click the stage chips to push a real perception vector through, <b>hover a neuron</b> to see its incoming weights, and drag the training slider to see why <b>w2 starts at zero</b>.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① Input: 16 perception values</button>
+  <button class="chip" id="st1">② hidden = ReLU(W1·x + b1)</button>
+  <button class="chip" id="st2">③ Δ = W2·hidden (no bias)</button>
+</div>
+<div class="selrow">
+  view as:
+  <button class="vt on" id="vLin">nn.Linear (flattened pixels)</button>
+  <button class="vt" id="vConv">nn.Conv2d 1×1 (on the grid)</button>
+  <span class="div"></span>
+  <button class="play" id="anim">▶ Animate flow</button>
+  <button class="reset" id="newx">🎲 New input</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">The brain network <small id="netcap">hover a neuron → its incoming weights light up (thickness = |weight|)</small></div>
+    <svg id="net" width="470" height="380" viewBox="0 0 470 380"></svg>
+  </div>
+  <div class="card" style="max-width:340px">
+    <div class="cap">Where do the 168 parameters live? <small>hover / click a row to highlight that layer</small></div>
+    <table class="ptab">
+      <tr><th>tensor</th><th>shape</th><th>#params</th></tr>
+      <tr id="p0"><td>W1 (w1.weight)</td><td id="w1shape">[8, 16]</td><td>128</td></tr>
+      <tr id="p1"><td>b1 (w1.bias)</td><td>[8]</td><td>8</td></tr>
+      <tr id="p2"><td>W2 (w2.weight)</td><td id="w2shape">[4, 8]</td><td>32</td></tr>
+    </table>
+    <div class="bigp">128 + 8 + 32 = 168</div>
+    <div class="note">GPT-3: 175,000,000,000 params.<br>This texture generator: <b>168</b>. The power comes from <b>applying it everywhere, many times</b> — not from size.</div>
+    <div class="zbox">
+      <b style="color:var(--ink)">Why start with W2 = 0?</b> Then Δ = W2·h = <b>0</b> for every cell → the very first NCA steps <i>change nothing</i>. Training wakes it up gently instead of exploding.<br>
+      training progress <input id="tprog" type="range" min="0" max="1" step="0.01" value="0" style="width:120px;vertical-align:middle">
+      <span id="tpv" style="font-family:monospace;font-weight:700;color:var(--ac)">0%</span>
+      <div>‖Δ‖ update magnitude:</div><div class="bar"><div id="dbar" style="width:0%"></div></div>
+      <div id="dmsg" style="margin-top:3px">W2 = 0 → Δ = 0 → grid is perfectly stable at start ✓</div>
+    </div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = 16 inputs</b> (4 channels × 4 filters, grouped by filter) · <b class="a">purple = 8 hidden</b> · <b class="o">teal = 4 outputs ΔR ΔG ΔB ΔH</b> · gray node = ReLU zeroed it out</div>
+
+<script>
+const $=id=>document.getElementById(id);
+// fixed pseudo-random weights (seeded) so the demo is reproducible
+let seed=42; function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
+function rn(){return (rnd()*2-1);}
+const W1=Array.from({length:8},()=>Array.from({length:16},()=>+(rn()*0.5).toFixed(2)));
+const B1=Array.from({length:8},()=>+(rn()*0.3).toFixed(2));
+const W2f=Array.from({length:4},()=>Array.from({length:8},()=>+(rn()*0.6).toFixed(2)));
+let X=[], tprog=0, phase=0, view='lin', animTimer=null;
+function newX(){X=Array.from({length:16},()=>+(rn()*1.4).toFixed(2));render();}
+function W2(){return W2f.map(r=>r.map(v=>v*tprog));}
+function fwd(){
+  const h=W1.map((row,i)=>Math.max(0,row.reduce((s,w,j)=>s+w*X[j],B1[i])));
+  const o=W2().map(row=>row.reduce((s,w,j)=>s+w*h[j],0));
+  return {h,o};
+}
+const FGROUP=['Id','Sx','Sy','Lap'];
+const OUTN=['ΔR','ΔG','ΔB','ΔH'];
+const GCOL=['#f6921e','#e07a3f','#c96a63','#b05a86'];
+
+function layout(){
+  const iy=i=>22+i*22, hy=i=>60+i*33, oy=i=>95+i*55;
+  return {ix:60, hx:250, ox:410, iy, hy, oy};
+}
+function drawNet(){
+  const {h,o}=fwd(), L=layout(), svg=$('net'); let s='';
+  // edges
+  for(let i=0;i<8;i++)for(let j=0;j<16;j++){
+    const w=W1[i][j], on=phase>=1;
+    s+=`<line class="e1 t${i}" x1="${L.ix+13}" y1="${L.iy(j)}" x2="${L.hx-15}" y2="${L.hy(i)}"
+      stroke="${w>=0?'#16a3a3':'#d64545'}" stroke-width="${Math.min(3,Math.abs(w)*3)}"
+      opacity="${on?0.28:0.10}"/>`;}
+  for(let i=0;i<4;i++)for(let j=0;j<8;j++){
+    const w=W2()[i][j], on=phase>=2;
+    s+=`<line class="e2 u${i}" x1="${L.hx+15}" y1="${L.hy(j)}" x2="${L.ox-17}" y2="${L.oy(i)}"
+      stroke="${w>=0?'#16a3a3':'#d64545'}" stroke-width="${Math.max(0.4,Math.min(3,Math.abs(w)*3))}"
+      opacity="${on?0.32:0.10}"/>`;}
+  // input nodes
+  for(let j=0;j<16;j++){
+    const g=(j%4); // group by filter within channel? notebook order: channel-major; label by filter group
+    s+=`<circle cx="${L.ix}" cy="${L.iy(j)}" r="9" fill="${GCOL[Math.floor(j/4)]}" opacity="0.92"/>
+        <text x="${L.ix}" y="${L.iy(j)+3}" font-size="8" text-anchor="middle" fill="#fff" font-weight="700">${X[j].toFixed(1).replace('0.','.')}</text>`;
+  }
+  // channel group labels
+  ['ch R','ch G','ch B','ch H'].forEach((t,gi)=>{
+    s+=`<text x="18" y="${L.iy(gi*4+1)+12}" font-size="9" fill="${GCOL[gi]}" font-weight="700">${t}</text>`;});
+  s+=`<text x="${L.ix}" y="374" font-size="10" text-anchor="middle" fill="#5a6b86">16 in = 4 ch × 4 filters</text>`;
+  // hidden nodes
+  for(let i=0;i<8;i++){
+    const dead=phase>=1&&h[i]===0;
+    s+=`<circle class="hn" data-i="${i}" cx="${L.hx}" cy="${L.hy(i)}" r="13"
+        fill="${phase>=1?(dead?'#c3ccdd':'#7b5cd6'):'#e8e2f8'}" stroke="#7b5cd6" stroke-width="1.5" style="cursor:pointer"/>
+        <text x="${L.hx}" y="${L.hy(i)+3.5}" font-size="9" text-anchor="middle" fill="${phase>=1?'#fff':'#7b5cd6'}" font-weight="700">${phase>=1?h[i].toFixed(1):'h'+i}</text>`;}
+  s+=`<text x="${L.hx}" y="374" font-size="10" text-anchor="middle" fill="#5a6b86">8 hidden (ReLU) — gray = clipped to 0</text>`;
+  // output nodes
+  for(let i=0;i<4;i++){
+    s+=`<circle class="on" data-i="${i}" cx="${L.ox}" cy="${L.oy(i)}" r="15"
+        fill="${phase>=2?'#16a3a3':'#dff3f1'}" stroke="#16a3a3" stroke-width="1.5" style="cursor:pointer"/>
+        <text x="${L.ox}" y="${L.oy(i)-2}" font-size="9" text-anchor="middle" fill="${phase>=2?'#fff':'#16a3a3'}" font-weight="700">${OUTN[i]}</text>
+        <text x="${L.ox}" y="${L.oy(i)+10}" font-size="8.5" text-anchor="middle" fill="${phase>=2?'#fff':'#16a3a3'}">${phase>=2?o[i].toFixed(2):''}</text>`;}
+  s+=`<text x="${L.ox}" y="374" font-size="10" text-anchor="middle" fill="#5a6b86">4 out = update Δ</text>`;
+  svg.innerHTML=s;
+  svg.querySelectorAll('.hn').forEach(n=>{
+    n.onmouseenter=()=>{svg.querySelectorAll('.e1').forEach(e=>e.setAttribute('opacity',0.05));
+      svg.querySelectorAll('.t'+n.dataset.i).forEach(e=>e.setAttribute('opacity',0.95));};
+    n.onmouseleave=()=>drawNet();});
+  svg.querySelectorAll('.on').forEach(n=>{
+    n.onmouseenter=()=>{svg.querySelectorAll('.e2').forEach(e=>e.setAttribute('opacity',0.05));
+      svg.querySelectorAll('.u'+n.dataset.i).forEach(e=>e.setAttribute('opacity',0.95));};
+    n.onmouseleave=()=>drawNet();});
+}
+function render(){
+  drawNet();
+  [0,1,2].forEach(i=>$('st'+i).classList.toggle('on',i===phase));
+  $('w1shape').textContent=view==='lin'?'[8, 16]':'[8, 16, 1, 1]';
+  $('w2shape').textContent=view==='lin'?'[4, 8]':'[4, 8, 1, 1]';
+  const {o}=fwd(); const mag=Math.hypot(...o);
+  $('dbar').style.width=Math.min(100,mag*46)+'%';
+  $('tpv').textContent=Math.round(tprog*100)+'%';
+  $('dmsg').textContent = tprog===0
+    ? 'W2 = 0 → Δ = 0 → grid is perfectly stable at start ✓'
+    : `W2 has grown → cells now nudge themselves by ‖Δ‖ ≈ ${mag.toFixed(2)} per step`;
+  renderCode();
+}
+function renderCode(){
+  const lin = view==='lin';
+  const L= lin?[
+   `<span class="cm"># APPROACH 1 — Linear: flatten pixels into rows first</span>`,
+   `flat = einops.<span class="fn">rearrange</span>(perception, <span class="num">'b c h w -> (b h w) c'</span>)  <span class="cm"># every pixel = one row of 16</span>`,
+   `h = F.<span class="fn">relu</span>(w1(flat))        <span class="cm"># stage ② — Linear(16→8) + ReLU, same weights for EVERY pixel</span>`,
+   `delta = w2(h)                <span class="cm"># stage ③ — Linear(8→4, bias=False) → per-pixel update</span>`,
+   `<span class="cm"># then rearrange back:  '(b h w) c -> b c h w'</span>`]:[
+   `<span class="cm"># APPROACH 2 — 1×1 Conv: never flatten, stay on the grid</span>`,
+   `<span class="cm"># a 1×1 conv IS a Linear layer applied independently at each (h, w) position</span>`,
+   `h = F.<span class="fn">relu</span>(<span class="fn">Conv2d</span>(<span class="num">16</span>, <span class="num">8</span>, kernel_size=<span class="num">1</span>)(perception))   <span class="cm"># stage ②</span>`,
+   `delta = <span class="fn">Conv2d</span>(<span class="num">8</span>, <span class="num">4</span>, kernel_size=<span class="num">1</span>, bias=<span class="num">False</span>)(h)         <span class="cm"># stage ③</span>`,
+   `<span class="cm"># same 168 numbers, same result — just skips the reshape (faster on GPU)</span>`];
+  const hl=phase===0?1:(phase===1?2:3);
+  $('code').innerHTML=L.map((t,i)=>i===hl?`<span class="hl">${t}</span>`:t).join('\n');
+}
+[0,1,2].forEach(i=>$('st'+i).onclick=()=>{stopAnim();phase=i;render();});
+$('vLin').onclick=()=>{view='lin';$('vLin').classList.add('on');$('vConv').classList.remove('on');render();};
+$('vConv').onclick=()=>{view='conv';$('vConv').classList.add('on');$('vLin').classList.remove('on');render();};
+$('anim').onclick=()=>{ if(animTimer){stopAnim();return;}
+  phase=0;render();$('anim').textContent='⏸ Pause';
+  animTimer=setInterval(()=>{phase=(phase+1)%3;render();
+    if(phase===2){clearInterval(animTimer);animTimer=setTimeout(()=>{stopAnim();},900);}},900);};
+function stopAnim(){clearInterval(animTimer);clearTimeout(animTimer);animTimer=null;$('anim').textContent='▶ Animate flow';}
+$('newx').onclick=()=>{newX();};
+$('tprog').oninput=e=>{tprog=+e.target.value;render();};
+['p0','p1','p2'].forEach((id,k)=>{$(id).onmouseenter=()=>{$(id).classList.add('hl');};
+  $(id).onmouseleave=()=>$(id).classList.remove('hl');});
+newX();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  @media (max-width:900px){svg#net{width:100%;height:auto}}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>
