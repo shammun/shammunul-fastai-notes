@@ -1,0 +1,240 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The KID Machine: MMD with a Polynomial Kernel</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  select{font-family:inherit;font-size:12px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:4px 7px;background:#fff;cursor:pointer;}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:1080px;margin:0 auto;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-start;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .hm{display:grid;gap:1.5px;}
+  .hc{width:26px;height:26px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:8.5px;color:#fff;cursor:pointer;transition:outline .1s;position:relative;}
+  .hc:hover{outline:2.5px solid var(--ac);z-index:2;}
+  .hc.diag{outline:2px dashed #d64545;}
+  .hc.gone{opacity:0.12;}
+  .hoverbox{max-width:1080px;margin:6px auto 0;font-family:monospace;font-size:12px;text-align:center;color:var(--ac);min-height:18px;font-weight:700;}
+  .mmdrow{display:flex;gap:10px;justify-content:center;align-items:center;font-family:monospace;font-weight:700;font-size:13.5px;margin-top:6px;flex-wrap:wrap;}
+  .mmdrow .box{border-radius:9px;padding:6px 12px;border:2px solid;}
+  .story{max-width:1080px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1080px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>KID: compare clouds directly — no Gaussian assumption</h1>
+<p class="sub">KID skips μ and Σ. Instead it asks: are points <em>within</em> each cloud about as similar to each other as points <em>across</em> the clouds? Similarity = a polynomial kernel <b>k(a,b) = (a·b/d + 1)³</b>. We build three similarity tables — <b style="color:var(--out)">real↔real</b>, <b style="color:var(--in)">gen↔gen</b>, <b style="color:var(--ac)">real↔gen</b> — then MMD² = (within-similarity) − 2·(across-similarity). <b>Hover any cell</b> to see the exact pair and value. Press Play to build the machine step by step.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Two small clouds</button>
+  <button class="chip" data-s="1">② Fill kernel tables</button>
+  <button class="chip" data-s="2">③ Drop self-similarity</button>
+  <button class="chip" data-s="3">④ Combine → MMD²</button>
+  <button class="chip" data-s="4">⑤ Chunking (maxs=50)</button>
+</div>
+
+<div class="selrow">
+  clouds: <select id="qsel">
+    <option value="same">identical distributions → KID ≈ 0</option>
+    <option value="mid" selected>slightly different → small KID</option>
+    <option value="far">very different → large KID</option>
+  </select>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="wrap">
+  <div class="card"><div class="cap">the points<small>x = 6 real (teal) · y = 6 generated (orange)</small></div>
+    <canvas id="pts" width="240" height="240" style="border-radius:8px;background:#fdfeff"></canvas></div>
+  <div class="card"><div class="cap" style="color:var(--out)">kxx = k(x, x)<small>real ↔ real similarity</small></div><div class="hm" id="hxx"></div></div>
+  <div class="card"><div class="cap" style="color:var(--in)">kyy = k(y, y)<small>gen ↔ gen similarity</small></div><div class="hm" id="hyy"></div></div>
+  <div class="card"><div class="cap" style="color:var(--ac)">kxy = k(x, y)<small>real ↔ gen similarity</small></div><div class="hm" id="hxy"></div></div>
+</div>
+<div class="hoverbox" id="hov">hover a cell…</div>
+<div class="mmdrow" id="mmd"></div>
+
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend">brighter cell = more similar pair · <b style="color:#d64545">dashed red diagonal</b> = self-similarity k(a,a), excluded from kxx/kyy · <b class="a">MMD² = mean(kxx°) + mean(kyy°) − 2·mean(kxy)</b></p>
+
+<script>
+const $=id=>document.getElementById(id);
+const OUT='#16a3a3',IN='#f6921e',AC='#7b5cd6',NEG='#d64545',SOFT='#5a6b86';
+const N=6;let stage=0,fill=0,timer=null,speed=1,chunkHl=-1;
+
+let seed=13;function rnd(){seed=(seed*16807)%2147483647;return (seed-1)/2147483646;}
+function gauss(){const u1=Math.max(rnd(),1e-6),u2=rnd();return[Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2),Math.sqrt(-2*Math.log(u1))*Math.sin(2*Math.PI*u2)];}
+
+let X=[],Yp=[];
+function makeClouds(){
+  const q=$('qsel').value;seed=13;
+  X=[];Yp=[];
+  for(let i=0;i<N;i++){const[a,b]=gauss();X.push([a*0.8,b*0.5]);}
+  const off=q==='same'?[0,0]:(q==='mid'?[0.9,0.4]:[2.6,1.4]);
+  const sc=q==='far'?0.35:0.8;
+  for(let i=0;i<N;i++){const[a,b]=gauss();Yp.push([a*sc+off[0],b*0.5*sc+off[1]]);}
+}
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1];
+const kern=(a,b)=>Math.pow(dot(a,b)/2+1,3);   // d=2 dims
+function K(A,B){return A.map(a=>B.map(b=>kern(a,b)));}
+
+function colFor(v,base){ // v mapped 0..maxK
+  const t=Math.max(0,Math.min(1,(v+2)/14));
+  const c=base==='o'?[22,163,163]:(base==='i'?[246,146,30]:[123,92,214]);
+  const w=[247,250,255];
+  const mix=c.map((x,i)=>Math.round(w[i]+(x-w[i])*t));
+  return `rgb(${mix[0]},${mix[1]},${mix[2]})`;
+}
+
+function drawPts(){
+  const cv=$('pts'),c=cv.getContext('2d');c.clearRect(0,0,240,240);
+  c.strokeStyle='#f1f5fb';for(let g=0;g<240;g+=30){c.beginPath();c.moveTo(g,0);c.lineTo(g,240);c.stroke();c.beginPath();c.moveTo(0,g);c.lineTo(240,g);c.stroke();}
+  const P=p=>[120+p[0]*38,120-p[1]*38];
+  X.forEach((p,i)=>{const[x,y]=P(p);c.fillStyle=OUT;c.beginPath();c.arc(x,y,7,0,7);c.fill();
+    c.fillStyle='#fff';c.font='700 9px monospace';c.textAlign='center';c.fillText('x'+i,x,y+3);});
+  Yp.forEach((p,i)=>{const[x,y]=P(p);c.fillStyle=IN;c.beginPath();c.arc(x,y,7,0,7);c.fill();
+    c.fillStyle='#fff';c.font='700 9px monospace';c.textAlign='center';c.fillText('y'+i,x,y+3);});
+}
+function drawHM(el,M,base,isCross){
+  el.style.gridTemplateColumns=`repeat(${N},26px)`;
+  el.innerHTML='';
+  let count=0;
+  M.forEach((row,i)=>row.forEach((v,j)=>{
+    const d=document.createElement('div');d.className='hc';
+    const idx=i*N+j;
+    const visible=stage>=2||(stage===1&&idx<fill)||stage>2;
+    if(stage===0||(stage===1&&idx>=fill)){d.style.background='#eef2f9';}
+    else d.style.background=colFor(v,base);
+    if(!isCross&&i===j&&stage>=2)d.classList.add('diag');
+    if(!isCross&&i===j&&stage>=3)d.classList.add('gone');
+    if(stage===4){ // chunk highlight: first-half/second-half blocks
+      const inChunk=chunkHl===0?(i<3&&j<3):(chunkHl===1?(i>=3&&j>=3):true);
+      if(chunkHl>=0&&!inChunk)d.classList.add('gone');
+    }
+    d.textContent=(stage>=1&&(stage>1||idx<fill))?v.toFixed(0):'';
+    const pa=(isCross||base==='o')?'x'+i:'y'+i, pb=(base==='o'&&!isCross)?'x'+j:'y'+j;
+    const la=isCross?'x'+i:pa, lb=isCross?'y'+j:pb;
+    d.onmouseenter=()=>{const A=isCross?X[i]:(base==='o'?X[i]:Yp[i]), B=isCross?Yp[j]:(base==='o'?X[j]:Yp[j]);
+      $('hov').textContent=`k(${la},${lb}) = (${la}·${lb}/2 + 1)³ = (${dot(A,B).toFixed(2)}/2 + 1)³ = ${kern(A,B).toFixed(2)}`+((!isCross&&i===j)?'   ← diagonal: point vs ITSELF, always big, must be excluded!':'');};
+    d.onmouseleave=()=>{$('hov').textContent='hover a cell…';};
+    el.appendChild(d);
+  }));
+}
+function mmdParts(){
+  const kxx=K(X,X),kyy=K(Yp,Yp),kxy=K(X,Yp);
+  const offMean=M=>{let s=0;M.forEach((r,i)=>r.forEach((v,j)=>{if(i!==j)s+=v;}));return s/(N*(N-1));};
+  const allMean=M=>{let s=0;M.forEach(r=>r.forEach(v=>s+=v));return s/(N*N);};
+  return{a:offMean(kxx),b:offMean(kyy),c:allMean(kxy)};
+}
+function drawMMD(){
+  const el=$('mmd');
+  if(stage<3){el.innerHTML='';return;}
+  const{a,b,c}=mmdParts();
+  const m=a+b-2*c;
+  el.innerHTML=
+   `<span class="box" style="border-color:${OUT};color:${OUT}">mean kxx° = ${a.toFixed(2)}</span> +
+    <span class="box" style="border-color:${IN};color:${IN}">mean kyy° = ${b.toFixed(2)}</span> −
+    <span class="box" style="border-color:${AC};color:${AC}">2 × ${c.toFixed(2)}</span> =
+    <span class="box" style="border-color:${m>0.5?NEG:OUT};color:${m>0.5?NEG:OUT}">MMD² = ${m.toFixed(3)}</span>`+
+   (stage===4?` <span style="color:${SOFT};font-weight:400;font-size:11.5px">(KID = average of MMD² over chunks)</span>`:'');
+}
+function drawAll(){
+  drawPts();
+  drawHM($('hxx'),K(X,X),'o',false);
+  drawHM($('hyy'),K(Yp,Yp),'i',false);
+  drawHM($('hxy'),K(X,Yp),'a',true);
+  drawMMD();
+}
+
+const STORIES=[
+ '<b>① Six real points, six generated points.</b> (In the notebook: 512-D feature vectors; here 2-D so every number fits on screen.) The intuition: if the two sets come from the <em>same</em> distribution, then a real↔generated pair should look just as similar, on average, as a real↔real pair. KID turns that sentence into arithmetic.',
+ '<b>② Fill three similarity tables.</b> Every pair gets a score from the polynomial kernel <code>k(a,b)=(a·b/d+1)³</code> — brighter = more similar. <b style="color:var(--out)">kxx</b>: all real↔real pairs. <b style="color:var(--in)">kyy</b>: generated↔generated. <b style="color:var(--ac)">kxy</b>: every real↔generated pair. Hover cells to see the actual computation. This is just three matrix products: <code>x@x.T</code>, <code>y@y.T</code>, <code>x@y.T</code> — pushed through the cube.',
+ '<b>③ Kill the diagonal — the sneaky bias fix.</b> kxx\'s diagonal is every point compared with <em>itself</em> — always maximal, and it would inflate the "within-cloud similarity" estimate. That inflation is a <b>bias</b>. So <code>_squared_mmd</code> subtracts the diagonal and divides by n(n−1) instead of n². <em>This</em> little move is why KID is unbiased while FID is not. (kxy keeps everything: xᵢ and yⱼ are never the same point.)',
+ '<b>④ Combine.</b> MMD² = mean(kxx°) + mean(kyy°) − 2·mean(kxy). Same-distribution clouds: within ≈ across, everything cancels → ≈ 0 (sometimes slightly <em>negative</em> — that\'s the unbiased estimator being honest, exactly like the notebook\'s KID of −0.026 on real images). Different clouds: within-similarity beats across-similarity → positive. Switch the cloud preset and watch.',
+ '<b>⑤ Chunking, for memory.</b> With 10,000 real images, kxx would be a 10,000×10,000 table — too big. <code>_calc_kid(maxs=50)</code> slices both sets into chunks of ≤50, computes MMD² per chunk pair (the highlighted blocks cycle below), and averages. Each chunk gives an unbiased estimate, so the average is too — but averaging few small chunks is exactly why KID\'s <b>variance</b> is high.'
+];
+const CODES=[
+`<span class="cm"># in the notebook, x and y are feature matrices:</span>
+feats.shape    <span class="cm"># [10000, 512]  (x: real)</span>
+feats2.shape   <span class="cm"># [256, 512]    (y: generated)</span>`,
+`def <span class="fn">_squared_mmd</span>(x, y):
+<span class="hl">    def <span class="fn">k</span>(a,b): return (a@b.transpose(-2,-1)/a.shape[-1] + <span class="num">1</span>)**<span class="num">3</span></span>
+    m, n = x.shape[-2], y.shape[-2]
+<span class="hl">    kxx, kyy, kxy = <span class="fn">k</span>(x,x), <span class="fn">k</span>(y,y), <span class="fn">k</span>(x,y)</span>`,
+`    <span class="cm"># sum everything EXCEPT the diagonal, divide by n(n-1):</span>
+<span class="hl">    kxx_sum = kxx.<span class="fn">sum</span>([-<span class="num">1</span>,-<span class="num">2</span>]) - kxx.<span class="fn">diagonal</span>(<span class="num">0</span>,-<span class="num">1</span>,-<span class="num">2</span>).sum(-<span class="num">1</span>)</span>
+<span class="hl">    kyy_sum = kyy.<span class="fn">sum</span>([-<span class="num">1</span>,-<span class="num">2</span>]) - kyy.<span class="fn">diagonal</span>(<span class="num">0</span>,-<span class="num">1</span>,-<span class="num">2</span>).sum(-<span class="num">1</span>)</span>
+    kxy_sum = kxy.<span class="fn">sum</span>([-<span class="num">1</span>,-<span class="num">2</span>])   <span class="cm"># cross table keeps ALL entries</span>`,
+`<span class="hl">    return (kxx_sum/(m*(m-<span class="num">1</span>)) + kyy_sum/(n*(n-<span class="num">1</span>))</span>
+<span class="hl">            - <span class="num">2</span>*kxy_sum/(m*n))</span>
+<span class="cm"># same distribution → ≈ 0 (can dip negative: unbiased!)</span>`,
+`def <span class="fn">_calc_kid</span>(x, y, maxs=<span class="num">50</span>):
+    xs, ys = x.shape[<span class="num">0</span>], y.shape[<span class="num">0</span>]
+    n = <span class="fn">max</span>(<span class="fn">math.ceil</span>(<span class="fn">min</span>(xs/maxs, ys/maxs)), <span class="num">4</span>)
+<span class="hl">    mmd = <span class="fn">sum</span>(<span class="fn">_squared_mmd</span>(x[i*xs//n:(i+<span class="num">1</span>)*xs//n],</span>
+<span class="hl">                           y[i*ys//n:(i+<span class="num">1</span>)*ys//n]) for i in range(n))</span>
+    return (mmd/n).item()   <span class="cm"># average of per-chunk estimates</span>`];
+
+function renderUI(){
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===stage));
+  $('story').innerHTML=STORIES[stage];$('code').innerHTML=CODES[stage];
+  drawAll();
+}
+function setStage(s){stage=Math.max(0,Math.min(4,s));fill=stage>1?N*N:0;chunkHl=stage===4?0:-1;renderUI();}
+function tick(){
+  if(stage===1&&fill<N*N){fill+=1;renderUI();}
+  else if(stage===4){chunkHl=(chunkHl+1)%2;renderUI();}
+  else if(stage<4){stage++;fill=stage===1?0:N*N;chunkHl=stage===4?0:-1;renderUI();}
+  else{stopPlay();return;}
+  if(timer)timer=setTimeout(tick,(stage===1?90:900)/speed);
+}
+function play(){if(timer){stopPlay();return;}
+  if(stage===4){stage=0;fill=0;chunkHl=-1;}
+  $('play').textContent='⏸ Pause';renderUI();timer=setTimeout(tick,400/speed);}
+function stopPlay(){if(timer)clearTimeout(timer);timer=null;$('play').textContent='▶ Play';}
+
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopPlay();setStage(+c.dataset.s);});
+$('play').onclick=play;
+$('fwd').onclick=()=>{stopPlay();setStage(stage+1);};
+$('back').onclick=()=>{stopPlay();setStage(stage-1);};
+$('reset').onclick=()=>{stopPlay();setStage(0);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('qsel').onchange=()=>{makeClouds();renderUI();};
+
+makeClouds();setStage(0);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

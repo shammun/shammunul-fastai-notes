@@ -1,0 +1,261 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mean &amp; Covariance Lab</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  select{font-family:inherit;font-size:12px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:4px 7px;background:#fff;cursor:pointer;}
+  input[type=range]{width:100px;accent-color:var(--ac);}
+  .wrap{max-width:1060px;margin:0 auto;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-start;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  #lab{display:block;border-radius:8px;background:#fdfeff;cursor:grab;touch-action:none;}
+  .side{width:360px;max-width:100%;}
+  table.mat{border-collapse:collapse;font-family:monospace;font-size:12.5px;margin:4px auto;}
+  table.mat td{border:1px solid var(--line);padding:4px 10px;text-align:center;min-width:64px;cursor:pointer;transition:background .12s;}
+  table.mat td.hov{background:#ece7fb;outline:2px solid var(--ac);}
+  .cap2{font-size:12px;font-weight:700;margin:6px 0 2px;text-align:center;}
+  .hint{font-size:11px;color:var(--soft);text-align:center;margin:2px 0 6px;line-height:1.45;}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1060px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>μ and Σ: two numbers* that describe a whole cloud</h1>
+<p class="sub">FID never looks at individual feature vectors — only at each cloud's <b>mean μ</b> (its center) and <b>covariance Σ</b> (its spread, stretch and tilt). Here each cloud lives in 2-D so Σ is a tiny 2×2 matrix you can actually read. <b>Drag a cloud</b> to move its mean, use the sliders to reshape it, and <b>hover the Σ entries</b> to see what each one controls. <span style="color:var(--soft)">(*OK — a 512-vector and a 512×512 matrix in the real notebook, but the idea is identical.)</span></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① The cloud of points</button>
+  <button class="chip" data-s="1">② μ = mean(0): the center</button>
+  <button class="chip" data-s="2">③ Σ = .T.cov(): the shape</button>
+  <button class="chip" data-s="3">④ Gaussian summary only</button>
+</div>
+
+<div class="selrow">
+  preset: <select id="preset">
+    <option value="match">generated ≈ real (good model)</option>
+    <option value="shift" selected>same shape, shifted mean</option>
+    <option value="shape">same mean, different shape</option>
+    <option value="both">different mean AND shape</option>
+  </select>
+  &nbsp;·&nbsp; edit: <select id="editSel">
+    <option value="g">🟠 generated cloud</option>
+    <option value="r">🟦 real cloud</option>
+  </select>
+  &nbsp; spread-x <input id="sx" type="range" min="8" max="70" value="30">
+  spread-y <input id="sy" type="range" min="8" max="70" value="18">
+  tilt <input id="rot" type="range" min="-90" max="90" value="20">
+</div>
+
+<div class="wrap">
+  <div class="card"><canvas id="lab" width="620" height="430"></canvas>
+    <div class="hint">drag a cloud to move it · scroll sliders to reshape the selected cloud</div></div>
+  <div class="card side">
+    <div class="cap2" style="color:var(--out)">REAL cloud</div>
+    <div style="font-family:monospace;font-size:12.5px;text-align:center">μ₁ = [<span id="rmx">0</span>, <span id="rmy">0</span>]</div>
+    <table class="mat" id="rmat"><tr><td data-k="xx">·</td><td data-k="xy">·</td></tr><tr><td data-k="xy2">·</td><td data-k="yy">·</td></tr></table>
+    <div class="cap2" style="color:var(--in)">GENERATED cloud</div>
+    <div style="font-family:monospace;font-size:12.5px;text-align:center">μ₂ = [<span id="gmx">0</span>, <span id="gmy">0</span>]</div>
+    <table class="mat" id="gmat"><tr><td data-k="xx">·</td><td data-k="xy">·</td></tr><tr><td data-k="xy2">·</td><td data-k="yy">·</td></tr></table>
+    <div class="hint" id="matHint">Σ[0,0] = variance along feature-x · Σ[1,1] = variance along feature-y · Σ[0,1] = Σ[1,0] = how the two features move together (the tilt!)</div>
+    <div style="text-align:center;font-family:monospace;font-weight:700;font-size:14px;background:#faf8ff;border:1.5px solid var(--ac);border-radius:9px;padding:6px" id="fidBox">FID₂D ≈ …</div>
+  </div>
+</div>
+
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b class="o">teal = real features</b> · <b class="i">orange = generated features</b> · <b class="a">solid dot = μ · dashed ellipses = 1σ and 2σ contours of Σ</b> · hover Σ cells to highlight what they control</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('lab'),ctx=cv.getContext('2d');
+const OUT='#16a3a3',IN='#f6921e',AC='#7b5cd6',SOFT='#5a6b86',LINE='#dde5f2';
+let stage=0,hovKey=null,hovCloud=null;
+
+let seed=5;function rnd(){seed=(seed*16807)%2147483647;return (seed-1)/2147483646;}
+function gauss(){const u1=Math.max(rnd(),1e-6),u2=rnd();return[Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2),Math.sqrt(-2*Math.log(u1))*Math.sin(2*Math.PI*u2)];}
+
+// cloud params: cx,cy in canvas coords; sx,sy std; rot degrees
+const clouds={
+  r:{cx:250,cy:230,sx:34,sy:20,rot:15,n:110,seed:41},
+  g:{cx:400,cy:170,sx:34,sy:20,rot:15,n:80,seed:77},
+};
+function pts(c){
+  seed=c.seed;const a=c.rot*Math.PI/180,res=[];
+  for(let i=0;i<c.n;i++){const[g1,g2]=gauss();const dx=g1*c.sx,dy=g2*c.sy;
+    res.push([c.cx+dx*Math.cos(a)-dy*Math.sin(a), c.cy+dx*Math.sin(a)+dy*Math.cos(a)]);}
+  return res;
+}
+function stats(P){let mx=0,my=0;P.forEach(p=>{mx+=p[0];my+=p[1];});mx/=P.length;my/=P.length;
+  let xx=0,yy=0,xy=0;P.forEach(p=>{const a=p[0]-mx,b=p[1]-my;xx+=a*a;yy+=b*b;xy+=a*b;});
+  const n=P.length-1;return{mx,my,xx:xx/n,yy:yy/n,xy:xy/n};}
+
+function eig(s){const tr=s.xx+s.yy,det=s.xx*s.yy-s.xy*s.xy;
+  const d=Math.sqrt(Math.max(tr*tr/4-det,0));
+  const l1=tr/2+d,l2=tr/2-d;
+  const ang=Math.abs(s.xy)<1e-9?(s.xx>=s.yy?0:Math.PI/2):Math.atan2(l1-s.xx,s.xy);
+  return{l1,l2,ang};}
+
+function sqrtm2(a,b,c,d){ // sqrt of 2x2 SPD [[a,b],[b,d]] (c unused, symmetric)
+  const tr=a+d,det=a*d-b*b;const s=Math.sqrt(Math.max(det,0)),t=Math.sqrt(Math.max(tr+2*s,1e-9));
+  return[[(a+s)/t,b/t],[b/t,(d+s)/t]];}
+function fid2d(s1,s2){
+  const dm=(s1.mx-s2.mx)**2+(s1.my-s2.my)**2;
+  // sqrtm(S1 S2): use sqrt of product via similarity — for 2x2 use formula on S1@S2 (may be non-symmetric but has real sqrt trace = sqrt of eigenvalues sum)
+  const A=[[s1.xx*s2.xx+s1.xy*s2.xy, s1.xx*s2.xy+s1.xy*s2.yy],[s1.xy*s2.xx+s1.yy*s2.xy, s1.xy*s2.xy+s1.yy*s2.yy]];
+  const tr=A[0][0]+A[1][1],det=A[0][0]*A[1][1]-A[0][1]*A[1][0];
+  const disc=Math.sqrt(Math.max(tr*tr/4-det,0));
+  const e1=Math.max(tr/2+disc,0),e2=Math.max(tr/2-disc,0);
+  const trSqrt=Math.sqrt(e1)+Math.sqrt(e2);
+  return dm+ (s1.xx+s1.yy)+(s2.xx+s2.yy) - 2*trSqrt;
+}
+
+function ellipsePath(st,k){const e=eig(st);
+  ctx.beginPath();ctx.ellipse(st.mx,st.my,Math.sqrt(Math.max(e.l1,0.01))*k,Math.sqrt(Math.max(e.l2,0.01))*k,e.ang,0,2*Math.PI);}
+
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  // axes grid
+  ctx.strokeStyle='#f1f5fb';ctx.lineWidth=1;
+  for(let x=0;x<cv.width;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,cv.height);ctx.stroke();}
+  for(let y=0;y<cv.height;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(cv.width,y);ctx.stroke();}
+  ctx.fillStyle=SOFT;ctx.font='11px "Segoe UI"';ctx.textAlign='left';
+  ctx.fillText('feature dimension 1 →',8,cv.height-8);
+  ctx.save();ctx.translate(12,120);ctx.rotate(-Math.PI/2);ctx.fillText('feature dimension 2 →',0,0);ctx.restore();
+
+  const showPts=stage<3, showMu=stage>=1, showSig=stage>=2;
+  [['r',OUT],['g',IN]].forEach(([k,col])=>{
+    const P=pts(clouds[k]),st=stats(P);
+    if(showPts){P.forEach(p=>{ctx.fillStyle=col+(k==='r'?'B0':'C4');ctx.beginPath();ctx.arc(p[0],p[1],3,0,7);ctx.fill();});}
+    if(showSig||stage===3){
+      // hover highlight: axis-aligned variance bars
+      ctx.setLineDash([6,4]);ctx.lineWidth=2;ctx.strokeStyle=col;
+      ellipsePath(st,1);ctx.stroke();ellipsePath(st,2);ctx.globalAlpha=0.55;ctx.stroke();ctx.globalAlpha=1;
+      ctx.setLineDash([]);
+      if(stage===3){ctx.globalAlpha=0.10;ctx.fillStyle=col;ellipsePath(st,2);ctx.fill();ctx.globalAlpha=1;}
+      if(hovCloud===k&&hovKey){
+        ctx.strokeStyle=AC;ctx.lineWidth=3;
+        if(hovKey==='xx'){ctx.beginPath();ctx.moveTo(st.mx-Math.sqrt(st.xx)*2,st.my);ctx.lineTo(st.mx+Math.sqrt(st.xx)*2,st.my);ctx.stroke();}
+        if(hovKey==='yy'){ctx.beginPath();ctx.moveTo(st.mx,st.my-Math.sqrt(st.yy)*2);ctx.lineTo(st.mx,st.my+Math.sqrt(st.yy)*2);ctx.stroke();}
+        if(hovKey==='xy'||hovKey==='xy2'){const e=eig(st);
+          ctx.beginPath();ctx.moveTo(st.mx-Math.cos(e.ang)*Math.sqrt(e.l1)*2,st.my-Math.sin(e.ang)*Math.sqrt(e.l1)*2);
+          ctx.lineTo(st.mx+Math.cos(e.ang)*Math.sqrt(e.l1)*2,st.my+Math.sin(e.ang)*Math.sqrt(e.l1)*2);ctx.stroke();}
+      }
+    }
+    if(showMu){ctx.fillStyle=col;ctx.beginPath();ctx.arc(st.mx,st.my,6,0,7);ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(st.mx,st.my,6,0,7);ctx.stroke();
+      ctx.fillStyle=col;ctx.font='700 12px "Segoe UI"';ctx.textAlign='left';
+      ctx.fillText(k==='r'?'μ₁ (real)':'μ₂ (generated)',st.mx+10,st.my-8);}
+  });
+  if(stage>=1){ // mean-distance line
+    const s1=stats(pts(clouds.r)),s2=stats(pts(clouds.g));
+    ctx.strokeStyle=AC;ctx.lineWidth=1.5;ctx.setLineDash([3,4]);
+    ctx.beginPath();ctx.moveTo(s1.mx,s1.my);ctx.lineTo(s2.mx,s2.my);ctx.stroke();ctx.setLineDash([]);
+  }
+}
+
+function fmt(v){return (Math.round(v*10)/10).toFixed(1);}
+function updatePanel(){
+  const s1=stats(pts(clouds.r)),s2=stats(pts(clouds.g));
+  $('rmx').textContent=fmt(s1.mx);$('rmy').textContent=fmt(s1.my);
+  $('gmx').textContent=fmt(s2.mx);$('gmy').textContent=fmt(s2.my);
+  const fill=(tbl,s)=>{const td=tbl.querySelectorAll('td');
+    td[0].textContent=fmt(s.xx);td[1].textContent=fmt(s.xy);td[2].textContent=fmt(s.xy);td[3].textContent=fmt(s.yy);};
+  fill($('rmat'),s1);fill($('gmat'),s2);
+  $('fidBox').innerHTML='FID₂D ≈ <span style="color:'+AC+'">'+fid2d(s1,s2).toFixed(1)+'</span> &nbsp;<span style="font-weight:400;color:'+SOFT+';font-size:11px">(preview — full formula in the next viz)</span>';
+}
+
+const STORIES=[
+ '<b>① Every image became a point.</b> After feature extraction, the <b class="o">real set</b> and the <b class="i">generated set</b> are just two clouds of vectors. FID\'s whole job: say <em>how far apart these clouds are</em> — but comparing thousands of points against thousands of points directly is expensive and noisy. So first, we summarize.',
+ '<b>② μ = <code>feats.mean(0)</code>.</b> Average every point → one center per cloud (the solid dots). <code>.mean(0)</code> averages over dim 0 (the images), keeping the feature dimension: 10,000×512 → 512. Drag a cloud and watch its μ follow. The dashed purple line is the distance between the two means — the first ingredient of FID.',
+ '<b>③ Σ = <code>feats.T.cov()</code>.</b> The mean says <em>where</em>, covariance says <em>what shape</em>. Σ[0,0] and Σ[1,1] are the variances along each feature axis (hover them!), and the off-diagonal Σ[0,1] captures how the features co-vary — it is what <em>tilts</em> the ellipse. Two clouds can share a mean and still be wildly different shapes: try the "same mean, different shape" preset.',
+ '<b>④ The Gaussian leap of faith.</b> FID now <em>throws the points away</em> and keeps only (μ, Σ) — i.e. it pretends each cloud is a perfect Gaussian ellipse. That\'s why it\'s called the <b>Fréchet</b> distance: it is the exact distance between two Gaussians. If the true clouds aren\'t Gaussian (banana-shaped, multi-modal), FID can\'t see it — one reason KID exists.'
+];
+const CODES=[
+`<span class="cm"># after feature extraction:</span>
+feats.shape    <span class="cm"># [10000, 512]  real cloud</span>
+feats2.shape   <span class="cm"># [256, 512]    generated cloud</span>`,
+`<span class="cm"># the center of the cloud</span>
+<span class="hl">means = feats.<span class="fn">mean</span>(<span class="num">0</span>)     <span class="cm"># [512]  — one average value per feature</span></span>
+means.shape    <span class="cm"># torch.Size([512])</span>`,
+`<span class="cm"># the shape/spread of the cloud</span>
+<span class="hl">covs = feats.T.<span class="fn">cov</span>()      <span class="cm"># [512, 512]</span></span>
+<span class="cm"># covs[i,j] = how features i and j vary together</span>
+<span class="cm"># diagonal = each feature's own variance</span>`,
+`<span class="cm"># _calc_stats does both in one go — this pair IS the cloud, as far as FID cares</span>
+<span class="hl">def <span class="fn">_calc_stats</span>(feats):</span>
+<span class="hl">    feats = feats.squeeze()</span>
+<span class="hl">    return feats.<span class="fn">mean</span>(<span class="num">0</span>), feats.T.<span class="fn">cov</span>()</span>`];
+
+function renderUI(){
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===stage));
+  $('story').innerHTML=STORIES[stage];$('code').innerHTML=CODES[stage];
+  draw();updatePanel();
+}
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stage=+c.dataset.s;renderUI();});
+
+// presets
+$('preset').onchange=e=>{
+  const p=e.target.value;
+  Object.assign(clouds.r,{cx:250,cy:230,sx:34,sy:20,rot:15});
+  if(p==='match')Object.assign(clouds.g,{cx:255,cy:225,sx:33,sy:21,rot:14});
+  if(p==='shift')Object.assign(clouds.g,{cx:400,cy:170,sx:34,sy:20,rot:15});
+  if(p==='shape')Object.assign(clouds.g,{cx:252,cy:228,sx:14,sy:55,rot:-40});
+  if(p==='both')Object.assign(clouds.g,{cx:430,cy:300,sx:12,sy:50,rot:-55});
+  syncSliders();renderUI();
+};
+function syncSliders(){const c=clouds[$('editSel').value];$('sx').value=c.sx;$('sy').value=c.sy;$('rot').value=c.rot;}
+$('editSel').onchange=syncSliders;
+$('sx').oninput=e=>{clouds[$('editSel').value].sx=+e.target.value;renderUI();};
+$('sy').oninput=e=>{clouds[$('editSel').value].sy=+e.target.value;renderUI();};
+$('rot').oninput=e=>{clouds[$('editSel').value].rot=+e.target.value;renderUI();};
+
+// drag clouds
+let dragK=null;
+function evPos(e){const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*cv.width/r.width,(e.clientY-r.top)*cv.height/r.height];}
+cv.addEventListener('pointerdown',e=>{const[x,y]=evPos(e);
+  let best=null,bd=1e9;
+  for(const k of['r','g']){const c=clouds[k];const d=(c.cx-x)**2+(c.cy-y)**2;if(d<bd){bd=d;best=k;}}
+  if(bd<130*130){dragK=best;cv.setPointerCapture(e.pointerId);}});
+cv.addEventListener('pointermove',e=>{if(!dragK)return;const[x,y]=evPos(e);
+  clouds[dragK].cx=Math.max(40,Math.min(cv.width-40,x));clouds[dragK].cy=Math.max(40,Math.min(cv.height-40,y));renderUI();});
+cv.addEventListener('pointerup',()=>dragK=null);
+
+// hover matrix
+['rmat','gmat'].forEach(id=>{
+  $(id).querySelectorAll('td').forEach(td=>{
+    td.onmouseenter=()=>{hovKey=td.dataset.k;hovCloud=id[0];td.classList.add('hov');
+      const msgs={xx:'Σ[0,0]: variance along feature-1 (horizontal spread) — highlighted bar',
+                  yy:'Σ[1,1]: variance along feature-2 (vertical spread) — highlighted bar',
+                  xy:'Σ[0,1]: covariance — positive tilts the ellipse ↗, negative tilts ↘',
+                  xy2:'Σ[1,0]: same as Σ[0,1] — covariance matrices are always symmetric'};
+      $('matHint').textContent=msgs[hovKey];draw();};
+    td.onmouseleave=()=>{td.classList.remove('hov');hovKey=null;hovCloud=null;
+      $('matHint').textContent='Σ[0,0] = variance along feature-x · Σ[1,1] = variance along feature-y · Σ[0,1] = Σ[1,0] = how the two features move together (the tilt!)';draw();};
+  });
+});
+
+$('preset').value='shift';syncSliders();renderUI();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

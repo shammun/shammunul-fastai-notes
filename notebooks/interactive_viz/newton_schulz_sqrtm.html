@@ -1,0 +1,214 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newton–Schulz Matrix Square Root</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  select{font-family:inherit;font-size:12px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:4px 7px;background:#fff;cursor:pointer;}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:stretch;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  table.mat{border-collapse:collapse;font-family:monospace;font-size:13px;margin:2px auto;}
+  table.mat td{border:1px solid var(--line);padding:6px 10px;text-align:center;min-width:70px;transition:background .2s;}
+  #err{display:block;}
+  .iterlab{font-family:monospace;font-weight:700;color:var(--ac);font-size:14px;text-align:center;margin-top:4px;}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1060px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>√A for matrices: watch Newton–Schulz converge</h1>
+<p class="sub">FID needs <b>√(Σ₁Σ₂)</b> — a matrix Y such that <b>Y·Y = A</b>. You can't just square-root each entry! <code>scipy.linalg.sqrtm</code> does it on CPU (slow for 512×512); the notebook's <code>_sqrtm_newton_schulz</code> does it with pure matrix multiplies, so it runs on the <b>GPU</b>. Step through the iterations on a small matrix you can actually read, or press Play. Click any stage chip or a point on the error curve to jump.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Normalize A</button>
+  <button class="chip" data-s="1">② Iterate Y, Z</button>
+  <button class="chip" data-s="2">③ Rescale → √A</button>
+  <button class="chip" data-s="3">④ Check: Y·Y ≈ A</button>
+</div>
+
+<div class="selrow">
+  matrix A: <select id="msel">
+    <option value="easy">[[4,1],[1,3]] — friendly SPD</option>
+    <option value="cov">[[10,6],[6,8]] — covariance-like</option>
+    <option value="stiff">[[20,2],[2,1]] — ill-conditioned (slower!)</option>
+  </select>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ Iter</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Iter ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="cap" style="color:var(--in)">Input A = Σ₁Σ₂ (toy 2×2)<small>the matrix we want the square root of</small></div>
+    <table class="mat" id="tA"></table>
+    <div class="cap" style="margin-top:10px;color:var(--ac)">Y<sub>k</sub> — current guess for √A<small>updated every iteration</small></div>
+    <table class="mat" id="tY"></table>
+    <div class="iterlab" id="iterlab">iteration k = 0</div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--out)">Y<sub>k</sub>·Y<sub>k</sub> — does it hit A yet?<small>green cells = entry within 1% of A</small></div>
+    <table class="mat" id="tYY"></table>
+    <div class="cap" style="margin-top:10px">‖Y<sub>k</sub>Y<sub>k</sub> − A‖ error <small>log scale · click a point to jump to that iteration</small></div>
+    <canvas id="err" width="360" height="150"></canvas>
+  </div>
+</div>
+
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b class="a">purple = the evolving guess Y</b> · <b class="o">teal/green = converged entries</b> · Newton–Schulz only needs matmuls → perfect for GPU</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const AC='#7b5cd6',OUT='#16a3a3',SOFT='#5a6b86',NEG='#d64545';
+let stage=0,iter=0,timer=null,speed=1;
+const MATS={easy:[[4,1],[1,3]],cov:[[10,6],[6,8]],stiff:[[20,2],[2,1]]};
+let A=MATS.easy;
+
+// matrix helpers (2x2)
+const mm=(P,Q)=>[[P[0][0]*Q[0][0]+P[0][1]*Q[1][0],P[0][0]*Q[0][1]+P[0][1]*Q[1][1]],
+                 [P[1][0]*Q[0][0]+P[1][1]*Q[1][0],P[1][0]*Q[0][1]+P[1][1]*Q[1][1]]];
+const sm=(P,s)=>P.map(r=>r.map(v=>v*s));
+const sub=(P,Q)=>P.map((r,i)=>r.map((v,j)=>v-Q[i][j]));
+const I=[[1,0],[0,1]];
+const fro=P=>Math.sqrt(P[0][0]**2+P[0][1]**2+P[1][0]**2+P[1][1]**2);
+
+// precompute Newton-Schulz trajectory
+let traj=[];
+function computeTraj(){
+  traj=[];
+  const nA=fro(A);
+  let Y=sm(A,1/nA), Z=I.map(r=>r.slice());
+  traj.push({Y:sm(Y,Math.sqrt(nA)),err:fro(sub(mm(sm(Y,Math.sqrt(nA)),sm(Y,Math.sqrt(nA))),A))});
+  for(let k=0;k<24;k++){
+    const T=sub(sm(I,3),mm(Z,Y));       // (3I - ZY)
+    const Yn=sm(mm(Y,T),0.5), Zn=sm(mm(T,Z),0.5);
+    Y=Yn;Z=Zn;
+    const Ys=sm(Y,Math.sqrt(nA));
+    traj.push({Y:Ys,err:fro(sub(mm(Ys,Ys),A))});
+  }
+}
+function fmt(v){return (Math.abs(v)<0.005?0:v).toFixed(3).replace(/\.000$/,'.0');}
+function fillMat(el,M,hlFn){
+  el.innerHTML=M.map((r,i)=>'<tr>'+r.map((v,j)=>`<td style="${hlFn?hlFn(i,j,v):''}">${fmt(v)}</td>`).join('')+'</tr>').join('');
+}
+
+function draw(){
+  const t=traj[Math.min(iter,traj.length-1)];
+  fillMat($('tA'),A);
+  fillMat($('tY'),t.Y,()=>'background:#faf8ff;color:'+AC+';font-weight:700');
+  const YY=mm(t.Y,t.Y);
+  fillMat($('tYY'),YY,(i,j,v)=>{
+    const ok=Math.abs(v-A[i][j])<=Math.abs(A[i][j])*0.01+0.01;
+    return ok?'background:#e2f6f2;color:'+OUT+';font-weight:700':'background:#fdf1ef;color:'+NEG;
+  });
+  $('iterlab').textContent='iteration k = '+Math.min(iter,traj.length-1)+'   ·   error = '+t.err.toExponential(2);
+  // error curve
+  const cvs=$('err'),c=cvs.getContext('2d');c.clearRect(0,0,cvs.width,cvs.height);
+  const errs=traj.map(x=>Math.max(x.err,1e-8));
+  const lmin=Math.log10(1e-8),lmax=Math.log10(Math.max(...errs)*1.5);
+  const X=k=>20+k*(cvs.width-35)/(traj.length-1);
+  const Y=e=>12+(lmax-Math.log10(e))/(lmax-lmin)*(cvs.height-30);
+  c.strokeStyle='#e6ecf7';c.lineWidth=1;
+  for(let g=0;g>=-8;g-=2){const y=Y(Math.pow(10,g));c.beginPath();c.moveTo(20,y);c.lineTo(cvs.width-15,y);c.stroke();
+    c.fillStyle=SOFT;c.font='9px monospace';c.textAlign='right';c.fillText('1e'+g,19,y+3);}
+  c.strokeStyle=AC;c.lineWidth=2;c.beginPath();
+  errs.forEach((e,k)=>{k?c.lineTo(X(k),Y(e)):c.moveTo(X(k),Y(e));});c.stroke();
+  errs.forEach((e,k)=>{c.fillStyle=k===Math.min(iter,traj.length-1)?'#f6921e':AC;
+    c.beginPath();c.arc(X(k),Y(e),k===Math.min(iter,traj.length-1)?5:2.5,0,7);c.fill();});
+}
+
+const STORIES=[
+ '<b>① Normalize.</b> Newton–Schulz only converges if A isn\'t too big, so we first divide A by its norm: <code>Y₀ = A/‖A‖</code>, and set a companion matrix <code>Z₀ = I</code>. Z will quietly converge to the <em>inverse</em> square root while Y converges to the square root — they help each other.',
+ '<b>② Iterate.</b> Each step computes <code>T = 3I − Z·Y</code>, then <code>Y ← ½·Y·T</code> and <code>Z ← ½·T·Z</code>. Nothing but matrix multiplies — no eigendecompositions, no CPU round-trips. Watch Y·Y (right panel) lock onto A entry by entry, and the error curve fall off a cliff: convergence is <em>quadratic</em> (the number of correct digits roughly doubles each step). Try the ill-conditioned matrix to see it struggle longer.',
+ '<b>③ Rescale.</b> We normalized at the start, so we multiply back: <code>√A = Y · √‖A‖</code>. (The panels here already show the rescaled Y so the comparison with A is direct.)',
+ '<b>④ Sanity check.</b> Multiply the answer by itself: Y·Y should reproduce A. Green cells = within 1%. In the notebook this is exactly what lets <code>_calc_fid</code> compute Tr(√(Σ₁Σ₂)) on the GPU — for 512×512 covariance matrices, 100 iterations of pure matmuls beat shipping the matrix to scipy on the CPU.'
+];
+const CODES=[
+`def <span class="fn">_sqrtm_newton_schulz</span>(mat, num_iters=<span class="num">100</span>):
+<span class="hl">    mat_nrm = mat.<span class="fn">norm</span>()          <span class="cm"># ① compute ‖A‖</span></span>
+<span class="hl">    mat = mat.<span class="fn">div</span>(mat_nrm)        <span class="cm"># ① Y₀ = A / ‖A‖  (safe starting point)</span></span>
+<span class="hl">    z = torch.<span class="fn">eye</span>(*mat.shape)     <span class="cm"># ① Z₀ = I</span></span>`,
+`    for i in <span class="fn">range</span>(num_iters):
+<span class="hl">        t = (<span class="num">3</span>*I - z@mat) / <span class="num">2</span>      <span class="cm"># ② T = (3I − ZY)/2</span></span>
+<span class="hl">        mat = mat @ t             <span class="cm"># ② Y ← Y·T   (→ √A/‖A‖^½)</span></span>
+<span class="hl">        z   = t @ z               <span class="cm"># ② Z ← T·Z   (→ inverse root)</span></span>
+        <span class="cm"># quadratic convergence: error² each step</span>`,
+`<span class="hl">    return mat * mat_nrm.<span class="fn">sqrt</span>()   <span class="cm"># ③ undo the normalization</span></span>
+<span class="cm"># result: a matrix Y with  Y @ Y ≈ original A</span>`,
+`<span class="cm"># ④ used inside _calc_fid — GPU-friendly √(Σ₁Σ₂):</span>
+<span class="hl">csr = <span class="fn">_sqrtm_newton_schulz</span>(c1 @ c2)</span>
+fid = (m1-m2).<span class="fn">pow</span>(<span class="num">2</span>).sum() + c1.<span class="fn">trace</span>() + c2.<span class="fn">trace</span>() - <span class="num">2</span>*csr.<span class="fn">trace</span>()`];
+
+function renderUI(){
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===stage));
+  $('story').innerHTML=STORIES[stage];$('code').innerHTML=CODES[stage];
+  draw();
+}
+function setStage(s){stage=Math.max(0,Math.min(3,s));
+  if(stage===0)iter=0;
+  if(stage===2||stage===3)iter=traj.length-1;
+  renderUI();}
+function tick(){
+  iter++;
+  if(iter>=traj.length-1){iter=traj.length-1;stage=3;stopPlay();renderUI();return;}
+  if(iter>0&&stage<1)stage=1;
+  renderUI();
+  if(timer)timer=setTimeout(()=>requestAnimationFrame(tick),400/speed);
+}
+function play(){if(timer){stopPlay();return;}
+  if(iter>=traj.length-1){iter=0;stage=0;}
+  $('play').textContent='⏸ Pause';timer=setTimeout(tick,300/speed);renderUI();}
+function stopPlay(){if(timer)clearTimeout(timer);timer=null;$('play').textContent='▶ Play';}
+
+$('err').addEventListener('click',e=>{
+  const r=$('err').getBoundingClientRect();
+  const x=(e.clientX-r.left)*$('err').width/r.width;
+  const k=Math.round((x-20)/(($('err').width-35)/(traj.length-1)));
+  if(k>=0&&k<traj.length){stopPlay();iter=k;stage=k===0?0:(k===traj.length-1?3:1);renderUI();}
+});
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopPlay();setStage(+c.dataset.s);});
+$('play').onclick=play;
+$('fwd').onclick=()=>{stopPlay();iter=Math.min(iter+1,traj.length-1);if(iter>0&&stage<1)stage=1;if(iter===traj.length-1)stage=3;renderUI();};
+$('back').onclick=()=>{stopPlay();iter=Math.max(iter-1,0);if(iter===0)stage=0;else if(stage>1)stage=1;renderUI();};
+$('reset').onclick=()=>{stopPlay();iter=0;stage=0;renderUI();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('msel').onchange=e=>{stopPlay();A=MATS[e.target.value];computeTraj();iter=0;stage=0;renderUI();};
+
+computeTraj();renderUI();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

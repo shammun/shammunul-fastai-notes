@@ -1,0 +1,210 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The FID Formula, Term by Term</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .formula{max-width:760px;margin:0 auto 8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 14px;box-shadow:0 6px 16px rgba(123,92,214,.08);
+    font-family:"SF Mono",Consolas,monospace;font-size:14px;text-align:center;line-height:1.7;}
+  .term{padding:2px 6px;border-radius:7px;cursor:pointer;border:2px solid transparent;transition:all .15s;display:inline-block;}
+  .term:hover{border-color:var(--line);}
+  .term.on{border-color:var(--ac);background:#f4efff;box-shadow:0 3px 10px rgba(123,92,214,.2);}
+  .tm{color:var(--neg);} .tc{color:var(--out);} .tt{color:var(--ac);font-weight:700;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  input[type=range]{width:120px;accent-color:var(--ac);}
+  .rv{font-family:monospace;font-weight:700;color:var(--ac);min-width:36px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-start;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  #plane{display:block;border-radius:8px;background:#fdfeff;}
+  .bars{width:360px;max-width:100%;}
+  .bar{margin:9px 0;}
+  .bar .lab{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:3px;}
+  .bar .trk{height:20px;background:#f1f4fb;border-radius:8px;overflow:hidden;}
+  .bar .fill{height:100%;border-radius:8px;transition:width .25s;}
+  .tot{margin-top:12px;text-align:center;font-family:monospace;font-weight:700;font-size:17px;background:#faf8ff;border:2px solid var(--ac);border-radius:10px;padding:8px;}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1060px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>FID = "how far apart?" + "how differently shaped?"</h1>
+<p class="sub">The Fréchet distance between two Gaussians splits into exactly two ideas. <b style="color:var(--neg)">Term ①</b> punishes clouds whose <em>centers</em> disagree; <b style="color:var(--out)">Term ②</b> punishes clouds whose <em>shapes</em> disagree. Move the sliders (or click a term in the formula) and watch each term's bar respond — and notice how term ② goes to zero only when the ellipses match in size <em>and</em> orientation.</p>
+
+<div class="formula">
+  FID&nbsp;=&nbsp;<span class="term tm on" id="term0">‖μ₁ − μ₂‖²</span>&nbsp;+&nbsp;<span class="term tc" id="term1">Tr( Σ₁ + Σ₂ − 2·<span class="tt">√(Σ₁Σ₂)</span> )</span>
+</div>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Mean term</button>
+  <button class="chip" data-s="1">② Covariance term</button>
+  <button class="chip" data-s="2">③ Why the √(Σ₁Σ₂)?</button>
+  <button class="chip" data-s="3">④ Put it together</button>
+</div>
+
+<div class="selrow">
+  <b style="color:var(--in)">generated cloud:</b>
+  Δ mean <input id="dm" type="range" min="0" max="120" value="45"><span class="rv" id="dmv">45</span>
+  spread <input id="sp" type="range" min="10" max="60" value="26"><span class="rv" id="spv2">26</span>
+  tilt <input id="ro" type="range" min="-90" max="90" value="30"><span class="rv" id="rov">30°</span>
+  <button class="chip" id="perfect" style="border-color:var(--out);color:var(--out)">✨ make it perfect (FID→0)</button>
+</div>
+
+<div class="wrap">
+  <div class="card"><canvas id="plane" width="560" height="380"></canvas></div>
+  <div class="card bars">
+    <div class="bar"><div class="lab"><span style="color:var(--neg)">① ‖μ₁−μ₂‖² &nbsp;(means apart)</span><span id="v0">0</span></div>
+      <div class="trk"><div class="fill" id="b0" style="background:var(--neg)"></div></div></div>
+    <div class="bar"><div class="lab"><span style="color:var(--out)">② Tr(Σ₁+Σ₂−2√(Σ₁Σ₂)) &nbsp;(shapes differ)</span><span id="v1">0</span></div>
+      <div class="trk"><div class="fill" id="b1" style="background:var(--out)"></div></div></div>
+    <div class="tot" id="tot">FID = …</div>
+    <div style="font-size:11.5px;color:var(--soft);line-height:1.5;margin-top:8px" id="barNote">
+      Both terms are ≥ 0, so FID = 0 only when BOTH are zero: same center <em>and</em> same shape.
+    </div>
+  </div>
+</div>
+
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b class="o">teal = real Gaussian (fixed)</b> · <b class="i">orange = generated Gaussian (you control it)</b> · <b class="a">purple = the cross-term √(Σ₁Σ₂) ellipse</b></p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('plane'),ctx=cv.getContext('2d');
+const OUT='#16a3a3',IN='#f6921e',AC='#7b5cd6',NEG='#d64545',SOFT='#5a6b86';
+let stage=0;
+
+// real cloud fixed
+const R={cx:200,cy:210,sx:30,sy:16,rot:20};
+// generated controlled by sliders
+function G(){
+  const dm=+$('dm').value, sp=+$('sp').value, ro=+$('ro').value;
+  return{cx:R.cx+dm*0.9,cy:R.cy-dm*0.45,sx:sp,sy:Math.max(8,sp*16/30),rot:ro};
+}
+function cov(c){const a=c.rot*Math.PI/180,co=Math.cos(a),si=Math.sin(a);
+  const vx=c.sx*c.sx,vy=c.sy*c.sy;
+  return{xx:vx*co*co+vy*si*si, yy:vx*si*si+vy*co*co, xy:(vx-vy)*si*co};}
+function trSqrtProd(s1,s2){
+  const A=[[s1.xx*s2.xx+s1.xy*s2.xy, s1.xx*s2.xy+s1.xy*s2.yy],[s1.xy*s2.xx+s1.yy*s2.xy, s1.xy*s2.xy+s1.yy*s2.yy]];
+  const tr=A[0][0]+A[1][1],det=A[0][0]*A[1][1]-A[0][1]*A[1][0];
+  const disc=Math.sqrt(Math.max(tr*tr/4-det,0));
+  return Math.sqrt(Math.max(tr/2+disc,0))+Math.sqrt(Math.max(tr/2-disc,0));
+}
+function terms(){
+  const g=G(),s1=cov(R),s2=cov(g);
+  const t0=(R.cx-g.cx)**2+(R.cy-g.cy)**2;
+  const t1=(s1.xx+s1.yy)+(s2.xx+s2.yy)-2*trSqrtProd(s1,s2);
+  return{t0,t1:Math.max(t1,0),g,s1,s2};
+}
+
+function drawEll(c,col,fill,dash){
+  const a=c.rot*Math.PI/180;
+  [1,2].forEach(k=>{
+    ctx.beginPath();ctx.ellipse(c.cx,c.cy,c.sx*k,c.sy*k,a,0,2*Math.PI);
+    if(fill&&k===2){ctx.globalAlpha=0.10;ctx.fillStyle=col;ctx.fill();ctx.globalAlpha=1;}
+    ctx.strokeStyle=col;ctx.lineWidth=k===1?2.5:1.5;
+    if(dash)ctx.setLineDash([6,4]);ctx.stroke();ctx.setLineDash([]);
+  });
+  ctx.fillStyle=col;ctx.beginPath();ctx.arc(c.cx,c.cy,5,0,7);ctx.fill();
+}
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.strokeStyle='#f1f5fb';for(let x=0;x<cv.width;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,cv.height);ctx.stroke();}
+  for(let y=0;y<cv.height;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(cv.width,y);ctx.stroke();}
+  const{g}=terms();
+  drawEll(R,OUT,true,false);
+  drawEll(g,IN,true,false);
+  ctx.font='700 12px "Segoe UI"';ctx.textAlign='left';
+  ctx.fillStyle=OUT;ctx.fillText('real (μ₁, Σ₁)',R.cx-45,R.cy+R.sy*2+18);
+  ctx.fillStyle=IN;ctx.fillText('generated (μ₂, Σ₂)',g.cx-55,g.cy-g.sx-14);
+  if(stage===0||stage===3){ // mean distance
+    ctx.strokeStyle=NEG;ctx.lineWidth=2.5;ctx.setLineDash([2,4]);
+    ctx.beginPath();ctx.moveTo(R.cx,R.cy);ctx.lineTo(g.cx,g.cy);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=NEG;ctx.font='700 12px "Segoe UI"';
+    ctx.fillText('‖μ₁−μ₂‖',(R.cx+g.cx)/2-25,(R.cy+g.cy)/2-8);
+  }
+  if(stage===2){ // sqrt(S1 S2) illustration: geometric-mean ellipse at midpoint
+    const s1=cov(R),s2=cov(g);
+    // draw a "geometric mean" ellipse (approx): average angles/sizes via sqrt of eigen products — illustrative
+    const mid={cx:(R.cx+g.cx)/2,cy:(R.cy+g.cy)/2,
+      sx:Math.sqrt(R.sx*g.sx),sy:Math.sqrt(R.sy*g.sy),rot:(R.rot+g.rot)/2};
+    ctx.setLineDash([3,3]);
+    const a=mid.rot*Math.PI/180;
+    ctx.beginPath();ctx.ellipse(mid.cx,mid.cy,mid.sx*2,mid.sy*2,a,0,2*Math.PI);
+    ctx.strokeStyle=AC;ctx.lineWidth=2.5;ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=AC;ctx.font='700 12px "Segoe UI"';
+    ctx.fillText('√(Σ₁Σ₂) — the "geometric mean" shape',mid.cx-90,mid.cy+mid.sx*2+16);
+  }
+}
+
+function fmtN(v){return v>=1000?v.toFixed(0):v.toFixed(1);}
+function updateBars(){
+  const{t0,t1}=terms();
+  const cap=15000;
+  $('b0').style.width=Math.min(t0/cap*100,100)+'%';
+  $('b1').style.width=Math.min(t1/cap*100*6,100)+'%';
+  $('v0').textContent=fmtN(t0);$('v1').textContent=fmtN(t1);
+  $('tot').innerHTML='FID₂D = <span style="color:'+NEG+'">'+fmtN(t0)+'</span> + <span style="color:'+OUT+'">'+fmtN(t1)+'</span> = <span style="color:'+AC+'">'+fmtN(t0+t1)+'</span>';
+  $('dmv').textContent=$('dm').value;$('spv2').textContent=$('sp').value;$('rov').textContent=$('ro').value+'°';
+}
+
+const STORIES=[
+ '<b>① The mean term — squared distance between centers.</b> <code>(m1−m2).pow(2).sum()</code>: subtract the two 512-D mean vectors, square, add up. If your generator produces, say, systematically darker images, its feature mean drifts and this term explodes. Slide <b>Δ mean</b> to feel it — it grows <em>quadratically</em> (double the distance → 4× the penalty).',
+ '<b>② The covariance term — mismatch of shapes.</b> Set Δ mean to 0: the term-① bar dies, but FID can still be large! Now change <b>spread</b> or <b>tilt</b>: Tr(Σ₁)+Tr(Σ₂) adds the total variance of both clouds, and 2·Tr(√(Σ₁Σ₂)) subtracts their "shared" variance. When shapes match perfectly, the subtraction cancels everything and the term hits 0. A generator with too little variety (mode collapse) shrinks Σ₂ → this term catches it.',
+ '<b>③ Why a matrix square root?</b> For scalars, a²+b²−2ab = (a−b)² — the −2ab cross-term makes the difference a proper distance. For matrices, the analogue of "ab" is <b class="a">√(Σ₁Σ₂)</b>, a matrix "geometric mean" of the two shapes (dashed purple ellipse). It is the only piece that needs <code>sqrtm</code> — the whole reason Newton–Schulz appears in this notebook.',
+ '<b>④ All together.</b> FID = center mismatch + shape mismatch. Click <b>✨ make it perfect</b>: both terms vanish and FID→0. Real runs never reach 0 — even two halves of the <em>real</em> dataset give FID ≈ 6.6 in the notebook, because μ and Σ are <em>estimated</em> from finite samples. That estimation error is FID\'s notorious bias, coming up two visualizations from now.'
+];
+const CODES=[
+`def <span class="fn">_calc_fid</span>(m1, c1, m2, c2):
+    csr = tensor(linalg.<span class="fn">sqrtm</span>(c1@c2, blocksize=<span class="num">256</span>).real)
+<span class="hl">    return (((m1-m2)**<span class="num">2</span>).<span class="fn">sum</span>() +  <span class="cm"># ← ① squared mean distance</span></span>
+            c1.<span class="fn">trace</span>() + c2.<span class="fn">trace</span>() - <span class="num">2</span>*csr.<span class="fn">trace</span>())`,
+`def <span class="fn">_calc_fid</span>(m1, c1, m2, c2):
+    csr = tensor(linalg.<span class="fn">sqrtm</span>(c1@c2, blocksize=<span class="num">256</span>).real)
+    return (((m1-m2)**<span class="num">2</span>).sum() +
+<span class="hl">            c1.<span class="fn">trace</span>() + c2.<span class="fn">trace</span>() - <span class="num">2</span>*csr.<span class="fn">trace</span>())  <span class="cm"># ← ② shape mismatch</span></span>`,
+`def <span class="fn">_calc_fid</span>(m1, c1, m2, c2):
+<span class="hl">    csr = tensor(linalg.<span class="fn">sqrtm</span>(c1@c2, blocksize=<span class="num">256</span>).real)  <span class="cm"># ← ③ the matrix √</span></span>
+    <span class="cm"># scipy on CPU — or _sqrtm_newton_schulz(c1@c2) on GPU</span>
+    return (((m1-m2)**<span class="num">2</span>).sum() + c1.trace() + c2.trace() - <span class="num">2</span>*csr.trace())`,
+`<span class="cm"># ④ in the notebook:</span>
+s1, s2 = <span class="fn">_calc_stats</span>(feats), <span class="fn">_calc_stats</span>(feats2)
+<span class="hl"><span class="fn">_calc_fid</span>(*s1, *s2)     <span class="cm"># → 33.83 for our DDPM samples</span></span>
+<span class="cm"># sanity check on real images alone → ≈ 6.6, not 0!</span>`];
+
+function renderUI(){
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===stage));
+  $('term0').classList.toggle('on',stage===0||stage===3);
+  $('term1').classList.toggle('on',stage>=1);
+  $('story').innerHTML=STORIES[stage];$('code').innerHTML=CODES[stage];
+  draw();updateBars();
+}
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stage=+c.dataset.s;renderUI();});
+$('term0').onclick=()=>{stage=0;renderUI();};
+$('term1').onclick=()=>{stage=1;renderUI();};
+['dm','sp','ro'].forEach(id=>$(id).oninput=()=>{draw();updateBars();});
+$('perfect').onclick=()=>{$('dm').value=0;$('sp').value=30;$('ro').value=20;stage=3;renderUI();};
+
+renderUI();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

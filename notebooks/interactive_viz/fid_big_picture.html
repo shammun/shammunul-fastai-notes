@@ -1,0 +1,331 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FID &amp; KID: The Big Picture</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .stage-wrap{max-width:1080px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  #pipe{display:block;width:100%;height:auto;}
+  .story{max-width:900px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;color:var(--ink);box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b.i{color:var(--in);} .story b.o{color:var(--out);} .story b.a{color:var(--ac);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:900px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}
+  .code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>FID &amp; KID: comparing <em>distributions</em>, not pixels</h1>
+<p class="sub">To score a generative model we never compare images one-by-one. Instead <b style="color:var(--out)">real images</b> and <b style="color:var(--in)">generated images</b> are both pushed through the <b style="color:var(--ac)">same feature extractor</b>, which turns each image into a 512-number vector. FID/KID then measure how far apart the two <em>clouds of vectors</em> sit. Click a stage chip to jump, click inside the pipeline, or press Play.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Two sets of images</button>
+  <button class="chip" data-s="1">② Extract features</button>
+  <button class="chip" data-s="2">③ Two feature clouds</button>
+  <button class="chip" data-s="3">④ Summarize: μ and Σ</button>
+  <button class="chip" data-s="4">⑤ Compare → FID / KID</button>
+</div>
+
+<div class="selrow">
+  generator quality: <select id="qsel">
+    <option value="good">well-trained DDPM (clouds overlap)</option>
+    <option value="mid" selected>decent DDPM (FID ≈ 34)</option>
+    <option value="bad">under-trained (clouds far apart)</option>
+  </select>
+  &nbsp;·&nbsp; speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="stage-wrap card"><canvas id="pipe" width="1060" height="430"></canvas></div>
+
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b class="o">teal = real data path</b> · <b class="i">orange = generated data path</b> · <b class="a">purple = shared machinery (extractor, statistics, metric)</b></p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('pipe'),ctx=cv.getContext('2d');
+const C={ink:'#25324a',soft:'#5a6b86',line:'#dde5f2',IN:'#f6921e',OUT:'#16a3a3',AC:'#7b5cd6',neg:'#d64545'};
+let stage=0,anim=0,timer=null,speed=1,quality='mid';
+
+// deterministic pseudo-random
+let seed=7;function rnd(){seed=(seed*16807)%2147483647;return (seed-1)/2147483646;}
+function reseed(s){seed=s;}
+
+// tiny 8x8 "fashion" sprites (1 = ink)
+const SPRITES=[
+ [0,0,1,1,1,1,0,0, 0,1,1,1,1,1,1,0, 1,1,0,1,1,0,1,1, 1,1,1,1,1,1,1,1, 0,1,1,1,1,1,1,0, 0,1,1,1,1,1,1,0, 0,1,1,1,1,1,1,0, 0,1,1,1,1,1,1,0], // shirt
+ [0,0,0,1,1,0,0,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,1,1,0,0,1,1,0, 0,1,1,0,0,1,1,0, 0,1,1,0,0,1,1,0, 0,1,1,0,0,1,1,0], // trouser
+ [0,0,0,0,0,0,0,0, 0,0,0,0,0,1,1,0, 0,0,0,1,1,1,1,0, 0,1,1,1,1,1,1,0, 1,1,1,1,1,1,1,0, 1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1, 0,0,0,0,0,0,0,0], // shoe
+ [0,1,1,0,0,1,1,0, 0,1,1,1,1,1,1,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0], // dress
+];
+
+function sprite(x,y,s,idx,col,noiseAmt){
+  const px=s/8,sp=SPRITES[idx%SPRITES.length];
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    let on=sp[r*8+c];
+    if(noiseAmt>0 && rnd()<noiseAmt) on=1-on;
+    ctx.fillStyle=on?col:'#f2f6fc';
+    ctx.fillRect(x+c*px,y+r*px,px-0.5,px-0.5);
+  }
+  ctx.strokeStyle=C.line;ctx.strokeRect(x,y,s,s);
+}
+
+// feature clouds (2D projection story)
+function cloudPts(cx,cy,sx,sy,rot,n,sd){
+  reseed(sd);const pts=[];
+  for(let i=0;i<n;i++){
+    // Box-Muller
+    const u1=Math.max(rnd(),1e-6),u2=rnd();
+    const g1=Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
+    const g2=Math.sqrt(-2*Math.log(u1))*Math.sin(2*Math.PI*u2);
+    const dx=g1*sx,dy=g2*sy;
+    pts.push([cx+dx*Math.cos(rot)-dy*Math.sin(rot), cy+dx*Math.sin(rot)+dy*Math.cos(rot)]);
+  }
+  return pts;
+}
+function cloudCfg(){
+  if(quality==='good') return {gx:0,gy:0,gsx:26,gsy:16,fid:'7.2',kid:'0.004'};
+  if(quality==='bad')  return {gx:95,gy:-45,gsx:14,gsy:34,fid:'182.5',kid:'0.31'};
+  return {gx:38,gy:-18,gsx:20,gsy:22,fid:'33.8',kid:'0.056'};
+}
+
+function stats(pts){
+  let mx=0,my=0;pts.forEach(p=>{mx+=p[0];my+=p[1];});mx/=pts.length;my/=pts.length;
+  let sxx=0,syy=0,sxy=0;pts.forEach(p=>{const a=p[0]-mx,b=p[1]-my;sxx+=a*a;syy+=b*b;sxy+=a*b;});
+  const n=pts.length-1;return {mx,my,sxx:sxx/n,syy:syy/n,sxy:sxy/n};
+}
+function ellipse(st,col,k){
+  const tr=st.sxx+st.syy,det=st.sxx*st.syy-st.sxy*st.sxy;
+  const l1=tr/2+Math.sqrt(Math.max(tr*tr/4-det,0)),l2=tr/2-Math.sqrt(Math.max(tr*tr/4-det,0));
+  const ang=Math.atan2(l1-st.sxx,st.sxy)||0;
+  ctx.save();ctx.translate(st.mx,st.my);ctx.rotate(-ang+Math.PI/2);
+  ctx.beginPath();ctx.ellipse(0,0,Math.sqrt(Math.max(l1,1))*k,Math.sqrt(Math.max(l2,1))*k,0,0,2*Math.PI);
+  ctx.strokeStyle=col;ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+}
+
+function arrow(x1,y1,x2,y2,col,w){
+  ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=w||2.5;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const a=Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath();ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-9*Math.cos(a-0.4),y2-9*Math.sin(a-0.4));
+  ctx.lineTo(x2-9*Math.cos(a+0.4),y2-9*Math.sin(a+0.4));
+  ctx.closePath();ctx.fill();
+}
+function box(x,y,w,h,col,fill){
+  ctx.fillStyle=fill||'#fff';ctx.strokeStyle=col;ctx.lineWidth=2;
+  ctx.beginPath();ctx.roundRect(x,y,w,h,10);ctx.fill();ctx.stroke();
+}
+function label(t,x,y,col,size,bold){
+  ctx.fillStyle=col||C.ink;ctx.font=(bold?'700 ':'')+(size||12)+'px "Segoe UI",sans-serif';
+  ctx.textAlign='center';ctx.fillText(t,x,y);
+}
+
+// layout regions (canvas 1060x430)
+const R={imgsR:{x:20,y:55},imgsG:{x:20,y:245},net:{x:250,y:120,w:150,h:190},
+         cloud:{x:470,y:40,w:280,h:350}, sum:{x:790,y:40,w:250,h:250}, metric:{x:790,y:315,w:250,h:90}};
+
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const cfg=cloudCfg();
+  const t=anim; // 0..1 within-stage progress
+  // --- Stage 0: two image sets ---
+  const alphaS=(s)=>stage>s?1:(stage===s?1:0.18);
+  // real images
+  ctx.globalAlpha=alphaS(0);
+  label('REAL images (Fashion-MNIST test set: 10,000)',R.imgsR.x+95,R.imgsR.y-12,C.OUT,12,true);
+  reseed(3);
+  for(let i=0;i<8;i++) sprite(R.imgsR.x+(i%4)*48,R.imgsR.y+Math.floor(i/4)*48,42,i,C.OUT,0);
+  label('GENERATED images (DDPM samples: 256)',R.imgsG.x+95,R.imgsG.y-12,C.IN,12,true);
+  reseed(11);
+  const gNoise=quality==='bad'?0.25:(quality==='good'?0.02:0.08);
+  for(let i=0;i<8;i++) sprite(R.imgsG.x+(i%4)*48,R.imgsG.y+Math.floor(i/4)*48,42,i+2,C.IN,gNoise);
+  ctx.globalAlpha=1;
+
+  // --- Stage 1: feature extractor ---
+  ctx.globalAlpha=alphaS(1);
+  box(R.net.x,R.net.y,R.net.w,R.net.h,C.AC,'#faf8ff');
+  label('Feature extractor',R.net.x+75,R.net.y-10,C.AC,12.5,true);
+  label('(pre-trained classifier,',R.net.x+75,R.net.y+150,C.soft,10.5);
+  label('head chopped off)',R.net.x+75,R.net.y+163,C.soft,10.5);
+  // layer slabs
+  for(let i=0;i<6;i++){
+    const lw=120-i*14;
+    ctx.fillStyle=`rgba(123,92,214,${0.25+i*0.1})`;
+    ctx.beginPath();ctx.roundRect(R.net.x+75-lw/2,R.net.y+14+i*20,lw,14,4);ctx.fill();
+  }
+  label('image → 512 numbers',R.net.x+75,R.net.y+142,C.AC,11,true);
+  if(stage>=1){
+    arrow(R.imgsR.x+195,R.imgsR.y+45,R.net.x-6,R.net.y+55,C.OUT);
+    arrow(R.imgsG.x+195,R.imgsG.y+45,R.net.x-6,R.net.y+135,C.IN);
+    // moving pulse during play
+    if(stage===1){
+      const px=R.imgsR.x+195+(R.net.x-6-(R.imgsR.x+195))*t;
+      ctx.fillStyle=C.OUT;ctx.beginPath();ctx.arc(px,R.imgsR.y+45+(R.net.y+55-(R.imgsR.y+45))*t,6,0,7);ctx.fill();
+      ctx.fillStyle=C.IN;ctx.beginPath();ctx.arc(px,R.imgsG.y+45+(R.net.y+135-(R.imgsG.y+45))*t,6,0,7);ctx.fill();
+    }
+  }
+  ctx.globalAlpha=1;
+
+  // --- Stage 2: clouds ---
+  ctx.globalAlpha=alphaS(2);
+  box(R.cloud.x,R.cloud.y,R.cloud.w,R.cloud.h,C.line,'#fdfeff');
+  label('Feature space (512-D, drawn in 2-D)',R.cloud.x+140,R.cloud.y-10,C.ink,12,true);
+  const ccx=R.cloud.x+120,ccy=R.cloud.y+190;
+  const rp=cloudPts(ccx,ccy,26,16,0.4,90,5);
+  const gp=cloudPts(ccx+cfg.gx,ccy+cfg.gy,cfg.gsx,cfg.gsy,-0.5,60,9);
+  const frac=stage===2?t:(stage>2?1:0);
+  if(stage>=2){
+    arrow(R.net.x+R.net.w+4,R.net.y+95,R.cloud.x-6,R.cloud.y+180,C.AC);
+    rp.slice(0,Math.max(2,Math.floor(rp.length*frac))).forEach(p=>{ctx.fillStyle='rgba(22,163,163,.75)';ctx.beginPath();ctx.arc(p[0],p[1],3,0,7);ctx.fill();});
+    gp.slice(0,Math.max(2,Math.floor(gp.length*frac))).forEach(p=>{ctx.fillStyle='rgba(246,146,30,.8)';ctx.beginPath();ctx.arc(p[0],p[1],3,0,7);ctx.fill();});
+    label('each dot = ONE image, now a 512-D vector',R.cloud.x+140,R.cloud.y+330,C.soft,10.5);
+  }
+  ctx.globalAlpha=1;
+
+  // --- Stage 3: mu & Sigma ---
+  ctx.globalAlpha=alphaS(3);
+  if(stage>=3){
+    const sr=stats(rp),sg=stats(gp);
+    ellipse(sr,C.OUT,2);ellipse(sg,C.IN,2);
+    ctx.fillStyle=C.OUT;ctx.beginPath();ctx.arc(sr.mx,sr.my,5,0,7);ctx.fill();
+    ctx.fillStyle=C.IN;ctx.beginPath();ctx.arc(sg.mx,sg.my,5,0,7);ctx.fill();
+    box(R.sum.x,R.sum.y,R.sum.w,R.sum.h,C.line,'#fdfeff');
+    label('Summarize each cloud',R.sum.x+125,R.sum.y-10,C.ink,12,true);
+    ctx.textAlign='left';ctx.font='700 12px monospace';
+    ctx.fillStyle=C.OUT;
+    ctx.fillText('REAL:',R.sum.x+16,R.sum.y+34);
+    ctx.font='12px monospace';
+    ctx.fillText('μ₁ = feats.mean(0)   → [512]',R.sum.x+16,R.sum.y+56);
+    ctx.fillText('Σ₁ = feats.T.cov()   → [512,512]',R.sum.x+16,R.sum.y+74);
+    ctx.font='700 12px monospace';ctx.fillStyle=C.IN;
+    ctx.fillText('GENERATED:',R.sum.x+16,R.sum.y+116);
+    ctx.font='12px monospace';
+    ctx.fillText('μ₂ = feats2.mean(0)  → [512]',R.sum.x+16,R.sum.y+138);
+    ctx.fillText('Σ₂ = feats2.T.cov()  → [512,512]',R.sum.x+16,R.sum.y+156);
+    ctx.fillStyle=C.soft;ctx.font='11px "Segoe UI",sans-serif';
+    ctx.fillText('dot = mean μ (center)',R.sum.x+16,R.sum.y+198);
+    ctx.fillText('dashed ellipse = covariance Σ (shape/spread)',R.sum.x+16,R.sum.y+216);
+    ctx.fillText('FID pretends each cloud is a Gaussian!',R.sum.x+16,R.sum.y+234);
+    arrow(R.cloud.x+R.cloud.w+4,R.cloud.y+150,R.sum.x-6,R.sum.y+120,C.AC);
+  }
+  ctx.globalAlpha=1;
+
+  // --- Stage 4: metric ---
+  ctx.globalAlpha=alphaS(4);
+  if(stage>=4){
+    box(R.metric.x,R.metric.y,R.metric.w,R.metric.h,C.AC,'#faf8ff');
+    label('Compare the two summaries',R.metric.x+125,R.metric.y+22,C.AC,12.5,true);
+    ctx.textAlign='center';ctx.font='700 15px monospace';ctx.fillStyle=C.ink;
+    ctx.fillText('FID = '+cfg.fid,R.metric.x+70,R.metric.y+52);
+    ctx.fillText('KID = '+cfg.kid,R.metric.x+180,R.metric.y+52);
+    label('lower = clouds more alike = better samples',R.metric.x+125,R.metric.y+74,C.soft,10.5);
+    arrow(R.sum.x+125,R.sum.y+R.sum.h+4,R.metric.x+125,R.metric.y-6,C.AC);
+  }
+  ctx.globalAlpha=1;
+}
+
+const STORIES=[
+ '<b>① Two sets of images.</b> On top: <b class="o">real</b> Fashion-MNIST images. Below: <b class="i">generated</b> DDPM samples. Comparing them pixel-by-pixel would be useless — a generated shirt can be a perfectly good shirt without matching any <em>particular</em> real shirt. We need to compare the <em>overall collections</em>. Try the <b>generator quality</b> dropdown to make the generated set better or worse.',
+ '<b>② One shared feature extractor.</b> Both sets flow through the <b class="a">same pre-trained network</b> (a Fashion-MNIST classifier with its classification head removed — or InceptionV3 for "standard" FID). Each 32×32 image comes out the other side as a <b>512-number feature vector</b> that captures <em>what</em> is in the image, not <em>where every pixel</em> is.',
+ '<b>③ Two clouds of points.</b> Every image is now a dot in 512-dimensional space (we draw 2-D here). <b class="o">Real dots</b> form one cloud, <b class="i">generated dots</b> another. A good generator produces a cloud that lands <em>right on top of</em> the real one — same location, same shape, same spread.',
+ '<b>④ Summarize with μ and Σ.</b> FID compresses each cloud into just two statistics: its <b>mean μ</b> (the dot — where the cloud is centered) and its <b>covariance Σ</b> (the dashed ellipse — how the cloud spreads and tilts). This is exactly what <code>_calc_stats</code> computes. It assumes each cloud is a multivariate Gaussian — the "Fréchet" part.',
+ '<b>⑤ Compare → one number.</b> FID measures the distance between the two Gaussians: how far apart the means are, plus how different the ellipses are. KID skips the Gaussian assumption and compares clouds directly with a kernel. Either way: <b>lower = better</b>. Switch generator quality and watch both numbers move.'
+];
+const CODES=[
+ `<span class="cm"># Stage ①: the two image sets we want to compare</span>
+xb, yb = next(iter(dls.train))          <span class="cm"># real images</span>
+samples = <span class="fn">sample</span>(smodel, (<span class="num">256</span>,<span class="num">1</span>,<span class="num">32</span>,<span class="num">32</span>), alpha, alphabar, sigma, n_steps)
+s = samples[-<span class="num">1</span>]*<span class="num">2</span>-<span class="num">1</span>                     <span class="cm"># generated images, scaled to [-1,1]</span>`,
+ `<span class="cm"># Stage ②: same extractor for both sets (head removed)</span>
+<span class="hl">del(learn.model[<span class="num">8</span>]); del(learn.model[<span class="num">7</span>])</span>   <span class="cm"># chop classifier head</span>
+feats, y = learn.<span class="fn">capture_preds</span>()             <span class="cm"># real  → [10000, 512]</span>
+feats2, _ = clearn.<span class="fn">capture_preds</span>()           <span class="cm"># generated → [256, 512]</span>`,
+ `<span class="cm"># Stage ③: each image is now a 512-D point</span>
+feats.shape   <span class="cm"># torch.Size([10000, 512])  ← real cloud</span>
+<span class="hl">feats2.shape  <span class="cm"># torch.Size([256, 512])   ← generated cloud</span></span>`,
+ `<span class="cm"># Stage ④: summarize each cloud (␣_calc_stats)</span>
+<span class="hl">means = feats.<span class="fn">mean</span>(<span class="num">0</span>)      <span class="cm"># μ  → [512]</span></span>
+<span class="hl">covs  = feats.T.<span class="fn">cov</span>()      <span class="cm"># Σ  → [512, 512]</span></span>
+s1, s2 = <span class="fn">_calc_stats</span>(feats), <span class="fn">_calc_stats</span>(feats2)`,
+ `<span class="cm"># Stage ⑤: one number out</span>
+<span class="hl"><span class="fn">_calc_fid</span>(*s1, *s2)   <span class="cm"># → 33.83  (lower = better)</span></span>
+<span class="fn">_calc_kid</span>(feats, feats2)  <span class="cm"># → 0.056</span>`
+];
+
+function render(){
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===stage));
+  $('story').innerHTML=STORIES[stage];
+  $('code').innerHTML=CODES[stage];
+  draw();
+}
+function setStage(s){stage=Math.max(0,Math.min(4,s));anim=1;render();}
+function tick(){
+  anim+=0.02*speed;
+  if(anim>=1){
+    anim=1;
+    if(stage<4){stage++;anim=0;}
+    else {stop();render();return;}
+    render();
+  }
+  draw();
+  if(timer)timer=requestAnimationFrame(tick);
+}
+function play(){
+  if(timer){stop();return;}
+  if(stage===4&&anim>=1){stage=0;}
+  anim=0;$('play').textContent='⏸ Pause';
+  timer=requestAnimationFrame(tick);render();
+}
+function stop(){if(timer)cancelAnimationFrame(timer);timer=null;$('play').textContent='▶ Play';}
+
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect(),x=(e.clientX-r.left)*cv.width/r.width;
+  stop();
+  if(x<230)setStage(0);else if(x<440)setStage(1);else if(x<770)setStage(x<770&&stage>=3?3:2);
+  else if(x>=770&&e.clientY-r.top>300*r.height/cv.height)setStage(4);else setStage(3);
+});
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stop();setStage(+c.dataset.s);});
+$('play').onclick=play;
+$('fwd').onclick=()=>{stop();setStage(stage+1);};
+$('back').onclick=()=>{stop();setStage(stage-1);};
+$('reset').onclick=()=>{stop();stage=0;anim=1;render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('qsel').onchange=e=>{quality=e.target.value;render();};
+
+anim=1;render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>
