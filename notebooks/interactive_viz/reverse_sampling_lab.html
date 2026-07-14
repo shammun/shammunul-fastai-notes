@@ -1,0 +1,255 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reverse Sampling Lab — real DDPM math, live</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .main{display:flex;gap:12px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);transition:box-shadow .2s,border-color .2s;}
+  .card.hot{border-color:var(--ac);box-shadow:0 6px 20px rgba(123,92,214,.3);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10px;}
+  .card canvas{width:150px;height:150px;image-rendering:pixelated;border-radius:8px;border:1px solid var(--line);display:block;}
+  .opsym{font-size:20px;font-weight:700;color:#c9d4e8;align-self:center;}
+  .tlwrap{max-width:960px;margin:10px auto 2px;}
+  #tl{display:block;width:100%;height:44px;border-radius:10px;border:1px solid var(--line);cursor:pointer;background:#fff;}
+  .tlcap{font-size:10.5px;color:var(--soft);text-align:center;margin-top:3px;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-top:8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:120px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:38px;display:inline-block;}
+  select{font-family:inherit;font-size:12px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:4px 7px;background:#fff;cursor:pointer;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.65;max-width:960px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>Reverse Sampling Lab — this page runs the <em>actual</em> DDPM update rule</h1>
+<p class="sub">Everything below is computed live with the same formulas as <code>sample()</code>: a fixed target image plays the role of a perfectly-trained
+model (turn up <b style="color:var(--ac)">model error</b> to make it realistically imperfect). Walk one timestep with the chips
+<b style="color:var(--ac)">① predict ε̂ → ② estimate x̂₀ → ③ mix the mean → ④ add σz</b>, <b>click anywhere on the timeline to jump to that stage of generation</b>, or press Play.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① model predicts ε̂</button>
+  <button class="chip" id="st1">② estimate x̂₀</button>
+  <button class="chip" id="st2">③ mix x̂₀ &amp; x_t → mean</button>
+  <button class="chip" id="st3">④ + σ_t·z → x_{t−1}</button>
+</div>
+
+<div class="main">
+  <div class="card" id="k0"><div class="cap" style="color:var(--in)">x<sub>t</sub> — current state<small id="capT">t = 999</small></div><canvas id="cvXt" width="32" height="32"></canvas></div>
+  <div class="opsym">→</div>
+  <div class="card" id="k1"><div class="cap" style="color:var(--ac)">ε̂ — predicted noise<small>what the UNet outputs</small></div><canvas id="cvEps" width="32" height="32"></canvas></div>
+  <div class="opsym">→</div>
+  <div class="card" id="k2"><div class="cap" style="color:var(--ac)">x̂₀ — implied clean image<small>the model's current "belief"</small></div><canvas id="cvX0" width="32" height="32"></canvas></div>
+  <div class="opsym">→</div>
+  <div class="card" id="k3"><div class="cap" style="color:var(--out)">x<sub>t−1</sub> — one step cleaner<small id="capC">weights: — </small></div><canvas id="cvNx" width="32" height="32"></canvas></div>
+</div>
+
+<div class="tlwrap">
+  <canvas id="tl" width="960" height="44"></canvas>
+  <div class="tlcap">the whole generation, t = 999 → 0. <b>Click (or drag) anywhere to jump</b> — the lab re-simulates the trajectory up to that point. Darker = noisier.</div>
+</div>
+
+<div class="selrow">
+  <button class="stepb" id="back">⏮ back (t+1)</button>
+  <button class="play" id="play">▶ Play to t=0</button>
+  <button class="stepb" id="fwd">step (t−1) ⏭</button>
+  <button class="reset" id="reseed">🎲 New starting noise</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.5" max="8" step="0.5" value="2"><span class="speedv" id="spv">2×</span>
+  <span class="div"></span>
+  model error <input id="err" type="range" min="0" max="0.6" step="0.05" value="0.15"><span class="speedv" id="errv">0.15</span>
+  <span class="div"></span>
+  schedule <select id="sched"><option value="cos">cosine</option><option value="lin">linear</option></select>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = current noisy state</b> · <b class="a">purple = model outputs (ε̂, x̂₀)</b> · <b class="o">teal = the step result</b> — note how blurry x̂₀ is at high t and how it sharpens as t→0</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=32,T=1000;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let q=Math.imul(a^a>>>15,1|a);q=q+Math.imul(q^q>>>7,61|q)^q;return((q^q>>>14)>>>0)/4294967296;}}
+function gaussFactory(r){return()=>{let u=0,v=0;while(u===0)u=r();while(v===0)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};}
+
+/* schedules */
+function makeSched(kind){
+  const ab=new Float64Array(T),a=new Float64Array(T),sg=new Float64Array(T);
+  if(kind==='cos'){const f=x=>Math.cos(x/T*Math.PI/2)**2;
+    for(let t=0;t<T;t++){ab[t]=Math.min(1-1e-6,f(t));
+      a[t]=ab[t]/(t>0?ab[t-1]:1);sg[t]=Math.sqrt(Math.max(0,1-a[t]));}}
+  else{let p=1;for(let t=0;t<T;t++){const b=1e-4+(0.02-1e-4)*t/(T-1);a[t]=1-b;p*=a[t];ab[t]=p;sg[t]=Math.sqrt(b);}}
+  return {ab,a,sg};
+}
+let SC=makeSched('cos');
+
+/* target image the "perfect model" believes in: a boot */
+const x0=new Float32Array(N*N).fill(-0.85);
+(function(){const box=(r0,r1,c0,c1,v)=>{for(let r=r0;r<r1;r++)for(let c=c0;c<c1;c++)x0[r*N+c]=v;};
+ box(6,20,11,18,.72); box(17,26,11,27,.72); box(24,26,9,27,.45); box(6,8,11,18,.4);
+ for(let r=8;r<17;r++)x0[r*N+14]=.55;})();
+
+let seed=99, errAmt=0.15;
+let t=999, xt=new Float32Array(N*N);
+let cache={eps:null,x0h:null,next:null};
+let phase=0,timer=null,speed=2;
+
+/* one reverse step using the exact sample() algebra */
+function stepMath(x,tt,g){
+  const ab=SC.ab,al=SC.a,sg=SC.sg;
+  const abar_t1=tt>0?ab[tt-1]:1.0;
+  const bbar_t=1-ab[tt], bbar_t1=1-abar_t1;
+  const eps=new Float32Array(N*N), x0h=new Float32Array(N*N), nx=new Float32Array(N*N);
+  const sA=Math.sqrt(ab[tt]), sB=Math.sqrt(bbar_t);
+  for(let i=0;i<N*N;i++){
+    /* oracle noise + model error */
+    eps[i]=(x[i]-sA*x0[i])/Math.max(1e-4,sB) + errAmt*g();
+    x0h[i]=(x[i]-sB*eps[i])/Math.max(1e-4,sA);
+    /* clamp belief a little, like real pixel space */
+    if(x0h[i]>1.6)x0h[i]=1.6; if(x0h[i]<-1.6)x0h[i]=-1.6;
+    const z=tt>0?g():0;
+    nx[i]=x0h[i]*Math.sqrt(abar_t1)*(1-al[tt])/bbar_t + x[i]*Math.sqrt(al[tt])*bbar_t1/bbar_t + sg[tt]*z;
+  }
+  return {eps,x0h,next:nx};
+}
+
+/* re-simulate from t=999 down to target (deterministic given seed) */
+function simulateTo(target){
+  const r=mulberry32(seed),g=gaussFactory(r);
+  let x=new Float32Array(N*N);
+  for(let i=0;i<N*N;i++)x[i]=g();
+  for(let tt=T-1;tt>target;tt--){
+    x=stepMath(x,tt,g).next;
+  }
+  t=target; xt=x;
+  cache=stepMath(x,t,gaussFactory(mulberry32(seed+t*7+1)));
+}
+
+function draw(cv,arr,scale=1){
+  const ctx=cv.getContext('2d'),img=ctx.createImageData(N,N);
+  for(let i=0;i<N*N;i++){const gg=Math.max(0,Math.min(255,Math.round((arr[i]*scale+1)/2*255)));
+    img.data[4*i]=gg;img.data[4*i+1]=gg;img.data[4*i+2]=gg;img.data[4*i+3]=255;}
+  ctx.putImageData(img,0,0);
+}
+
+/* timeline strip */
+const tl=$('tl'),tctx=tl.getContext('2d');
+function drawTL(){
+  const W=tl.width,H=tl.height;
+  tctx.clearRect(0,0,W,H);
+  for(let x=0;x<W;x++){
+    const tt=Math.round((1-x/W)*(T-1)); /* left = t=999?? -> we draw t=999 at LEFT */
+  }
+  /* draw left→right as t: 999→0 */
+  for(let x=0;x<W;x++){
+    const tt=Math.round((1-x/(W-1))*(T-1));
+    const n=Math.sqrt(1-SC.ab[tt]);
+    const g=Math.round(255-(n*150));
+    tctx.fillStyle=`rgb(${g-20},${g-8},${g+10})`;
+    tctx.fillRect(x,6,1,H-18);
+  }
+  tctx.fillStyle='#5a6b86';tctx.font='9.5px monospace';tctx.textAlign='left';
+  tctx.fillText('t=999 (static)',4,H-2);tctx.textAlign='right';tctx.fillText('t=0 (image)',W-4,H-2);
+  /* milestones */
+  [999,750,500,250,100,0].forEach(mt=>{
+    const x=(1-mt/(T-1))*(W-1);
+    tctx.strokeStyle='#c9d4e8';tctx.beginPath();tctx.moveTo(x,6);tctx.lineTo(x,H-12);tctx.stroke();
+  });
+  const x=(1-t/(T-1))*(W-1);
+  tctx.strokeStyle='#7b5cd6';tctx.lineWidth=3;
+  tctx.beginPath();tctx.moveTo(x,2);tctx.lineTo(x,H-10);tctx.stroke();tctx.lineWidth=1;
+}
+
+const CODES=[
+ [`for t in reversed(range(n_steps)):`,
+  `    t_batch = torch.full((x_t.shape[0],), t, ...)`,
+  `<span class="hl">    noise = model((x_t, t_batch))</span>            <span class="cm"># ① the ONLY neural-net call</span>`,
+  `    <span class="cm"># here the "model" is an oracle + your error slider</span>`],
+ [`    betabar_t = 1 - alphabar[t]`,
+  `<span class="hl">    x_0_hat = (x_t - betabar_t.sqrt()*noise) / alphabar[t].sqrt()</span>`,
+  `    <span class="cm"># ② invert the forward formula: if THAT was the noise, THIS must be x₀.</span>`,
+  `    <span class="cm">#    At high t this belief is blurry; near t=0 it locks in.</span>`],
+ [`<span class="hl">    x_t = ( x_0_hat * alphabar_t1.sqrt()*(1-alpha[t])/betabar_t</span>`,
+  `<span class="hl">          + x_t     * alpha[t].sqrt()*betabar_t1/betabar_t )</span>`,
+  `    <span class="cm"># ③ a weighted average: mostly keep x_t, nudge a little toward x̂₀.</span>`,
+  `    <span class="cm">#    Small careful steps — never jump straight to the guess.</span>`],
+ [`    z = torch.randn(x_t.shape) if t > 0 else 0`,
+  `<span class="hl">    x_t = mean + sigma[t] * z</span>`,
+  `    <span class="cm"># ④ add fresh noise back! Keeps x_{t-1} on the distribution the model was</span>`,
+  `    <span class="cm">#    trained on, and lets different z explore different images. z=0 at t=0.</span>`]
+];
+
+function setPhase(p){
+  phase=p;for(let i=0;i<4;i++)$('st'+i).classList.toggle('on',i===p);
+  $('code').innerHTML=CODES[p].join('\n');
+  ['k0','k1','k2','k3'].forEach((k,i)=>$(k).classList.toggle('hot',i===p+0));
+  $('k0').classList.toggle('hot',p===0);$('k1').classList.toggle('hot',p===0);
+  $('k2').classList.toggle('hot',p===1);$('k3').classList.toggle('hot',p>=2);
+}
+function render(){
+  draw($('cvXt'),xt);
+  draw($('cvEps'),cache.eps,0.55);
+  draw($('cvX0'),cache.x0h);
+  draw($('cvNx'),cache.next);
+  $('capT').textContent='t = '+t+'  ·  √ᾱ='+Math.sqrt(SC.ab[t]).toFixed(3);
+  const abar_t1=t>0?SC.ab[t-1]:1, bbar=1-SC.ab[t];
+  const w0=Math.sqrt(abar_t1)*(1-SC.a[t])/bbar, w1=Math.sqrt(SC.a[t])*(1-abar_t1)/bbar;
+  $('capC').textContent=`= ${w0.toFixed(3)}·x̂₀ + ${w1.toFixed(3)}·x_t + σz  (σ=${SC.sg[t].toFixed(3)})`;
+  drawTL();
+}
+function stop(){if(timer){cancelAnimationFrame(timer);timer=null;$('play').textContent='▶ Play to t=0';}}
+function playLoop(){
+  const per=Math.max(1,Math.round(speed*3));
+  const g=gaussFactory(mulberry32(seed+t*7+1));
+  for(let k=0;k<per&&t>0;k++){
+    xt=cache.next; t--;
+    cache=stepMath(xt,t,gaussFactory(mulberry32(seed+t*7+1)));
+  }
+  render();
+  if(t>0)timer=requestAnimationFrame(playLoop); else stop();
+}
+$('play').onclick=()=>{if(timer){stop();return;}$('play').textContent='⏸ Pause';timer=requestAnimationFrame(playLoop);};
+$('fwd').onclick=()=>{stop();if(t>0){xt=cache.next;t--;cache=stepMath(xt,t,gaussFactory(mulberry32(seed+t*7+1)));render();}};
+$('back').onclick=()=>{stop();if(t<T-1)simulateTo(t+1);render();};
+$('reseed').onclick=()=>{stop();seed=Math.floor(Math.random()*1e6);simulateTo(999);render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('err').oninput=e=>{errAmt=+e.target.value;$('errv').textContent=errAmt.toFixed(2);simulateTo(t);render();};
+$('sched').onchange=e=>{SC=makeSched(e.target.value);simulateTo(t);render();};
+for(let i=0;i<4;i++)$('st'+i).onclick=()=>setPhase(i);
+function tlPick(e){
+  const r=tl.getBoundingClientRect();
+  const u=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+  stop();simulateTo(Math.round((1-u)*(T-1)));render();
+}
+tl.addEventListener('pointerdown',tlPick);
+tl.addEventListener('pointermove',e=>{if(e.buttons)tlPick(e);});
+
+simulateTo(999);setPhase(0);render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  @media (max-width:900px){.card canvas{width:100px;height:100px;} .opsym{display:none;}}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

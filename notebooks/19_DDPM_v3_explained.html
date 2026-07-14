@@ -2,8 +2,8 @@
 
 <html lang="en">
 <head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
 <title>19_DDPM_v3_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
@@ -7525,6 +7525,8 @@ a.anchor-link {
   </a>
 </div>
 <main>
+
+<main>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7556,6 +7558,113 @@ Pure Noise --&gt; Remove noise step by step --&gt; Clean Image
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%A7%AD-The-30-second-picture-(read-this-first)">🧭 The 30-second picture (read this first)<a class="anchor-link" href="#%F0%9F%A7%AD-The-30-second-picture-(read-this-first)">¶</a></h2><p>Every piece of this notebook serves one of three ideas:</p>
+<ol>
+<li><strong>Forward (destroy).</strong> Take a real image and mix it with Gaussian noise. A <em>noise schedule</em> (ᾱ_t) controls how much: t = 0 is the clean image, t = 999 is pure static. One closed-form line jumps to any t &mdash; no loop needed.</li>
+<li><strong>Train (predict the noise).</strong> Show a UNet the noisy image <em>and</em> the number t, and train it &mdash; with plain MSE &mdash; to output the exact noise that was mixed in. No labels, no adversary, no clean-image target.</li>
+<li><strong>Sample (create).</strong> Start from pure static and repeat 1000 times: predict the noise, remove a <em>small carefully-weighted</em> amount of it, and add a pinch of fresh noise back. A brand-new image emerges.</li>
+</ol>
+<p>If you keep asking "which of the three ideas is this code serving?", nothing in this notebook will feel mysterious.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="%F0%9F%9B%A0%EF%B8%8F-Interactive-visualizations-%E2%80%94-one-time-setup">🛠️ Interactive visualizations &mdash; one-time setup<a class="anchor-link" href="#%F0%9F%9B%A0%EF%B8%8F-Interactive-visualizations-%E2%80%94-one-time-setup">¶</a></h2><p>The cells marked <strong>🎮 Interactive</strong> below embed standalone HTML/JS visualizations
+(stored in the <code>interactive_viz/</code> folder, served from the GitHub Pages copy) at <strong>full width</strong>,
+auto-fitted to their content height. Run the next cell once, then run any 🎮 cell.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE VISUALIZATIONS -- setup (run this cell ONCE).</span>
+<span class="c1"># Each "🎮 Interactive" cell below loads a standalone HTML file from the</span>
+<span class="c1"># published copy on GitHub Pages, in an isolated &lt;iframe&gt; (its CSS/JS can't leak</span>
+<span class="c1"># into the notebook). It is shown FULL WIDTH and auto-fits its content height.</span>
+<span class="c1"># No local files needed -- the visualizations are read from GitHub.</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+
+<span class="k">def</span> <span class="nf">show_viz</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"600px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Embed an interactive visualization full width; it auto-fits its height.</span>
+<span class="sd">    `path` may be a bare 'interactive_viz/&lt;file&gt;.html' (resolved to the GitHub</span>
+<span class="sd">    Pages copy) or a full https URL."""</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="s2">"https://shammun.github.io/shammunul-fastai-notes/notebooks/"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"http"</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">path</span>
+    <span class="k">return</span> <span class="n">HTML</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'&lt;iframe src="</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">" loading="lazy" allowfullscreen '</span>
+        <span class="sa">f</span><span class="s1">'style="width:100%;height:</span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s1">;border:1px solid #dde5f2;border-radius:12px;'</span>
+        <span class="sa">f</span><span class="s1">'box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"&gt;&lt;/iframe&gt;'</span>
+        <span class="s1">'&lt;script&gt;addEventListener("message",function(e){'</span>
+        <span class="s1">'if(e.data&amp;&amp;e.data.type==="ce-frame-height"&amp;&amp;e.data.height&gt;50){'</span>
+        <span class="s1">'var fs=document.querySelectorAll("iframe");for(var i=0;i&lt;fs.length;i++){'</span>
+        <span class="s1">'if(fs[i].contentWindow===e.source){fs[i].style.height=e.data.height+"px";break;}}}});&lt;/script&gt;'</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-DDPM-on-one-screen">🎮 Interactive: DDPM on one screen<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-DDPM-on-one-screen">¶</a></h3><p>Everything this notebook builds, in one playground:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Click the stage chips &mdash; <strong>① forward (destroy) &rarr; ② training (predict the noise) &rarr; ③ sampling (create)</strong> &mdash; each swaps the explanation, the formula, and the highlighted code.</li>
+<li><strong>Drag the timeline</strong> or <strong>click any thumbnail</strong> to jump the image to that t; watch the &radic;ᾱ (signal) and &radic;(1−ᾱ) (noise) readouts trade places.</li>
+<li>Chip ③ plays the timeline in <em>reverse</em> &mdash; a preview of the sampling section at the end of the notebook.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm_big_picture.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># A map of the whole notebook -- come back to it whenever you feel lost.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm_big_picture.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"860px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddpm_big_picture.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:860px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -7832,20 +7941,6 @@ Pure Noise --&gt; Remove noise step by step --&gt; Clean Image
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Linear vs cosine noise schedules</h3>
-  <p class="ce-interactive-hint">The schedule controls how aggressively noise is added at each step. Linear ramps the per-step variance from <code>10<sup>&minus;4</sup></code> to <code>0.02</code>; cosine destroys signal more gradually in the middle of training. Toggle the two views to see <code>&beta;<sub>t</sub></code> (per-step noise variance) and <code>&#257;<sub>t</sub></code> (signal remaining).</p>
-  <canvas id="sched-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
-  <div class="ms-controls">
-    <button id="sched-mode" class="ms-btn">Switch to &#257;<sub>t</sub> view</button>
-    <label>T (steps): <span id="sched-T-val" class="ms-val">1000</span></label>
-    <input id="sched-T" type="range" min="100" max="2000" step="100" value="1000">
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Why cosine wins for diffusion models</strong>: with the linear schedule, the signal is already mostly destroyed by t = T/2, so the model spends half its training capacity on essentially-pure-noise. Cosine keeps useful signal longer &mdash; better gradient signal, better samples.
-  </p>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7853,7 +7948,6 @@ Pure Noise --&gt; Remove noise step by step --&gt; Clean Image
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-
 <h2 id="Noise-Schedules:-Linear-vs-Cosine">Noise Schedules: Linear vs Cosine<a class="anchor-link" href="#Noise-Schedules:-Linear-vs-Cosine">¶</a></h2><p>The <strong>noise schedule</strong> determines how much noise to add at each timestep. This is one of the most important design choices in diffusion models.</p>
 <h3 id="Key-Variables">Key Variables<a class="anchor-link" href="#Key-Variables">¶</a></h3><table>
 <thead>
@@ -8014,7 +8108,7 @@ Pure Noise --&gt; Remove noise step by step --&gt; Clean Image
 <tbody>
 <tr>
 <td><code>a</code></td>
-<td>α = 1 &minus; β</td>
+<td>α = 1 − β</td>
 <td><code>(1000,)</code></td>
 <td>Signal preserved at each individual step</td>
 </tr>
@@ -8447,7 +8541,7 @@ Example with t=3:
     <span class="c1">#                         ^^^^</span>
     <span class="c1">#                    HERE is the cosine!</span>
 </pre></div>
-<p>When <code>cos_sched</code> calls <code>abar(ts, n_steps)</code>, it's calling this function, which applies <strong>cos<sup>2</sup></strong> to the timesteps. The call chain looks like this:</p>
+<p>When <code>cos_sched</code> calls <code>abar(ts, n_steps)</code>, it's calling this function, which applies <strong>cos²</strong> to the timesteps. The call chain looks like this:</p>
 <pre><code>cos_sched(n_steps=1000)
     │
     ├── ab = abar(ts, n_steps)
@@ -8473,12 +8567,12 @@ Example with t=3:
 <tr>
 <td><code>abar(ts, n_steps)</code></td>
 <td>ᾱ at timestep t</td>
-<td>cos<sup>2</sup>(t/T · π/2)</td>
+<td>cos²(t/T · π/2)</td>
 </tr>
 <tr>
 <td><code>abar(ts-1, n_steps)</code></td>
-<td>ᾱ at timestep t&minus;1</td>
-<td>cos<sup>2</sup>((t&minus;1)/T · π/2)</td>
+<td>ᾱ at timestep t−1</td>
+<td>cos²((t−1)/T · π/2)</td>
 </tr>
 </tbody>
 </table>
@@ -8486,8 +8580,8 @@ Example with t=3:
 <h2 id="The-Complete-Math:-Equation-by-Equation">The Complete Math: Equation by Equation<a class="anchor-link" href="#The-Complete-Math:-Equation-by-Equation">¶</a></h2><h3 id="The-cosine-formula-for-%E1%BE%B1-(inside-abar)">The cosine formula for ᾱ (inside <code>abar</code>)<a class="anchor-link" href="#The-cosine-formula-for-%E1%BE%B1-(inside-abar)">¶</a></h3>$$
 \bar{\alpha}(t) = \cos^2\!\left(\frac{t}{T} \cdot \frac{\pi}{2}\right)
 $$<p>This is the core equation from the "Improved DDPM" paper (Nichol &amp; Dhariwal, 2021). It defines <strong>how much total signal remains</strong> at timestep t using a cosine curve.</p>
-<p><strong>Why cos<sup>2</sup>?</strong> The cosine function naturally goes from 1 to 0 over the interval [0, π/2], and squaring it makes the transition smoother at both endpoints:</p>
-<pre><code>              ᾱ(t) = cos<sup>2</sup>(t/T · π/2)
+<p><strong>Why cos²?</strong> The cosine function naturally goes from 1 to 0 over the interval [0, π/2], and squaring it makes the transition smoother at both endpoints:</p>
+<pre><code>              ᾱ(t) = cos²(t/T · π/2)
 
 ᾱ(t)
 1.0  ●━━━━╮
@@ -8500,9 +8594,9 @@ $$<p>This is the core equation from the "Improved DDPM" paper (Nichol &amp; Dhar
      0    167   333   500   667   833  1000
                      t &rarr;
 
-  t=0:    cos<sup>2</sup>(0)   = 1.0    (100% signal &mdash; clean image)
-  t=500:  cos<sup>2</sup>(π/4) = 0.5    (50% signal)
-  t=1000: cos<sup>2</sup>(π/2) = 0.0    (0% signal &mdash; pure noise)
+  t=0:    cos²(0)   = 1.0    (100% signal &mdash; clean image)
+  t=500:  cos²(π/4) = 0.5    (50% signal)
+  t=1000: cos²(π/2) = 0.0    (0% signal &mdash; pure noise)
 </code></pre>
 <h3 id="Deriving-%CE%B1-from-%E1%BE%B1-(the-division-trick)">Deriving α from ᾱ (the division trick)<a class="anchor-link" href="#Deriving-%CE%B1-from-%E1%BE%B1-(the-division-trick)">¶</a></h3><p>By definition, ᾱ is the cumulative product of all individual α values:</p>
 $$
@@ -8519,7 +8613,7 @@ $$
 $$<div class="highlight"><pre><span></span><span class="n">alp</span> <span class="o">=</span> <span class="n">ab</span> <span class="o">/</span> <span class="n">abar</span><span class="p">(</span><span class="n">ts</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_steps</span><span class="p">)</span>
 <span class="c1">#     ᾱ(t)     ᾱ(t-1)</span>
 </pre></div>
-<h3 id="Deriving-%CF%83-from-%CE%B1">Deriving σ from α<a class="anchor-link" href="#Deriving-%CF%83-from-%CE%B1">¶</a></h3><p>Since α = 1 &minus; β and σ = &radic;β:</p>
+<h3 id="Deriving-%CF%83-from-%CE%B1">Deriving σ from α<a class="anchor-link" href="#Deriving-%CF%83-from-%CE%B1">¶</a></h3><p>Since α = 1 − β and σ = &radic;β:</p>
 $$
 \sigma_t = \sqrt{1 - \alpha_t}
 $$<div class="highlight"><pre><span></span><span class="n">sig</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alp</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
@@ -8548,19 +8642,19 @@ $$<hr/>
 <h2 id="Contrast:-How-linear_sched-Does-It-(Bottom-Up)">Contrast: How <code>linear_sched</code> Does It (Bottom-Up)<a class="anchor-link" href="#Contrast:-How-linear_sched-Does-It-(Bottom-Up)">¶</a></h2><p>The linear schedule takes the opposite approach &mdash; it builds <strong>upward</strong> from β:</p>
 <div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">linear_sched</span><span class="p">(</span><span class="n">betamin</span><span class="o">=</span><span class="mf">0.0001</span><span class="p">,</span> <span class="n">betamax</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">n_steps</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
     <span class="n">beta</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">betamin</span><span class="p">,</span> <span class="n">betamax</span><span class="p">,</span> <span class="n">n_steps</span><span class="p">)</span>  <span class="c1"># Define β first</span>
-    <span class="n">a</span> <span class="o">=</span> <span class="mf">1.</span> <span class="o">-</span> <span class="n">beta</span>                                      <span class="c1"># α = 1 &minus; β</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="mf">1.</span> <span class="o">-</span> <span class="n">beta</span>                                      <span class="c1"># α = 1 − β</span>
     <span class="n">abar</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">cumprod</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>                            <span class="c1"># ᾱ = cumulative product</span>
     <span class="n">sig</span> <span class="o">=</span> <span class="n">beta</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>                                  <span class="c1"># σ = &radic;β</span>
     <span class="k">return</span> <span class="n">SimpleNamespace</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="n">a</span><span class="p">,</span> <span class="n">abar</span><span class="o">=</span><span class="n">abar</span><span class="p">,</span> <span class="n">sig</span><span class="o">=</span><span class="n">sig</span><span class="p">)</span>
 </pre></div>
-<p>Everything is self-contained &mdash; no helper function, no external calls. The cosine schedule needs the helper because it works <strong>top-down</strong> (define ᾱ first, derive everything else), and the ᾱ formula must be applied at two different sets of timesteps (t and t&minus;1).</p>
+<p>Everything is self-contained &mdash; no helper function, no external calls. The cosine schedule needs the helper because it works <strong>top-down</strong> (define ᾱ first, derive everything else), and the ᾱ formula must be applied at two different sets of timesteps (t and t−1).</p>
 <pre><code>LINEAR (bottom-up):              COSINE (top-down):
 
-  β = linspace(...)              ᾱ(t) = cos<sup>2</sup>(t/T · π/2)  ← abar() helper
+  β = linspace(...)              ᾱ(t) = cos²(t/T · π/2)  ← abar() helper
   ↓                                 ↓
-  α = 1 &minus; β                     α = ᾱ(t) / ᾱ(t&minus;1)       ← calls abar() twice
+  α = 1 − β                     α = ᾱ(t) / ᾱ(t−1)       ← calls abar() twice
   ↓                                 ↓
-  ᾱ = cumprod(α)                σ = &radic;(1 &minus; α)
+  ᾱ = cumprod(α)                σ = &radic;(1 − α)
   ↓
   σ = &radic;β
 </code></pre>
@@ -8647,7 +8741,7 @@ $$<ul>
 <p><strong>Step 1 &mdash; Estimate clean image</strong> (uses <code>alphabar</code>):</p>
 $$
 \hat{x}_0 = \frac{x_t - \sqrt{1 - \bar{\alpha}_t} \cdot \epsilon_\theta}{\sqrt{\bar{\alpha}_t}}
-$$<p><strong>Step 2 &mdash; Compute x_{t&minus;1}</strong> (uses <code>alphabar</code>, <code>alpha</code>, <code>sigma</code>):</p>
+$$<p><strong>Step 2 &mdash; Compute x_{t−1}</strong> (uses <code>alphabar</code>, <code>alpha</code>, <code>sigma</code>):</p>
 $$
 x_{t-1} = \frac{\hat{x}_0 \cdot \sqrt{\bar{\alpha}_{t-1}} \cdot (1 - \alpha_t)}{1 - \bar{\alpha}_t} + \frac{x_t \cdot \sqrt{\alpha_t} \cdot (1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t} + \sigma_t \cdot z
 $$<h3 id="Usage-5:-Skip-Sampling-Variants-(Cells-84-&amp;-94)">Usage 5: Skip Sampling Variants (Cells 84 &amp; 94)<a class="anchor-link" href="#Usage-5:-Skip-Sampling-Variants-(Cells-84-&amp;-94)">¶</a></h3><p>Both <code>sample_skip</code> and <code>sample2</code> use the exact same schedule values in the exact same formulas &mdash; they only differ in <strong>which timesteps they call the model at</strong>:</p>
@@ -8697,8 +8791,8 @@ $$<h3 id="Usage-5:-Skip-Sampling-Variants-(Cells-84-&amp;-94)">Usage 5: Skip Sam
 <hr/>
 <h2 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h2><p>The "cosine" in <code>cos_sched</code> is <strong>not missing</strong> &mdash; it's <strong>delegated</strong> to the <code>abar</code> helper function. This is a clean separation of concerns:</p>
 <ul>
-<li><strong><code>abar(t, T)</code></strong> &mdash; owns the math: <code>cos<sup>2</sup>(t/T · π/2)</code></li>
-<li><strong><code>cos_sched()</code></strong> &mdash; owns the orchestration: calls <code>abar</code> twice (for t and t&minus;1), divides to get α, derives σ</li>
+<li><strong><code>abar(t, T)</code></strong> &mdash; owns the math: <code>cos²(t/T · π/2)</code></li>
+<li><strong><code>cos_sched()</code></strong> &mdash; owns the orchestration: calls <code>abar</code> twice (for t and t−1), divides to get α, derives σ</li>
 </ul>
 <p>The three returned values (<code>alphabar</code>, <code>alpha</code>, <code>sigma</code>) then flow into every major operation in the diffusion pipeline: <code>noisify</code> uses <code>alphabar</code> to add noise during training, and <code>sample</code> uses all three to remove noise during generation. Switching from linear to cosine schedule requires changing exactly one line &mdash; the rest of the notebook works unchanged.</p>
 </div>
@@ -8727,7 +8821,7 @@ $$<div class="highlight"><pre><span></span><span class="n">xt</span> <span class
 <th>Timestep</th>
 <th>ᾱ value</th>
 <th>&radic;ᾱ (signal weight)</th>
-<th>&radic;(1&minus;ᾱ) (noise weight)</th>
+<th>&radic;(1−ᾱ) (noise weight)</th>
 <th>What you see</th>
 </tr>
 </thead>
@@ -8771,16 +8865,16 @@ $$<div class="highlight"><pre><span></span><span class="n">xt</span> <span class
 </code></pre>
 <p>This shows signal being <em>destroyed</em> &mdash; not noise being accumulated.</p>
 <hr/>
-<h2 id="So-What-Is-the-Amount-of-Noise?">So What <em>Is</em> the Amount of Noise?<a class="anchor-link" href="#So-What-Is-the-Amount-of-Noise?">¶</a></h2><p>The complement: <strong><code>1 &minus; ᾱ</code></strong>.</p>
+<h2 id="So-What-Is-the-Amount-of-Noise?">So What <em>Is</em> the Amount of Noise?<a class="anchor-link" href="#So-What-Is-the-Amount-of-Noise?">¶</a></h2><p>The complement: <strong><code>1 − ᾱ</code></strong>.</p>
 <p>The <code>sample</code> function (Cell 64) gives this quantity its own name &mdash; <code>betabar_t</code>:</p>
 <div class="highlight"><pre><span></span><span class="n">betabar_t</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">alphabar</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>      <span class="c1"># ← THIS is the noise proportion</span>
 </pre></div>
 <p>The two quantities are complementary and always sum to 1:</p>
-<pre><code>t=0:    ᾱ = 1.0    1&minus;ᾱ = 0.0    (all signal, no noise)
-t=500:  ᾱ = 0.5    1&minus;ᾱ = 0.5    (half and half)
-t=999:  ᾱ = 0.0    1&minus;ᾱ = 1.0    (no signal, all noise)
+<pre><code>t=0:    ᾱ = 1.0    1−ᾱ = 0.0    (all signal, no noise)
+t=500:  ᾱ = 0.5    1−ᾱ = 0.5    (half and half)
+t=999:  ᾱ = 0.0    1−ᾱ = 1.0    (no signal, all noise)
 
-         ᾱ + (1&minus;ᾱ) = 1  always
+         ᾱ + (1−ᾱ) = 1  always
 </code></pre>
 <hr/>
 <h2 id="The-Naming-Convention">The Naming Convention<a class="anchor-link" href="#The-Naming-Convention">¶</a></h2><p>The notation is inherited from the original DDPM paper (Ho et al., 2020) and follows a consistent pattern throughout the notebook:</p>
@@ -8803,7 +8897,7 @@ t=999:  ᾱ = 0.0    1&minus;ᾱ = 1.0    (no signal, all noise)
 <td><code>beta</code></td>
 </tr>
 <tr>
-<td>α = 1&minus;β</td>
+<td>α = 1−β</td>
 <td>Alpha</td>
 <td>Signal kept at <strong>one</strong> step</td>
 <td>~1 &rarr; ~0.99</td>
@@ -8817,7 +8911,7 @@ t=999:  ᾱ = 0.0    1&minus;ᾱ = 1.0    (no signal, all noise)
 <td><code>alphabar</code></td>
 </tr>
 <tr>
-<td>1&minus;ᾱ</td>
+<td>1−ᾱ</td>
 <td>Betabar</td>
 <td><strong>Total</strong> noise accumulated after t steps</td>
 <td>0 &rarr; 1</td>
@@ -8832,7 +8926,7 @@ t=999:  ᾱ = 0.0    1&minus;ᾱ = 1.0    (no signal, all noise)
 </tr>
 </tbody>
 </table>
-<p>The key insight: <strong>alpha-family quantities (α, ᾱ) always measure signal. Beta-family quantities (β, 1&minus;ᾱ) always measure noise.</strong> The "bar" (ᾱ, 1&minus;ᾱ) means cumulative across all steps; without the bar (α, β) means at a single step.</p>
+<p>The key insight: <strong>alpha-family quantities (α, ᾱ) always measure signal. Beta-family quantities (β, 1−ᾱ) always measure noise.</strong> The "bar" (ᾱ, 1−ᾱ) means cumulative across all steps; without the bar (α, β) means at a single step.</p>
 <hr/>
 <h2 id="Where-Each-Appears-in-the-Notebook">Where Each Appears in the Notebook<a class="anchor-link" href="#Where-Each-Appears-in-the-Notebook">¶</a></h2><h3 id="alphabar-(%E1%BE%B1)-%E2%80%94-signal-remaining-%E2%80%94-used-in-both-forward-and-reverse"><code>alphabar</code> (ᾱ) &mdash; signal remaining &mdash; used in both forward and reverse<a class="anchor-link" href="#alphabar-(%E1%BE%B1)-%E2%80%94-signal-remaining-%E2%80%94-used-in-both-forward-and-reverse">¶</a></h3><p><strong>Forward process</strong> (<code>noisify</code>, Cell 34) &mdash; scales the clean image down and the noise up:</p>
 <div class="highlight"><pre><span></span><span class="n">xt</span> <span class="o">=</span> <span class="n">alphabar_t</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alphabar_t</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">epsilon</span>
@@ -8842,7 +8936,7 @@ t=999:  ᾱ = 0.0    1&minus;ᾱ = 1.0    (no signal, all noise)
 <span class="c1">#                                              ^^^^^^^^</span>
 <span class="c1">#                     divide by &radic;ᾱ to "undo" the signal scaling</span>
 </pre></div>
-<h3 id="1---alphabar-(1%E2%88%92%E1%BE%B1)-%E2%80%94-noise-accumulated-%E2%80%94-used-in-reverse-process"><code>1 - alphabar</code> (1&minus;ᾱ) &mdash; noise accumulated &mdash; used in reverse process<a class="anchor-link" href="#1---alphabar-(1%E2%88%92%E1%BE%B1)-%E2%80%94-noise-accumulated-%E2%80%94-used-in-reverse-process">¶</a></h3><p>Called <code>betabar_t</code> in the sampling code:</p>
+<h3 id="1---alphabar-(1%E2%88%92%E1%BE%B1)-%E2%80%94-noise-accumulated-%E2%80%94-used-in-reverse-process"><code>1 - alphabar</code> (1−ᾱ) &mdash; noise accumulated &mdash; used in reverse process<a class="anchor-link" href="#1---alphabar-(1%E2%88%92%E1%BE%B1)-%E2%80%94-noise-accumulated-%E2%80%94-used-in-reverse-process">¶</a></h3><p>Called <code>betabar_t</code> in the sampling code:</p>
 <div class="highlight"><pre><span></span><span class="n">betabar_t</span>  <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">alphabar</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>        <span class="c1"># noise proportion at step t</span>
 <span class="n">betabar_t1</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">alphabar_t1</span>        <span class="c1"># noise proportion at step t-1</span>
 </pre></div>
@@ -8856,36 +8950,10 @@ t=999:  ᾱ = 0.0    1&minus;ᾱ = 1.0    (no signal, all noise)
 \boxed{
 \bar{\alpha}_t = \text{signal remaining} \qquad\qquad 1 - \bar{\alpha}_t = \text{noise accumulated}
 }
-$$<p>They are two sides of the same coin. The notebook (and the DDPM literature) tracks ᾱ because it's what you define the schedule in terms of &mdash; the cosine schedule directly specifies ᾱ(t) = cos<sup>2</sup>(t/T · π/2), and the linear schedule computes ᾱ as the cumulative product of (1 &minus; β). The noise proportion is simply <code>1 &minus; ᾱ</code> whenever you need it.</p>
+$$<p>They are two sides of the same coin. The notebook (and the DDPM literature) tracks ᾱ because it's what you define the schedule in terms of &mdash; the cosine schedule directly specifies ᾱ(t) = cos²(t/T · π/2), and the linear schedule computes ᾱ as the cumulative product of (1 − β). The noise proportion is simply <code>1 − ᾱ</code> whenever you need it.</p>
 </div>
 </div>
 </div>
-</div>
-<div class="ce-interactive">
-  <h3>Interactive: Signal vs noise &mdash; what each schedule destroys when</h3>
-  <p class="ce-interactive-hint">Take a structured 2D dataset and noise it under both schedules. Drag the timestep slider to see how much signal remains at each schedule at any given t. <strong>At t = T/2, linear has already destroyed most of the signal; cosine still has structure visible.</strong></p>
-  <div class="sigvs-widget">
-    <div class="sigvs-row">
-      <div>
-        <div class="sigvs-label">Linear schedule</div>
-        <canvas id="sigvs-lin" width="240" height="200"
-                style="width:100%; max-width:240px; height:auto; background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
-      </div>
-      <div>
-        <div class="sigvs-label">Cosine schedule</div>
-        <canvas id="sigvs-cos" width="240" height="200"
-                style="width:100%; max-width:240px; height:auto; background:white; border:1px solid #d1d5db; border-radius:4px;"></canvas>
-      </div>
-    </div>
-    <div class="ms-controls">
-      <label>Timestep t/T: <span id="sigvs-t-val" class="ms-val">0.5</span></label>
-      <input id="sigvs-t" type="range" min="0" max="1" step="0.01" value="0.5">
-    </div>
-    <div class="ms-controls" style="font-size: 0.85em; color: var(--ce-text-muted, #697386);">
-      <span id="sigvs-lin-ab">Linear &#257;<sub>t</sub> = 0.00</span>
-      <span id="sigvs-cos-ab">Cosine &#257;<sub>t</sub> = 0.00</span>
-    </div>
-  </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -8894,7 +8962,6 @@ $$<p>They are two sides of the same coin. The notebook (and the DDPM literature)
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-
 <h2 id="Comparing-Linear-vs-Cosine-Schedules">Comparing Linear vs Cosine Schedules<a class="anchor-link" href="#Comparing-Linear-vs-Cosine-Schedules">¶</a></h2>
 </div>
 </div>
@@ -8944,7 +9011,47 @@ $$<p>They are two sides of the same coin. The notebook (and the DDPM literature)
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-Noise-Schedule-Lab">🎮 Interactive: the Noise Schedule Lab<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-Noise-Schedule-Lab">¶</a></h3><p>The static plots above, but alive &mdash; and connected to what an image <em>actually looks like</em> at every ᾱ:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Build the idea up with the chips: <strong>① β (noise added per step) &rarr; ② α = 1−β (signal kept) &rarr; ③ ᾱ = cumprod (total signal left) &rarr; ④ Δᾱ (destruction rate)</strong> &mdash; each highlights the matching line in <code>linear_sched</code> / <code>cos_sched</code>.</li>
+<li><strong>Click (or drag) anywhere on the plot</strong> to pick a timestep: the right panel shows the <em>same image with the same ε</em> under both schedules side by side.</li>
+<li>Drag the <strong>linear betamax</strong> slider (this is the <code>betamax=0.01</code> experiment below, live) and watch the orange curve &mdash; can you make linear behave more like cosine?</li>
+<li>On chip ④, see the key flaw: the linear schedule wastes its final ~300 steps on images that are already pure noise, while cosine spreads the destruction evenly.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/noise_schedule_lab.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Chip ④ (Δᾱ) shows WHY the cosine schedule was proposed.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/noise_schedule_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/noise_schedule_lab.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9204,12 +9311,51 @@ At t=999: ᾱ &asymp; 0   &rarr; x_t &asymp; 0*x_0 + 1*ε = ε          (pure no
 </code></pre>
 <p>The coefficients <code>sqrt(ᾱ)</code> and <code>sqrt(1-ᾱ)</code> are chosen so that:</p>
 <ul>
-<li>The variance stays normalized (sqrt(ᾱ)<sup>2</sup> + sqrt(1-ᾱ)<sup>2</sup> = ᾱ + (1-ᾱ) = 1)</li>
+<li>The variance stays normalized (sqrt(ᾱ)² + sqrt(1-ᾱ)² = ᾱ + (1-ᾱ) = 1)</li>
 <li>The image smoothly transitions from signal to noise</li>
 </ul>
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-noisify()-machine-%E2%80%94-one-batch,-four-moves">🎮 Interactive: the <code>noisify()</code> machine &mdash; one batch, four moves<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-noisify()-machine-%E2%80%94-one-batch,-four-moves">¶</a></h3><p>The formula you just read, acted out on a live mini-batch of six images:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Walk the chips: <strong>① a random t for every image &rarr; ② one ε field per image &rarr; ③ shrink the signal by &radic;ᾱ_t &rarr; ④ blend in noise by &radic;(1−ᾱ_t)</strong> &mdash; each stage highlights the exact line inside <code>noisify()</code>.</li>
+<li><strong>Click any image column</strong> to inspect its numbers: its personal t, its ᾱ_t, and its signal/noise coefficients (the orange/purple bar under each image).</li>
+<li>Press <strong>🎲 New batch</strong> to redraw the random timesteps &mdash; notice how one batch simultaneously trains the model on nearly-clean <em>and</em> nearly-destroyed images. That per-image randomness is why a single network learns all 1000 noise levels.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/noisify_forward.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Watch how (&radic;ᾱ)² + (&radic;(1−ᾱ))² = 1 keeps total variance constant.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/noisify_forward.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/noisify_forward.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9310,6 +9456,45 @@ At t=999: ᾱ &asymp; 0   &rarr; x_t &asymp; 0*x_0 + 1*ε = ε          (pure no
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive-(3D):-the-whole-dataset-diffusing-%E2%80%94-not-just-one-image">🎮 Interactive (3D): the <em>whole dataset</em> diffusing &mdash; not just one image<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-(3D):-the-whole-dataset-diffusing-%E2%80%94-not-just-one-image">¶</a></h3><p>So far we noised individual images. Zoom out: imagine every image squashed to a point (here 3-D instead of ~1000-D so we can see it). The dataset forms a structured shape &mdash; and diffusion <strong>melts that shape into a featureless Gaussian ball</strong>:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li><strong>Drag to rotate, scroll to zoom</strong> (three.js). Press ▶ and watch the two spirals (two "classes") dissolve as t &rarr; 999.</li>
+<li>Click chip <strong>④ reverse</strong> to watch the ball collapse back onto the data shape &mdash; this is what sampling does, and it's why we can start generation from <code>torch.randn</code>: the endpoint of the forward process is a distribution we can sample exactly.</li>
+<li>Pause around t &asymp; 300 and rotate: the class structure is still faintly visible &mdash; this is the regime where the model learns the most useful signal.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/diffusion_3d_cloud.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># NOTE: needs internet access (loads three.js from cdnjs).</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/diffusion_3d_cloud.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/diffusion_3d_cloud.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="Training">Training<a class="anchor-link" href="#Training">¶</a></h2><h3 id="The-UNet-Architecture">The UNet Architecture<a class="anchor-link" href="#The-UNet-Architecture">¶</a></h3><p>We'll use the <code>UNet2DModel</code> from HuggingFace's <code>diffusers</code> library. This is a well-tested implementation used in many state-of-the-art diffusion models.</p>
 </div>
@@ -9359,7 +9544,46 @@ At t=999: ᾱ &asymp; 0   &rarr; x_t &asymp; 0*x_0 + 1*ε = ε          (pure no
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-poke-the-UNet">🎮 Interactive: poke the UNet<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-poke-the-UNet">¶</a></h3><p>The ASCII "U" above becomes clickable here &mdash; this is the exact architecture we instantiate below (<code>block_out_channels=(32, 64, 128, 256)</code> on 32&times;32 inputs):</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li><strong>Click any block</strong> to see its resolution, channel count, and <em>why it exists</em> (encoder = "what is in this picture?", decoder = "where exactly is the noise?").</li>
+<li>Walk the chips: <strong>① encoder &rarr; ② bottleneck (with self-attention at 4&times;4) &rarr; ③ decoder + skip connections &rarr; ④ time embedding</strong> &mdash; chip ④ lights up the purple dashed lines showing how t is injected into <em>every</em> block, which is how one network handles all 1000 noise levels.</li>
+<li>Press <strong>▶ Send a tensor through</strong> to watch data flow down and up, lighting each skip connection as its saved activation is consumed.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/unet_denoiser.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Click blocks; teal dashes = skips, purple dashes = timestep injection.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/unet_denoiser.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/unet_denoiser.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9717,7 +9941,46 @@ To classifier                  To diffusion model
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-one-training-step,-dissected">🎮 Interactive: one training step, dissected<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-one-training-step,-dissected">¶</a></h3><p>Before you hit <code>fit</code>, make sure the five moves of every single optimizer step are crystal clear &mdash; DDPM training is just <strong>supervised regression where the target is the noise itself</strong>:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Step through <strong>① batch &rarr; ② noisify &rarr; ③ UNet forward &rarr; ④ MSE(ε̂, ε) &rarr; ⑤ update</strong> by clicking the chips <em>or the pipeline nodes</em> &mdash; each highlights the matching line of the training code.</li>
+<li>Press <strong>⚡ Train 20 steps</strong> repeatedly: the loss curve falls, and the red |ε̂ − ε| error map fades as the simulated model's predictions sharpen toward the true ε.</li>
+<li>Note what is <em>absent</em>: no labels, no clean-image target, no adversary &mdash; just noise-in, noise-out regression.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm_training_step_v3.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># The ⚡ button simulates optimizer steps so you can watch the loss curve fall.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm_training_step_v3.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"840px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddpm_training_step_v3.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:840px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10278,7 +10541,65 @@ At t=0, we skip the random part (z=0) to get our final image.
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<p><strong>Two beginner questions everyone asks here:</strong></p>
+<ol>
+<li><p><strong>Why add noise (σ·z) <em>back</em> during sampling &mdash; aren't we trying to remove noise?</strong>
+The model was trained on <em>properly noisy</em> images x_t ~ q(x_t). If we only subtracted noise, after a few steps x would drift off that distribution and the model's predictions would be unreliable (it never saw such inputs). Adding the right amount σ_t of fresh noise keeps every intermediate exactly on the distribution the model knows &mdash; and the randomness in z is also what makes each generated image <em>different</em>. At t = 0 we set z = 0 because we want the final clean answer.</p>
+</li>
+<li><p><strong>What is x̂₀ ("x-zero-hat") conceptually?</strong>
+At every step, the noise prediction ε̂ implies a guess of the clean image: rearrange the forward formula and you get x̂₀ = (x_t − &radic;(1−ᾱ_t)·ε̂)/&radic;ᾱ_t. Early on (t &asymp; 900) this belief is a vague blur; near t = 0 it locks into a sharp image. The update never jumps straight to x̂₀ &mdash; it takes a small, carefully-weighted step toward it.</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-Reverse-Sampling-Lab-%E2%80%94-the-actual-update-rule,-running-live">🎮 Interactive: the Reverse Sampling Lab &mdash; the <em>actual</em> update rule, running live<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-Reverse-Sampling-Lab-%E2%80%94-the-actual-update-rule,-running-live">¶</a></h3><p>This page executes the <strong>same algebra as <code>sample()</code></strong> on a toy image (a fixed target plays the role of a perfectly-trained model; the <em>model error</em> slider makes it realistically imperfect):</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Walk one timestep with the chips: <strong>① predict ε̂ &rarr; ② estimate x̂₀ &rarr; ③ mix the mean &rarr; ④ add σ·z</strong> &mdash; each highlights the exact line of the sampling code.</li>
+<li><strong>Click (or drag) anywhere on the timeline</strong> to jump to that stage of generation &mdash; the lab re-simulates the whole trajectory up to that t. Watch how blurry x̂₀ is at t &asymp; 900 and how it sharpens below t &asymp; 200.</li>
+<li>Press <strong>▶ Play to t=0</strong> with the speed slider, try <strong>🎲 new starting noise</strong> (a different z-path &rarr; a different trajectory), crank up <strong>model error</strong>, and switch <strong>linear vs cosine</strong>.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/reverse_sampling_lab.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># NOTE: this really computes the DDPM update per pixel -- it is not a canned animation.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/reverse_sampling_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/reverse_sampling_lab.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10672,7 +10993,47 @@ Speed improvement: ~2.6x faster!
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-skip-sampling-strategies-%E2%80%94-where-can-we-afford-NOT-to-call-the-model?">🎮 Interactive: skip-sampling strategies &mdash; where can we afford NOT to call the model?<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-skip-sampling-strategies-%E2%80%94-where-can-we-afford-NOT-to-call-the-model?">¶</a></h3><p>The expensive part of sampling is the <strong>UNet forward pass</strong>, not the update algebra. This lab draws the full 1000-step timeline for three strategies &mdash; a <strong>purple tick means the model is actually called</strong> at that t:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Click the strategy chips: <strong>① full &rarr; ② every k-th + last N &rarr; ③ the logarithmic <code>(t+101) % ((t+101)//100)</code> rule</strong> &mdash; each one highlights the matching line of code and updates the model-call count.</li>
+<li><strong>Hover any strip</strong> to see, for a specific t, whether the model is called or the previous ε̂ is reused.</li>
+<li>Drag <strong>k</strong> and <strong>last N</strong> for strategy ②, and the <strong>density</strong> knob for strategy ③ (that's the "100" in the formula).</li>
+<li>Press <strong>🔍 zoom</strong> to inspect t ∈ [0, 100] &mdash; every strategy keeps calls dense there, because that's where fine detail is decided.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/skip_sampling_strategies.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Covers BOTH sample_skip (below) and the smarter sample2 further down.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/skip_sampling_strategies.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/skip_sampling_strategies.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -11063,170 +11424,15 @@ Total samples: ~100 + 50 + 33 + ... &asymp; 280
 </div>
 </div>
 </div>
-<style>
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--ce-purple, #6c5ce7); height: 6px; touch-action: manipulation; }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 70px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-.sigvs-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.sigvs-row { display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
-.sigvs-label { font-family: var(--ce-font-heading, serif); text-align: center; font-weight: 600; color: var(--ce-purple-dark, #4f3dd0); margin-bottom: 6px; font-size: 0.92em; }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-function buildSchedules(T) {
-  var linBeta = new Float32Array(T + 1);
-  var linAB = new Float32Array(T + 1);
-  var cosBeta = new Float32Array(T + 1);
-  var cosAB = new Float32Array(T + 1);
-  var ab = 1;
-  for (var t = 0; t <= T; t++) {
-    linBeta[t] = 1e-4 + (0.02 - 1e-4) * (t / T);
-    if (t === 0) linAB[0] = 1;
-    else { ab *= (1 - linBeta[t]); linAB[t] = ab; }
-  }
-  var s = 0.008;
-  function f(t) { return Math.pow(Math.cos(((t / T + s) / (1 + s)) * Math.PI / 2), 2); }
-  var f0 = f(0);
-  for (var t = 0; t <= T; t++) {
-    cosAB[t] = f(t) / f0;
-    if (t === 0) cosBeta[0] = 0;
-    else cosBeta[t] = Math.min(1 - cosAB[t] / cosAB[t - 1], 0.999);
-  }
-  return { linBeta: linBeta, linAB: linAB, cosBeta: cosBeta, cosAB: cosAB };
-}
-
-// ============================================================================
-// Interactive 1: Schedule curves
-// ============================================================================
-(function schedCurves() {
-  var canvas = document.getElementById('sched-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-  var mode = 'beta';
-  var T = 1000;
-
-  function draw() {
-    var s = buildSchedules(T);
-    ctx.clearRect(0, 0, W, H);
-    var m = { l: 60, r: 16, t: 24, b: 40 };
-    var iW = W - m.l - m.r, iH = H - m.t - m.b;
-    var values = (mode === 'beta') ? { lin: s.linBeta, cos: s.cosBeta } : { lin: s.linAB, cos: s.cosAB };
-    var yMax = mode === 'beta' ? Math.max(0.022, 0.022) : 1;
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-    for (var i = 0; i <= 4; i++) {
-      var y = m.t + (i / 4) * iH;
-      ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(m.l + iW, y); ctx.stroke();
-    }
-    ctx.fillStyle = '#6b7280'; ctx.font = '11px monospace';
-    for (var i = 0; i <= 4; i++) {
-      var y = m.t + iH - (i / 4) * iH;
-      ctx.fillText((yMax * i / 4).toFixed(mode === 'beta' ? 4 : 2), 8, y + 4);
-    }
-    ctx.fillText(mode === 'beta' ? 'beta_t' : 'alphabar_t', 12, m.t + 14);
-    ctx.fillText('timestep t', m.l + iW / 2 - 30, m.t + iH + 28);
-    for (var i = 0; i <= 4; i++) {
-      var x = m.l + (i / 4) * iW;
-      ctx.fillText((T * i / 4).toFixed(0), x - 14, m.t + iH + 16);
-    }
-
-    function plotCurve(arr, color, dashed) {
-      ctx.strokeStyle = color; ctx.lineWidth = 2.6;
-      if (dashed) ctx.setLineDash([5, 4]); else ctx.setLineDash([]);
-      ctx.beginPath();
-      var step = Math.max(1, Math.floor(arr.length / 200));
-      for (var t = 0; t < arr.length; t += step) {
-        var x = m.l + (t / T) * iW;
-        var y = m.t + iH - (arr[t] / yMax) * iH;
-        if (t === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    plotCurve(values.lin, '#4f46e5', false);
-    plotCurve(values.cos, '#0fb9b1', true);
-
-    // legend
-    ctx.fillStyle = '#4f46e5'; ctx.fillRect(m.l + iW - 130, 12, 14, 4);
-    ctx.fillStyle = '#374151'; ctx.font = '12px sans-serif';
-    ctx.fillText('linear', m.l + iW - 110, 16);
-    ctx.fillStyle = '#0fb9b1'; ctx.fillRect(m.l + iW - 80, 12, 14, 4);
-    ctx.fillStyle = '#374151'; ctx.fillText('cosine', m.l + iW - 60, 16);
-  }
-  document.getElementById('sched-mode').addEventListener('click', function() {
-    mode = (mode === 'beta') ? 'ab' : 'beta';
-    this.innerHTML = mode === 'beta' ? 'Switch to &#257;<sub>t</sub> view' : 'Switch to &beta;<sub>t</sub> view';
-    draw();
-  });
-  document.getElementById('sched-T').addEventListener('input', function(e) {
-    T = parseInt(e.target.value);
-    document.getElementById('sched-T-val').textContent = T;
-    draw();
-  });
-  draw();
-})();
-
-// ============================================================================
-// Interactive 2: Signal vs noise at t
-// ============================================================================
-(function sigVsNoise() {
-  var linCv = document.getElementById('sigvs-lin');
-  if (!linCv) return;
-  var cosCv = document.getElementById('sigvs-cos');
-
-  var T = 1000;
-  var sched = buildSchedules(T);
-
-  function gauss() {
-    var u1 = Math.random(), u2 = Math.random();
-    return Math.sqrt(-2 * Math.log(u1 || 1e-9)) * Math.cos(2 * Math.PI * u2);
-  }
-  var N = 160;
-  var data = [], noise = [];
-  for (var i = 0; i < N; i++) {
-    var u = i / (N - 1);
-    var theta = u * 6;
-    var r = 6 + u * 60;
-    data.push([Math.cos(theta) * r, Math.sin(theta) * r]);
-    noise.push([gauss() * 60, gauss() * 50]);
-  }
-
-  function draw(canvas, ab) {
-    var ctx = canvas.getContext('2d');
-    var W = canvas.width, H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
-    var sqAb = Math.sqrt(ab), sqOm = Math.sqrt(1 - ab);
-    var cx = W / 2, cy = H / 2;
-    for (var i = 0; i < N; i++) {
-      var x = cx + sqAb * data[i][0] + sqOm * noise[i][0];
-      var y = cy + sqAb * data[i][1] + sqOm * noise[i][1];
-      var r = Math.round(79 + (6 - 79) * (1 - ab));
-      var g = Math.round(70 + (182 - 70) * (1 - ab));
-      var b = Math.round(229 + (212 - 229) * (1 - ab));
-      ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.78)';
-      ctx.beginPath(); ctx.arc(x, y, 2.4, 0, Math.PI * 2); ctx.fill();
-    }
-  }
-
-  function update() {
-    var frac = parseFloat(document.getElementById('sigvs-t').value);
-    var t = Math.floor(frac * T);
-    document.getElementById('sigvs-t-val').textContent = frac.toFixed(2);
-    var linAb = sched.linAB[t], cosAb = sched.cosAB[t];
-    draw(linCv, linAb); draw(cosCv, cosAb);
-    document.getElementById('sigvs-lin-ab').innerHTML = 'Linear &#257;<sub>t</sub> = ' + linAb.toFixed(3);
-    document.getElementById('sigvs-cos-ab').innerHTML = 'Cosine &#257;<sub>t</sub> = ' + cosAb.toFixed(3);
-  }
-  document.getElementById('sigvs-t').addEventListener('input', update);
-  update();
-})();
-
+<script id="ce-fullbleed-resize">
+(function(){
+  function fit(f){ try{var d=f.contentDocument; if(d&&d.body){var h=Math.ceil(Math.max(d.body.scrollHeight,d.body.offsetHeight)); if(h>50){f.style.height=(h+8)+"px";return true;}}}catch(e){} return false; }
+  function all(){ document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(fit); }
+  addEventListener("message",function(e){ if(!e.data||e.data.type!=="ce-frame-height"||!(e.data.height>50))return;
+    var ifr=document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)");
+    for(var i=0;i<ifr.length;i++){ if(ifr[i].contentWindow===e.source){ ifr[i].style.height=(e.data.height+8)+"px"; break; } } });
+  document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(function(f){ f.addEventListener("load",function(){fit(f);setTimeout(function(){fit(f);},400);setTimeout(function(){fit(f);},1200);}); });
+  addEventListener("resize",all); setInterval(all,1500); all();
 })();
 </script>
 </main>

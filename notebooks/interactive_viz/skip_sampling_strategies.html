@@ -1,0 +1,206 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skip Sampling — where can we afford NOT to call the model?</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:950px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .wrap{max-width:960px;margin:0 auto;}
+  .strat{background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:8px;box-shadow:0 6px 16px rgba(123,92,214,.08);cursor:pointer;transition:border-color .15s;}
+  .strat.on{border-color:var(--ac);}
+  .shead{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;}
+  .sname{font-size:12.5px;font-weight:700;}
+  .scount{font-family:monospace;font-size:11.5px;color:var(--soft);}
+  .scount b{color:var(--ac);font-size:13px;}
+  canvas.strip{display:block;width:100%;height:30px;border-radius:6px;margin-top:5px;cursor:crosshair;}
+  .hover{font-family:monospace;font-size:10.5px;color:var(--ac);min-height:14px;margin-top:3px;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin:4px 0 8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  input[type=range]{width:120px;accent-color:var(--ac);}
+  .pv{font-family:monospace;font-weight:700;color:var(--ac);min-width:36px;display:inline-block;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 6px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  table{border-collapse:collapse;font-size:11.5px;}
+  th,td{padding:4px 10px;border-bottom:1px solid var(--line);text-align:right;}
+  th{color:var(--soft);font-size:10.5px;} td:first-child,th:first-child{text-align:left;}
+  tr.on td{background:#f2edfd;font-weight:700;}
+  .detail{max-width:340px;font-size:12.5px;line-height:1.55;}
+  .detail b.i{color:var(--in);} .detail b.a{color:var(--ac);} .detail b.o{color:var(--out);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:920px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>Skip sampling — 1000 steps, but how many <em>model calls</em>?</h1>
+<p class="sub">The reverse loop always runs all 1000 timesteps, but the expensive part is the <b style="color:var(--ac)">UNet call</b>. If we skip it,
+we simply <b>reuse the last noise prediction</b> — nearby timesteps see almost the same noise anyway. Each strip below is the full timeline
+(t=999 left → t=0 right); a <b style="color:var(--ac)">purple tick = the model is called</b>, grey = prediction reused.
+<b>Click a strategy, hover the strips, and drag the parameter sliders.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① full — call every step</button>
+  <button class="chip" id="st1">② every k-th + last N</button>
+  <button class="chip" id="st2">③ logarithmic rule</button>
+</div>
+
+<div class="wrap" id="strats"></div>
+
+<div class="selrow" id="params">
+  <span id="p1wrap">k = <input id="kSl" type="range" min="2" max="10" step="1" value="3"><span class="pv" id="kV">3</span>
+  · last N = <input id="nSl" type="range" min="0" max="200" step="10" value="50"><span class="pv" id="nV">50</span></span>
+  <span id="p2wrap" style="display:none">density = <input id="dSl" type="range" min="40" max="300" step="10" value="100"><span class="pv" id="dV">100</span>
+  <span style="color:var(--soft)">(the "100" in the formula — higher = more calls near t=0)</span></span>
+  <span class="div"></span>
+  <button class="stepb" id="zoom">🔍 zoom: full range</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap">the trade-off<small>numbers from this notebook's runs (512 samples)</small></div>
+    <table id="tbl">
+      <tr><th>strategy</th><th>model calls</th><th>time</th><th>FID</th></tr>
+      <tr id="r0"><td>full sampling</td><td>1000</td><td>~2 min</td><td>~3–5</td></tr>
+      <tr id="r1"><td>every 3rd + last 50</td><td id="c1">—</td><td>~50 s</td><td>~4–6</td></tr>
+      <tr id="r2"><td>logarithmic</td><td id="c2">—</td><td>~40 s</td><td>~4–6</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">why it works<small>changes with the selected strategy</small></div>
+    <div class="detail" id="detail"></div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend"><b class="a">purple tick = UNet is called at this t</b> · grey = last ε̂ reused · notice every strategy keeps calls dense near <b class="o">t→0, where fine detail is decided</b></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const T=1000;
+let k=3,lastN=50,dens=100,sel=0,zoomLow=false;
+
+function callsFull(){const s=new Set();for(let t=0;t<T;t++)s.add(t);return s;}
+function callsK(){const s=new Set();for(let t=0;t<T;t++)if(t%k===0||t<lastN)s.add(t);return s;}
+function callsLog(){const s=new Set();for(let t=0;t<T;t++){const q=Math.floor((t+dens+1)/dens);if((t+dens+1)%q===0)s.add(t);}return s;}
+/* NOTE: notebook uses (t+101)%((t+101)//100)==0 with dens=100 → (t+dens+1) */
+
+const defs=[
+ {name:'① full sampling — model((x_t,t)) at all 1000 steps',fn:callsFull},
+ {name:'② every k-th step + always the last N',fn:callsK},
+ {name:'③ logarithmic:  (t+101) % ((t+101)//100) == 0',fn:callsLog}
+];
+
+/* build strategy rows */
+const rows=[];
+defs.forEach((d,i)=>{
+  const div=document.createElement('div');div.className='strat'+(i===0?' on':'');
+  div.innerHTML=`<div class="shead"><div class="sname">${d.name}</div><div class="scount">model calls: <b id="cnt${i}">0</b> / 1000</div></div>
+    <canvas class="strip" id="cv${i}" width="960" height="30"></canvas><div class="hover" id="hv${i}"></div>`;
+  $('strats').appendChild(div);
+  div.addEventListener('click',()=>selectStrat(i));
+  rows.push(div);
+});
+
+function drawStrip(i){
+  const cv=$('cv'+i),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  const set=defs[i].fn();
+  $('cnt'+i).textContent=set.size;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#f3f6fc';ctx.fillRect(0,0,W,H);
+  const lo=0, hi=zoomLow?100:T; /* zoom shows t in [0,100] */
+  for(let t=lo;t<hi;t++){
+    if(!set.has(t))continue;
+    const x=(1-(t-lo)/(hi-lo))*(W-1); /* t high at left */
+    ctx.fillStyle='#7b5cd6';
+    ctx.fillRect(x,3,zoomLow?6:1.2,H-6);
+  }
+  /* axis labels */
+  ctx.fillStyle='#5a6b86';ctx.font='9px monospace';
+  ctx.textAlign='left';ctx.fillText('t='+(hi-1),3,H-3+0);
+  ctx.textAlign='right';ctx.fillText('t=0',W-3,H-3);
+  if(i===1)updTbl();
+  return set;
+}
+function updTbl(){
+  $('c1').textContent=defs[1].fn().size;
+  $('c2').textContent=defs[2].fn().size;
+}
+function drawAll(){for(let i=0;i<3;i++)drawStrip(i);}
+
+const DETAILS=[
+ `The baseline. Correct but wasteful: at t≈900 the image is almost pure static, and the noise prediction barely changes from one step to the next — we are paying a full UNet forward pass for information we basically already have.`,
+ `The insight: <b>keep every timestep's <i>update</i></b> (the cheap algebra) but only <b class="a">refresh the noise prediction every k-th step</b> — except near the end. The final N steps (drag the slider) are where edges, seams and textures get decided, so there we call the model every time. Try k=10 with last N=0 and imagine the detail loss.`,
+ `Even smarter: make the call density itself a function of t. The odd-looking formula <code>(t+101) % ((t+101)//100)</code> produces calls every ~10 steps at t≈900 but <b class="o">every single step below t≈100</b> — a budget that spends compute exactly where the image needs it. Press 🔍 zoom to see the dense region.`
+];
+const CODES=[
+ [`for t in reversed(range(n_steps)):`,
+  `<span class="hl">    noise = model((x_t, t_batch))</span>   <span class="cm"># called 1000 times — the whole cost</span>`,
+  `    x_t = update(x_t, noise, t)`],
+ [`for t in reversed(range(n_steps)):`,
+  `<span class="hl">    if t % 3 == 0 or t < 50:</span>`,
+  `<span class="hl">        noise = model((x_t, t_batch))</span>   <span class="cm"># otherwise: reuse previous noise!</span>`,
+  `    x_t = update(x_t, noise, t)      <span class="cm"># the update itself ALWAYS runs</span>`],
+ [`sample_at = {t for t in range(n_steps)`,
+  `<span class="hl">             if (t+101) % ((t+101)//100) == 0}</span>`,
+  `for t in reversed(range(n_steps)):`,
+  `    if t in sample_at: noise = model((x_t, t_batch))`,
+  `    x_t = update(x_t, noise, t)`,
+  `<span class="cm"># t=950: (1051)//100=10 → call every ~10th · t=40: (141)//100=1 → call EVERY step</span>`]
+];
+
+function selectStrat(i){
+  sel=i;
+  rows.forEach((r,j)=>r.classList.toggle('on',j===i));
+  for(let j=0;j<3;j++)$('st'+j).classList.toggle('on',j===i);
+  ['r0','r1','r2'].forEach((r,j)=>$(r).classList.toggle('on',j===i));
+  $('detail').innerHTML=DETAILS[i];
+  $('code').innerHTML=CODES[i].join('\n');
+  $('p1wrap').style.display=(i===1)?'':'none';
+  $('p2wrap').style.display=(i===2)?'':'none';
+}
+
+/* hover readout */
+defs.forEach((d,i)=>{
+  const cv=$('cv'+i);
+  cv.addEventListener('pointermove',e=>{
+    const r=cv.getBoundingClientRect();
+    const u=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+    const hi=zoomLow?100:T;
+    const t=Math.round((1-u)*(hi-1));
+    const called=d.fn().has(t);
+    $('hv'+i).textContent=`t=${t} → ${called?'MODEL CALLED':'reuse previous ε̂'}`;
+  });
+  cv.addEventListener('pointerleave',()=>$('hv'+i).textContent='');
+});
+
+$('kSl').oninput=e=>{k=+e.target.value;$('kV').textContent=k;drawAll();};
+$('nSl').oninput=e=>{lastN=+e.target.value;$('nV').textContent=lastN;drawAll();};
+$('dSl').oninput=e=>{dens=+e.target.value;$('dV').textContent=dens;drawAll();};
+$('zoom').onclick=()=>{zoomLow=!zoomLow;$('zoom').textContent=zoomLow?'🔍 zoom: t ∈ [0,100]':'🔍 zoom: full range';drawAll();};
+for(let i=0;i<3;i++)$('st'+i).onclick=()=>selectStrat(i);
+
+selectStrat(0);drawAll();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

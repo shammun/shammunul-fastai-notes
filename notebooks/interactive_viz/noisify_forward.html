@@ -1,0 +1,233 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The noisify() Machine</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .batch{display:flex;flex-direction:column;gap:8px;align-items:center;}
+  .rowlab{display:flex;gap:10px;align-items:center;justify-content:center;}
+  .rowlab .tag{width:118px;text-align:right;font-size:11.5px;font-weight:700;}
+  .imgs{display:flex;gap:10px;}
+  .cellw{position:relative;text-align:center;cursor:pointer;}
+  .cellw canvas{width:72px;height:72px;image-rendering:pixelated;border-radius:8px;border:2px solid var(--line);display:block;transition:border-color .15s, opacity .3s;}
+  .cellw.dim canvas{opacity:.18;}
+  .cellw.sel canvas{border-color:var(--ac);box-shadow:0 4px 12px rgba(123,92,214,.35);}
+  .tbadge{position:absolute;top:-8px;right:-8px;background:var(--ac);color:#fff;font-family:monospace;font-size:10px;font-weight:700;
+    border-radius:999px;padding:2px 6px;opacity:0;transition:opacity .3s;box-shadow:0 3px 8px rgba(123,92,214,.4);}
+  .tbadge.show{opacity:1;}
+  .coefbar{height:8px;border-radius:4px;background:#eef2f8;margin-top:4px;overflow:hidden;display:flex;opacity:0;transition:opacity .3s;}
+  .coefbar.show{opacity:1;}
+  .coefbar .s{background:var(--in);height:100%;} .coefbar .n{background:var(--ac);height:100%;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .detail{max-width:320px;font-size:12.5px;line-height:1.55;}
+  .detail .fm{background:#f4f7fd;border-radius:8px;padding:6px 9px;font-family:monospace;font-size:11.5px;margin-top:6px;text-align:center;}
+  .detail b.i{color:var(--in);} .detail b.a{color:var(--ac);} .detail b.o{color:var(--out);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 6px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:860px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>The <code>noisify()</code> machine — one training batch, four moves</h1>
+<p class="sub">Every batch that reaches the model goes through this. Walk the chips: <b style="color:var(--ac)">① a random t for every image
+→ ② one ε field per image → ③ shrink the signal by √ᾱ → ④ blend in noise by √(1−ᾱ)</b>. Click any image to inspect its numbers.
+The bar under each image shows the <b style="color:var(--in)">signal share</b> vs <b style="color:var(--ac)">noise share</b>.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① sample random t</button>
+  <button class="chip" id="st1">② sample ε ~ N(0,1)</button>
+  <button class="chip" id="st2">③ scale x₀ by √ᾱ_t</button>
+  <button class="chip" id="st3">④ + √(1−ᾱ_t)·ε → x_t</button>
+</div>
+
+<div class="selrow">
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="reset" id="reset">🎲 New batch</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap">the batch (6 images)<small id="rowcap">row shown: clean x₀</small></div>
+    <div class="batch">
+      <div class="rowlab"><div class="tag" style="color:var(--in)" id="tagTop">x₀ (clean)</div><div class="imgs" id="rowTop"></div></div>
+      <div class="rowlab"><div class="tag" style="color:var(--out)" id="tagBot">x_t (what the UNet sees)</div><div class="imgs" id="rowBot"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">inspector<small>click an image column</small></div>
+    <div class="detail" id="detail"></div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = original signal</b> · <b class="a">purple = noise being mixed in</b> · <b class="o">teal = the noisy result handed to the model</b></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=28,B=6,T=1000;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+let seed=11,rnd=mulberry32(seed);
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const abar=t=>Math.cos((t/T)*Math.PI/2)**2;
+
+/* six toy glyphs (shirt, trouser, bag, seven, tee, boot-ish) drawn procedurally */
+function glyph(k){
+  const g=new Float32Array(N*N).fill(-0.85);
+  const box=(r0,r1,c0,c1,v)=>{for(let r=r0;r<r1;r++)for(let c=c0;c<c1;c++)if(r>=0&&r<N&&c>=0&&c<N)g[r*N+c]=v;};
+  if(k===0){box(8,24,8,20,.75);box(8,13,3,8,.75);box(8,13,20,25,.75);box(8,9,11,17,-.2);}
+  if(k===1){box(5,10,9,19,.7);box(10,25,9,13,.7);box(10,25,15,19,.7);}
+  if(k===2){box(10,23,7,21,.75);box(6,10,10,12,.5);box(6,10,16,18,.5);box(6,7,10,18,.5);}
+  if(k===3){box(5,8,6,22,.8);for(let r=8;r<24;r++){const c=21-Math.round((r-8)*0.7);box(r,r+1,c-1,c+2,.8);}}
+  if(k===4){box(7,22,10,18,.72);box(7,12,5,10,.72);box(7,12,18,23,.72);box(14,15,10,18,.4);}
+  if(k===5){box(6,18,10,16,.72);box(15,23,10,24,.72);box(21,23,8,24,.5);}
+  return g;
+}
+let X0=[],EPS=[],TS=[];
+function newBatch(){
+  rnd=mulberry32(seed);
+  X0=[];EPS=[];TS=[];
+  for(let b=0;b<B;b++){
+    X0.push(glyph(b));
+    const e=new Float32Array(N*N);for(let i=0;i<N*N;i++)e[i]=gauss();EPS.push(e);
+    TS.push(Math.floor(rnd()*T));
+  }
+}
+function draw(cv,arr){
+  const ctx=cv.getContext('2d'),img=ctx.createImageData(N,N);
+  for(let i=0;i<N*N;i++){const g=Math.max(0,Math.min(255,Math.round((arr[i]+1)/2*255)));
+    img.data[4*i]=g;img.data[4*i+1]=g;img.data[4*i+2]=g;img.data[4*i+3]=255;}
+  ctx.putImageData(img,0,0);
+}
+function mix(b,phase){ /* what the bottom row shows at each stage */
+  const out=new Float32Array(N*N),ab=abar(TS[b]),s=Math.sqrt(ab),n=Math.sqrt(1-ab);
+  for(let i=0;i<N*N;i++){
+    if(phase<=0)out[i]=x0v(b,i);
+    else if(phase===1)out[i]=EPS[b][i]*0.55;               /* show raw ε */
+    else if(phase===2)out[i]=s*x0v(b,i)+(1-s)*(-0.85);     /* faded signal only */
+    else out[i]=s*x0v(b,i)+n*EPS[b][i];                    /* full x_t */
+  }
+  return out;
+}
+const x0v=(b,i)=>X0[b][i];
+
+/* build DOM */
+const rowT=[],rowB=[];
+let sel=0,phase=0,timer=null,speed=1;
+function buildRows(){
+  ['rowTop','rowBot'].forEach((rid,ri)=>{
+    const row=$(rid);row.innerHTML='';
+    for(let b=0;b<B;b++){
+      const w=document.createElement('div');w.className='cellw';
+      const c=document.createElement('canvas');c.width=N;c.height=N;
+      w.appendChild(c);
+      if(ri===1){
+        const bad=document.createElement('div');bad.className='tbadge';bad.textContent='t=?';w.appendChild(bad);
+        const bar=document.createElement('div');bar.className='coefbar';
+        bar.innerHTML='<div class="s"></div><div class="n"></div>';w.appendChild(bar);
+      }
+      w.onclick=()=>{sel=b;render();};
+      row.appendChild(w);
+      (ri===0?rowT:rowB).push({w,c});
+    }
+  });
+}
+
+const CODES=[
+ [`def noisify(x0, alphabar):`,
+  `    n = len(x0)                          <span class="cm"># batch size</span>`,
+  `<span class="hl">    t = torch.randint(0, n_steps, (n,), dtype=torch.long)</span>`,
+  `    <span class="cm"># ↑ EVERY image gets its OWN random timestep — one batch trains</span>`,
+  `    <span class="cm">#   the model on many noise levels at once</span>`],
+ [`<span class="hl">    epsilon = torch.randn(x0.shape, device=device)</span>`,
+  `    <span class="cm"># ↑ a fresh field of Gaussian noise, one full image of ε per input.</span>`,
+  `    <span class="cm">#   THIS is the training target — the model must recover exactly this.</span>`],
+ [`    alphabar_t = alphabar[t].reshape(-1, 1, 1, 1)   <span class="cm"># (B,1,1,1) for broadcasting</span>`,
+  `<span class="hl">    xt = alphabar_t.sqrt()*x0</span> + (1-alphabar_t).sqrt()*epsilon`,
+  `    <span class="cm"># ↑ first half: the ORIGINAL image, shrunk toward grey by √ᾱ_t.</span>`,
+  `    <span class="cm">#   big t → small ᾱ → the signal almost vanishes</span>`],
+ [`    xt = alphabar_t.sqrt()*x0 <span class="hl">+ (1-alphabar_t).sqrt()*epsilon</span>`,
+  `<span class="hl">    return (xt, t), epsilon</span>   <span class="cm"># inputs → model,  ε → loss target</span>`,
+  `    <span class="cm"># ↑ second half: the noise, scaled so total variance stays ≈ 1</span>`,
+  `    <span class="cm">#   (√ᾱ)² + (√1−ᾱ)² = 1  — "variance preserving"</span>`]
+];
+const ROWCAP=['clean x₀ — nothing has happened yet','the ε field drawn for each image','signal faded by √ᾱ_t (no noise yet)','final x_t = faded signal + scaled noise'];
+
+function setPhase(p){
+  phase=p;for(let i=0;i<4;i++)$('st'+i).classList.toggle('on',i===p);
+  $('code').innerHTML=CODES[p].join('\n');
+  $('rowcap').textContent='bottom row: '+ROWCAP[p];
+  render();
+}
+function render(){
+  for(let b=0;b<B;b++){
+    draw(rowT[b].c,X0[b]);
+    draw(rowB[b].c,mix(b,phase));
+    rowT[b].w.classList.toggle('sel',b===sel);
+    rowB[b].w.classList.toggle('sel',b===sel);
+    const bad=rowB[b].w.querySelector('.tbadge'),bar=rowB[b].w.querySelector('.coefbar');
+    bad.textContent='t='+TS[b];
+    bad.classList.toggle('show',phase>=0);
+    bar.classList.toggle('show',phase>=2);
+    const ab=abar(TS[b]);
+    bar.querySelector('.s').style.width=(Math.sqrt(ab)*100)+'%';
+    bar.querySelector('.n').style.width=(Math.sqrt(1-ab)*100)+'%';
+  }
+  const ab=abar(TS[sel]),s=Math.sqrt(ab),n=Math.sqrt(1-ab);
+  $('detail').innerHTML=
+   `Image <b>#${sel+1}</b> drew <b class="a">t = ${TS[sel]}</b> out of ${T}.<br><br>`+
+   `ᾱ<sub>t</sub> = ${ab.toFixed(3)} → <b class="i">signal coefficient √ᾱ = ${s.toFixed(3)}</b>, `+
+   `<b class="a">noise coefficient √(1−ᾱ) = ${n.toFixed(3)}</b>.<br><br>`+
+   (phase<3?`Step through to ④ to see the final blend.`:
+   `So the UNet receives an image that is <b>${Math.round(s*s*100)}% signal variance</b> and <b>${Math.round(n*n*100)}% noise variance</b> — plus the number t — and must output the exact ε shown at stage ②.`)+
+   `<div class="fm">x_t = ${s.toFixed(2)}·x₀ + ${n.toFixed(2)}·ε</div>`;
+}
+function stepF(){if(phase<3)setPhase(phase+1);else stop();}
+function stepB(){if(phase>0)setPhase(phase-1);}
+function stop(){if(timer){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}}
+function play(){if(timer){stop();return;}
+  if(phase>=3)setPhase(0);
+  $('play').textContent='⏸ Pause';
+  timer=setInterval(()=>{if(phase>=3){stop();return;}stepF();},1400/speed);}
+$('play').onclick=play;$('fwd').onclick=()=>{stop();stepF();};$('back').onclick=()=>{stop();stepB();};
+$('reset').onclick=()=>{stop();seed=Math.floor(Math.random()*1e6);newBatch();setPhase(0);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+for(let i=0;i<4;i++)$('st'+i).onclick=()=>{stop();setPhase(i);};
+
+newBatch();buildRows();setPhase(0);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  @media (max-width:900px){.cellw canvas{width:48px;height:48px;} .rowlab .tag{width:80px;font-size:10px;}}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

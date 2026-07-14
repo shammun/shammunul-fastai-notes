@@ -1,0 +1,214 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One DDPM training step, dissected</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .flow{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;margin:6px 0 10px;}
+  .node{background:#fff;border:2px solid var(--line);border-radius:12px;padding:8px 10px;text-align:center;min-width:96px;cursor:pointer;
+    box-shadow:0 6px 16px rgba(123,92,214,.08);transition:all .2s;opacity:.45;}
+  .node.on{opacity:1;border-color:var(--ac);box-shadow:0 6px 18px rgba(123,92,214,.28);}
+  .node.past{opacity:1;}
+  .node .nl{font-size:11.5px;font-weight:700;}
+  .node .ns{font-size:10px;color:var(--soft);font-family:monospace;margin-top:2px;}
+  .arrow{font-size:16px;color:#c9d4e8;font-weight:700;}
+  .node canvas{width:56px;height:56px;image-rendering:pixelated;border-radius:6px;border:1px solid var(--line);display:block;margin:4px auto 0;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 6px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .detail{max-width:400px;font-size:12.5px;line-height:1.55;}
+  .detail b.i{color:var(--in);} .detail b.a{color:var(--ac);} .detail b.o{color:var(--out);}
+  #loss{display:block;border-radius:8px;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-top:8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:100px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .train{background:var(--out);color:#fff;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:880px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>One training step, dissected — the model never sees a clean target</h1>
+<p class="sub">DDPM training is just supervised regression in disguise: input = noisy image + timestep, target = <b style="color:var(--ac)">the noise itself</b>.
+Step through the five moves (click nodes or chips), then hit <b style="color:var(--out)">⚡ Train 20 steps</b> to watch the loss fall as the
+model's guesses (bottom of node ④) sharpen toward the true ε.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① batch of x₀</button>
+  <button class="chip" id="st1">② noisify</button>
+  <button class="chip" id="st2">③ UNet forward</button>
+  <button class="chip" id="st3">④ MSE(ε̂, ε)</button>
+  <button class="chip" id="st4">⑤ backprop + update</button>
+</div>
+
+<div class="flow" id="flow">
+  <div class="node" id="n0"><div class="nl">x₀ batch</div><div class="ns">clean images</div><canvas id="c0" width="28" height="28"></canvas></div>
+  <div class="arrow">→</div>
+  <div class="node" id="n1"><div class="nl">noisify</div><div class="ns">(x_t, t), ε</div><canvas id="c1" width="28" height="28"></canvas></div>
+  <div class="arrow">→</div>
+  <div class="node" id="n2"><div class="nl">UNet</div><div class="ns">ε̂ = model((x_t,t))</div><canvas id="c2" width="28" height="28"></canvas></div>
+  <div class="arrow">→</div>
+  <div class="node" id="n3"><div class="nl">loss</div><div class="ns" id="lossro">MSE = ?</div><canvas id="c3" width="28" height="28"></canvas></div>
+  <div class="arrow">→</div>
+  <div class="node" id="n4"><div class="nl">optimizer</div><div class="ns">AdamW + OneCycle</div><div style="font-size:22px;margin-top:8px">⚙️</div></div>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">what this stage does<small id="dsub"></small></div>
+    <div class="detail" id="detail"></div>
+  </div>
+  <div class="card">
+    <div class="cap">loss over training steps<small>each ⚡ press = 20 simulated optimizer steps</small></div>
+    <canvas id="loss" width="360" height="180"></canvas>
+  </div>
+</div>
+
+<div class="selrow">
+  <button class="stepb" id="back">⏮ Step</button>
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="fwd">Step ⏭</button>
+  <button class="train" id="train">⚡ Train 20 steps</button>
+  <button class="reset" id="reset">↺ Reset model</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = data</b> · <b class="a">purple = model & noise target</b> · <b class="o">teal = loss / learning signal</b></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=28,T=1000;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let q=Math.imul(a^a>>>15,1|a);q=q+Math.imul(q^q>>>7,61|q)^q;return((q^q>>>14)>>>0)/4294967296;}}
+let rnd=mulberry32(5);
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const abar=t=>Math.cos((t/T)*Math.PI/2)**2;
+/* toy image: bag */
+const x0=new Float32Array(N*N).fill(-0.85);
+(function(){for(let r=10;r<23;r++)for(let c=7;c<21;c++)x0[r*N+c]=.75;
+ for(let r=6;r<10;r++){x0[r*N+10]=.5;x0[r*N+17]=.5;}for(let c=10;c<18;c++)x0[6*N+c]=.5;})();
+const eps=new Float32Array(N*N);for(let i=0;i<N*N;i++)eps[i]=gauss();
+const tDraw=420, s=Math.sqrt(abar(tDraw)), nn=Math.sqrt(1-abar(tDraw));
+const xt=new Float32Array(N*N);for(let i=0;i<N*N;i++)xt[i]=s*x0[i]+nn*eps[i];
+
+/* "model skill" 0..1: prediction = skill*eps + (1-skill)*independent noise */
+let skill=0.06, steps=0, lossHist=[];
+const junk=new Float32Array(N*N);for(let i=0;i<N*N;i++)junk[i]=gauss();
+function pred(){const p=new Float32Array(N*N);
+  for(let i=0;i<N*N;i++)p[i]=skill*eps[i]+(1-skill)*junk[i]*0.9;return p;}
+function mse(){const p=pred();let m=0;for(let i=0;i<N*N;i++){const d=p[i]-eps[i];m+=d*d;}return m/(N*N);}
+
+function draw(cv,arr,scale=1){
+  const ctx=cv.getContext('2d'),img=ctx.createImageData(N,N);
+  for(let i=0;i<N*N;i++){const g=Math.max(0,Math.min(255,Math.round((arr[i]*scale+1)/2*255)));
+    img.data[4*i]=g;img.data[4*i+1]=g;img.data[4*i+2]=g;img.data[4*i+3]=255;}
+  ctx.putImageData(img,0,0);
+}
+function drawDiff(cv){ /* |ε̂-ε| heat: red-ish */
+  const p=pred(),ctx=cv.getContext('2d'),img=ctx.createImageData(N,N);
+  for(let i=0;i<N*N;i++){const d=Math.min(1,Math.abs(p[i]-eps[i])/2);
+    img.data[4*i]=Math.round(214*d+245*(1-d));img.data[4*i+1]=Math.round(69*d+247*(1-d));
+    img.data[4*i+2]=Math.round(69*d+253*(1-d));img.data[4*i+3]=255;}
+  ctx.putImageData(img,0,0);
+}
+function drawLoss(){
+  const cv=$('loss'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height,M={l:38,r:8,t:10,b:22};
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#fbfdff';ctx.fillRect(M.l,M.t,W-M.l-M.r,H-M.t-M.b);
+  const hi=Math.max(0.9,...lossHist,0.9),lo=0;
+  ctx.strokeStyle='#eef2f8';for(let g=0;g<=3;g++){const y=M.t+g/3*(H-M.t-M.b);
+    ctx.beginPath();ctx.moveTo(M.l,y);ctx.lineTo(W-M.r,y);ctx.stroke();
+    ctx.fillStyle='#5a6b86';ctx.font='9px monospace';ctx.textAlign='right';
+    ctx.fillText((hi-(hi-lo)*g/3).toFixed(2),M.l-4,y+3);}
+  ctx.textAlign='center';ctx.fillText('optimizer steps →',W/2,H-6);
+  if(lossHist.length>1){ctx.strokeStyle='#16a3a3';ctx.lineWidth=2;ctx.beginPath();
+    lossHist.forEach((v,i)=>{const x=M.l+i/(Math.max(60,lossHist.length)-1)*(W-M.l-M.r);
+      const y=M.t+(1-(v-lo)/(hi-lo))*(H-M.t-M.b);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();}
+}
+
+const INFO=[
+ [`Load a batch of clean Fashion-MNIST images. <b>Note what is NOT here:</b> no labels, no "target image". The supervision signal will be manufactured in the next step.`,`get_dls(...) → next(iter(dls.train))`],
+ [`<b class="a">noisify()</b> draws a random t per image (here t=${tDraw} for the one shown, ᾱ=${abar(tDraw).toFixed(3)}) and mixes in Gaussian noise. It returns the model INPUT (x_t, t) and, crucially, keeps the exact ε as the <b>regression target</b>.`,`(x_t, t), ε = noisify(x0, alphabar)`],
+ [`The UNet sees only the noisy image and t, and outputs ε̂ — its guess of the noise field, one value per pixel. Early in training this guess is mostly junk (see the canvas).`,`ε̂ = model((x_t, t))`],
+ [`Mean-squared error between guess and truth, averaged over every pixel of every image. The red canvas shows |ε̂−ε|: bright red = wrong. Train and watch it fade.`,`loss = F.mse_loss(ε̂, ε)`],
+ [`Backprop pushes every weight a little in the direction that would have made ε̂ closer to ε. AdamW + OneCycleLR schedule the step sizes. Repeat a few thousand times and the UNet becomes a general-purpose denoiser for <i>all</i> noise levels at once.`,`loss.backward(); opt.step(); sched.step()`]
+];
+const CODES=[
+ [`<span class="cm"># ① a plain batch — DDPM is unsupervised: images only</span>`,
+  `<span class="hl">dls = DataLoaders(dl(dsd['train']), dl(dsd['test']))</span>`],
+ [`<span class="cm"># ② the collate function calls noisify on every batch, on the fly</span>`,
+  `def collate_ddpm(b):`,
+  `<span class="hl">    return noisify(default_collate(b)[xl], alphabar)</span>`,
+  `<span class="cm"># fresh random t and fresh ε every epoch → infinite training variety</span>`],
+ [`<span class="cm"># ③ the forward pass (miniai calls this inside the Learner)</span>`,
+  `<span class="hl">preds = model((x_t, t))</span>   <span class="cm"># ε̂, shape (B,1,32,32)</span>`],
+ [`<span class="cm"># ④ the whole objective — nothing else</span>`,
+  `<span class="hl">loss = F.mse_loss(preds, eps)</span>`],
+ [`<span class="cm"># ⑤ standard optimization, nothing diffusion-specific</span>`,
+  `opt = optim.AdamW(model.parameters(), eps=1e-5)`,
+  `sched = partial(optim.lr_scheduler.OneCycleLR, max_lr=lr,`,
+  `                total_steps=epochs*len(dls.train))`,
+  `<span class="hl">learn.fit(epochs)</span>`]
+];
+
+let phase=0,timer=null,speed=1;
+function setPhase(p){
+  phase=p;
+  for(let i=0;i<5;i++){$('st'+i).classList.toggle('on',i===p);
+    $('n'+i).classList.toggle('on',i===p);$('n'+i).classList.toggle('past',i<p);}
+  $('detail').innerHTML=INFO[p][0];
+  $('dsub').textContent=INFO[p][1];
+  $('code').innerHTML=CODES[p].join('\n');
+}
+function renderCanvases(){
+  draw($('c0'),x0);draw($('c1'),xt);draw($('c2'),pred(),0.7);drawDiff($('c3'));
+  $('lossro').textContent='MSE = '+mse().toFixed(3);
+  drawLoss();
+}
+function stepF(){setPhase(Math.min(4,phase+1));}
+function stop(){if(timer){clearInterval(timer);timer=null;$('play').textContent='▶ Play';}}
+function play(){if(timer){stop();return;}
+  if(phase>=4)setPhase(0);
+  $('play').textContent='⏸ Pause';
+  timer=setInterval(()=>{if(phase>=4){stop();return;}stepF();},1300/speed);}
+$('play').onclick=play;
+$('fwd').onclick=()=>{stop();stepF();};
+$('back').onclick=()=>{stop();setPhase(Math.max(0,phase-1));};
+$('reset').onclick=()=>{stop();skill=0.06;steps=0;lossHist=[];renderCanvases();setPhase(0);};
+$('train').onclick=()=>{
+  for(let k=0;k<20;k++){steps++;skill=Math.min(0.985,skill+(1-skill)*0.045);
+    lossHist.push(mse()+Math.abs(gauss())*0.015);}
+  renderCanvases();setPhase(4);
+};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+for(let i=0;i<5;i++){$('st'+i).onclick=()=>{stop();setPhase(i);};$('n'+i).onclick=()=>{stop();setPhase(i);};}
+
+renderCanvases();setPhase(0);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

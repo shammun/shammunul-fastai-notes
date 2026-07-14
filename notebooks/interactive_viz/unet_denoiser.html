@@ -1,0 +1,227 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UNet — the denoiser, block by block</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 6px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  svg{display:block;}
+  .blk{cursor:pointer;transition:filter .15s;}
+  .blk:hover rect{filter:brightness(0.96);}
+  .blk rect{stroke:var(--line);stroke-width:1.5;rx:8;transition:stroke .15s;}
+  .blk.sel rect{stroke:var(--ac);stroke-width:3;}
+  .blk text{font-size:10px;font-weight:700;pointer-events:none;}
+  .skip{fill:none;stroke:var(--out);stroke-width:2;stroke-dasharray:5 4;opacity:.55;transition:opacity .2s,stroke-width .2s;}
+  .skip.hot{opacity:1;stroke-width:3.5;}
+  .tline{fill:none;stroke:var(--ac);stroke-width:1.6;stroke-dasharray:2 3;opacity:.5;}
+  .pulse{fill:var(--ac);stroke:#fff;stroke-width:1.5;}
+  .detail{max-width:330px;font-size:12.5px;line-height:1.55;}
+  .detail b.i{color:var(--in);} .detail b.a{color:var(--ac);} .detail b.o{color:var(--out);}
+  .detail .fm{background:#f4f7fd;border-radius:8px;padding:6px 9px;font-family:monospace;font-size:11px;margin-top:6px;}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-top:8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:130px;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:880px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>Inside the denoiser — a UNet you can poke</h1>
+<p class="sub">The model that predicts ε is a <b>UNet</b>: it squeezes the image down (<b style="color:var(--in)">what is in this picture?</b>),
+then blows it back up (<b style="color:var(--out)">where exactly is the noise?</b>), with <b style="color:var(--out)">skip connections</b> carrying
+fine detail across, and the <b style="color:var(--ac)">timestep t injected into every block</b>. <b>Click any block</b> to inspect it, use the chips, or press Play to send a tensor through.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① Encoder — compress</button>
+  <button class="chip" id="st1">② Bottleneck — global reasoning</button>
+  <button class="chip" id="st2">③ Decoder + skips — rebuild detail</button>
+  <button class="chip" id="st3">④ Time embedding — "how noisy?"</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap">UNet2DModel(in=1, out=1, block_out_channels=(32, 64, 128, 256))<small>click blocks · teal dashes = skip connections · purple dashes = t injection</small></div>
+    <svg id="net" width="620" height="330" viewBox="0 0 620 330"></svg>
+  </div>
+  <div class="card">
+    <div class="cap" style="color:var(--ac)">inspector<small id="dsub">click a block on the left</small></div>
+    <div class="detail" id="detail"></div>
+  </div>
+</div>
+
+<div class="selrow">
+  <button class="play" id="play">▶ Send a tensor through</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = down/encoder path</b> · <b class="o">teal = up/decoder path & skips</b> · <b class="a">purple = time embedding & bottleneck</b></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const svg=$('net');
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);(parent||svg).appendChild(e);return e;}
+
+/* block layout: 4 down, mid, 4 up */
+const blocks=[
+ {id:'in',  x:20,  y:40,  w:54, h:60, col:'#fdf3e5', lab:['input','32×32×1'], side:'in'},
+ {id:'d0',  x:95,  y:40,  w:60, h:60, col:'#fdeeda', lab:['Down 0','32×32×32'], side:'down'},
+ {id:'d1',  x:170, y:80,  w:60, h:56, col:'#fce4c4', lab:['Down 1','16×16×64'], side:'down'},
+ {id:'d2',  x:245, y:120, w:60, h:52, col:'#fbdaae', lab:['Down 2','8×8×128'], side:'down'},
+ {id:'d3',  x:320, y:160, w:60, h:48, col:'#f9d098', lab:['Down 3','4×4×256'], side:'down'},
+ {id:'mid', x:283, y:236, w:78, h:44, col:'#ece7fb', lab:['Mid block','4×4×256 + attn'], side:'mid'},
+ {id:'u3',  x:395, y:160, w:60, h:48, col:'#d8f2ef', lab:['Up 3','8×8×128'], side:'up'},
+ {id:'u2',  x:470, y:120, w:60, h:52, col:'#cdeeeb', lab:['Up 2','16×16×64'], side:'up'},
+ {id:'u1',  x:545, y:80,  w:60, h:56, col:'#c2ebe7', lab:['Up 1','32×32×32'], side:'up'},
+ {id:'out', x:545, y:14,  w:60, h:44, col:'#e8f7f5', lab:['output ε̂','32×32×1'], side:'out'}
+];
+/* order the pulse travels */
+const ORDER=['in','d0','d1','d2','d3','mid','u3','u2','u1','out'];
+const centers={};
+/* skip pairs */
+const SKIPS=[['d0','u1'],['d1','u2'],['d2','u3'],['d3','mid']];
+
+/* draw t embedding node */
+el('rect',{x:20,y:250,width:96,height:36,rx:8,fill:'#f2edfd',stroke:'#dde5f2','stroke-width':1.5});
+el('text',{x:68,y:265,'text-anchor':'middle','font-size':10,'font-weight':700,fill:'#7b5cd6'}).textContent='t → sinusoidal';
+el('text',{x:68,y:278,'text-anchor':'middle','font-size':10,'font-weight':700,fill:'#7b5cd6'}).textContent='embedding + MLP';
+
+const skipEls=[],tEls=[];
+blocks.forEach(b=>{
+  centers[b.id]=[b.x+b.w/2,b.y+b.h/2];
+});
+/* flow arrows */
+for(let i=0;i<ORDER.length-1;i++){
+  const a=centers[ORDER[i]],c=centers[ORDER[i+1]];
+  el('line',{x1:a[0],y1:a[1],x2:c[0],y2:c[1],stroke:'#c9d4e8','stroke-width':2});
+}
+/* skips */
+SKIPS.forEach(([a,b])=>{
+  const p=centers[a],q=centers[b];
+  const midy=Math.min(p[1],q[1])-26;
+  const path=el('path',{d:`M ${p[0]} ${p[1]-28} C ${p[0]} ${midy}, ${q[0]} ${midy}, ${q[0]} ${q[1]-(b==='mid'?24:26)}`,class:'skip'});
+  skipEls.push(path);
+});
+/* t injection lines */
+['d0','d1','d2','d3','mid','u3','u2','u1'].forEach(id=>{
+  const c=centers[id];
+  tEls.push(el('path',{d:`M 116 268 C ${(116+c[0])/2} 300, ${c[0]} ${c[1]+60}, ${c[0]} ${c[1]+ (id==='mid'?22:24)}`,class:'tline'}));
+});
+/* blocks (on top) */
+const gEls={};
+blocks.forEach(b=>{
+  const g=el('g',{class:'blk',id:'g_'+b.id});
+  el('rect',{x:b.x,y:b.y,width:b.w,height:b.h,rx:8,fill:b.col},g);
+  el('text',{x:b.x+b.w/2,y:b.y+b.h/2-4,'text-anchor':'middle',fill:'#25324a'},g).textContent=b.lab[0];
+  el('text',{x:b.x+b.w/2,y:b.y+b.h/2+10,'text-anchor':'middle',fill:'#5a6b86','font-weight':400},g).textContent=b.lab[1];
+  g.addEventListener('click',()=>select(b.id));
+  gEls[b.id]=g;
+});
+const pulse=el('circle',{cx:-20,cy:-20,r:7,class:'pulse'});
+
+const INFO={
+ in:`<b>Input.</b> The noisy image x<sub>t</sub>, one channel, 32×32 (Fashion-MNIST padded from 28×28 so it halves cleanly: 32→16→8→4). The UNet also receives <b class="a">t</b> — without it the model couldn't know whether to remove a little noise or a lot.<div class="fm">model((x_t, t))  →  ε̂  (same shape as x_t)</div>`,
+ d0:`<b>Down 0.</b> Two ResNet blocks at full 32×32 resolution, growing 1→32 channels. Early layers detect <b class="i">local texture</b> — exactly where noise is most visible.`,
+ d1:`<b>Down 1.</b> Downsample to 16×16, 64 channels. Each halving of resolution <b>doubles the receptive field</b> — the network starts seeing shapes, not pixels.`,
+ d2:`<b>Down 2.</b> 8×8, 128 channels. Trades <i>where</i> for <i>what</i>: less position, more meaning.`,
+ d3:`<b>Down 3.</b> 4×4, 256 channels. Only 16 spatial positions left, each summarizing a big chunk of the garment.`,
+ mid:`<b>Mid block.</b> The bottom of the U: ResNet blocks + <b class="a">self-attention</b> at 4×4. Attention lets every position look at every other — global reasoning like "this is a boot, so the bottom edge should be sole-shaped".`,
+ u3:`<b>Up 3.</b> Upsample 4→8 and — crucially — <b class="o">concatenate the skip tensor saved by Down 2</b>. The decoder gets both the global summary (from below) and the fine detail (from the side).`,
+ u2:`<b>Up 2.</b> 16×16. Skip from Down 1 restores mid-level structure. Without skips, the reconstruction would be blurry — the exact detail needed to predict per-pixel noise would be lost.`,
+ u1:`<b>Up 1.</b> Back to 32×32 with the highest-resolution skip from Down 0.`,
+ out:`<b>Output ε̂.</b> A final conv maps back to 1 channel: the model's guess of the <b class="a">exact noise field ε</b> that was added. Same shape as the input — this is why a UNet (and not a classifier-style net) is the right tool: we need <b>an answer per pixel</b>.<div class="fm">loss = F.mse_loss(ε̂, ε)</div>`
+};
+
+const CODES=[
+ [`class UNet(UNet2DModel):`,
+  `    def forward(self, x): return super().forward(*x).sample`,
+  ``,
+  `model = UNet(in_channels=1, out_channels=1, <span class="hl">block_out_channels=(32, 64, 128, 256)</span>,`,
+  `             norm_num_groups=8)   <span class="cm"># ← the four encoder stages you see on the left</span>`],
+ [`<span class="cm"># the mid block runs at 4×4 with self-attention:</span>`,
+  `<span class="hl">UNetMidBlock2D(... attention ...)</span>   <span class="cm"># inside UNet2DModel</span>`,
+  `<span class="cm"># at 4×4, attention is cheap (16 positions) but lets the net reason globally</span>`],
+ [`<span class="cm"># decoder blocks receive torch.cat([upsampled, skip], dim=1)</span>`,
+  `<span class="hl">x = torch.cat([up(x), skips.pop()], dim=1)</span>   <span class="cm"># conceptually</span>`,
+  `<span class="cm"># skips carry FINE DETAIL the bottleneck threw away — essential for</span>`,
+  `<span class="cm"># per-pixel noise prediction</span>`],
+ [`<span class="cm"># t is turned into a vector and ADDED inside every ResNet block:</span>`,
+  `<span class="hl">emb = mlp(sinusoidal_embedding(t))</span>`,
+  `h = h + emb[:, :, None, None]   <span class="cm"># broadcast over H,W</span>`,
+  `<span class="cm"># one network handles ALL 1000 noise levels because every block is told t</span>`]
+];
+
+let selId=null, phase=0, timer=null, speed=1;
+function select(id){
+  selId=id;
+  blocks.forEach(b=>gEls[b.id].classList.toggle('sel',b.id===id));
+  $('detail').innerHTML=INFO[id];
+  $('dsub').textContent=id;
+}
+function setPhase(p){
+  phase=p;for(let i=0;i<4;i++)$('st'+i).classList.toggle('on',i===p);
+  $('code').innerHTML=CODES[p].join('\n');
+  skipEls.forEach(s=>s.classList.toggle('hot',p===2));
+  tEls.forEach(s=>{s.style.opacity=(p===3)?1:0.35;s.style.strokeWidth=(p===3)?2.6:1.6;});
+  if(p===0)select('d1'); if(p===1)select('mid'); if(p===2)select('u2'); if(p===3)select('in');
+}
+/* pulse animation */
+function stop(){if(timer){clearInterval(timer);timer=null;$('play').textContent='▶ Send a tensor through';}}
+function play(){
+  if(timer){stop();return;}
+  $('play').textContent='⏸ Pause';
+  let i=0,f=0,STEPS=24;
+  timer=setInterval(()=>{
+    const a=centers[ORDER[i]],b=centers[ORDER[i+1]];
+    const u=f/STEPS;
+    pulse.setAttribute('cx',a[0]+(b[0]-a[0])*u);
+    pulse.setAttribute('cy',a[1]+(b[1]-a[1])*u);
+    /* light skips as we pass their source/dest */
+    SKIPS.forEach(([s,d],k)=>{
+      const hot=(ORDER[i]===s)||(ORDER[i+1]===d&&u>0.5);
+      skipEls[k].classList.toggle('hot',hot||phase===2);
+    });
+    select(ORDER[u>0.5?i+1:i]);
+    f++;
+    if(f>STEPS){f=0;i++;if(i>=ORDER.length-1){stop();pulse.setAttribute('cx',-20);}}
+  },Math.round(26/speed));
+}
+$('play').onclick=play;
+$('reset').onclick=()=>{stop();pulse.setAttribute('cx',-20);setPhase(0);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';if(timer){stop();play();}};
+for(let i=0;i<4;i++)$('st'+i).onclick=()=>{stop();setPhase(i);};
+
+setPhase(0);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  @media (max-width:980px){#net{width:100%;height:auto;}}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

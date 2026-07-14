@@ -1,0 +1,217 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noise Schedule Lab — linear vs cosine</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:920px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:7px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  input[type=range]{accent-color:var(--ac);}
+  .bmv{font-family:monospace;font-weight:700;color:var(--ac);min-width:52px;display:inline-block;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 6px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  #plot{cursor:crosshair;display:block;border-radius:8px;}
+  .imgs{display:flex;gap:12px;justify-content:center;}
+  .imgs .one{text-align:center;}
+  .imgs canvas{width:120px;height:120px;image-rendering:pixelated;border-radius:8px;border:1px solid var(--line);display:block;margin:0 auto;}
+  .imgs .lab{font-size:11px;font-weight:700;margin-top:3px;}
+  .imgs .val{font-family:monospace;font-size:10.5px;color:var(--soft);}
+  .readout{font-family:monospace;font-size:11.5px;color:var(--soft);text-align:center;margin-top:8px;line-height:1.7;}
+  .readout b{color:var(--ac);}
+  .readout .lin{color:var(--in);font-weight:700;} .readout .cos{color:var(--out);font-weight:700;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:840px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>Noise Schedule Lab — how fast should we destroy the image?</h1>
+<p class="sub">A schedule is just a recipe for <b>how much noise to add at every timestep</b>. Walk the chips
+<b style="color:var(--ac)">① β → ② α → ③ ᾱ → ④ Δᾱ</b> to build the idea up, then <b>click anywhere on the plot</b> to
+pick a timestep and see what an image actually looks like there under the <b class="" style="color:var(--in)">linear</b>
+vs <b style="color:var(--out)">cosine</b> schedule.</p>
+
+<div class="stagebar">
+  <button class="chip on" id="st0">① β — noise added per step</button>
+  <button class="chip" id="st1">② α = 1−β — signal kept per step</button>
+  <button class="chip" id="st2">③ ᾱ = cumprod — total signal left</button>
+  <button class="chip" id="st3">④ Δᾱ — destruction rate</button>
+</div>
+
+<div class="selrow">
+  linear betamax <input id="bmax" type="range" min="0.005" max="0.04" step="0.001" value="0.02"><span class="bmv" id="bmv">0.020</span>
+  <span style="color:var(--soft)">·&nbsp; click the plot to move t &nbsp;·</span>
+  t <input id="tsl" type="range" min="0" max="999" value="500" style="width:150px"><span class="bmv" id="tv">500</span>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="cap" id="pcap">ᾱ over time<small>orange = linear · teal = cosine · click to set t</small></div>
+    <canvas id="plot" width="520" height="300"></canvas>
+  </div>
+  <div class="card">
+    <div class="cap">the same image at your chosen t<small>x<sub>t</sub> = √ᾱ·x₀ + √(1−ᾱ)·ε (same ε for both)</small></div>
+    <div class="imgs">
+      <div class="one"><canvas id="imL" width="32" height="32"></canvas><div class="lab" style="color:var(--in)">linear</div><div class="val" id="vL"></div></div>
+      <div class="one"><canvas id="imC" width="32" height="32"></canvas><div class="lab" style="color:var(--out)">cosine</div><div class="val" id="vC"></div></div>
+    </div>
+    <div class="readout" id="ro"></div>
+  </div>
+</div>
+
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = linear schedule</b> · <b class="o">teal = cosine schedule</b> · <b class="a">purple = your selected timestep</b></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const T=1000;
+let betamax=0.02, betamin=1e-4, t=500, phase=2;
+
+/* schedules */
+function linear(){
+  const beta=[],a=[],ab=[];let p=1;
+  for(let i=0;i<T;i++){const b=betamin+(betamax-betamin)*i/(T-1);beta.push(b);a.push(1-b);p*=(1-b);ab.push(p);}
+  return {beta,a,ab};
+}
+function cosine(){
+  const f=x=>Math.cos(x/T*Math.PI/2)**2;
+  const beta=[],a=[],ab=[];
+  for(let i=0;i<T;i++){const al=f(i)/f(i-1);a.push(al);beta.push(1-al);ab.push(f(i));}
+  return {beta,a,ab};
+}
+let L=linear(),C=cosine();
+
+/* toy image + noise */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let q=Math.imul(a^a>>>15,1|a);q=q+Math.imul(q^q>>>7,61|q)^q;return((q^q>>>14)>>>0)/4294967296;}}
+let rnd=mulberry32(7);
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const N=32,x0=new Float32Array(N*N).fill(-0.85);
+(function(){ /* a chunky "7" */
+  for(let c=6;c<26;c++){x0[6*N+c]=0.8;x0[7*N+c]=0.8;x0[8*N+c]=0.8;}
+  for(let r=9;r<27;r++){const c=25-Math.round((r-9)*0.75);for(let k=0;k<3;k++)x0[r*N+Math.max(0,c-k)]=0.8;}
+})();
+const eps=new Float32Array(N*N);for(let i=0;i<N*N;i++)eps[i]=gauss();
+function drawImg(cv,ab){
+  const ctx=cv.getContext('2d'),img=ctx.createImageData(N,N);
+  const s=Math.sqrt(ab),n=Math.sqrt(1-ab);
+  for(let i=0;i<N*N;i++){const v=s*x0[i]+n*eps[i];
+    const g=Math.max(0,Math.min(255,Math.round((v+1)/2*255)));
+    img.data[4*i]=g;img.data[4*i+1]=g;img.data[4*i+2]=g;img.data[4*i+3]=255;}
+  ctx.putImageData(img,0,0);
+}
+
+/* plotting */
+const P=$('plot'),ctx=P.getContext('2d');
+const M={l:44,r:10,t:12,b:26};
+function series(){
+  if(phase===0)return {L:L.beta,C:C.beta,label:'β_t',fmt:v=>v.toFixed(4)};
+  if(phase===1)return {L:L.a,C:C.a,label:'α_t',fmt:v=>v.toFixed(4)};
+  if(phase===2)return {L:L.ab,C:C.ab,label:'ᾱ_t',fmt:v=>v.toFixed(3)};
+  const d=arr=>arr.map((v,i)=>i?arr[i-1]-v:0);
+  return {L:d(L.ab),C:d(C.ab),label:'−Δᾱ_t (signal destroyed this step)',fmt:v=>v.toFixed(5)};
+}
+function drawPlot(){
+  const S=series();
+  const all=S.L.concat(S.C);
+  let lo=Math.min(...all),hi=Math.max(...all);
+  if(hi-lo<1e-9)hi=lo+1e-9;
+  const pad=(hi-lo)*0.06;lo-=pad;hi+=pad;
+  const W=P.width,H=P.height,pw=W-M.l-M.r,ph=H-M.t-M.b;
+  const X=i=>M.l+i/(T-1)*pw, Y=v=>M.t+(1-(v-lo)/(hi-lo))*ph;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#fbfdff';ctx.fillRect(M.l,M.t,pw,ph);
+  ctx.strokeStyle='#eef2f8';ctx.lineWidth=1;
+  for(let g=0;g<=4;g++){const y=M.t+g/4*ph;ctx.beginPath();ctx.moveTo(M.l,y);ctx.lineTo(W-M.r,y);ctx.stroke();
+    ctx.fillStyle='#5a6b86';ctx.font='10px monospace';ctx.textAlign='right';
+    ctx.fillText(S.fmt(hi-(hi-lo)*g/4),M.l-5,y+3);}
+  ctx.textAlign='center';
+  for(let g=0;g<=4;g++){const x=M.l+g/4*pw;ctx.fillText(String(Math.round(g/4*(T-1))),x,H-8);}
+  ctx.fillText('t →',W/2,H-8+0);
+  const line=(arr,col)=>{ctx.strokeStyle=col;ctx.lineWidth=2.2;ctx.beginPath();
+    for(let i=0;i<T;i++){const x=X(i),y=Y(arr[i]);i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();};
+  line(S.L,'#f6921e');line(S.C,'#16a3a3');
+  /* t marker */
+  ctx.strokeStyle='#7b5cd6';ctx.lineWidth=1.6;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(X(t),M.t);ctx.lineTo(X(t),M.t+ph);ctx.stroke();ctx.setLineDash([]);
+  const dot=(arr,col)=>{ctx.fillStyle=col;ctx.beginPath();ctx.arc(X(t),Y(arr[t]),4.5,0,7);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();};
+  dot(S.L,'#f6921e');dot(S.C,'#16a3a3');
+  $('pcap').firstChild.textContent=S.label+' over time';
+}
+
+const CODES=[
+ [`<span class="cm"># ① β: how much variance is ADDED at each single step</span>`,
+  `def linear_sched(betamin=0.0001, betamax=<span class="num" id="cbm">0.020</span>, n_steps=1000):`,
+  `<span class="hl">    beta = torch.linspace(betamin, betamax, n_steps)</span>  <span class="cm"># straight ramp</span>`,
+  ``,
+  `<span class="cm"># the cosine schedule never defines β directly — it comes out of ᾱ (chip ③)</span>`],
+ [`<span class="cm"># ② α = 1 − β: the fraction of signal that SURVIVES one step</span>`,
+  `<span class="hl">    a = 1. - beta</span>            <span class="cm"># linear schedule</span>`,
+  ``,
+  `<span class="cm"># cosine: recover α from the ᾱ ratio  (ᾱ_t = ᾱ_{t-1}·α_t)</span>`,
+  `<span class="hl">    alp = ab / abar(ts-1, n_steps)</span>`],
+ [`<span class="cm"># ③ ᾱ: multiply all the survivals together → TOTAL signal remaining</span>`,
+  `<span class="hl">    abar = a.cumprod(dim=0)</span>   <span class="cm"># linear: [a0, a0·a1, a0·a1·a2, ...]</span>`,
+  ``,
+  `<span class="cm"># cosine defines ᾱ directly with a smooth curve:</span>`,
+  `<span class="hl">    return (t/T * math.pi/2).cos()**2</span>   <span class="cm"># 1 at t=0 → 0 at t=T</span>`],
+ [`<span class="cm"># ④ Δᾱ: how much signal dies at each step — the KEY difference</span>`,
+  `<span class="cm"># linear: destruction accelerates, then everything is already dead by t≈700</span>`,
+  `<span class="cm"># cosine: gentle at the start AND the end — every timestep does useful work,</span>`,
+  `<span class="cm"># so the model gets meaningful training examples at all t. This is why the</span>`,
+  `<span class="cm"># "Improved DDPM" paper proposed it.</span>`]
+];
+
+function setPhase(p){phase=p;for(let i=0;i<4;i++)$('st'+i).classList.toggle('on',i===p);
+  $('code').innerHTML=CODES[p].join('\n');const el=document.getElementById('cbm');if(el)el.textContent=betamax.toFixed(3);
+  drawPlot();}
+
+function render(){
+  drawPlot();
+  drawImg($('imL'),L.ab[t]);drawImg($('imC'),C.ab[t]);
+  $('vL').textContent='ᾱ='+L.ab[t].toFixed(3);
+  $('vC').textContent='ᾱ='+C.ab[t].toFixed(3);
+  $('tv').textContent=t;$('tsl').value=t;
+  $('ro').innerHTML=
+    `t=<b>${t}</b><br>`+
+    `<span class="lin">linear</span>&nbsp; β=${L.beta[t].toFixed(4)} · α=${L.a[t].toFixed(4)} · ᾱ=${L.ab[t].toFixed(3)}<br>`+
+    `<span class="cos">cosine</span>&nbsp; β=${C.beta[t].toFixed(4)} · α=${C.a[t].toFixed(4)} · ᾱ=${C.ab[t].toFixed(3)}`;
+}
+
+P.addEventListener('pointerdown',pick);
+P.addEventListener('pointermove',e=>{if(e.buttons)pick(e);});
+function pick(e){
+  const r=P.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(P.width/r.width);
+  const i=Math.round((x-M.l)/(P.width-M.l-M.r)*(T-1));
+  t=Math.max(0,Math.min(T-1,i));render();
+}
+$('tsl').oninput=e=>{t=+e.target.value;render();};
+$('bmax').oninput=e=>{betamax=+e.target.value;$('bmv').textContent=betamax.toFixed(3);L=linear();
+  const el=document.getElementById('cbm');if(el)el.textContent=betamax.toFixed(3);render();};
+for(let i=0;i<4;i++)$('st'+i).onclick=()=>setPhase(i);
+
+setPhase(2);render();
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+  @media (max-width:980px){#plot{width:100%;height:auto;}}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>
