@@ -1,0 +1,463 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The FID/KID Grand Tour — watch the images become one number</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--ok:#128a5a;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:110px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  select{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);border-radius:9px;padding:5px 8px;color:var(--ink);background:#fff;cursor:pointer;}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  canvas{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+  .inforow{max-width:1060px;margin:8px auto 0;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:stretch;}
+  .inspect{flex:1 1 430px;min-width:300px;}
+  .inspect h4{margin:0 0 4px;font-size:12.5px;}
+  .inspect .body{font-size:12px;color:var(--soft);line-height:1.5;}
+  .statecard{flex:1 1 430px;min-width:300px;border:2px dashed var(--ac);border-radius:12px;padding:9px 11px;font-family:"SF Mono",Consolas,monospace;font-size:12px;background:#faf8ff;line-height:1.7;}
+  .statecard b{color:var(--ac);}
+  .statecard .todo{color:#b9c3d6;}
+  .statecard .done{color:var(--ink);}
+  .statecard .done .ok{color:var(--ok);font-weight:800;}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1060px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>The whole FID pipeline: watch images physically become one number</h1>
+<p class="sub"><b style="color:var(--in)">Real images</b> (top) and <b style="color:var(--out)">generated images</b> (bottom) fly one-by-one through the <b style="color:var(--ac)">same frozen extractor</b> and come out as <b>dots in feature space</b>. Then each dot-cloud is squashed into a center <b>μ</b> + shape <b>Σ</b>, and finally into <b style="color:var(--ac)">one score</b>. <b>Click any glowing station to replay its step</b> — the story, code, and checklist below follow along. Try the quality dropdown at any time.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Two piles of images</button>
+  <button class="chip" data-s="1">② Through the extractor</button>
+  <button class="chip" data-s="2">③ Feature clouds</button>
+  <button class="chip" data-s="3">④ Squash to μ &amp; Σ</button>
+  <button class="chip" data-s="4">⑤ One score</button>
+</div>
+
+<div class="selrow">
+  generator quality
+  <select id="qual">
+    <option value="bad">😖 terrible</option>
+    <option value="ok" selected>🙂 this notebook (FID ≈ 34)</option>
+    <option value="great">🤩 great</option>
+  </select>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ stage</button>
+  <button class="play" id="play">▶ Play all</button>
+  <button class="stepb" id="fwd">stage ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="wrap"><div class="card"><canvas id="cv"></canvas></div></div>
+
+<div class="inforow">
+  <div class="card inspect">
+    <h4 id="insT">How to read the scene</h4>
+    <div class="body" id="insB">Left to right = the pipeline. Little clothing icons = actual images; dots = the same images after the extractor turns each one into 512 numbers. <b>Hover a station</b> for details, <b>click it</b> to replay that step.</div>
+  </div>
+  <div class="statecard" id="state"></div>
+</div>
+
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b class="i">orange</b> = the 10,000 real validation images &amp; everything computed from them · <b class="o">teal</b> = the 256 DDPM samples &amp; theirs · <b class="a">purple</b> = shared machinery (one extractor, one formula) · ✛ = μ (cloud center) · dashed ellipse = Σ (cloud shape, 2σ)</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+const ORANGE='#f6921e',TEAL='#16a3a3',AC='#7b5cd6',SOFT='#5a6b86',INK='#25324a',NEG='#d64545',OK='#128a5a';
+let p=0, playing=false, speed=1, stopAt=99, qual='ok', hoverStation=-1;
+
+// ---------- deterministic clouds ----------
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const NP=54, realPts=[], genPts=[];
+{const R1=mulberry(11),R2=mulberry(77);
+ for(let i=0;i<NP;i++){realPts.push([gauss(R1),gauss(R1)*0.6]);genPts.push([gauss(R2),gauss(R2)*0.6]);}}
+const QUAL={bad:{dx:2.1,dy:1.1,sc:1.65,fid:187.3,kid:0.412,noise:0.9},
+            ok:{dx:0.95,dy:0.42,sc:1.22,fid:33.8,kid:0.056,noise:0.35},
+            great:{dx:0.10,dy:0.05,sc:1.03,fid:2.1,kid:0.003,noise:0.05}};
+
+// ---------- geometry (logical 1032 × 520) ----------
+const W=1032,H=520,yR=150,yG=385,yMid=(yR+yG)/2;
+const SX=[95,318,562,778,952];      // stations: images, extractor, clouds, stats, score
+const STN=[
+ {name:'the images',d:'Top: 10,000 real Fashion-MNIST validation images. Bottom: 256 samples the DDPM just produced. Same kind of tensor, different origin — the whole game is measuring how similar these two piles are.'},
+ {name:'the frozen extractor',d:'A pre-trained classifier with its head chopped off (see the 3-D hook visualization earlier). It is NEVER trained here — it is a fixed measuring instrument that turns any image into 512 numbers describing what is in it. Crucially, both piles pass through the SAME weights.'},
+ {name:'feature clouds',d:'Each image is now one point in 512-D space (drawn here in 2-D). Real images form the orange cloud, generated ones the teal cloud. A good generator ⇒ overlapping clouds. Flip the quality dropdown and watch the teal cloud move.'},
+ {name:'μ & Σ (the squash)',d:'FID keeps only two things per cloud: the mean μ (a 512-vector: the center, drawn as ✛) and the covariance Σ (a 512×512 matrix: the spread & tilt, drawn as the dashed ellipse). 10,000 images compressed to one center + one shape.'},
+ {name:'the score',d:'The Fréchet formula compares the two (μ,Σ) capsules: distance between centers + mismatch between shapes. Identical clouds → 0. This notebook lands at FID ≈ 33.8. KID (later) answers the same question without the Gaussian squash.'}
+];
+const lerp=(a,b,t)=>a+(b-a)*t, sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t), clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+// tiny clothing glyphs
+function glyph(x,y,s,kind,col,noise,alpha){
+  ctx.save();ctx.translate(x,y);ctx.strokeStyle=col;ctx.fillStyle=col;ctx.lineWidth=Math.max(1,s*0.1);
+  ctx.globalAlpha=alpha==null?1:alpha;
+  if(kind===0){ctx.strokeRect(-s*0.3,-s*0.35,s*0.6,s*0.7);ctx.beginPath();ctx.moveTo(-s*0.3,-s*0.25);ctx.lineTo(-s*0.5,0);ctx.moveTo(s*0.3,-s*0.25);ctx.lineTo(s*0.5,0);ctx.stroke();}
+  else if(kind===1){ctx.beginPath();ctx.moveTo(-s*0.25,-s*0.4);ctx.lineTo(s*0.25,-s*0.4);ctx.lineTo(s*0.42,s*0.42);ctx.lineTo(-s*0.42,s*0.42);ctx.closePath();ctx.stroke();}
+  else if(kind===2){ctx.beginPath();ctx.moveTo(-s*0.42,s*0.1);ctx.quadraticCurveTo(0,s*0.42,s*0.45,s*0.22);ctx.lineTo(s*0.45,-s*0.05);ctx.lineTo(-s*0.15,-s*0.28);ctx.closePath();ctx.stroke();}
+  else{ctx.strokeRect(-s*0.33,-s*0.3,s*0.66,s*0.6);ctx.beginPath();ctx.arc(0,-s*0.3,s*0.22,Math.PI,0);ctx.stroke();}
+  if(noise>0){const r=mulberry(kind*97+13);ctx.globalAlpha=(alpha==null?1:alpha)*0.55*noise;
+    for(let i=0;i<20*noise;i++)ctx.fillRect((r()-0.5)*s,(r()-0.5)*s,1.6,1.6);}
+  ctx.restore();ctx.globalAlpha=1;
+}
+const KINDS=[0,1,2,3,1,0,3,2,0];
+function gridPos(g,lane){return [SX[0]-34+(g%3)*34, (lane? yG-38 : yR-56)+Math.floor(g/3)*36];}
+function cloudPos(i,lane){
+  const q=QUAL[qual];
+  if(lane===0)return [SX[2]+realPts[i][0]*24, yR+8+realPts[i][1]*24];
+  return [SX[2]+q.dx*9+genPts[i][0]*24*q.sc*0.85, yG-14-q.dy*9+genPts[i][1]*24*q.sc*0.85];
+}
+function cloudMu(lane){ // exact mean of drawn points
+  let sx=0,sy=0;for(let i=0;i<NP;i++){const pt=cloudPos(i,lane);sx+=pt[0];sy+=pt[1];}
+  return [sx/NP,sy/NP];
+}
+function cloudEll(lane){ // exact 2x2 covariance of drawn points → ellipse params
+  const mu=cloudMu(lane);let a=0,b=0,c=0;
+  for(let i=0;i<NP;i++){const pt=cloudPos(i,lane);const dx=pt[0]-mu[0],dy=pt[1]-mu[1];a+=dx*dx;b+=dx*dy;c+=dy*dy;}
+  a/=NP;b/=NP;c/=NP;
+  const tr=a+c,det=a*c-b*b,d=Math.sqrt(Math.max(0,tr*tr/4-det));
+  const l1=tr/2+d,l2=Math.max(0,tr/2-d);
+  const ang=Math.atan2(l1-a,b||1e-9);
+  return {mu,rx:2*Math.sqrt(l1),ry:2*Math.sqrt(l2),ang};
+}
+
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+// station frame + label
+function stationFrame(i,active){
+  const hot=hoverStation===i;
+  ctx.save();
+  ctx.strokeStyle=active?AC:(hot?'#a795dd':'#c6d2e6');ctx.lineWidth=active?2.5:(hot?2.2:1.4);
+  ctx.setLineDash(active?[]:[6,5]);
+  roundRect(SX[i]-64,36,128,H-62,10);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle=active?AC:(hot?'#8a76c9':SOFT);ctx.font='700 12px "Segoe UI",sans-serif';ctx.textAlign='center';
+  ctx.fillText(['① images','② extractor','③ clouds','④ μ & Σ','⑤ score'][i],SX[i],28);
+  ctx.restore();
+}
+
+// ---------- main draw, everything derived from p ----------
+function draw(){
+  const dpr=Math.min(devicePixelRatio||1,2);
+  cv.width=W*dpr;cv.height=H*dpr;
+  const cssW=cv.parentElement.clientWidth-22;
+  cv.style.height=(cssW*H/W)+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const q=QUAL[qual];
+  const s=Math.min(4,Math.floor(p+1e-4)), t=p-s;
+
+  // ---- lane labels ----
+  ctx.font='700 12px "Segoe UI",sans-serif';ctx.textAlign='left';
+  ctx.fillStyle=ORANGE;ctx.fillText('REAL — 10,000 validation images',22,56);
+  ctx.fillStyle=TEAL;ctx.fillText('GENERATED — 256 DDPM samples',22,H-16);
+
+  for(let i=0;i<5;i++)stationFrame(i, s===i || (i===0&&p<0.05));
+
+  // ---- ① image grids (always the inputs) ----
+  const gridReveal = s>0?1:sm(t*1.6);
+  for(let g=0;g<9;g++){
+    const a=clamp(gridReveal*9-g,0,1);
+    const [gx,gy]=gridPos(g,0);glyph(gx,gy,22,KINDS[g],ORANGE,0,a);
+    const [hx,hy]=gridPos(g,1);glyph(hx,hy,22,KINDS[(g+2)%4],TEAL,q.noise,a);
+  }
+  ctx.font='11px Consolas,monospace';ctx.fillStyle=SOFT;ctx.textAlign='center';
+  if(gridReveal>0.85){ctx.fillText('[10000, 1, 32, 32]',SX[0],yR+74);ctx.fillText('[256, 1, 32, 32]',SX[0],yG+58);}
+
+  // ---- ② extractor card (appears at stage 1) ----
+  const exT = s>1?1:(s===1?sm(t*4):0);
+  if(exT>0){
+    ctx.save();ctx.globalAlpha=exT;
+    const glow=s===1;
+    ctx.fillStyle=glow?'#f0eafd':'#f7f4fe';ctx.strokeStyle=AC;ctx.lineWidth=glow?3:2;
+    roundRect(SX[1]-52,yMid-88,104,176,12);ctx.fill();ctx.stroke();
+    ctx.fillStyle=AC;ctx.font='700 12px "Segoe UI",sans-serif';ctx.textAlign='center';
+    ctx.fillText('classifier',SX[1],yMid-62);ctx.fillText('(head chopped ✂)',SX[1],yMid-48);
+    for(let i=0;i<6;i++){ctx.fillStyle=i<5?'#cbbcf0':AC;ctx.fillRect(SX[1]-30+i*10,yMid-26,7,50);}
+    ctx.font='11px Consolas,monospace';ctx.fillStyle=AC;
+    ctx.fillText('image → 512 numbers',SX[1],yMid+44);
+    ctx.font='700 10.5px "Segoe UI",sans-serif';
+    ctx.fillText('FROZEN · same weights',SX[1],yMid+62);
+    ctx.fillText('for BOTH lanes',SX[1],yMid+75);
+    ctx.restore();
+  }
+
+  // ---- ② courier animation: 6 images fly through, become dots ----
+  // couriers occupy sub-time 0.15..0.9 of stage 1; each courier is a slice
+  const NC=6;
+  const courierDone=[0,0]; // how many dots already delivered per lane
+  if(s>=1){
+    for(let c=0;c<NC;c++){
+      const lane=c%2, g=Math.floor(c/2)*4%9, idx=c; // which cloud point it becomes
+      let ct = s>1?1 : clamp((t-0.15-c*0.115)/0.115,0,1);
+      if(ct<=0)continue;
+      if(ct>=1){courierDone[lane]++;continue;}
+      // path: grid → extractor entrance → (squeeze) → cloud point
+      const [gx,gy]=gridPos(g,lane);
+      const entry=[SX[1]-56, lane?yMid+36:yMid-36];
+      const exit=[SX[1]+56, lane?yMid+36:yMid-36];
+      const dest=cloudPos(idx,lane);
+      const col=lane?TEAL:ORANGE;
+      if(ct<0.4){ // fly to extractor, shrinking a little
+        const u=sm(ct/0.4);
+        glyph(lerp(gx,entry[0],u),lerp(gy,entry[1],u),22-8*u,KINDS[g],col,lane?q.noise:0);
+      }else if(ct<0.6){ // inside: a pulse crosses the card
+        const u=(ct-0.4)/0.2;
+        ctx.fillStyle=col;ctx.globalAlpha=0.9;
+        ctx.beginPath();ctx.arc(lerp(entry[0]+8,exit[0]-8,u),lerp(entry[1],exit[1],u),5,0,7);ctx.fill();ctx.globalAlpha=1;
+      }else{ // exit as a dot, fly to its cloud spot
+        const u=sm((ct-0.6)/0.4);
+        ctx.fillStyle=col;
+        ctx.beginPath();ctx.arc(lerp(exit[0],dest[0],u),lerp(exit[1],dest[1],u),4.5,0,7);ctx.fill();
+      }
+    }
+  }
+
+  // ---- ③ clouds: delivered dots + mass swoosh in stage 2 ----
+  const dotsDim = s>=3 ? 0.28 : 0.8;   // fade once squashed
+  function drawCloudDots(lane){
+    const col=lane?TEAL:ORANGE;
+    let n;
+    if(s===1) n=courierDone[lane];
+    else if(s===2) n=Math.max(courierDone[lane], Math.floor(sm(t*1.25)*NP));
+    else if(s>2) n=NP; else n=0;
+    ctx.fillStyle=col;
+    for(let i=0;i<n;i++){
+      const pt=cloudPos(i,lane);
+      ctx.globalAlpha=dotsDim;
+      ctx.beginPath();ctx.arc(pt[0],pt[1],3.1,0,7);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+    return n;
+  }
+  const n0=drawCloudDots(0), n1=drawCloudDots(1);
+  if(s===2&&t>0.15&&t<0.75){ // swoosh streaks from extractor exit
+    for(let lane=0;lane<2;lane++){
+      const col=lane?TEAL:ORANGE, exit=[SX[1]+56, lane?yMid+36:yMid-36];
+      ctx.strokeStyle=col;ctx.globalAlpha=0.35;ctx.lineWidth=2;
+      for(let k=0;k<3;k++){const dest=cloudPos((Math.floor(t*40)+k*7)%NP,lane);
+        ctx.beginPath();ctx.moveTo(exit[0],exit[1]);ctx.lineTo(lerp(exit[0],dest[0],0.7),lerp(exit[1],dest[1],0.7));ctx.stroke();}
+      ctx.globalAlpha=1;
+    }
+  }
+  if(s>=2&&(s>2||t>0.7)){
+    ctx.font='11px Consolas,monospace';ctx.fillStyle=SOFT;ctx.textAlign='center';
+    ctx.fillText('feats  [10000, 512]',SX[2],yR+86);
+    ctx.fillText('feats2  [256, 512]',SX[2],yG+70);
+  }
+
+  // ---- ④ squash IN PLACE: converge ghosts → μ cross, inflate Σ ellipse ----
+  const muT = s>3?1:(s===3?sm(t*2.2):0);           // 0..1: converge + cross
+  const elT = s>3?1:(s===3?sm((t-0.35)*2.2):0);     // ellipse inflate
+  const capT= s>3?1:(s===3?sm((t-0.62)*2.8):0);     // capsule flies to station 4
+  if(muT>0){
+    for(let lane=0;lane<2;lane++){
+      const E=cloudEll(lane), col=lane?TEAL:ORANGE, dark=lane?'#0e7d7d':'#c56f05';
+      // ghost dots converging toward mu
+      if(muT<1){
+        ctx.fillStyle=col;ctx.globalAlpha=0.5*(1-muT*0.6);
+        for(let i=0;i<NP;i+=2){const pt=cloudPos(i,lane);
+          ctx.beginPath();ctx.arc(lerp(pt[0],E.mu[0],sm(muT)),lerp(pt[1],E.mu[1],sm(muT)),2.4,0,7);ctx.fill();}
+        ctx.globalAlpha=1;
+      }
+      // μ cross
+      ctx.strokeStyle=dark;ctx.lineWidth=3;ctx.globalAlpha=Math.min(1,muT*1.4);
+      ctx.beginPath();ctx.moveTo(E.mu[0]-9,E.mu[1]);ctx.lineTo(E.mu[0]+9,E.mu[1]);
+      ctx.moveTo(E.mu[0],E.mu[1]-9);ctx.lineTo(E.mu[0],E.mu[1]+9);ctx.stroke();ctx.globalAlpha=1;
+      if(muT>0.6){ctx.fillStyle=dark;ctx.font='700 11px Consolas,monospace';ctx.textAlign='center';
+        ctx.fillText(lane?'μ₂':'μ₁',E.mu[0],E.mu[1]-14);}
+      // Σ ellipse
+      if(elT>0){
+        ctx.strokeStyle=col;ctx.lineWidth=2.4;ctx.setLineDash([6,4]);ctx.globalAlpha=Math.min(1,elT*1.2);
+        ctx.beginPath();ctx.ellipse(E.mu[0],E.mu[1],Math.max(1,E.rx*elT),Math.max(1,E.ry*elT),E.ang,0,7);
+        ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+        if(elT>0.85){ctx.fillStyle=col;ctx.font='700 11px Consolas,monospace';ctx.textAlign='center';
+          ctx.fillText(lane?'Σ₂':'Σ₁',E.mu[0]+E.rx*0.8,E.mu[1]-E.ry*0.9);}
+      }
+    }
+  }
+  // capsule chips flying to station 4 (and resting there afterwards)
+  if(capT>0){
+    for(let lane=0;lane<2;lane++){
+      const E=cloudEll(lane), col=lane?TEAL:ORANGE;
+      const restY=lane?yG-30:yR+10;
+      const x=lerp(E.mu[0]+40,SX[3],sm(capT)), y=lerp(E.mu[1],restY,sm(capT));
+      ctx.save();ctx.globalAlpha=Math.min(1,capT*1.4);
+      ctx.fillStyle='#fff';ctx.strokeStyle=col;ctx.lineWidth=2;
+      roundRect(x-52,y-18,104,36,9);ctx.fill();ctx.stroke();
+      ctx.fillStyle=col;ctx.font='700 11px Consolas,monospace';ctx.textAlign='center';
+      ctx.fillText(lane?'(μ₂, Σ₂)':'(μ₁, Σ₁)',x,y-3);
+      ctx.fillStyle=SOFT;ctx.font='9.5px Consolas,monospace';
+      ctx.fillText('[512] + [512×512]',x,y+11);
+      ctx.restore();
+    }
+  }
+
+  // ---- ⑤ score meter ----
+  const scT = s>=4?sm(t*1.6):0;
+  if(scT>0){
+    // capsules fly from station 4 into meter
+    if(scT<0.5){
+      for(let lane=0;lane<2;lane++){
+        const u=sm(scT/0.5), fromY=lane?yG-30:yR+10;
+        const x=lerp(SX[3],SX[4],u), y=lerp(fromY,yMid,u);
+        ctx.fillStyle=lane?TEAL:ORANGE;ctx.beginPath();ctx.arc(x,y,7,0,7);ctx.fill();
+      }
+    }
+    ctx.save();ctx.globalAlpha=sm(scT);
+    ctx.fillStyle='#fff';ctx.strokeStyle=AC;ctx.lineWidth=2.5;
+    roundRect(SX[4]-54,yMid-72,108,144,12);ctx.fill();ctx.stroke();
+    ctx.fillStyle=AC;ctx.font='700 12px "Segoe UI",sans-serif';ctx.textAlign='center';
+    ctx.fillText('FID',SX[4],yMid-48);
+    const showF=q.fid*Math.min(1,Math.max(0,(scT-0.45)/0.55));
+    ctx.font='800 24px Consolas,monospace';
+    ctx.fillStyle=q.fid>100?NEG:q.fid>10?'#c07a12':OK;
+    ctx.fillText(showF.toFixed(1),SX[4],yMid-18);
+    ctx.font='700 10.5px "Segoe UI",sans-serif';ctx.fillStyle=SOFT;
+    ctx.fillText('lower = better',SX[4],yMid+2);
+    ctx.fillText('0 = identical clouds',SX[4],yMid+15);
+    ctx.font='700 12px "Segoe UI",sans-serif';ctx.fillStyle=AC;ctx.fillText('KID',SX[4],yMid+37);
+    ctx.font='800 15px Consolas,monospace';
+    ctx.fillStyle=q.fid>100?NEG:q.fid>10?'#c07a12':OK;
+    ctx.fillText((q.kid*Math.min(1,Math.max(0,(scT-0.45)/0.55))).toFixed(3),SX[4],yMid+57);
+    ctx.restore();
+  }
+
+  // ---- flow arrows between stations (drawn once machinery exists) ----
+  function arrow(x0,y0,x1,y1,col,on){
+    if(!on)return;
+    ctx.strokeStyle=col;ctx.globalAlpha=0.5;ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(x0,y0);ctx.lineTo(x1,y1);ctx.stroke();
+    const a=Math.atan2(y1-y0,x1-x0);ctx.fillStyle=col;
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x1-8*Math.cos(a-0.4),y1-8*Math.sin(a-0.4));
+    ctx.lineTo(x1-8*Math.cos(a+0.4),y1-8*Math.sin(a+0.4));ctx.closePath();ctx.fill();ctx.globalAlpha=1;
+  }
+  arrow(SX[0]+64,yR,SX[1]-58,yMid-36,ORANGE,exT>0.6);
+  arrow(SX[0]+64,yG,SX[1]-58,yMid+36,TEAL,exT>0.6);
+  arrow(SX[1]+58,yMid-36,SX[2]-66,yR,ORANGE,s>=2||(s===1&&t>0.3));
+  arrow(SX[1]+58,yMid+36,SX[2]-66,yG,TEAL,s>=2||(s===1&&t>0.3));
+  arrow(SX[3]+56,yR+10,SX[4]-58,yMid-24,ORANGE,scT>0.3);
+  arrow(SX[3]+56,yG-30,SX[4]-58,yMid+24,TEAL,scT>0.3);
+
+  updateState(s,t,q,n0,n1,muT,elT,scT);
+}
+
+// ---------- live state checklist ----------
+function updateState(s,t,q,n0,n1,muT,elT,scT){
+  const li=(done,txt)=>`<div class="${done?'done':'todo'}">${done?'<span class="ok">✓</span>':'○'} ${txt}</div>`;
+  const featsDone=s>2||(s===2&&t>0.8), statsDone=s>3||(s===3&&elT>=1);
+  $('state').innerHTML='<b>pipeline so far</b>'+
+    li(s>=1,'two image piles loaded — real [10000,1,32,32] · generated [256,1,32,32]')+
+    li(featsDone, s>=1&&!featsDone?`extracting features… ${Math.min(n0+n1, NP*2)} / ${NP*2} dots placed (standing in for 10,256 images)`:'feats [10000,512] · feats2 [256,512] extracted')+
+    li(statsDone,'squashed: (μ₁,Σ₁) and (μ₂,Σ₂) — 10,256 images → 2 centers + 2 shapes')+
+    li(scT>=1,`scored: FID = ${q.fid} · KID = ${q.kid}${qual==='ok'?' (the notebook\u2019s exact numbers)':''}`);
+}
+
+// ---------- stories & code ----------
+const STORIES=[
+ '<b>① Two piles of images.</b> Top: 10,000 <b style="color:var(--in)">real</b> Fashion-MNIST validation images. Bottom: 256 images the <b style="color:var(--out)">DDPM sampler</b> just generated. The question of this whole notebook: <em>how similar are these two piles — as one number?</em> Comparing raw pixels fails (shift a shirt one pixel and every pixel changes), so first, everything goes through something smarter. Try the <b>quality dropdown</b> — the bottom images get cleaner or noisier.',
+ '<b>② Through the extractor.</b> Watch: images fly one at a time into the <b style="color:var(--ac)">frozen, head-chopped classifier</b> and come out the other side as <b>dots</b> — each dot is that image\'s 512 feature numbers (sleeve-ness, heel-ness, texture…). The extractor is never trained here; it\'s a fixed instrument, and <b>both lanes use identical weights</b> — otherwise the comparison would mean nothing. (Six couriers shown; stage ③ sends the rest through in bulk.)',
+ '<b>③ Feature clouds.</b> All remaining images whoosh through and the two clouds complete. Now every image is a point in 512-D space (drawn in 2-D): the <b style="color:var(--in)">orange cloud</b> is "what real clothes look like", the <b style="color:var(--out)">teal cloud</b> is what the generator produces. Good generator ⇒ the clouds <b>overlap</b>. Flip the quality dropdown and watch the teal cloud slide and stretch.',
+ '<b>④ Squash to μ &amp; Σ.</b> FID never compares individual dots. Watch each cloud <b>collapse into its center μ</b> (the ✛) while a <b>dashed ellipse Σ</b> inflates around it — the cloud\'s spread and tilt. Then each pair flies off as a tidy capsule: <code>(μ, Σ)</code> = one 512-vector + one 512×512 matrix. Thousands of images reduced to a center and a shape — FID\'s big bet is that this Gaussian summary is enough.',
+ '<b>⑤ One score.</b> The two capsules meet in the Fréchet formula: <code>FID = ‖μ₁−μ₂‖² + Tr(Σ₁+Σ₂−2√(Σ₁Σ₂))</code> — <em>how far apart are the centers, plus how mismatched are the shapes.</em> Identical clouds → 0. This notebook\'s DDPM: <b>FID ≈ 33.8</b>, KID ≈ 0.056. Each later visualization zooms into one part of this pipeline: μ&amp;Σ in 3-D, the matrix square root, the formula\'s two terms, and KID\'s kernel alternative.'
+];
+const CODES=[
+`<span class="cm"># the two casts of characters</span>
+<span class="hl">feats, y = learn.<span class="fn">capture_preds</span>()        <span class="cm"># REAL features soon — from 10,000 valid images</span></span>
+<span class="hl">samples = <span class="fn">sample</span>(smodel, (<span class="num">256</span>, <span class="num">1</span>, <span class="num">32</span>, <span class="num">32</span>), ...)  <span class="cm"># GENERATED by the DDPM</span></span>
+s = samples[-<span class="num">1</span>]*<span class="num">2</span>-<span class="num">1</span>                    <span class="cm"># scale to [-1, 1] like the real data</span>`,
+`<span class="cm"># one frozen measuring instrument for BOTH piles (Section 2)</span>
+model = <span class="fn">torch.load</span>(<span class="cm">'models/data_aug2.pkl'</span>)   <span class="cm"># pre-trained classifier</span>
+<span class="hl">del(model[<span class="num">8</span>]); del(model[<span class="num">7</span>])       <span class="cm"># ✂ chop the head → output IS the 512 features</span></span>
+<span class="cm"># (the 3-D hook visualization earlier shows this surgery in detail)</span>`,
+`<span class="cm"># every image becomes one 512-D point (Sections 2 & 3)</span>
+<span class="hl">feats, y = learn.<span class="fn">capture_preds</span>()    <span class="cm"># real      → torch.Size([10000, 512])</span></span>
+<span class="hl">feats2, _ = learn2.<span class="fn">capture_preds</span>()  <span class="cm"># generated → torch.Size([256, 512])</span></span>`,
+`<span class="cm"># squash each cloud to (mean, covariance) — Section 3</span>
+<span class="hl">def <span class="fn">_calc_stats</span>(feats):
+    feats = feats.squeeze()
+    return feats.<span class="fn">mean</span>(<span class="num">0</span>), feats.T.<span class="fn">cov</span>()   <span class="cm"># μ: [512]   Σ: [512, 512]</span></span>
+s1, s2 = <span class="fn">_calc_stats</span>(feats), <span class="fn">_calc_stats</span>(feats2)`,
+`<span class="cm"># centers apart + shapes apart = FID  (Section 3)</span>
+<span class="hl">_calc_fid(*s1, *s2)     <span class="cm"># → 33.834 for this notebook's DDPM</span></span>
+<span class="cm"># and the kernel alternative, no Gaussian squash (Section 4):</span>
+_calc_kid(feats, feats2)  <span class="cm"># → 0.056</span>`];
+
+let lastS=-1;
+function syncUI(force){
+  p=clamp(p,0,4.999);
+  const s=Math.min(4,Math.floor(p+1e-4));
+  if(force||s!==lastS){lastS=s;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+    $('story').innerHTML=STORIES[s];$('code').innerHTML=CODES[s];
+  }
+  draw();
+}
+function stopPlay(){playing=false;$('play').textContent='▶ Play all';}
+function startPlay(target){stopAt=target;playing=true;$('play').textContent='⏸ Pause';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}if(p>=4.95)p=0;startPlay(4.999);};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(4.999,Math.floor(p+1e-4)+1);syncUI(true);};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p-1e-4)-1);syncUI(true);};
+$('reset').onclick=()=>{stopPlay();p=0;syncUI(true);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('qual').onchange=e=>{qual=e.target.value;draw();};
+function goStage(s){stopPlay();p=s;syncUI(true);
+  $('insT').textContent='station '+(s+1)+' — '+STN[s].name;$('insB').innerHTML=STN[s].d;
+  if(s<4)startPlay(s+0.999); else startPlay(4.999);}
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>goStage(+c.dataset.s));
+
+function stationAt(mx,my){for(let i=0;i<5;i++)if(Math.abs(mx-SX[i])<64&&my>36&&my<H-26)return i;return -1;}
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect();
+  const n=stationAt((e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H);
+  if(n>=0)goStage(n);
+});
+cv.addEventListener('pointermove',e=>{
+  const r=cv.getBoundingClientRect();
+  const n=stationAt((e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H);
+  if(n!==hoverStation){hoverStation=n;cv.style.cursor=n>=0?'pointer':'default';
+    if(n>=0){$('insT').textContent='station '+(n+1)+' — '+STN[n].name;$('insB').innerHTML=STN[n].d;}
+    draw();}
+});
+cv.addEventListener('pointerleave',()=>{hoverStation=-1;draw();});
+
+let lastT=null;
+function loop(ts){requestAnimationFrame(loop);
+  if(playing&&lastT!=null){p=Math.min(stopAt,p+(ts-lastT)*0.001*0.45*speed);syncUI(false);if(p>=stopAt)stopPlay();}
+  lastT=ts;}
+addEventListener('resize',draw);
+syncUI(true);requestAnimationFrame(loop);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

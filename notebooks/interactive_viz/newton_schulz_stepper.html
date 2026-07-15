@@ -1,0 +1,337 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newton–Schulz — a square root made only of multiplies</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--ok:#128a5a;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:120px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+  .mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+  input[type=range]{width:104px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:1080px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .left{flex:1 1 480px;min-width:340px;display:flex;flex-direction:column;gap:8px;}
+  .right{flex:1 1 400px;min-width:300px;display:flex;flex-direction:column;gap:10px;}
+  canvas{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+  #err{cursor:crosshair;}
+  .cap{font-size:11px;color:var(--soft);text-align:center;margin-top:3px;line-height:1.45;}
+  .badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;align-items:center;}
+  .iterbadge{font-family:Consolas,monospace;font-weight:800;font-size:13.5px;color:var(--ac);background:#f1ecfc;border-radius:8px;padding:3px 10px;}
+  .digbadge{font-family:Consolas,monospace;font-weight:800;font-size:13.5px;color:var(--ok);background:#e6f5ee;border-radius:8px;padding:3px 10px;}
+  .rowtitle{font-size:11px;font-weight:800;letter-spacing:.03em;color:var(--soft);margin:4px 0 3px;text-align:center;}
+  .rowtitle b{color:var(--ac);}
+  .eq{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;}
+  .mat{text-align:center;border-radius:8px;padding:3px 4px;transition:box-shadow .2s,background .2s;}
+  .mat .nm{font-size:10.5px;font-weight:700;color:var(--soft);margin-bottom:2px;font-family:Consolas,monospace;}
+  .mat table{border-collapse:collapse;margin:0 auto;}
+  .mat td{border:1.5px solid var(--line);border-radius:3px;font-family:Consolas,monospace;font-size:12px;font-weight:700;padding:4px 5px;min-width:52px;background:#fff;transition:background .25s,color .25s;}
+  .mat.hot{background:#f4efff;box-shadow:0 0 0 2px var(--ac);}
+  .mat.hot .nm{color:var(--ac);}
+  .mat.tgt td{border-color:#f0c391;}
+  td.good{background:#e2f5ec;color:var(--ok);}
+  td.bad{background:#fdeeee;color:var(--neg);}
+  .op{font-size:17px;font-weight:800;color:var(--soft);padding:0 1px;}
+  .op.hot{color:var(--ac);}
+  .story{max-width:1080px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1080px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>Newton–Schulz: √M with nothing but matrix multiplies</h1>
+<p class="sub">FID needs <code>√(Σ₁Σ₂)</code> — the matrix whose square is Σ₁Σ₂. <code>scipy.linalg.sqrtm</code> does it on the CPU; <b>Newton–Schulz does it on the GPU using only @</b>. Top row = the algorithm's <b>workspace</b> (everything shrunk by ‖M‖ so it converges). Bottom row = the <b>answer preview in real M units</b>: watch <b>Ŷ·Ŷ turn green cell-by-cell</b> as it converges to M, and the digits counter double almost every step. <b>Click any dot on the error curve to jump to that iteration.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Normalize M</button>
+  <button class="chip" data-s="1">② Iterate: T=(3I−ZY)/2</button>
+  <button class="chip" data-s="2">③ Rescale ×√‖M‖</button>
+  <button class="chip" data-s="3">④ Check: Ŷ·Ŷ ≟ M</button>
+</div>
+
+<div class="selrow">
+  matrix:
+  <button class="mode on" id="mEasy">😌 easy</button>
+  <button class="mode" id="mCov">📊 covariance-like</button>
+  <button class="mode" id="mStiff">😤 stiff (ill-conditioned)</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ iter</button>
+  <button class="play" id="play">▶ Play to convergence</button>
+  <button class="stepb" id="fwd">iter ⏭</button>
+  <button class="reset" id="reset">↺</button>
+</div>
+
+<div class="wrap">
+  <div class="card left">
+    <div class="badges"><span class="iterbadge" id="iterb">–</span><span class="digbadge" id="digb">0 correct digits</span></div>
+    <div class="rowtitle">WORKSPACE — everything here is in <b>normalized units</b> (M÷‖M‖)</div>
+    <div class="eq" id="eqTop">
+      <div class="mat" id="qT"><div class="nm">T</div><table><tr><td></td><td></td></tr><tr><td></td><td></td></tr></table></div>
+      <div class="op">=</div><div class="op">(</div>
+      <div class="mat" id="q3I"><div class="nm">3·I</div><table><tr><td>3</td><td>0</td></tr><tr><td>0</td><td>3</td></tr></table></div>
+      <div class="op" id="opMinus">−</div>
+      <div class="mat" id="qZ"><div class="nm">Z</div><table><tr><td></td><td></td></tr><tr><td></td><td></td></tr></table></div>
+      <div class="op" id="opDot1">·</div>
+      <div class="mat" id="qY"><div class="nm">Y</div><table><tr><td></td><td></td></tr><tr><td></td><td></td></tr></table></div>
+      <div class="op">)</div><div class="op" id="opHalf">/2</div>
+    </div>
+    <div class="eq" style="margin-top:4px">
+      <div class="op" style="font-size:12px;font-weight:700" id="updLab">then update:&nbsp; Y ← Y·T&nbsp;&nbsp;·&nbsp;&nbsp;Z ← T·Z</div>
+    </div>
+    <div class="rowtitle" style="margin-top:8px">ANSWER PREVIEW — rescaled back to <b>real M units</b>: Ŷ = Y·√‖M‖</div>
+    <div class="eq">
+      <div class="mat" id="qYh"><div class="nm">Ŷ (current √M guess)</div><table><tr><td></td><td></td></tr><tr><td></td><td></td></tr></table></div>
+      <div class="op">·</div>
+      <div class="mat" id="qYh2"><div class="nm">Ŷ (same)</div><table><tr><td></td><td></td></tr><tr><td></td><td></td></tr></table></div>
+      <div class="op">=</div>
+      <div class="mat" id="qYY"><div class="nm">Ŷ·Ŷ — should equal M</div><table><tr><td></td><td></td></tr><tr><td></td><td></td></tr></table></div>
+      <div class="op">≟</div>
+      <div class="mat tgt" id="qM"><div class="nm">M = Σ₁Σ₂ (target)</div><table><tr><td></td><td></td></tr><tr><td></td><td></td></tr></table></div>
+    </div>
+    <div class="cap" id="matcap"></div>
+  </div>
+  <div class="right">
+    <div class="card"><canvas id="ell" height="200"></canvas><div class="cap"><b style="color:#f6921e">orange</b> = where the TRUE √M sends the unit circle · <b style="color:#7b5cd6">purple</b> = where the current guess Ŷ sends it (both in M units) — watch them merge</div></div>
+    <div class="card"><canvas id="err" height="170"></canvas><div class="cap">relative error ‖Ŷ·Ŷ − M‖ / ‖M‖, log scale — the near-straight fall = digits doubling per step (quadratic convergence) · <b>click a dot to jump</b></div></div>
+  </div>
+</div>
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend">every operation in stage ② is a matrix multiply or a subtraction — exactly what GPUs are fastest at, and why <code>_sqrtm_newton_schulz</code> beats <code>scipy.linalg.sqrtm</code> on big matrices · this toy is 2×2; the notebook runs the identical loop on 512×512</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const AC='#7b5cd6',ORANGE='#f6921e',SOFT='#5a6b86',NEG='#d64545',OK='#128a5a';
+let p=0,playing=false,speed=1,stopAt=99;
+
+// ------- 2×2 matrix math -------
+const mm=(A,B)=>[[A[0][0]*B[0][0]+A[0][1]*B[1][0],A[0][0]*B[0][1]+A[0][1]*B[1][1]],
+                 [A[1][0]*B[0][0]+A[1][1]*B[1][0],A[1][0]*B[0][1]+A[1][1]*B[1][1]]];
+const sub=(A,B)=>[[A[0][0]-B[0][0],A[0][1]-B[0][1]],[A[1][0]-B[1][0],A[1][1]-B[1][1]]];
+const scl=(A,s)=>[[A[0][0]*s,A[0][1]*s],[A[1][0]*s,A[1][1]*s]];
+const I=[[1,0],[0,1]];
+const fro=A=>Math.hypot(A[0][0],A[0][1],A[1][0],A[1][1]);
+function trueSqrt(S){ // symmetric PSD 2×2 via eigen decomposition
+  const a=S[0][0],b=S[0][1],c=S[1][1];
+  const tr=a+c,det=a*c-b*b,d=Math.sqrt(Math.max(0,tr*tr/4-det));
+  const l1=tr/2+d,l2=tr/2-d;
+  let v1=[b,l1-a];if(Math.hypot(v1[0],v1[1])<1e-9)v1=[1,0];
+  const n1=Math.hypot(v1[0],v1[1]);v1=[v1[0]/n1,v1[1]/n1];
+  const v2=[-v1[1],v1[0]];
+  const s1=Math.sqrt(Math.max(0,l1)),s2=Math.sqrt(Math.max(0,l2));
+  return [[s1*v1[0]*v1[0]+s2*v2[0]*v2[0], s1*v1[0]*v1[1]+s2*v2[0]*v2[1]],
+          [s1*v1[0]*v1[1]+s2*v2[0]*v2[1], s1*v1[1]*v1[1]+s2*v2[1]*v2[1]]];
+}
+const MATS={
+ easy:{M:[[4,1],[1,3]]},
+ cov:{M:[[2.6,1.9],[1.9,1.7]]},
+ stiff:{M:[[5.0,2.15],[2.15,0.95]]}
+};
+let matKey='easy',hist=null,K=0,SQ=null;
+
+function runNS(){
+  const M=MATS[matKey].M, norm=fro(M);
+  let Y=scl(M,1/norm),Z=[[1,0],[0,1]];
+  const H=[{Y,Z}];
+  for(let k=0;k<40;k++){
+    const T=scl(sub(scl(I,3),mm(Z,Y)),0.5);
+    Y=mm(Y,T);Z=mm(T,Z);
+    H.push({Y,Z,T});
+    const Yh=scl(Y,Math.sqrt(norm));
+    if(fro(sub(mm(Yh,Yh),M))/fro(M)<1e-7&&k>=4)break;
+  }
+  hist=H;K=H.length-1;SQ=trueSqrt(M);hist.norm=norm;
+  hist.err=H.map(h=>{const Yh=scl(h.Y,Math.sqrt(norm));return Math.max(1e-9,fro(sub(mm(Yh,Yh),M))/fro(M));});
+}
+
+// p ∈ [0, K+3): floor 0 = normalize · floor k (1..K) = PERFORMING iteration k · K+1 = rescale banner · K+2 = final check
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function stageOf(){const f=Math.floor(p+1e-4);return f===0?0:f<=K?1:f===K+1?2:3;}
+function doneIters(){ // completed iterations at current p
+  const f=Math.floor(p+1e-4);
+  if(f===0)return 0;
+  if(f>K)return K;
+  const sub=p-f;
+  return sub>=0.75?f:f-1;   // updates land at phase 3 of the in-progress iteration
+}
+function fmt(v){return (Math.abs(v)<0.005?0:v).toFixed(2);}
+function setMat(sel,A,cmp,tol){
+  const tds=document.querySelectorAll(sel+' td');
+  [[0,0],[0,1],[1,0],[1,1]].forEach((ij,n)=>{
+    tds[n].textContent=fmt(A[ij[0]][ij[1]]);
+    tds[n].className='';
+    if(cmp){const d=Math.abs(A[ij[0]][ij[1]]-cmp[ij[0]][ij[1]]);tds[n].className=d<tol?'good':'bad';}
+  });
+}
+
+// ------- ellipse view (always in M units) -------
+function drawEllipse(){
+  const cv=$('ell'),ctx=cv.getContext('2d');
+  const dpr=Math.min(devicePixelRatio||1,2),W=cv.parentElement.clientWidth-22,H=200;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const cx=W/2,cy=H/2+4,S=32;
+  ctx.strokeStyle='#d5deee';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(8,cy);ctx.lineTo(W-8,cy);ctx.moveTo(cx,8);ctx.lineTo(cx,H-8);ctx.stroke();
+  const it=doneIters();
+  const Yh=scl(hist[it].Y,Math.sqrt(hist.norm));   // current guess in M units
+  function path(A,col,dash){ctx.strokeStyle=col;ctx.lineWidth=2.4;if(dash)ctx.setLineDash([6,4]);
+    ctx.beginPath();
+    for(let a=0;a<=64;a++){const th=a/64*2*Math.PI,u=[Math.cos(th),Math.sin(th)];
+      const x=A[0][0]*u[0]+A[0][1]*u[1],y=A[1][0]*u[0]+A[1][1]*u[1];
+      const px=cx+x*S,py=cy-y*S;a?ctx.lineTo(px,py):ctx.moveTo(px,py);}
+    ctx.stroke();ctx.setLineDash([]);}
+  ctx.strokeStyle='#c9d4e8';ctx.lineWidth=1.4;ctx.setLineDash([3,4]);
+  ctx.beginPath();ctx.arc(cx,cy,S,0,7);ctx.stroke();ctx.setLineDash([]);
+  path(SQ,ORANGE,false);
+  path(Yh,AC,it===0);
+  ctx.font='700 11px "Segoe UI",sans-serif';ctx.fillStyle=SOFT;ctx.textAlign='left';
+  ctx.fillText('dotted grey = unit circle',10,16);
+  ctx.fillStyle=AC;
+  ctx.fillText(it===0?'Ŷ₀ = M/√‖M‖ — a squashed version of M itself':'Ŷ after '+it+' iteration'+(it>1?'s':''),10,H-10);
+}
+// ------- error curve -------
+function drawErr(){
+  const cv=$('err'),ctx=cv.getContext('2d');
+  const dpr=Math.min(devicePixelRatio||1,2),W=cv.parentElement.clientWidth-22,H=170;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const L=44,Rr=12,T=12,B=28,pw=W-L-Rr,ph=H-T-B;
+  const lmin=-8,lmax=0.5;
+  const xk=k=>L+k/K*pw, ye=e=>T+(lmax-Math.log10(e))/(lmax-lmin)*ph;
+  ctx.strokeStyle='#d5deee';ctx.fillStyle=SOFT;ctx.font='10px Consolas,monospace';ctx.textAlign='right';
+  for(let d=0;d>=-8;d-=2){const y=ye(Math.pow(10,d));ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-Rr,y);ctx.stroke();ctx.fillText('1e'+d,L-4,y+3);}
+  ctx.textAlign='center';for(let k=0;k<=K;k+=Math.max(1,Math.ceil(K/8)))ctx.fillText(k,xk(k),H-12);
+  ctx.fillText('iteration',L+pw/2,H-1);
+  ctx.strokeStyle=AC;ctx.lineWidth=2;ctx.beginPath();
+  hist.err.forEach((e,k)=>{const x=xk(k),y=ye(e);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
+  const it=doneIters();
+  hist.err.forEach((e,k)=>{ctx.fillStyle=k===it?ORANGE:AC;ctx.beginPath();ctx.arc(xk(k),ye(e),k===it?5.5:3.4,0,7);ctx.fill();});
+  errGeom={L,pw};
+}
+let errGeom={L:44,pw:100};
+$('err').addEventListener('click',e=>{
+  const r=$('err').getBoundingClientRect();
+  const mx=e.clientX-r.left;
+  const k=Math.round(clamp((mx-errGeom.L)/errGeom.pw,0,1)*K);
+  stopPlay();p=k===0?0.999:k+0.9;sync(true);
+});
+
+// ------- stories & code -------
+const STORIES=[
+ ()=>'<b>① Normalize.</b> Newton–Schulz only converges when the matrix is "small enough" (roughly ‖I−M‖&lt;1). So first divide M by its size ‖M‖ = '+hist.norm.toFixed(2)+'. The workspace starts at <b>Y₀ = M/‖M‖</b> and <b>Z₀ = I</b> — the purple ellipse begins as a squashed copy of M itself, nowhere near the orange target. <b>Press ⏭ to run the first iteration.</b>',
+ ()=>'<b>② Iterate.</b> Watch the equation light up piece by piece: compute <code>Z·Y</code>, subtract from <code>3I</code>, halve → that\'s the correction <code>T</code>. Then <b>both</b> matrices update: <code>Y←Y·T</code> (creeping toward √(M/‖M‖)) and <code>Z←T·Z</code> (tracking its inverse — Z is the algorithm\'s built-in error meter: when Z·Y = I, we\'re done). Three multiplies, zero square roots. The digits counter roughly <b>doubles every step</b> — try the 😤 stiff matrix and watch it need more iterations.',
+ ()=>'<b>③ Rescale.</b> The loop solved √(M/‖M‖), not √M. Since √(c·M) = √c·√M, multiply once by √‖M‖ = √'+hist.norm.toFixed(2)+' = '+Math.sqrt(hist.norm).toFixed(3)+'. That\'s the bottom "answer preview" row — it has been showing this rescaled Ŷ all along, so nothing jumps: the purple and orange ellipses simply coincide now.',
+ ()=>'<b>④ Check.</b> The only test that matters: does <b>Ŷ·Ŷ reproduce M</b>? Green cells = matched to ±0.01. The notebook runs the same test: <code>test_close(_sqrtm_newton_schulz(a@a.T) @ _sqrtm_newton_schulz(a@a.T), a@a.T)</code>. Inside FID, <code>2·Tr(Ŷ)</code> of the 512×512 version is exactly the cross-term of the formula — the previous visualization\'s "shape credit".'
+];
+const CODES=[
+`def <span class="fn">_sqrtm_newton_schulz</span>(mat, num_iters=<span class="num">100</span>):
+<span class="hl">    norm = mat.<span class="fn">norm</span>()               <span class="cm"># ① size of M — here ‖M‖ = NORM</span>
+    mat = mat/norm                   <span class="cm"># ① shrink so the iteration converges</span>
+    I = torch.<span class="fn">eye</span>(*mat.shape).to(mat)
+    Y, Z = mat, I                    <span class="cm"># ① starting guesses (the workspace row)</span></span>`,
+`    for i in <span class="fn">range</span>(num_iters):
+<span class="hl">        T = (<span class="num">3</span>*I - Z@Y)/<span class="num">2</span>            <span class="cm"># ② the correction — just multiplies!</span>
+        Y, Z = Y@T, T@Z              <span class="cm"># ② Y → √(M/‖M‖) · Z → its inverse</span></span>
+        if torch.<span class="fn">norm</span>(Z@Y - I) &lt; <span class="num">1e-7</span>: break   <span class="cm"># Z·Y ≈ I ⇒ converged</span>`,
+`        <span class="cm"># after the loop:</span>
+<span class="hl">    return Y*norm.<span class="fn">sqrt</span>()             <span class="cm"># ③ undo step ①: √(c·M) = √c·√M</span></span>
+<span class="cm"># = the Ŷ preview row you have been watching</span>`,
+`<span class="cm"># ④ trust but verify — from the notebook</span>
+a = torch.<span class="fn">randn</span>(<span class="num">5</span>, <span class="num">5</span>)
+<span class="hl"><span class="fn">test_close</span>(_sqrtm_newton_schulz(a@a.T) @ _sqrtm_newton_schulz(a@a.T), a@a.T, eps=<span class="num">1e-2</span>)</span>
+<span class="cm"># inside FID: csr = sqrtm(Σ₁Σ₂) → the 2·Tr(csr) shape-credit term</span>`];
+
+// ------- master sync -------
+let lastS=-1;
+function sync(force){
+  p=clamp(p,0,K+2.999);
+  const st=stageOf(), f=Math.floor(p+1e-4), it=doneIters();
+  const inIter = st===1;
+  const phase = inIter ? Math.min(3,Math.floor((p-f)*4)) : -1;  // 0:ZY 1:3I− 2:/2→T 3:update
+  const norm=hist.norm, M=MATS[matKey].M;
+  // workspace row (normalized units)
+  const cur=hist[it], nxt=hist[Math.min(K,f)];
+  setMat('#qY',cur.Y); setMat('#qZ',cur.Z);
+  setMat('#qT', inIter&&nxt.T ? nxt.T : scl(sub(scl(I,3),mm(cur.Z,cur.Y)),0.5));
+  // highlight the active piece
+  ['q3I','qZ','qY','qT'].forEach(id=>$(id).classList.remove('hot'));
+  ['opMinus','opDot1','opHalf'].forEach(id=>$(id).classList.remove('hot'));
+  $('updLab').style.color='var(--soft)';$('updLab').style.background='';
+  if(inIter){
+    if(phase===0){$('qZ').classList.add('hot');$('qY').classList.add('hot');$('opDot1').classList.add('hot');}
+    else if(phase===1){$('q3I').classList.add('hot');$('opMinus').classList.add('hot');}
+    else if(phase===2){$('qT').classList.add('hot');$('opHalf').classList.add('hot');}
+    else {$('updLab').style.color='var(--ac)';$('updLab').style.background='#f4efff';}
+  }
+  // answer preview row (M units)
+  const Yh=scl(cur.Y,Math.sqrt(norm)), YY=mm(Yh,Yh);
+  setMat('#qYh',Yh);setMat('#qYh2',Yh);
+  setMat('#qYY',YY, M, st===3?0.01:0.06);
+  setMat('#qM',M);
+  // badges & caption
+  const err=hist.err[it], digits=Math.max(0,-Math.log10(err));
+  $('iterb').textContent = st===0?'before iterating — workspace normalized'
+    : st===1? (phase<3?('running iteration '+f+' / '+K+'  ·  step '+['Z·Y','3I − Z·Y','(…)/2 → T','Y←Y·T, Z←T·Z'][phase]):('finished iteration '+f+' / '+K))
+    : st===2?('all '+K+' iterations done — rescaled ×√‖M‖'):'final check ✓';
+  $('digb').textContent=digits.toFixed(1)+' correct digits';
+  $('digb').style.color=digits>6?OK:digits>2?'#c07a12':NEG;
+  $('matcap').innerHTML= st===3
+    ? 'green = matches M to ±0.01 — a real square root, built from multiplies alone ✅'
+    : 'relative error of the preview: <b style="color:var(--ac)">'+err.toExponential(1)+'</b> &nbsp;·&nbsp; Z·Y '+(fro(sub(mm(cur.Z,cur.Y),I))<1e-6?'= I ✓ (converged)':'→ I as the loop runs');
+  if(force||st!==lastS){lastS=st;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===st));
+    $('story').innerHTML=STORIES[st]();
+    $('code').innerHTML=CODES[st].replace('NORM',hist.norm.toFixed(2));
+  }
+  drawEllipse();drawErr();
+}
+function stopPlay(){playing=false;$('play').textContent='▶ Play to convergence';}
+function startPlay(t){stopAt=t;playing=true;$('play').textContent='⏸ Pause';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}if(p>=K+1.9)p=0;startPlay(K+2.5);};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(K+2.9,Math.floor(p+1e-4)+1-0.05);if(p<0.9)p=0.95;sync(true);};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p-0.9)-1+0.95);if(p<1)p=0;sync(true);};
+$('reset').onclick=()=>{stopPlay();p=0;sync(true);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+const CHIP_R=()=>[[0,0.95],[1,K+0.95],[K+1,K+1.5],[K+2,K+2.5]];
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopPlay();
+  const r=CHIP_R()[+c.dataset.s];p=r[0];sync(true);if(r[1]>r[0])startPlay(r[1]);});
+function pick(key,btn){matKey=key;runNS();stopPlay();p=0;
+  ['mEasy','mCov','mStiff'].forEach(id=>$(id).classList.remove('on'));$(btn).classList.add('on');sync(true);}
+$('mEasy').onclick=()=>pick('easy','mEasy');
+$('mCov').onclick=()=>pick('cov','mCov');
+$('mStiff').onclick=()=>pick('stiff','mStiff');
+let lastT=null;
+function loop(ts){requestAnimationFrame(loop);
+  if(playing&&lastT!=null){p=Math.min(stopAt,p+(ts-lastT)*0.001*0.9*speed);sync(false);if(p>=stopAt)stopPlay();}
+  lastT=ts;}
+addEventListener('resize',()=>sync(true));
+runNS();sync(true);requestAnimationFrame(loop);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

@@ -1,0 +1,402 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two rulers: custom extractor vs Inception</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--ok:#128a5a;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#eee9fb;color:var(--ac);padding:6px 10px;}
+  .reset{background:#f0f4fb;color:var(--soft);}
+  .laneb{border:2px solid var(--line);background:#fff;color:var(--soft);}
+  .laneb.onC{border-color:var(--out);background:var(--out);color:#fff;}
+  .laneb.onI{border-color:var(--in);background:var(--in);color:#fff;}
+  input[type=range]{width:92px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:1080px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cnv{flex:1 1 620px;min-width:340px;}
+  canvas{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:default;}
+  .side{flex:1 1 300px;min-width:280px;display:flex;flex-direction:column;gap:8px;}
+  .vsT{width:100%;border-collapse:collapse;font-size:11.8px;}
+  .vsT th{font-size:10.5px;color:var(--soft);text-align:left;padding:3px 5px;border-bottom:2px solid var(--line);}
+  .vsT td{padding:3px 5px;font-family:Consolas,monospace;font-weight:700;border-bottom:1px dashed var(--line);}
+  .vsT td:first-child{font-family:inherit;font-weight:600;color:var(--soft);}
+  .vsT .c{color:var(--out);} .vsT .i{color:var(--in);}
+  .inspect{font-size:11.8px;background:#fffdf4;border:1px dashed var(--in);border-radius:8px;padding:6px 9px;min-height:44px;line-height:1.5;}
+  .warn{background:#fdf0f0;border:2px solid var(--neg);border-radius:10px;padding:7px 10px;font-size:12px;line-height:1.5;color:#8a2f2f;}
+  .warn b{color:var(--neg);}
+  .story{max-width:1080px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1080px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>Same images, two rulers: your custom extractor vs Inception-v3</h1>
+<p class="sub">"FID" is not one number — it depends entirely on <em>which network</em> turns images into features. Watch the <b>same sneaker</b> travel through <b style="color:var(--out)">your notebook's custom extractor (top lane)</b> and the classic <b style="color:var(--in)">Inception-v3 (bottom lane)</b> at the same time. Every difference between the lanes is animated, and stations collect a ✓ as their step completes. <b>Hover any station</b> for details; use the lane buttons to spotlight one pipeline.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① One image, two lanes</button>
+  <button class="chip" data-s="1">② 1 channel → 3</button>
+  <button class="chip" data-s="2">③ 28 px → 299 px</button>
+  <button class="chip" data-s="3">④ 512-D vs 2048-D</button>
+  <button class="chip" data-s="4">⑤ Two scores, one rule</button>
+</div>
+
+<div class="selrow">
+  <button class="play" id="play">▶ Play all</button>
+  <button class="stepb" id="back">⏮</button>
+  <button class="stepb" id="fwd">⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  spotlight:
+  <button class="laneb onC" id="lC">custom lane</button>
+  <button class="laneb onI" id="lI">Inception lane</button>
+</div>
+
+<div class="wrap">
+  <div class="card cnv"><canvas id="cv" height="470"></canvas></div>
+  <div class="side">
+    <div class="card">
+      <table class="vsT">
+        <tr><th></th><th class="c">custom (notebook)</th><th class="i">Inception-v3</th></tr>
+        <tr><td>trained on</td><td class="c">Fashion-MNIST</td><td class="i">ImageNet</td></tr>
+        <tr><td>input</td><td class="c">1×28×28</td><td class="i">3×299×299</td></tr>
+        <tr><td>features</td><td class="c">512-D</td><td class="i">2048-D</td></tr>
+        <tr><td>FID, DDPM samples</td><td class="c" id="tGc">–</td><td class="i" id="tGi">–</td></tr>
+        <tr><td>FID, real-vs-real floor</td><td class="c" id="tFc">–</td><td class="i" id="tFi">–</td></tr>
+        <tr><td>score − own floor</td><td class="c" id="tDc">–</td><td class="i" id="tDi">–</td></tr>
+      </table>
+    </div>
+    <div class="card inspect" id="insp">hover a station on either lane → what happens to the image there</div>
+    <div class="warn" id="warn" style="display:none"><b>⚠ NEVER compare numbers across rulers.</b> 33.8 (custom) vs 63.8 (Inception) does <em>not</em> mean the samples got worse — the ruler changed. Each score only means something next to <em>its own</em> real-vs-real floor and other scores from the <em>same</em> pipeline.</div>
+  </div>
+</div>
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b style="color:var(--out)">teal lane = the notebook's own classifier-turned-extractor</b> · <b style="color:var(--in)">orange lane = torchvision inception_v3 with its head removed</b> · both lanes process the <em>same</em> generated sneaker · gauges in stage ⑤ start at each ruler's own real-vs-real floor, not at 0</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const ORANGE='#f6921e',TEAL='#16a3a3',AC='#7b5cd6',SOFT='#5a6b86',NEG='#d64545',OK='#128a5a';
+let p=0,playing=false,speed=1,stopAt=99;
+let spotC=true,spotI=true,hovSt=null;
+const lerp=(a,b,t)=>a+(b-a)*t, smf=t=>t<=0?0:t>=1?1:t*t*(3-2*t), clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+// ---- procedural sneaker glyph (28×28) ----
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const GL=document.createElement('canvas');GL.width=GL.height=28;
+{const c=GL.getContext('2d'),img=c.createImageData(28,28),r=mulberry(9);
+ for(let y=0;y<28;y++)for(let x=0;x<28;x++){const fx=x/27,fy=y/27;let v=0.06;
+   if(fy>0.42&&fy<0.82&&fx>0.06&&fx<0.94){const top=0.42+(1-fx)*0.22;if(fy>top)v=0.82;}
+   if(fy>0.74&&fy<0.88&&fx>0.03&&fx<0.97)v=0.97;
+   v=Math.min(1,Math.max(0,v+(r()-0.5)*0.12));
+   const i=(y*28+x)*4,g=Math.round(255*v);img.data[i]=g;img.data[i+1]=g;img.data[i+2]=g;img.data[i+3]=255;}
+ c.putImageData(img,0,0);}
+
+// ---- layout (design width 1000) ----
+// lane ribbons: interior y = laneY ± 58; free strips: zone A between lanes, zone B below bottom lane
+const yC=132, yI=336, yMid=(yC+yI)/2;   // zone A: 190..278 · zone B: 394..470
+const ZONE_A=234, ZONE_A_HI=212, ZONE_B1=416, ZONE_B2=432;
+const STN=[  // stations: id, lane, x, label, done-after-stage, inspect text
+ {id:'img', lane:'B', x:70,  done:0, lab:'', tip:'<b>Input:</b> one generated Fashion-MNIST sample — a 1×28×28 grayscale tensor. The SAME tensor is fed to both lanes.'},
+ {id:'ck1', lane:'C', x:300, done:1, lab:'unchanged\n1×28×28', tip:'<b>Custom lane:</b> no surgery needed — this network was <em>trained</em> on 1-channel 28×28 Fashion-MNIST, so the image enters as-is.'},
+ {id:'rep', lane:'I', x:255, done:1, lab:'repeat →\n3 channels', tip:'<b>Inception lane, fix #1:</b> Inception expects RGB. <code>x.repeat(1,3,1,1)</code> photocopies the single gray channel into R, G and B — three identical sheets.'},
+ {id:'rsz', lane:'I', x:415, done:2, lab:'resize →\n299×299', tip:'<b>Inception lane, fix #2:</b> Inception expects 299×299 inputs. The 28×28 image is blown up ~10× — blurry, but shaped right.'},
+ {id:'netC',lane:'C', x:520, done:3, lab:'custom net\n(headless)', tip:'<b>Custom extractor:</b> the notebook\'s own Fashion-MNIST classifier with its 10-way head chopped off — it has seen millions of garments, so its features encode garment-ness.'},
+ {id:'netI',lane:'I', x:575, done:3, lab:'Inception-v3\nfc = Identity', tip:'<b>Inception-v3:</b> torchvision\'s ImageNet model with <code>m.m.fc = nn.Identity()</code> — the 1000-class head removed, exposing the 2048-D penultimate features. It has never seen Fashion-MNIST.'},
+ {id:'fC',  lane:'C', x:760, done:3, lab:'512-D\nfeatures', tip:'<b>Custom features:</b> a 512-number fingerprint per image. All FID/KID math downstream is identical — only this fingerprint differs.'},
+ {id:'fI',  lane:'I', x:760, done:3, lab:'2048-D\nfeatures', tip:'<b>Inception features:</b> a 2048-number fingerprint — 4× longer, and speaking "ImageNet" (fur, wheels, faces) rather than "garments".'},
+ {id:'gC',  lane:'C', x:912, done:4, lab:'FID\n?', tip:'<b>Custom ruler verdict (stage ⑤):</b> FID 33.8, where this ruler\'s real-vs-real floor is 6.6. Distance above floor ≈ 27.2.'},
+ {id:'gI',  lane:'I', x:912, done:4, lab:'FID\n?', tip:'<b>Inception ruler verdict (stage ⑤):</b> FID 63.81, where THIS ruler\'s floor is 27.91. Distance above floor ≈ 35.9 — same story, different units.'},
+];
+
+function draw(){
+  const cv=$('cv'),ctx=cv.getContext('2d');
+  const dpr=Math.min(devicePixelRatio||1,2),W=cv.parentElement.clientWidth-22,H=470;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const sc=W/1000, X=x=>x*sc;
+  const s=Math.min(4,Math.floor(p+1e-4)),t=p-s;
+  const aC=spotC?1:0.25, aI=spotI?1:0.25;
+
+  // ---- lane ribbons ----
+  function ribbon(y,col,alpha,label){
+    ctx.globalAlpha=alpha;
+    ctx.fillStyle=col+'14';ctx.strokeStyle=col+'55';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.roundRect(X(130),y-58,X(855),116,14);ctx.fill();ctx.stroke();
+    ctx.fillStyle=col;ctx.font='800 12.5px Segoe UI';ctx.textAlign='left';
+    ctx.fillText(label,X(142),y-44);
+    ctx.globalAlpha=1;
+  }
+  ribbon(yC,TEAL,aC,'LANE 1 · the notebook\'s custom extractor (knows clothes)');
+  ribbon(yI,ORANGE,aI,'LANE 2 · Inception-v3 (knows ImageNet, needs adapters)');
+
+  // ---- splitter from input into both lanes ----
+  ctx.strokeStyle=SOFT;ctx.lineWidth=2;ctx.globalAlpha=0.55;
+  ctx.beginPath();ctx.moveTo(X(98),yMid);ctx.lineTo(X(126),yMid);ctx.stroke();
+  [[yC,aC],[yI,aI]].forEach(([y,a])=>{ctx.globalAlpha=0.55*a;
+    ctx.beginPath();ctx.moveTo(X(126),yMid);ctx.quadraticCurveTo(X(152),yMid,X(162),y);ctx.stroke();});
+  ctx.globalAlpha=1;
+
+  // ---- which station boxes are replaced by an animation this stage ----
+  const hidden=new Set();
+  if(s===1)hidden.add('rep');
+  if(s===2)hidden.add('rsz');
+  if(s>=3){hidden.add('fC');hidden.add('fI');}   // feature bars live there from stage ④ on
+  if(s===4){hidden.add('gC');hidden.add('gI');}  // gauges take their place
+
+  // ---- stations ----
+  ctx.font='700 10.5px Segoe UI';ctx.textAlign='center';
+  STN.forEach(st=>{
+    if(st.id==='img'||hidden.has(st.id))return;
+    const y=st.lane==='C'?yC:yI, col=st.lane==='C'?TEAL:ORANGE, a=st.lane==='C'?aC:aI;
+    ctx.globalAlpha=a;
+    const hot=hovSt===st.id;
+    const isNet=st.id==='netC'||st.id==='netI';
+    const w=isNet?86:74,h=isNet?52:44;
+    ctx.fillStyle=hot?'#fffdf4':'#fff';ctx.strokeStyle=hot?AC:col;ctx.lineWidth=hot?2.6:1.8;
+    ctx.beginPath();ctx.roundRect(X(st.x)-w/2,y-h/2,w,h,10);ctx.fill();ctx.stroke();
+    ctx.fillStyle=col;
+    st.lab.split('\n').forEach((ln,i)=>ctx.fillText(ln,X(st.x),y-4+i*13));
+    // green ✓ badge once this station's stage is complete
+    if(s>st.done){
+      const bx=X(st.x)+w/2-4, by=y-h/2+4;
+      ctx.fillStyle=OK;ctx.beginPath();ctx.arc(bx,by,8,0,7);ctx.fill();
+      ctx.fillStyle='#fff';ctx.font='800 10px Segoe UI';ctx.fillText('✓',bx,by+3.5);
+      ctx.font='700 10.5px Segoe UI';
+    }
+    ctx.globalAlpha=1;
+  });
+
+  // ---- input image ----
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(GL,X(70)-24,yMid-24,48,48);
+  ctx.strokeStyle=SOFT;ctx.lineWidth=1.5;ctx.strokeRect(X(70)-24,yMid-24,48,48);
+  ctx.fillStyle=SOFT;ctx.font='700 10.5px Segoe UI';ctx.textAlign='center';
+  ctx.fillText('one generated',X(70),yMid-38);
+  ctx.fillText('image · 1×28×28',X(70),yMid+40);
+
+  // ---- helpers ----
+  function courierAt(lane,x,size,alpha){
+    if(size<=0||alpha<=0)return;
+    const y=lane==='C'?yC:yI, a=(lane==='C'?aC:aI)*alpha;
+    ctx.globalAlpha=a;ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(GL,X(x)-size/2,y-size/2,size,size);
+    ctx.strokeStyle=lane==='C'?TEAL:ORANGE;ctx.lineWidth=1.5;
+    ctx.strokeRect(X(x)-size/2,y-size/2,size,size);
+    ctx.globalAlpha=1;
+  }
+  function msgA(txt,x,col,y){ // free strip between the lanes
+    ctx.fillStyle=col;ctx.font='700 12px Segoe UI';ctx.textAlign='center';
+    ctx.fillText(txt,X(x),y||ZONE_A);
+  }
+  function msgB(l1,l2,x,col){ // free strip below the bottom lane
+    ctx.fillStyle=col;ctx.font='700 11.5px Consolas,monospace';ctx.textAlign='center';
+    ctx.fillText(l1,X(x),ZONE_B1);
+    if(l2){ctx.fillStyle=SOFT;ctx.font='10.5px Segoe UI';ctx.fillText(l2,X(x),ZONE_B2);}
+  }
+  function drawBars(fillC,fillI){ // feature fingerprints, centered INSIDE each lane at x=760
+    function bar(y,halfH,dim,col,a,fill){
+      const w=26, hMax=halfH*2, hh=hMax*fill;
+      ctx.globalAlpha=a;
+      ctx.fillStyle='#f0f4fb';ctx.fillRect(X(760)-w/2,y-halfH,w,hMax);
+      ctx.fillStyle=col;ctx.fillRect(X(760)-w/2,y+halfH-hh,w,hh);
+      ctx.strokeStyle=col;ctx.lineWidth=1.6;ctx.strokeRect(X(760)-w/2,y-halfH,w,hMax);
+      // count label just above the bar's base, flipping to white once the fill covers it
+      ctx.fillStyle=hh>=18?'#fff':col;ctx.font='700 10px Consolas,monospace';ctx.textAlign='center';
+      ctx.fillText(Math.round(dim*fill)+'-D',X(760),y+halfH-6);
+      ctx.globalAlpha=1;
+    }
+    bar(yC,23,512,TEAL,aC,fillC);     // 46 px tall — fits the lane interior
+    bar(yI,46,2048,ORANGE,aI,fillI);  // 92 px tall — visibly 4× the custom bar
+  }
+
+  // ---------- stage animations (each in its own reserved space) ----------
+  if(s===0){
+    const u=smf(t*1.2);
+    courierAt('C',lerp(150,232,u),34,1);
+    courierAt('I',lerp(150,196,u),34,1);
+    if(u>0.55)msgA('the SAME image enters both lanes — watch what each pipeline must do to it',520,SOFT);
+  }
+  if(s===1){ // channel repeat — replaces the 'rep' box; captions in free strips
+    courierAt('C',232,34,1);
+    const u=smf(t*1.4);
+    for(let k=2;k>=0;k--){
+      const off=lerp(0,(k-1)*16,u);
+      ctx.globalAlpha=aI;ctx.imageSmoothingEnabled=false;
+      ctx.drawImage(GL,X(255)-17+off,yI-17-off*0.6,34,34);
+      ctx.fillStyle=['rgba(214,69,69,.22)','rgba(18,138,90,.22)','rgba(60,90,214,.22)'][k];
+      ctx.globalAlpha=aI*u;ctx.fillRect(X(255)-17+off,yI-17-off*0.6,34,34);
+      ctx.globalAlpha=aI;ctx.strokeStyle=['#d64545','#128a5a','#3c5ad6'][k];ctx.lineWidth=1.5;
+      ctx.strokeRect(X(255)-17+off,yI-17-off*0.6,34,34);
+    }
+    ctx.globalAlpha=1;
+    msgB('x.repeat(1, 3, 1, 1)','one gray sheet photocopied into R · G · B — no new information, just shape',255,ORANGE);
+    msgA('✓ custom lane: no surgery needed — it was trained on 1×28×28',350,OK,ZONE_A_HI);
+  }
+  if(s===2){ // resize inflate — replaces the 'rsz' box
+    courierAt('C',lerp(232,410,smf(Math.min(1,t*1.8))),34,1);  // custom cruises ahead, no delays
+    const u=smf(t*1.4), size=lerp(34,84,u);
+    ctx.globalAlpha=aI;ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(GL,X(415)-size/2,yI-size/2,size,size);
+    ctx.strokeStyle=ORANGE;ctx.lineWidth=1.8;ctx.setLineDash([4,3]);
+    ctx.strokeRect(X(415)-size/2,yI-size/2,size,size);ctx.setLineDash([]);
+    ctx.globalAlpha=1;
+    msgB('28 → '+Math.round(lerp(28,299,u))+' px',u>0.7?'blurry — but exactly the shape Inception expects':'',415,ORANGE);
+    msgA('✓ custom lane: stays 28×28 — already gliding ahead',360,OK,ZONE_A_HI);
+  }
+  if(s===3){ // through the nets → feature bars fill (bars REPLACE the fC/fI boxes)
+    const u=smf(t*1.15);
+    const travel=smf(Math.min(1,u*2.2));
+    const fadeIn=1-Math.max(0,(travel-0.65)/0.35);     // couriers get absorbed by the nets
+    courierAt('C',lerp(410,505,travel),30,fadeIn);
+    courierAt('I',lerp(478,560,travel),30,fadeIn);
+    if(travel<1){ // net intake pulse
+      [['netC',TEAL,aC,yC],['netI',ORANGE,aI,yI]].forEach(([id,col,a,y])=>{
+        const st=STN.find(q=>q.id===id);
+        ctx.globalAlpha=a*(0.35+0.35*Math.sin(u*16));
+        ctx.strokeStyle=col;ctx.lineWidth=3;
+        ctx.beginPath();ctx.roundRect(X(st.x)-47,y-30,94,60,12);ctx.stroke();ctx.globalAlpha=1;});
+    }
+    const fill=smf(Math.max(0,(u-0.32)/0.68));
+    drawBars(fill,fill);
+    if(fill>0.55)msgA('same image → two very different fingerprints (the lower one is 4× longer)',480,SOFT);
+  }
+  if(s===4){ // verdicts — gauges REPLACE the gC/gI boxes; bars stay as reminders
+    drawBars(1,1);
+    const u=smf(t*1.2);
+    function gauge(y,col,a,floor,val,maxv,name){
+      const x0=X(812),x1=X(968);
+      const toX2=v=>x0+(x1-x0)*v/maxv;
+      ctx.globalAlpha=a;
+      ctx.strokeStyle='#c6d2e6';ctx.lineWidth=4;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(x0,y);ctx.lineTo(x1,y);ctx.stroke();
+      ctx.strokeStyle='#b9c6dd';
+      ctx.beginPath();ctx.moveTo(x0,y);ctx.lineTo(toX2(floor),y);ctx.stroke();
+      // end + floor labels
+      ctx.fillStyle=SOFT;ctx.font='700 9.5px Consolas,monospace';ctx.textAlign='center';
+      ctx.fillText('0',x0,y+17);ctx.fillText(String(maxv),x1,y+17);
+      ctx.strokeStyle=SOFT;ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(toX2(floor),y-7);ctx.lineTo(toX2(floor),y+7);ctx.stroke();
+      ctx.fillText('floor '+floor,toX2(floor),y+17);
+      // animated fill floor→value
+      const vNow=lerp(floor,val,u);
+      ctx.strokeStyle=col;ctx.lineWidth=6;
+      ctx.beginPath();ctx.moveTo(toX2(floor),y);ctx.lineTo(toX2(vNow),y);ctx.stroke();
+      ctx.fillStyle=col;ctx.beginPath();ctx.arc(toX2(vNow),y,7,0,7);ctx.fill();
+      ctx.font='800 15px Consolas,monospace';ctx.fillText(vNow.toFixed(1),toX2(vNow),y-13);
+      ctx.font='700 10px Segoe UI';ctx.fillText(name,(x0+x1)/2,y+31);
+      ctx.globalAlpha=1;ctx.lineCap='butt';
+    }
+    gauge(yC,TEAL,aC,6.6,33.8,45,'custom ruler — its own 0–45 scale');
+    gauge(yI,ORANGE,aI,27.9,63.8,80,'Inception ruler — a DIFFERENT 0–80 scale');
+    if(u>0.55)msgA('same images  ·  33.8 vs 63.8  ·  the RULER changed, not the quality',470,NEG);
+  }
+  ctx.textAlign='left';
+  updateTable(s);
+}
+function updateTable(s){
+  const on=s>=4;
+  $('tGc').textContent=on?'33.83':'–';$('tGi').textContent=on?'63.81':'–';
+  $('tFc').textContent=on?'6.61':'–'; $('tFi').textContent=on?'27.91':'–';
+  $('tDc').textContent=on?'+27.2':'–';$('tDi').textContent=on?'+35.9':'–';
+  $('warn').style.display=on?'block':'none';
+}
+// hover stations
+$('cv').addEventListener('pointermove',e=>{
+  const cv=$('cv'),r=cv.getBoundingClientRect(),W=cv.parentElement.clientWidth-22;
+  const mx=e.clientX-r.left,my=e.clientY-r.top,sc=W/1000;
+  let best=null;
+  STN.forEach(st=>{
+    const y=st.lane==='C'?yC:st.lane==='I'?yI:yMid;
+    if(Math.abs(mx-st.x*sc)<44&&Math.abs(my-y)<34)best=st.id;
+  });
+  if(best!==hovSt){hovSt=best;
+    const st=STN.find(q=>q.id===best);
+    $('insp').innerHTML=st?st.tip:'hover a station on either lane → what happens to the image there';
+    draw();}
+});
+$('cv').addEventListener('pointerleave',()=>{if(hovSt){hovSt=null;$('insp').innerHTML='hover a station on either lane → what happens to the image there';draw();}});
+$('lC').onclick=()=>{spotC=!spotC;if(!spotC&&!spotI)spotI=true;syncSpot();};
+$('lI').onclick=()=>{spotI=!spotI;if(!spotC&&!spotI)spotC=true;syncSpot();};
+function syncSpot(){$('lC').classList.toggle('onC',spotC);$('lI').classList.toggle('onI',spotI);draw();}
+
+// ---------- stories + code ----------
+const STORIES=[
+`<b>① One image, two lanes.</b> The papers all report "FID", but the number is a product of a hidden choice: <em>which network extracts the features?</em> This lab feeds the <b>identical generated sneaker</b> into two extractors at once. Top lane: the notebook's own classifier, trained on Fashion-MNIST — it speaks fluent garment. Bottom lane: <b>Inception-v3</b>, the field's traditional standard, trained on ImageNet — it has never seen a Fashion-MNIST sneaker in its life, and it can't even accept one without surgery…`,
+`<b>② 1 channel → 3.</b> First mismatch: Fashion-MNIST is <b>grayscale</b> (1 channel) but Inception demands <b>RGB</b> (3 channels). The fix is charmingly dumb: <code>x.repeat(1,3,1,1)</code> photocopies the gray sheet three times — watch the R/G/B copies fan out at the first Inception station. No new information is created; the image is just reshaped to fit the door. Meanwhile the custom lane needs nothing: it was <em>built</em> for this data.`,
+`<b>③ 28 px → 299 px.</b> Second mismatch: Inception expects <b>299×299</b> inputs, our images are 28×28. So each image is inflated ~10× — watch it balloon, going blurry in the process, while the custom-lane courier glides ahead unbothered. Inception ends up analyzing a smeared blow-up of a tiny icon with filters tuned for photos of dogs and cars. It still works! But this is why its scores live on a totally different scale, and why its floor is so high.`,
+`<b>④ 512-D vs 2048-D.</b> Both couriers now dive into their networks (heads removed: the notebook chops its classifier; Inception gets <code>m.m.fc = nn.Identity()</code>). Out come two fingerprints of the <em>same image</em>, filling up as vertical bars in each lane: <b style="color:var(--out)">512 numbers about garment-ness</b> vs <b style="color:var(--in)">2048 numbers about ImageNet-ness</b> — the lower bar is literally 4× taller. Everything downstream — μ, Σ, sqrtm, the whole FID machine — is identical. Only the fingerprint language changed. That's enough to change every score.`,
+`<b>⑤ Two scores, one rule.</b> The verdicts land on two gauges: custom ruler says <b>33.8</b>, Inception ruler says <b>63.8</b> — for the same images. Neither is "wrong"; they're in different units, like Celsius vs Fahrenheit (note the gauges even span different ranges). Each needle starts at its <em>own</em> real-vs-real floor (6.6 vs 27.9 — Inception's bias is bigger because 2048-D covariances are even harder to estimate). Measured above their own floors the stories agree. Hence <b>the one rule</b>: compare FIDs only within one pipeline — same extractor, same preprocessing, same n.`];
+const CODES=[
+`<span class="cm"># two scorers, same FID/KID machinery — different feature extractors</span>
+ie  = <span class="fn">ImageEval</span>(xt, learn.dls)    <span class="cm"># lane 1: the notebook's custom model</span>
+<span class="hl">ie2 = <span class="fn">ImageEval</span>(xt, learn2.dls)   <span class="cm"># lane 2: Inception-v3, wrapped</span></span>`,
+`class <span class="fn">IncepWrap</span>(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.m = inception_v3(pretrained=<span class="num">True</span>)
+    def <span class="fn">forward</span>(self, x):
+        <span class="hl">return self.m(x.repeat(<span class="num">1</span>, <span class="num">3</span>, <span class="num">1</span>, <span class="num">1</span>))   <span class="cm"># 1 gray channel → 3 identical RGB</span></span>`,
+`<span class="cm"># Inception's expected input is 3×299×299 — resize on the way in</span>
+tfms = [<span class="hl">T.Resize(<span class="num">299</span>)</span>, ...]   <span class="cm"># 28×28 → 299×299: blurry but door-shaped</span>
+<span class="cm"># the custom lane skips this entirely — it was trained at 28×28</span>`,
+`<span class="cm"># remove the classification heads → raw features come out</span>
+<span class="hl">m.m.fc = nn.Identity()</span>        <span class="cm"># Inception: 1000-class head → 2048-D features</span>
+<span class="cm"># custom model: same trick earlier in the notebook → 512-D features</span>
+<span class="cm"># downstream (μ, Σ, sqrtm, kernels) is EXACTLY the same code for both</span>`,
+`<span class="cm"># the verdicts — same images, two rulers:</span>
+ie.<span class="fn">fid</span>(samples)    <span class="cm"># custom    → 33.83   (its real-vs-real floor: 6.61)</span>
+<span class="hl">ie2.<span class="fn">fid</span>(samples)   <span class="cm"># Inception → 63.81   (its real-vs-real floor: 27.91)</span></span>
+<span class="cm"># rule: a FID is only comparable to FIDs from the SAME pipeline</span>`];
+
+let lastS=-1;
+function syncUI(force){
+  if(p>4.999)p=4.999;if(p<0)p=0;
+  const s=Math.min(4,Math.floor(p+1e-4));
+  if(force||s!==lastS){lastS=s;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+    $('story').innerHTML=STORIES[s];$('code').innerHTML=CODES[s];
+  }
+  draw();
+}
+function stopPlay(){playing=false;$('play').textContent='▶ Play all';}
+function startPlay(target){stopAt=target;playing=true;$('play').textContent='⏸ Pause';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}if(p>=4.95)p=0;startPlay(4.999);};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(4.999,Math.floor(p+1e-4)+1);syncUI(true);};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p-1e-4)-1);syncUI(true);};
+$('reset').onclick=()=>{stopPlay();p=0;spotC=spotI=true;syncSpot();syncUI(true);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopPlay();const s=+c.dataset.s;p=s;syncUI(true);startPlay(Math.min(4.999,s+0.999));});
+let lastT=null;
+function loop(ts){requestAnimationFrame(loop);
+  if(playing&&lastT!=null){p=Math.min(stopAt,p+(ts-lastT)*0.001*0.45*speed);syncUI(false);if(p>=stopAt)stopPlay();}
+  lastT=ts;}
+addEventListener('resize',draw);
+syncUI(true);requestAnimationFrame(loop);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

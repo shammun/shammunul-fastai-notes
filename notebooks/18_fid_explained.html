@@ -7578,14 +7578,14 @@ Generated Images ──► Feature Extractor ──► Feature Distribution B
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=ca55909f">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5ac3d6d1">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-<h2 id="%F0%9F%8E%AC-Interactive-Visualizations-in-This-Notebook">🎬 Interactive Visualizations in This Notebook<a class="anchor-link" href="#%F0%9F%8E%AC-Interactive-Visualizations-in-This-Notebook">¶</a></h2><p>This notebook now includes <strong>eight hands-on interactive visualizations</strong> that you can click, drag, scrub, and play. Each one targets a concept that is much easier to <em>see</em> than to read about:</p>
+<h2 id="%F0%9F%8E%AC-Interactive-Visualizations-in-This-Notebook">🎬 Interactive Visualizations in This Notebook<a class="anchor-link" href="#%F0%9F%8E%AC-Interactive-Visualizations-in-This-Notebook">¶</a></h2><p>This notebook includes <strong>nine hands-on interactive visualizations</strong> that you can click, drag, scrub, and play. Each one targets a concept that is much easier to <em>see</em> than to read about:</p>
 <table>
 <thead>
 <tr>
@@ -7597,8 +7597,8 @@ Generated Images ──► Feature Extractor ──► Feature Distribution B
 <tbody>
 <tr>
 <td>1</td>
-<td><strong>FID/KID Big Picture Pipeline</strong></td>
-<td>The whole story end to end: images &rarr; feature extractor &rarr; feature clouds &rarr; μ, Σ &rarr; one score</td>
+<td><strong>FID/KID Grand Tour</strong></td>
+<td>The whole story end to end &mdash; real &amp; generated images race through the pipeline side by side; click any stage node to jump there</td>
 </tr>
 <tr>
 <td>2</td>
@@ -7607,37 +7607,42 @@ Generated Images ──► Feature Extractor ──► Feature Distribution B
 </tr>
 <tr>
 <td>3</td>
-<td><strong>Mean &amp; Covariance Lab</strong></td>
-<td>What μ and Σ actually <em>measure</em> &mdash; drag point clouds and watch the 2&times;2 covariance react live</td>
+<td><strong>3D Gaussian Stats Lab</strong></td>
+<td>μ as a ball, Σ as an ellipsoid, in real 3D &mdash; deform one cloud with sliders and watch the exact FID react</td>
 </tr>
 <tr>
 <td>4</td>
-<td><strong>Newton&ndash;Schulz &radic;M Iterator</strong></td>
-<td>How <code>_sqrtm_newton_schulz</code> converges, iteration by iteration, with the error curve</td>
+<td><strong>Newton&ndash;Schulz Stepper</strong></td>
+<td>The &radic;M iteration, one step at a time &mdash; matrices, the bending ellipse, and a clickable error curve</td>
 </tr>
 <tr>
 <td>5</td>
-<td><strong>FID Formula Lab</strong></td>
-<td>The two terms of FID &mdash; "how far apart" vs "how differently shaped" &mdash; with sliders for each</td>
+<td><strong>FID Formula Anatomy</strong></td>
+<td>Click either term of the formula to isolate it: "centers apart" vs "shapes apart", each with its own slider and bar</td>
 </tr>
 <tr>
 <td>6</td>
-<td><strong>KID / MMD Machine</strong></td>
-<td>The polynomial kernel, the three k-matrices, and <em>why</em> the diagonal gets removed</td>
+<td><strong>KID Kernel Arena</strong></td>
+<td>Drag two point clouds, watch the three kernel matrices fill cell by cell, hover any cell for its exact arithmetic</td>
 </tr>
 <tr>
 <td>7</td>
-<td><strong>Bias vs Variance Monte-Carlo Lab</strong></td>
-<td>Why FID is biased at small n while KID is unbiased-but-noisy &mdash; run the experiment yourself</td>
+<td><strong>Bias&ndash;Variance Arena</strong></td>
+<td>Rig both samples from the <em>same</em> distribution and catch FID lying (always &gt; 0) while KID honestly straddles 0</td>
 </tr>
 <tr>
 <td>8</td>
-<td><strong>Denoising FID Curve Scrubber</strong></td>
-<td>How FID falls through the sampling run and where extra steps stop paying off</td>
+<td><strong>Denoising Scoreboard</strong></td>
+<td>FID &amp; KID across all 1000 sampling steps &mdash; scrub the journey, click the curve, watch the thumbnail denoise</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Extractor Switch Lab</strong></td>
+<td>Same images, two rulers: custom net says 33.8, InceptionV3 says 63.8 &mdash; and why you must never compare across rulers</td>
 </tr>
 </tbody>
 </table>
-<p>Most have <strong>clickable stages</strong>, a <strong>speed slider</strong>, <strong>Play/Step</strong> controls, and a <strong>code panel</strong> that updates to show the exact line running at each stage. Just run the cell beneath each section. <em>(They are self-contained HTML files &mdash; nothing to install.)</em></p>
+<p>Every visualization has <strong>clickable stages</strong> (jump anywhere, the matching code lights up), <strong>Play/Step controls</strong>, and a <strong>speed slider</strong>; several add drag interactions, 3D orbit controls, or live exact math. Just run the cell beneath each section. <em>(They are self-contained HTML files &mdash; nothing to install.)</em></p>
 </div>
 </div>
 </div>
@@ -7693,23 +7698,24 @@ auto-fitted height</strong>. Run the next cell once, then run any 🎮 cell.</p>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=4c61b85f">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e546f62c">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%F0%9F%8E%AE-Interactive:-the-whole-FID/KID-pipeline-in-one-picture">🎮 Interactive: the whole FID/KID pipeline in one picture<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-whole-FID/KID-pipeline-in-one-picture">¶</a></h3><p>Before any code, get the bird's-eye view. Real images and generated images each flow through the <strong>same frozen feature extractor</strong>, become clouds of feature points, get summarized as a mean <strong>μ</strong> and covariance <strong>Σ</strong>, and finally collapse into one number.</p>
-<p><strong>What to try</strong></p>
+<h3 id="%F0%9F%8E%AE-Interactive:-the-grand-tour-%E2%80%94-the-whole-FID/KID-pipeline-in-one-picture">🎮 Interactive: the grand tour &mdash; the whole FID/KID pipeline in one picture<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-grand-tour-%E2%80%94-the-whole-FID/KID-pipeline-in-one-picture">¶</a></h3><p>Before any code, get the bird's-eye view. <strong>Real images</strong> (top lane) and <strong>generated images</strong> (bottom lane) each flow through the <em>same frozen feature extractor</em>, become clouds of 512-D points, get squashed to (μ, Σ), and finally meet in one number. Every later section of this notebook zooms into exactly one node of this picture.</p>
+<p><strong>What to try:</strong></p>
 <ul>
-<li>Click the stage chips &mdash; <strong>① images &rarr; ② extractor &rarr; ③ feature clouds &rarr; ④ μ &amp; Σ &rarr; ⑤ score</strong> &mdash; each highlights the matching notebook code.</li>
-<li>Switch the <strong>generator quality</strong> dropdown (terrible / okay / great) and watch the generated cloud slide toward the real one &mdash; and the score fall.</li>
-<li>Use ▶ Play with the speed slider to watch the whole pipeline animate.</li>
+<li>Press <strong>▶ Play all</strong> and watch both lanes advance in lock-step &mdash; the fairness of FID lives in that symmetry.</li>
+<li><strong>Click any stage node on the canvas</strong> (or its chip above) to jump straight there; the code panel below switches to the exact notebook lines for that stage.</li>
+<li>Flip the <strong>quality dropdown</strong> between <em>bad / this notebook (FID &asymp; 33.8) / great</em> and watch only the generated lane's cloud move &mdash; the real lane never changes.</li>
+<li>Use the <strong>speed slider</strong> if the tour moves too fast or too slow.</li>
 </ul>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=19f137cd">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=22e58b3b">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -7718,18 +7724,20 @@ auto-fitted height</strong>. Run the next cell once, then run any 🎮 cell.</p>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/fid_big_picture.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/fid_grand_tour.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/fid_big_picture.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"720px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/fid_grand_tour.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
 </div><div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/fid_big_picture.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:720px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/fid_grand_tour.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=cell-0">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -8747,7 +8755,9 @@ Input ──► Layers 0-6 ──► Features (512-dim)
 </div>
 </div>
 <div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/hook_feature_extractor.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/hook_feature_extractor.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cell-14">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9506,23 +9516,24 @@ $$FID = ||μ_1 - μ_2||^2 + Tr(Σ_1 + Σ_2 - 2\sqrt{Σ_1 Σ_2})$$<p>Where:</p>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=6cc1e0b8">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=28b93191">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%F0%9F%8E%AE-Interactive:-mean-&amp;-covariance-%E2%80%94-the-only-two-numbers-FID-keeps">🎮 Interactive: mean &amp; covariance &mdash; the only two numbers FID keeps<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-mean-&amp;-covariance-%E2%80%94-the-only-two-numbers-FID-keeps">¶</a></h3><p>FID throws away every individual image and keeps just <strong>μ</strong> (where the feature cloud sits) and <strong>Σ</strong> (how it spreads and tilts). Build intuition for what those summaries can and cannot see.</p>
-<p><strong>What to try</strong></p>
+<h3 id="%F0%9F%8E%AE-Interactive:-%CE%BC-and-%CE%A3-in-real-3D-%E2%80%94-the-only-two-things-FID-keeps">🎮 Interactive: μ and Σ in real 3D &mdash; the only two things FID keeps<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-%CE%BC-and-%CE%A3-in-real-3D-%E2%80%94-the-only-two-things-FID-keeps">¶</a></h3><p><code>_calc_stats</code> throws away every individual image and keeps just <strong>μ</strong> (where the feature cloud sits) and <strong>Σ</strong> (how it spreads and tilts). This lab shows both <em>as 3D objects</em>: μ is a solid ball at the cloud's center, Σ becomes principal-axis rods and a translucent <strong>2σ ellipsoid</strong> wrapping the points. The orange cloud is fixed (think: real features); you deform the teal one (generated features) and the <strong>exact Fréchet distance</strong> between the two Gaussians updates live.</p>
+<p><strong>What to try:</strong></p>
 <ul>
-<li><strong>Drag either cloud</strong> around the plane, or use the sliders for spread-x, spread-y, and tilt.</li>
-<li><strong>Hover over any entry of the 2&times;2 Σ table</strong> &mdash; the matching piece of the ellipse geometry lights up (diagonal = spreads, off-diagonal = tilt).</li>
-<li>Try the presets, then watch the live <strong>FID₂D preview</strong> react as the clouds separate or reshape.</li>
+<li><strong>Drag to orbit, scroll to zoom</strong> &mdash; convince yourself the ellipsoid really hugs the points.</li>
+<li>Walk the stages: ① the raw cloud &rarr; ② μ appears &rarr; ③ Σ's axes grow &rarr; ④ the ellipsoid wraps &rarr; ⑤ the two-cloud comparison.</li>
+<li>Push the <strong>Δmean / spread / tilt</strong> sliders one at a time and watch which part of the picture (and which part of the FID number) each one moves.</li>
+<li>Hit <strong>✨ match</strong> to morph the teal cloud onto the orange one &mdash; the FID readout collapses toward 0.</li>
 </ul>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=9eef95bf">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=4c6fbf8e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9531,11 +9542,11 @@ $$FID = ||μ_1 - μ_2||^2 + Tr(Σ_1 + Σ_2 - 2\sqrt{Σ_1 Σ_2})$$<p>Where:</p>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/mean_cov_lab.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/gaussian_stats_3d.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/mean_cov_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/gaussian_stats_3d.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -9543,7 +9554,9 @@ $$FID = ||μ_1 - μ_2||^2 + Tr(Σ_1 + Σ_2 - 2\sqrt{Σ_1 Σ_2})$$<p>Where:</p>
 </div>
 </div>
 <div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/mean_cov_lab.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/gaussian_stats_3d.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=sqrtm-header">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9636,23 +9649,24 @@ $$FID = ||μ_1 - μ_2||^2 + Tr(Σ_1 + Σ_2 - 2\sqrt{Σ_1 Σ_2})$$<p>Where:</p>
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c0ee0c65">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=a7844e7e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%F0%9F%8E%AE-Interactive:-Newton%E2%80%93Schulz-%E2%80%94-a-square-root-with-no-sqrt-anywhere">🎮 Interactive: Newton&ndash;Schulz &mdash; a square root with no <code>sqrt</code> anywhere<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Newton%E2%80%93Schulz-%E2%80%94-a-square-root-with-no-sqrt-anywhere">¶</a></h3><p><code>_sqrtm_newton_schulz</code> finds &radic;M using only matrix multiplies (GPU-friendly!). Watch it converge live on a real 2&times;2 matrix.</p>
-<p><strong>What to try</strong></p>
+<h3 id="%F0%9F%8E%AE-Interactive:-Newton%E2%80%93Schulz-%E2%80%94-a-square-root-with-no-sqrt-anywhere">🎮 Interactive: Newton&ndash;Schulz &mdash; a square root with no <code>sqrt</code> anywhere<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Newton%E2%80%93Schulz-%E2%80%94-a-square-root-with-no-sqrt-anywhere">¶</a></h3><p><code>_sqrtm_newton_schulz</code> finds &radic;M using <strong>only matrix multiplies</strong> (GPU-friendly!). This stepper lets you run the iteration one step at a time on a real 2&times;2 matrix and <em>see</em> convergence three ways at once: the <strong>Y matrix</strong> (green cells = digits that have locked in), the check <strong>Y·Y &rarr; M</strong>, and an <strong>ellipse view</strong> where Y bends the unit circle until it matches the true &radic;M shape.</p>
+<p><strong>What to try:</strong></p>
 <ul>
-<li>Pick a matrix: <strong>easy</strong>, an actual <strong>covariance</strong>, or a <strong>stiff</strong> ill-conditioned one &mdash; and see how the iteration count changes.</li>
-<li>Step through <strong>① normalize &rarr; ② iterate &rarr; ③ rescale &rarr; ④ check</strong>; cells turn green as Y·Y converges to M.</li>
-<li><strong>Click any point on the error curve</strong> (log scale!) to jump straight to that iteration and its matrices.</li>
+<li>Pick a matrix: <em>easy</em> (nearly diagonal), <em>a real covariance</em>, or <em>stiff</em> (ill-conditioned) &mdash; and compare how many steps each needs.</li>
+<li>Use <strong>Step ⏭</strong> to advance a single iteration; watch <code>Y·Y</code> creep toward M cell by cell.</li>
+<li><strong>Click anywhere on the log-error curve</strong> to jump the whole display to that iteration.</li>
+<li>Follow the 4-phase code panel: normalize &rarr; iterate &rarr; rescale &rarr; check &mdash; the exact structure of the notebook's function.</li>
 </ul>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=10cd0890">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=532fbc2e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9661,18 +9675,20 @@ $$FID = ||μ_1 - μ_2||^2 + Tr(Σ_1 + Σ_2 - 2\sqrt{Σ_1 Σ_2})$$<p>Where:</p>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/newton_schulz_sqrtm.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/newton_schulz_stepper.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/newton_schulz_sqrtm.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"740px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/newton_schulz_stepper.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
 </div><div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/newton_schulz_sqrtm.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:740px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/newton_schulz_stepper.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=cell-28">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9915,23 +9931,24 @@ What we want:     42.0               ← just the real part
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=17422c1d">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=fbaca9bc">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%F0%9F%8E%AE-Interactive:-the-FID-formula,-term-by-term">🎮 Interactive: the FID formula, term by term<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-FID-formula,-term-by-term">¶</a></h3><p>FID = ‖μ₁−μ₂‖² + Tr(Σ₁ + Σ₂ − 2&radic;(Σ₁Σ₂)) &mdash; two ideas glued together: <strong>how far apart are the centers?</strong> and <strong>how differently shaped are the clouds?</strong></p>
-<p><strong>What to try</strong></p>
+<h3 id="%F0%9F%8E%AE-Interactive:-the-FID-formula,-dissected-term-by-term">🎮 Interactive: the FID formula, dissected term by term<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-FID-formula,-dissected-term-by-term">¶</a></h3><p>FID = ‖μ₁−μ₂‖² + Tr(Σ₁ + Σ₂ − 2&radic;(Σ₁Σ₂)) &mdash; two ideas glued together: <strong>how far apart are the centers?</strong> and <strong>how differently shaped are the clouds?</strong> Here the formula itself is clickable: select either term to isolate what it measures on a live 2-D plane, then feed it with its own slider. The number shown is the <em>exact</em> Fréchet formula computed on these clouds.</p>
+<p><strong>What to try:</strong></p>
 <ul>
-<li><strong>Click either term in the formula</strong> to isolate what it measures; the plane and the bars respond.</li>
-<li>Slide <strong>Δmean</strong>, <strong>spread</strong>, and <strong>tilt</strong> to feed each term separately &mdash; see which bar grows.</li>
-<li>Press <strong>✨ make it perfect</strong> to drive the generated cloud into an exact match and watch FID hit 0.</li>
+<li><strong>Click ‖μ₁−μ₂‖² in the formula card</strong> &mdash; the plane dims everything except the two centers and the dashed gap between them. Now drag the <strong>Δmean</strong> slider: only the orange bar grows.</li>
+<li><strong>Click the trace term</strong> &mdash; now only shape differences matter. Play with <strong>spread</strong> and <strong>tilt</strong> and watch the teal bar respond while the orange one stays put.</li>
+<li>Stage ④ explains the weird-looking &radic;(Σ₁Σ₂): it's the "shared shape" credit that stops the trace term from double-counting.</li>
+<li>Press <strong>✨ make it perfect</strong> and <strong>💥 make it awful</strong> to see the formula's two extremes, then eyeball where this notebook's FID &asymp; 33.8 sits between them.</li>
 </ul>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=eba039df">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=498c1efd">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9940,11 +9957,11 @@ What we want:     42.0               ← just the real part
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/fid_formula_lab.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/fid_formula_anatomy.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/fid_formula_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/fid_formula_anatomy.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"740px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -9952,7 +9969,9 @@ What we want:     42.0               ← just the real part
 </div>
 </div>
 <div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/fid_formula_lab.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/fid_formula_anatomy.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:740px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=kid-header">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -11355,23 +11374,24 @@ mmd = mmd₀ + mmd₁ + mmd₂ + mmd₃ + mmd₄ + mmd₅
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=20a0d4bb">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=c596e8d4">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%F0%9F%8E%AE-Interactive:-the-KID-/-MMD-machine">🎮 Interactive: the KID / MMD machine<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-KID-/-MMD-machine">¶</a></h3><p>KID never computes μ or Σ. Instead it compares <em>all pairs of points</em> through a polynomial kernel &mdash; and its famous diagonal-removal trick is what makes it <strong>unbiased</strong>.</p>
-<p><strong>What to try</strong></p>
+<h3 id="%F0%9F%8E%AE-Interactive:-the-KID-kernel-arena-%E2%80%94-score-every-pair,-then-average">🎮 Interactive: the KID kernel arena &mdash; score every pair, then average<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-KID-kernel-arena-%E2%80%94-score-every-pair,-then-average">¶</a></h3><p>KID never computes μ or Σ. Instead it compares <strong>all pairs of raw points</strong> through a polynomial kernel k(a,b) = (a·b/d + 1)³, building three similarity tables: real·real, gen·gen, and real·gen. Then one subtraction &mdash; <em>within-cloud similarity minus cross-cloud similarity</em> &mdash; gives MMD², the KID score. This arena computes all of it <strong>exactly, live</strong>, on two clouds you can drag around.</p>
+<p><strong>What to try:</strong></p>
 <ul>
-<li>Walk the stages: <strong>① kernel &rarr; ② the three k-matrices &rarr; ③ remove the diagonal &rarr; ④ combine into MMD² &rarr; ⑤ chunking (maxs=50)</strong>.</li>
-<li><strong>Hover any heatmap cell</strong> to see the actual k(a,b) = (a·b/d + 1)³ arithmetic for that pair.</li>
-<li>Drag the point clouds (3 presets too) and watch every matrix and the final KID update live.</li>
+<li>Play stage ② and watch the three kernel matrices fill <strong>cell by cell</strong>, each cell's darkness = that pair's similarity. <strong>Hover any cell</strong> to see its full arithmetic with real numbers.</li>
+<li>Stage ③ is the famous unbiasedness trick: the diagonals of k(x,x′) and k(y,y′) get struck out (a point always matches itself &mdash; pure flattery).</li>
+<li><strong>Drag the teal cloud onto the orange one</strong> &mdash; the three bars cancel and KID collapses to &asymp; 0 (sometimes slightly <em>below</em> 0, which FID can never do).</li>
+<li>Stage ⑤ shows why the notebook's <code>_calc_kid</code> chops data into chunks of <code>maxs=50</code>: full 10000&times;10000 tables would eat all your memory.</li>
 </ul>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=aa32d257">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=6ac1aaf6">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -11380,11 +11400,11 @@ mmd = mmd₀ + mmd₁ + mmd₂ + mmd₃ + mmd₄ + mmd₅
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/kid_mmd_machine.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/kid_kernel_arena.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/kid_mmd_machine.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/kid_kernel_arena.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -11392,7 +11412,9 @@ mmd = mmd₀ + mmd₁ + mmd₂ + mmd₃ + mmd₄ + mmd₅
 </div>
 </div>
 <div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/kid_mmd_machine.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/kid_kernel_arena.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=370a38de">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -11435,22 +11457,23 @@ mmd = mmd₀ + mmd₁ + mmd₂ + mmd₃ + mmd₄ + mmd₅
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=5a0c462f">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e18c0a9d">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%F0%9F%8E%AE-Interactive:-FID's-bias-vs-KID's-variance-%E2%80%94-run-the-experiment">🎮 Interactive: FID's bias vs KID's variance &mdash; run the experiment<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-FID's-bias-vs-KID's-variance-%E2%80%94-run-the-experiment">¶</a></h3><p>The claims above ("FID is biased", "KID has high variance") are <em>statistical</em> statements &mdash; so test them statistically! Here both clouds come from the <strong>identical</strong> distribution, so truth = 0. What do the estimators say?</p>
-<p><strong>What to try</strong></p>
+<h3 id="%F0%9F%8E%AE-Interactive:-the-fairness-test-%E2%80%94-catch-FID-lying">🎮 Interactive: the fairness test &mdash; catch FID lying<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-fairness-test-%E2%80%94-catch-FID-lying">¶</a></h3><p>"FID is biased, KID is unbiased but noisy" &mdash; these are <em>statistical</em> claims, so let's run the actual experiment. Rig the game: draw <strong>both</strong> samples from the <strong>same</strong> distribution, so the true answer is exactly <strong>0</strong>. Repeat 40 times at each sample size n. Every dot is one full experiment (with FID and unbiased KID computed exactly).</p>
+<p><strong>What to try:</strong></p>
 <ul>
-<li>Set the sample size <strong>n</strong>, press ▶, and watch estimates pile up: FID dots land <strong>consistently above 0</strong> (bias); KID dots <strong>straddle 0</strong> but scatter widely &mdash; sometimes negative, exactly like the −0.026 sanity check below.</li>
-<li>Open stage <strong>④ Bias shrinks with n</strong> &mdash; the FID curve glides toward truth as n grows. This is <em>why you must never compare FIDs computed at different sample sizes</em>.</li>
+<li>Play stages ②&ndash;④: all 40 FID dots land <strong>above</strong> the truth line (bias &mdash; the notebook's real-vs-real FID of 6.61 is this effect in the wild), while KID dots scatter <strong>around</strong> it, some negative (like the notebook's −0.026).</li>
+<li>Slide <strong>samples n</strong> from 20 to 1000 and watch FID's bias shrink &mdash; but never vanish.</li>
+<li>Stage ⑤ plots the bias-vs-n curve directly; <strong>click any dot on it</strong> to switch the experiment to that n. The moral: <em>never compare FIDs measured at different sample counts.</em></li>
 </ul>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=44590441">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=ca5e1b03">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -11459,11 +11482,11 @@ mmd = mmd₀ + mmd₁ + mmd₂ + mmd₃ + mmd₄ + mmd₅
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/fid_bias_variance_lab.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/bias_variance_arena.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/fid_bias_variance_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/bias_variance_arena.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -11471,7 +11494,9 @@ mmd = mmd₀ + mmd₁ + mmd₂ + mmd₃ + mmd₄ + mmd₅
 </div>
 </div>
 <div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/fid_bias_variance_lab.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/bias_variance_arena.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cell-34">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -12480,23 +12505,24 @@ mmd = mmd₀ + mmd₁ + mmd₂ + mmd₃ + mmd₄ + mmd₅
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=1da320bf">
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=de7f04c8">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%F0%9F%8E%AE-Interactive:-scrub-the-denoising-run-%E2%80%94-quality-is-a-curve">🎮 Interactive: scrub the denoising run &mdash; quality is a curve<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-scrub-the-denoising-run-%E2%80%94-quality-is-a-curve">¶</a></h3><p>The plots above checkpoint the sampler at steps <code>0, 50, &hellip;, 950, 975, 990, 999</code> and score each with FID. Scrub through the run yourself.</p>
-<p><strong>What to try</strong></p>
+<h3 id="%F0%9F%8E%AE-Interactive:-the-denoising-scoreboard-%E2%80%94-quality-is-a-curve,-not-a-number">🎮 Interactive: the denoising scoreboard &mdash; quality is a curve, not a number<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-denoising-scoreboard-%E2%80%94-quality-is-a-curve,-not-a-number">¶</a></h3><p>The plots above checkpoint the sampler at steps <code>0, 50, &hellip;, 950, 975, 990, 999</code> and score each one. This scoreboard turns that into a journey you can scrub: a step slider, both metric curves (FID and KID told the same story &mdash; strong evidence the improvement is real), and a thumbnail showing what the sample looks like at that instant.</p>
+<p><strong>What to try:</strong></p>
 <ul>
-<li>Drag the <strong>step slider</strong> or <strong>click any point on the FID curve</strong> to jump there &mdash; the sample thumbnail de-noises before your eyes.</li>
-<li>Walk the stages: <strong>① pure noise &rarr; ② shape emerges &rarr; ③ details sharpen &rarr; ④ diminishing returns</strong> &mdash; each highlights the notebook code it corresponds to.</li>
-<li>Note the log-scale y-axis: the last 3 checkpoints (975, 990, 999) buy almost nothing &mdash; that observation motivates faster samplers like DDIM.</li>
+<li><strong>Drag the step scrubber</strong> or simply <strong>click/drag anywhere on the curves</strong> &mdash; the cursor, thumbnail, and readout follow, and the stage chips + code panel sync to whichever phase of the journey you're in.</li>
+<li>Ride the stages: ① pure noise scores ~330 &rarr; ② the productive cliff &rarr; ③ diminishing returns &rarr; ④ the last-25-step polish (why the notebook adds extra checkpoints at 975/990/999) &rarr; ⑤ how to read the final 33.8 honestly.</li>
+<li>Toggle <strong>log scale</strong> to stretch out the flat tail and see that steps 950&rarr;999 still buy a little.</li>
+<li>Note the endgame lesson hiding in the flat tail: stopping at step 975 would cost almost nothing &mdash; useful when sampling time matters.</li>
 </ul>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=372bd843">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=b5546c14">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -12505,11 +12531,11 @@ mmd = mmd₀ + mmd₁ + mmd₂ + mmd₃ + mmd₄ + mmd₅
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/fid_denoising_curve.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/denoise_scoreboard.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/fid_denoising_curve.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/denoise_scoreboard.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -12517,7 +12543,9 @@ mmd = mmd₀ + mmd₁ + mmd₂ + mmd₃ + mmd₄ + mmd₅
 </div>
 </div>
 <div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/fid_denoising_curve.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/denoise_scoreboard.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=sanity-check-header">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -12708,7 +12736,49 @@ mmd = mmd₀ + mmd₁ + mmd₂ + mmd₃ + mmd₄ + mmd₅
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=cell-47">
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=e62ad0bd">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-swap-the-ruler-%E2%80%94-custom-classifier-vs-InceptionV3">🎮 Interactive: swap the ruler &mdash; custom classifier vs InceptionV3<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-swap-the-ruler-%E2%80%94-custom-classifier-vs-InceptionV3">¶</a></h3><p>You're about to see the <em>same</em> generated images score <strong>63.8</strong> with InceptionV3 after scoring <strong>33.8</strong> with our custom classifier. Neither number is wrong: FID is only defined <em>relative to a feature extractor</em>, and this lab walks through everything that changes when you swap rulers &mdash; the channel repeat, the 299&times;299 resize, 512-D vs 2048-D features, and finally the two incomparable numbers side by side.</p>
+<p><strong>What to try:</strong></p>
+<ul>
+<li>Toggle between <strong>custom 512-D</strong> and <strong>InceptionV3 2048-D</strong> and watch the pipeline itself change shape &mdash; the <code>x.repeat(1,3,1,1)</code> and resize stations only exist on the Inception path.</li>
+<li>Stage ① animates the grayscale sheet being copied into R = G = B; stage ② stretches 28px &rarr; 299px live.</li>
+<li>Stage ③ compares the feature spaces: Σ balloons from 512&times;512 to 2048&times;2048 &mdash; 16&times; more numbers to estimate, hence even harsher small-sample bias (real-vs-real jumps from 6.6 to 27.9!).</li>
+<li>Stage ⑤ is the one rule to leave with: FIDs are comparable <strong>only</strong> when extractor, preprocessing, and sample count all match.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=af589a1c">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/inception_switch_lab.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/inception_switch_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/inception_switch_lab.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=cell-47">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>

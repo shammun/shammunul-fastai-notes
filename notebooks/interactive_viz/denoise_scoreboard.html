@@ -1,0 +1,338 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scoring the whole denoising journey</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--ok:#128a5a;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:110px;}
+  .stepb{background:#eee9fb;color:var(--ac);padding:6px 10px;}
+  .reset{background:#f0f4fb;color:var(--soft);}
+  .logb{background:#f0f4fb;color:var(--soft);border:2px solid var(--line);}
+  .logb.on{background:var(--out);color:#fff;border-color:var(--out);}
+  input[type=range]{accent-color:var(--ac);}
+  #speed{width:92px;} #scrub{width:210px;accent-color:var(--in);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .sldv{font-family:monospace;font-weight:700;color:var(--in);min-width:56px;display:inline-block;}
+  .wrap{max-width:1080px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cnv{flex:1 1 600px;min-width:340px;}
+  canvas{display:block;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+  #curve{width:100%;cursor:crosshair;}
+  .side{flex:1 1 300px;min-width:270px;display:flex;flex-direction:column;gap:8px;align-items:center;}
+  #thumb{width:180px;height:180px;image-rendering:pixelated;border-radius:10px;border:1px solid var(--line);}
+  .readout{width:100%;font-size:12.5px;line-height:1.7;}
+  .readout b{font-family:Consolas,monospace;font-size:14.5px;}
+  .honest{width:100%;font-size:10.8px;color:var(--soft);background:#fffbf2;border:1px dashed var(--in);border-radius:8px;padding:6px 8px;line-height:1.45;}
+  .story{max-width:1080px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1080px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>The scoreboard: FID &amp; KID at every step of the denoising journey</h1>
+<p class="sub">A DDPM starts from pure noise (step 0) and denoises for 1000 steps. The notebook freezes the picture at 23 checkpoints and scores each against real data. <b>Press ▶ and the curves draw themselves as the sample cleans up</b> — the filmstrip along the bottom shows the image at each moment. <b>Drag the scrubber, click the curves, hover any dot</b> for its exact numbers. FID has its own axis (left) and KID its own (right) — no sneaky rescaling.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Pure noise scores ~330</button>
+  <button class="chip" data-s="1">② The cliff (0→400)</button>
+  <button class="chip" data-s="2">③ Structure emerges</button>
+  <button class="chip" data-s="3">④ The last-25-step polish</button>
+  <button class="chip" data-s="4">⑤ Reading the final 33.8</button>
+</div>
+
+<div class="selrow">
+  <button class="play" id="play">▶ Play journey</button>
+  <button class="stepb" id="back">⏮</button>
+  <button class="stepb" id="fwd">⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  step <input id="scrub" type="range" min="0" max="999" step="1" value="0"><span class="sldv" id="vStep">0/999</span>
+  <span class="div"></span>
+  <button class="logb" id="logb">log scale</button>
+</div>
+
+<div class="wrap">
+  <div class="card cnv"><canvas id="curve" height="420"></canvas></div>
+  <div class="side">
+    <div class="card" style="text-align:center">
+      <div style="font-size:11.5px;font-weight:700;color:var(--soft);margin-bottom:5px">the sample at this step</div>
+      <canvas id="thumb" width="28" height="28"></canvas>
+    </div>
+    <div class="card readout" id="read"></div>
+    <div class="honest"><b>honesty note:</b> the endpoints are the notebook's real numbers (noise ≈ 330 / 0.34 → final 33.8 / 0.056); the in-between curve shape is a faithful sketch of the typical run. Execute the notebook's plotting cell to see your exact curve.</div>
+  </div>
+</div>
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b style="color:var(--in)">orange = FID (left axis)</b> · <b style="color:var(--out)">teal = KID (right axis)</b> · dots = the notebook's 23 checkpoints: 0, 50, …, 950, 975, 990, 999 · filmstrip &amp; thumbnail = a procedural stand-in for a Fashion-MNIST sample denoising · hover a dot for exact values</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const ORANGE='#f6921e',TEAL='#16a3a3',AC='#7b5cd6',SOFT='#5a6b86',NEG='#d64545',OK='#128a5a';
+let p=0,playing=false,speed=1,stopAt=99,step=0,logScale=false,maxVisited=0,hoverCk=null;
+
+// ---------- checkpoints + score curves (endpoints = notebook's real numbers) ----------
+const XS=[0,50,100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,975,990,999];
+function fidAt(t){const u=t/999;
+  const base=33.834+(330-33.834)*Math.pow(1-u,2.6);
+  return base+6*Math.sin(u*9)*(1-u)*(1-u);}
+function kidAt(t){const u=t/999;
+  const base=0.056+(0.34-0.056)*Math.pow(1-u,2.9);
+  return base+0.006*Math.sin(u*11+1)*(1-u);}
+const FID=XS.map(fidAt),KID=XS.map(kidAt);
+function interp(t,arr){let i=0;while(i<XS.length-1&&XS[i+1]<t)i++;
+  if(i>=XS.length-1)return arr[XS.length-1];
+  const a=XS[i],b=XS[i+1];return arr[i]+(arr[i+1]-arr[i])*(t-a)/(b-a);}
+
+// ---------- procedural denoising thumbnail ----------
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const NOISE=[];{const r=mulberry(42);for(let i=0;i<28*28;i++)NOISE.push(r());}
+function target(x,y){const fx=x/27,fy=y/27;let v=0.04;
+  if(fy>0.42&&fy<0.82&&fx>0.06&&fx<0.94){const top=0.42+(1-fx)*0.22;if(fy>top)v=0.85;}
+  if(fy>0.74&&fy<0.88&&fx>0.03&&fx<0.97)v=0.98;
+  if(v>0.5&&fy<0.6&&fx>0.5&&((x+y)%5===0))v=0.45;
+  return v;}
+function renderSample(ctx28,st){
+  const u=st/999,sig=Math.pow(1-u,1.35);
+  const img=ctx28.createImageData(28,28);
+  for(let y=0;y<28;y++)for(let x=0;x<28;x++){
+    const i=y*28+x;
+    const mix=(1-sig)*target(x,y)+sig*NOISE[i];
+    const g=Math.round(255*Math.min(1,Math.max(0,mix)));
+    img.data[4*i]=g;img.data[4*i+1]=g;img.data[4*i+2]=g;img.data[4*i+3]=255;}
+  ctx28.putImageData(img,0,0);
+}
+function drawThumb(){renderSample($('thumb').getContext('2d'),step);}
+// filmstrip frames (pre-rendered offscreen canvases)
+const FILM=[0,200,400,600,800,999].map(st=>{
+  const c=document.createElement('canvas');c.width=c.height=28;
+  renderSample(c.getContext('2d'),st);return {st,c};});
+
+// ---------- dual-axis plot ----------
+const FMIN=25,FMAX=350,KMIN=0.04,KMAX=0.37;
+let G={};   // plot geometry, refreshed each draw
+function yF(v){const lo=logScale?Math.log10(FMIN):FMIN, hi=logScale?Math.log10(FMAX):FMAX;
+  const x=logScale?Math.log10(v):v;return G.py1-(x-lo)/(hi-lo)*(G.py1-G.py0);}
+function yK(v){const lo=logScale?Math.log10(KMIN):KMIN, hi=logScale?Math.log10(KMAX):KMAX;
+  const x=logScale?Math.log10(v):v;return G.py1-(x-lo)/(hi-lo)*(G.py1-G.py0);}
+function xT(t){return G.px0+(G.px1-G.px0)*t/999;}
+
+function draw(){
+  const cv=$('curve'),ctx=cv.getContext('2d');
+  const dpr=Math.min(devicePixelRatio||1,2),W=cv.parentElement.clientWidth-22,H=420;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  G={px0:54,px1:W-58,py0:26,py1:H-108};
+  const s=Math.min(4,Math.floor(p+1e-4));
+  // region bands + labels
+  const regions=[[0,80,'noise'],[80,400,'the cliff'],[400,950,'refinement'],[950,999,'polish']];
+  regions.forEach(([a,b,lab],i)=>{
+    const xa=xT(a),xb=xT(b);
+    if(i%2===1){ctx.fillStyle='rgba(123,92,214,.05)';ctx.fillRect(xa,G.py0,xb-xa,G.py1-G.py0);}
+    ctx.fillStyle='#a5b2c9';ctx.font='700 10px "Segoe UI",sans-serif';ctx.textAlign='center';
+    ctx.fillText(lab,(xa+xb)/2,G.py0+11);
+  });
+  // active-stage highlight band
+  const stageR=[[0,80],[0,400],[400,950],[950,999],[999,999]][s];
+  if(stageR[1]>stageR[0]){ctx.fillStyle='rgba(123,92,214,.09)';
+    ctx.fillRect(xT(stageR[0]),G.py0,xT(stageR[1])-xT(stageR[0]),G.py1-G.py0);}
+  // axes
+  ctx.strokeStyle='#dbe4f2';ctx.lineWidth=1;ctx.font='10px Consolas,monospace';
+  const fticks=logScale?[30,50,100,200,330]:[50,100,150,200,250,300];
+  fticks.forEach(v=>{const y=yF(v);ctx.beginPath();ctx.moveTo(G.px0,y);ctx.lineTo(G.px1,y);ctx.stroke();
+    ctx.fillStyle=ORANGE;ctx.textAlign='right';ctx.fillText(v,G.px0-5,y+3);});
+  const kticks=logScale?[0.05,0.1,0.2,0.34]:[0.05,0.1,0.15,0.2,0.25,0.3,0.35];
+  kticks.forEach(v=>{const y=yK(v);
+    ctx.fillStyle=TEAL;ctx.textAlign='left';ctx.fillText(v,G.px1+5,y+3);});
+  ctx.save();ctx.fillStyle=ORANGE;ctx.font='700 11px "Segoe UI",sans-serif';
+  ctx.translate(14,(G.py0+G.py1)/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText('FID  (left axis)',0,0);ctx.restore();
+  ctx.save();ctx.fillStyle=TEAL;ctx.font='700 11px "Segoe UI",sans-serif';
+  ctx.translate(W-12,(G.py0+G.py1)/2);ctx.rotate(Math.PI/2);ctx.textAlign='center';ctx.fillText('KID  (right axis)',0,0);ctx.restore();
+  ctx.fillStyle=SOFT;ctx.textAlign='center';ctx.font='10px Consolas,monospace';
+  [0,200,400,600,800,999].forEach(t=>ctx.fillText(t,xT(t),G.py1+14));
+  ctx.fillText('denoising step →',(G.px0+G.px1)/2,G.py1+27);
+  // curves — revealed only up to the furthest step visited
+  const rev=Math.max(maxVisited,step);
+  function curve(getV,yfn,col,wid){
+    ctx.strokeStyle=col;ctx.lineWidth=wid;ctx.beginPath();
+    let started=false;
+    for(let t=0;t<=rev;t+=5){const x=xT(t),y=yfn(getV(t));started?ctx.lineTo(x,y):ctx.moveTo(x,y);started=true;}
+    const x=xT(rev),y=yfn(getV(rev));if(started)ctx.lineTo(x,y);
+    ctx.stroke();}
+  curve(fidAt,yF,ORANGE,3);
+  curve(kidAt,yK,TEAL,2.5);
+  // grey preview of the road ahead
+  if(rev<999){
+    ctx.setLineDash([3,5]);
+    ctx.strokeStyle='#d8dfeb';ctx.lineWidth=1.5;
+    [[fidAt,yF],[kidAt,yK]].forEach(([g,yfn])=>{ctx.beginPath();let st2=false;
+      for(let t=rev;t<=999;t+=6){const x=xT(t),y=yfn(g(t));st2?ctx.lineTo(x,y):ctx.moveTo(x,y);st2=true;}ctx.stroke();});
+    ctx.setLineDash([]);
+  }
+  // checkpoint dots (only where revealed)
+  XS.forEach((t,i)=>{
+    if(t>rev+1)return;
+    [[yF(FID[i]),ORANGE],[yK(KID[i]),TEAL]].forEach(([y,col])=>{
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(xT(t),y,hoverCk===i?6:4.3,0,7);ctx.fill();
+      ctx.strokeStyle=col;ctx.lineWidth=hoverCk===i?2.6:2;ctx.stroke();});
+  });
+  if(s===3&&rev>950){
+    ctx.fillStyle=AC;ctx.font='700 11px "Segoe UI",sans-serif';ctx.textAlign='right';
+    ctx.fillText('975, 990, 999 — extra checkpoints crammed in here ↘',xT(950),G.py0+26);
+  }
+  // scrub cursor + markers
+  const fv=interp(step,FID),kv=interp(step,KID);
+  ctx.strokeStyle=AC;ctx.lineWidth=2;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(xT(step),G.py0);ctx.lineTo(xT(step),G.py1);ctx.stroke();ctx.setLineDash([]);
+  [[yF(fv),ORANGE],[yK(kv),TEAL]].forEach(([y,c])=>{ctx.fillStyle=c;ctx.beginPath();ctx.arc(xT(step),y,6.5,0,7);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();});
+  ctx.fillStyle=AC;ctx.font='700 12px "Segoe UI",sans-serif';ctx.textAlign='left';
+  ctx.fillText('step '+step,Math.min(xT(step)+8,W-120),G.py0+14);
+  // hover tooltip
+  if(hoverCk!=null){
+    const t=XS[hoverCk],x=xT(t),y=yF(FID[hoverCk]);
+    const lines=['step '+t,'FID '+FID[hoverCk].toFixed(1),'KID '+KID[hoverCk].toFixed(3)];
+    ctx.font='700 11px Consolas,monospace';
+    const bw=76,bh=46,bx=Math.min(W-bw-6,x+10),by=Math.max(6,y-52);
+    ctx.fillStyle='#fff';ctx.strokeStyle=AC;ctx.lineWidth=1.6;
+    ctx.beginPath();ctx.roundRect(bx,by,bw,bh,7);ctx.fill();ctx.stroke();
+    ctx.textAlign='left';
+    lines.forEach((ln,i)=>{ctx.fillStyle=[AC,ORANGE,TEAL][i];ctx.fillText(ln,bx+8,by+15+i*14);});
+  }
+  // ---- filmstrip ----
+  const fy=H-66,fs=52;
+  ctx.font='700 10px Consolas,monospace';ctx.textAlign='center';
+  FILM.forEach(f=>{
+    const x=xT(f.st)-fs/2;
+    const cur=Math.abs(step-f.st)<110;
+    ctx.save();
+    ctx.imageSmoothingEnabled=false;
+    ctx.globalAlpha=f.st<=rev+1?1:0.28;
+    ctx.drawImage(f.c,Math.max(G.px0-10,Math.min(W-fs-4,x)),fy,fs,fs);
+    ctx.restore();
+    ctx.strokeStyle=cur?AC:'#c9d4e8';ctx.lineWidth=cur?2.6:1.2;
+    ctx.strokeRect(Math.max(G.px0-10,Math.min(W-fs-4,x)),fy,fs,fs);
+    ctx.fillStyle=cur?AC:SOFT;
+    ctx.fillText(f.st,Math.max(G.px0-10,Math.min(W-fs-4,x))+fs/2,fy+fs+11);
+  });
+  drawThumb();
+  // readout
+  const pct=Math.round(step/999*100);
+  $('read').innerHTML=
+    'step <b style="color:var(--ac)">'+step+'</b> / 999 ('+pct+'% of the journey)<br>'
+    +'FID vs real data: <b style="color:var(--in)">'+fv.toFixed(1)+'</b><br>'
+    +'KID vs real data: <b style="color:var(--out)">'+kv.toFixed(3)+'</b><br>'
+    +'<span style="color:var(--soft);font-size:11.5px">'+(step<80?'basically pure static — the metrics agree it looks nothing like clothes':step<400?'the cliff: every denoising step buys a big score drop':step<950?'silhouettes exist; gains are slowing':'the polish zone: tiny texture fixes, tiny score moves')+'</span>';
+  $('vStep').textContent=step+'/999';
+}
+
+// ---------- interactions ----------
+function setStep(t){step=Math.round(clampv(t,0,999));maxVisited=Math.max(maxVisited,step);$('scrub').value=step;}
+const clampv=(v,a,b)=>Math.max(a,Math.min(b,v));
+function jumpFromEvent(e){
+  const cv=$('curve'),r=cv.getBoundingClientRect();
+  const mx=e.clientX-r.left;
+  setStep((mx-G.px0)/(G.px1-G.px0)*999);
+  const s= step<1?0 : step<400?1 : step<950?2 : step<999?3 : 4;
+  if(Math.floor(p+1e-4)!==s){stopPlay();p=s+0.5;syncUI(true);} else draw();
+}
+let curveDrag=false;
+$('curve').addEventListener('pointerdown',e=>{curveDrag=true;jumpFromEvent(e);});
+$('curve').addEventListener('pointermove',e=>{
+  if(curveDrag){jumpFromEvent(e);return;}
+  const r=$('curve').getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  let best=null,bd=11;
+  XS.forEach((t,i)=>{
+    [yF(FID[i]),yK(KID[i])].forEach(y=>{const d=Math.hypot(mx-xT(t),my-y);if(d<bd){bd=d;best=i;}});
+  });
+  if(best!==hoverCk){hoverCk=best;draw();}
+});
+addEventListener('pointerup',()=>curveDrag=false);
+$('curve').addEventListener('pointerleave',()=>{if(hoverCk!=null){hoverCk=null;draw();}});
+$('scrub').oninput=e=>{setStep(+e.target.value);stopPlay();draw();};
+$('logb').onclick=()=>{logScale=!logScale;$('logb').classList.toggle('on',logScale);draw();};
+
+// ---------- stories + code ----------
+const STORIES=[
+`<b>① Pure noise scores ~330.</b> At step 0 the "sample" is raw Gaussian static — see the filmstrip's first frame. Its features land in a totally different region of 512-D space than real clothing images, so both metrics scream: FID ≈ 330, KID ≈ 0.34. This anchors the scale — every later number means "how much closer to real than static?". Press ▶ to ride the whole journey and watch the curves draw themselves.`,
+`<b>② The cliff (steps 0→400).</b> Early denoising is spectacularly productive: each step removes a lot of noise, and the curves fall off a cliff. This is where blobs become "probably a garment" (watch the filmstrip frames sharpen). Notice FID and KID plunge <em>together</em> on their separate axes — two very different recipes (Gaussian summary vs kernel pairs) agreeing is strong evidence the improvement is real, not a quirk of one formula.`,
+`<b>③ Structure emerges (400→950).</b> The curves bend: silhouettes are already right, so the model is now refining textures and edges. Improvements per step shrink — classic diminishing returns. This is why the notebook samples checkpoints every 50 steps here: nothing dramatic happens between neighbors. Hover the dots and compare consecutive values.`,
+`<b>④ The last-25-step polish (950→999).</b> The notebook crams <em>extra</em> checkpoints at 975, 990, 999 — into the final 5% of the journey — because the very last steps remove the final film of noise, and evaluators want to know exactly when the image is "done". The curves are nearly flat here: stopping at 975 would barely change the score — useful if sampling time matters.`,
+`<b>⑤ Reading the final 33.8.</b> The journey ends at FID ≈ 33.8, KID ≈ 0.056. Good? Context is everything: pure noise scored ~330 (10× worse), and <em>real-vs-real</em> scored 6.6 on this same setup (the bias floor from the previous visualization). This DDPM has closed most — not all — of the gap between static and reality. That's the honest way to read any FID: <b>relative to the noise ceiling and the real-data floor, same extractor, same n.</b>`];
+const CODES=[
+`<span class="cm"># collect the sample at 23 moments of the denoising loop</span>
+<span class="hl">xs = L.range(<span class="num">0</span>, <span class="num">1000</span>, <span class="num">50</span>) + [<span class="num">975</span>, <span class="num">990</span>, <span class="num">999</span>]</span>
+<span class="cm"># preds[0] = the tensor at step 0 → pure Gaussian noise</span>
+ie = <span class="fn">ImageEval</span>(xt, learn.dls)   <span class="cm"># the scorer, holding real-data stats</span>`,
+`<span class="cm"># score every checkpoint against the SAME real features</span>
+<span class="hl">for i in xs:
+    fids.append(ie.<span class="fn">fid</span>(preds[i]))     <span class="cm"># one orange dot per checkpoint</span></span>
+    kids.append(ie.<span class="fn">kid</span>(preds[i]))     <span class="cm"># one teal dot per checkpoint</span>`,
+`<span class="cm"># plotting the journey — the notebook's exact cell</span>
+<span class="hl">plt.plot(xs, fids)   <span class="cm"># the cliff, the bend, the flat tail</span></span>
+<span class="cm"># same n at every point → FID's bias is constant → the SHAPE is trustworthy</span>`,
+`<span class="cm"># why 975, 990, 999? zoom into the endgame:</span>
+xs = L.range(<span class="num">0</span>, <span class="num">1000</span>, <span class="num">50</span>) + <span class="hl">[<span class="num">975</span>, <span class="num">990</span>, <span class="num">999</span>]</span>
+<span class="cm"># the flat tail tells you when extra sampling steps stop paying —</span>
+<span class="cm"># e.g. stop at 975 and save 25 steps for nearly the same quality</span>`,
+`<span class="cm"># the final scores, and their honest context:</span>
+ie.<span class="fn">fid</span>(final_sample)   <span class="cm"># → 33.834   (noise ceiling ≈ 330)</span>
+ie.<span class="fn">fid</span>(xt2)            <span class="cm"># → 6.61     (real-vs-real bias floor)</span>
+<span class="hl"><span class="cm"># verdict: much closer to real than to noise — but the gap to 6.6 is real work left</span></span>`];
+
+let lastS=-1;
+function syncUI(force){
+  if(p>4.999)p=4.999;if(p<0)p=0;
+  const s=Math.min(4,Math.floor(p+1e-4));
+  if(force||s!==lastS){lastS=s;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+    $('story').innerHTML=STORIES[s];$('code').innerHTML=CODES[s];
+  }
+  draw();
+}
+function stopPlay(){playing=false;$('play').textContent='▶ Play journey';}
+function startPlay(target){stopAt=target;playing=true;$('play').textContent='⏸ Pause';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}if(p>=4.95){p=0;step=0;maxVisited=0;$('scrub').value=0;}startPlay(4.999);};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(4.999,Math.floor(p+1e-4)+1);snapStep();syncUI(true);};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p-1e-4)-1);snapStep();syncUI(true);};
+$('reset').onclick=()=>{stopPlay();p=0;step=0;maxVisited=0;$('scrub').value=0;syncUI(true);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+function snapStep(){const s=Math.min(4,Math.floor(p+1e-4));setStep([0,120,650,970,999][s]);}
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopPlay();const s=+c.dataset.s;p=s;snapStep();syncUI(true);if(s<4)startPlay(s+0.999);});
+let lastT=null;
+function loop(ts){requestAnimationFrame(loop);
+  if(playing&&lastT!=null){
+    p=Math.min(stopAt,p+(ts-lastT)*0.001*0.42*speed);
+    const s=Math.min(4,Math.floor(p+1e-4)),sub=p-s;
+    const R=[[0,80],[80,400],[400,950],[950,999],[999,999]][s];
+    setStep(R[0]+(R[1]-R[0])*sub);
+    syncUI(false);if(p>=stopAt)stopPlay();}
+  lastT=ts;}
+addEventListener('resize',draw);
+syncUI(true);requestAnimationFrame(loop);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

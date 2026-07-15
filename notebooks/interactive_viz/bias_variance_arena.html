@@ -1,0 +1,353 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FID is biased, KID is noisy</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--ok:#128a5a;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#eee9fb;color:var(--ac);padding:6px 10px;}
+  .reset{background:#f0f4fb;color:var(--soft);}
+  input[type=range]{width:116px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .sldv{font-family:monospace;font-weight:700;color:var(--out);min-width:44px;display:inline-block;}
+  .wrap{max-width:1080px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cnv{flex:1 1 580px;min-width:340px;}
+  canvas{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:default;}
+  .side{flex:1 1 340px;min-width:290px;display:flex;flex-direction:column;gap:8px;}
+  .scoreT{width:100%;border-collapse:collapse;font-size:12px;}
+  .scoreT th{color:var(--soft);font-size:11px;text-align:left;padding:3px 6px;border-bottom:2px solid var(--line);}
+  .scoreT td{padding:3px 6px;font-family:Consolas,monospace;font-weight:700;border-bottom:1px dashed var(--line);}
+  .story{max-width:1080px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1080px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>The fairness test: same distribution → the true score is 0. Who lies?</h1>
+<p class="sub">Rig the game: draw <b>both</b> samples from the <b>exact same</b> distribution, so any honest metric must say ≈ <b>0</b>. Repeat 40 times at sample size n. <b style="color:var(--in)">FID</b> lands stubbornly <em>above</em> 0 — every single time (<b>biased</b>). <b style="color:var(--out)">KID</b> scatters <em>around</em> 0, even dipping negative (<b>unbiased, but noisy</b>). ⚠ The two panels use <b>very different y-scales</b> — that's the point: FID's bias is ~100× bigger than KID's whole scatter.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Rig the game</button>
+  <button class="chip" data-s="1">② Run 40 trials</button>
+  <button class="chip" data-s="2">③ FID floats above 0</button>
+  <button class="chip" data-s="3">④ KID straddles 0</button>
+  <button class="chip" data-s="4">⑤ Bias vs sample size</button>
+</div>
+
+<div class="selrow">
+  <button class="play" id="play">▶ Play all</button>
+  <button class="stepb" id="back">⏮</button>
+  <button class="stepb" id="fwd">⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  samples n <input id="sN" type="range" min="0" max="4" step="1" value="1"><span class="sldv" id="vN">50</span>
+</div>
+
+<div class="wrap">
+  <div class="card cnv"><canvas id="cv" height="430"></canvas></div>
+  <div class="side">
+    <div class="card">
+      <table class="scoreT">
+        <tr><th></th><th style="color:var(--in)">FID (truth: 0)</th><th style="color:var(--out)">KID (truth: 0)</th></tr>
+        <tr><td>mean over trials</td><td id="mF" style="color:var(--in)">–</td><td id="mK" style="color:var(--out)">–</td></tr>
+        <tr><td>spread (±1 sd)</td><td id="sF" style="color:var(--in)">–</td><td id="sK" style="color:var(--out)">–</td></tr>
+        <tr><td>trials below 0</td><td id="nF" style="color:var(--in)">–</td><td id="nK" style="color:var(--out)">–</td></tr>
+        <tr><td>verdict</td><td id="vF" style="color:var(--in);font-family:inherit">–</td><td id="vK" style="color:var(--out);font-family:inherit">–</td></tr>
+      </table>
+      <div style="font-size:11px;color:var(--soft);margin-top:6px;line-height:1.5" id="note"></div>
+    </div>
+  </div>
+</div>
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend">every dot = one complete experiment (two fresh same-distribution samples of size n → compute the metric) · dashed red line = the truth (0) · scores are computed exactly on 2-D toy features; the 512-D story is identical, just bigger · ⚠ left and right panels have different y-scales on purpose</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const ORANGE='#f6921e',TEAL='#16a3a3',AC='#7b5cd6',SOFT='#5a6b86',NEG='#d64545',OK='#128a5a';
+const TRIALS=40,NS=[20,50,100,300,1000];
+let p=0,playing=false,speed=1,stopAt=99,nIdx=1;
+
+// ---------- exact 2-D FID + unbiased KID on same-distribution samples ----------
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const A=[[1.1,0],[0.4,0.7]];                        // ONE true distribution: N(0, AAᵀ)
+function sample(n,r){const P=[];for(let i=0;i<n;i++){const z=[gauss(r),gauss(r)];P.push([A[0][0]*z[0]+A[0][1]*z[1],A[1][0]*z[0]+A[1][1]*z[1]]);}return P;}
+function stats(P){const n=P.length;let mx=0,my=0;P.forEach(q=>{mx+=q[0];my+=q[1];});mx/=n;my/=n;
+  let a=0,b=0,c=0;P.forEach(q=>{const dx=q[0]-mx,dy=q[1]-my;a+=dx*dx;b+=dx*dy;c+=dy*dy;});
+  const d=n-1;return {m:[mx,my],S:[[a/d,b/d],[b/d,c/d]]};}
+function fid2(P,Q){const s1=stats(P),s2=stats(Q);
+  const dm=[s1.m[0]-s2.m[0],s1.m[1]-s2.m[1]],t1=dm[0]*dm[0]+dm[1]*dm[1];
+  const S1=s1.S,S2=s2.S;
+  const Mx=[[S1[0][0]*S2[0][0]+S1[0][1]*S2[1][0],S1[0][0]*S2[0][1]+S1[0][1]*S2[1][1]],
+            [S1[1][0]*S2[0][0]+S1[1][1]*S2[1][0],S1[1][0]*S2[0][1]+S1[1][1]*S2[1][1]]];
+  const tr=Mx[0][0]+Mx[1][1],det=Mx[0][0]*Mx[1][1]-Mx[0][1]*Mx[1][0];
+  const disc=Math.sqrt(Math.max(0,tr*tr/4-det));
+  const l1=Math.max(0,tr/2+disc),l2=Math.max(0,tr/2-disc);
+  return t1+Math.max(0,S1[0][0]+S1[1][1]+S2[0][0]+S2[1][1]-2*(Math.sqrt(l1)+Math.sqrt(l2)));}
+function kid2(P,Q){const D=2,k=(a,b)=>{const u=(a[0]*b[0]+a[1]*b[1])/D+1;return u*u*u;};
+  const m=P.length,n=Q.length;let sxx=0,syy=0,sxy=0;
+  for(let i=0;i<m;i++)for(let j=0;j<m;j++)if(i!==j)sxx+=k(P[i],P[j]);
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++)if(i!==j)syy+=k(Q[i],Q[j]);
+  for(let i=0;i<m;i++)for(let j=0;j<n;j++)sxy+=k(P[i],Q[j]);
+  return sxx/(m*(m-1))+syy/(n*(n-1))-2*sxy/(m*n);}
+// KID is O(n²): cap its points at 400 (leaves its ≈0 mean untouched — unbiased at ANY n)
+const KCAP=400;
+const RESULTS=NS.map((n,ni)=>{const r=mulberry(100+ni);const out=[];
+  for(let t=0;t<TRIALS;t++){const P=sample(n,r),Q=sample(n,r);
+    const kk=Math.min(n,KCAP);
+    out.push({fid:fid2(P,Q),kid:kid2(P.slice(0,kk),Q.slice(0,kk))});}
+  return out;});
+function meansAt(ni){let mF=0,mK=0;RESULTS[ni].forEach(o=>{mF+=o.fid;mK+=o.kid;});return [mF/TRIALS,mK/TRIALS];}
+function sdsAt(ni){const [mF,mK]=meansAt(ni);let vF=0,vK=0;
+  RESULTS[ni].forEach(o=>{vF+=(o.fid-mF)**2;vK+=(o.kid-mK)**2;});
+  return [Math.sqrt(vF/TRIALS),Math.sqrt(vK/TRIALS)];}
+
+const lerp=(a,b,t)=>a+(b-a)*t, smf=t=>t<=0?0:t>=1?1:t*t*(3-2*t), clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+// ---------- drawing ----------
+let clickZones=[];
+function draw(){
+  const cv=$('cv'),ctx=cv.getContext('2d');
+  const dpr=Math.min(devicePixelRatio||1,2),W=cv.parentElement.clientWidth-22,H=430;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  clickZones=[];
+  const s=Math.min(4,Math.floor(p+1e-4)),sub=p-s;
+  if(s===4){drawBiasCurve(ctx,W,H,sub);updateTable();return;}
+  const res=RESULTS[nIdx];
+  const nShow = s===0?0 : s===1? Math.floor(sub*TRIALS+0.999) : TRIALS;
+
+  // ---- top strip: the rigged setup (always drawn as a reminder; alive in stages 0–1) ----
+  const topH=96;
+  const bx=W/2;
+  ctx.fillStyle='rgba(123,92,214,.10)';ctx.strokeStyle=AC;ctx.lineWidth=2;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.ellipse(bx,34,96,24,0,0,7);ctx.fill();ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=AC;ctx.font='700 12px Segoe UI';ctx.textAlign='center';
+  ctx.fillText('ONE distribution',bx,38);
+  // two bags
+  function bag(x,label){
+    ctx.strokeStyle=SOFT;ctx.lineWidth=1.8;
+    ctx.beginPath();ctx.moveTo(x-20,68);ctx.quadraticCurveTo(x-22,92,x,92);ctx.quadraticCurveTo(x+22,92,x+20,68);ctx.closePath();ctx.stroke();
+    ctx.fillStyle=SOFT;ctx.font='700 10.5px Segoe UI';ctx.fillText(label,x,105);
+  }
+  bag(bx-70,'sample A (n='+NS[nIdx]+')');bag(bx+70,'sample B (n='+NS[nIdx]+')');
+  ctx.strokeStyle=AC;ctx.lineWidth=1.6;
+  [[bx-30,bx-70],[bx+30,bx+70]].forEach(([x0,x1])=>{ctx.beginPath();ctx.moveTo(x0,52);ctx.lineTo(x1,66);ctx.stroke();});
+  // animated dots streaming into the bags during stage-1 play
+  if(s===1&&playing){
+    const rr=mulberry(Math.floor(sub*TRIALS)+3);
+    for(let k=0;k<5;k++){const u=(sub*7+k*0.19)%1, side=k%2?1:-1;
+      const x=lerp(bx+side*14,bx+side*70,u), y=lerp(48,80,u);
+      ctx.fillStyle=side<0?'#8a76c9':'#8a76c9';ctx.globalAlpha=0.8;
+      ctx.beginPath();ctx.arc(x+ (rr()-0.5)*6,y,2.6,0,7);ctx.fill();ctx.globalAlpha=1;}
+  }
+  if(s===0){
+    ctx.fillStyle=SOFT;ctx.font='12px Segoe UI';
+    ctx.fillText('any honest metric(A, B) must read ≈ 0 — press ▶ to run 40 experiments',bx,H-14);
+  }
+
+  // ---- two self-scaled panels ----
+  const pad=52, gapMid=34;
+  const pw=(W-pad*2-gapMid)/2;
+  const py0=topH+34, py1=H-42;
+  const panels=[
+    {x0:pad,          col:ORANGE, title:'FID — '+TRIALS+' trials', get:o=>o.fid, lo:-0.06*maxF(), hi:maxF()*1.12, dim:s===3?0.25:1, id:'F'},
+    {x0:pad+pw+gapMid,col:TEAL,   title:'KID — same '+TRIALS+' trials', get:o=>o.kid, lo:-maxK()*1.25, hi:maxK()*1.25, dim:s===2?0.25:1, id:'K'}
+  ];
+  function maxF(){let m=0;res.forEach(o=>m=Math.max(m,o.fid));return m||1;}
+  function maxK(){let m=0;res.forEach(o=>m=Math.max(m,Math.abs(o.kid)));return m||1e-4;}
+  const rj=mulberry(5);
+  const jit=[];for(let t=0;t<TRIALS;t++)jit.push((rj()-0.5)*pw*0.55);
+  panels.forEach(P=>{
+    const toY=v=>py1-(v-P.lo)/(P.hi-P.lo)*(py1-py0);
+    ctx.globalAlpha=P.dim;
+    // frame + title + scale ticks
+    ctx.strokeStyle='#c6d2e6';ctx.lineWidth=1.2;ctx.strokeRect(P.x0,py0-18,pw,py1-py0+18);
+    ctx.fillStyle=P.col;ctx.font='700 13px Segoe UI';ctx.textAlign='center';
+    ctx.fillText(P.title,P.x0+pw/2,py0-24);
+    ctx.fillStyle=SOFT;ctx.font='10px Consolas';ctx.textAlign='right';
+    const ticks=P.id==='F'?[0,P.hi*0.3,P.hi*0.6,P.hi*0.9]:[-P.hi*0.7,0,P.hi*0.7];
+    ticks.forEach(v=>{const y=toY(v);
+      ctx.strokeStyle='#e2e9f4';ctx.beginPath();ctx.moveTo(P.x0,y);ctx.lineTo(P.x0+pw,y);ctx.stroke();
+      ctx.fillText(P.id==='F'?v.toFixed(2):v.toFixed(3),P.x0-4,y+3);});
+    // truth line
+    ctx.strokeStyle=NEG;ctx.setLineDash([6,5]);ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(P.x0,toY(0));ctx.lineTo(P.x0+pw,toY(0));ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=NEG;ctx.font='700 10px Segoe UI';ctx.textAlign='left';
+    ctx.fillText('truth = 0',P.x0+3,toY(0)+(P.id==='F'?12:-5));
+    // trial dots
+    for(let t=0;t<nShow;t++){
+      const v=P.get(res[t]);
+      const neg=v<0;
+      ctx.fillStyle=neg?NEG:P.col;ctx.globalAlpha=P.dim*0.85;
+      ctx.beginPath();ctx.arc(P.x0+pw/2+jit[t],toY(v),4.4,0,7);ctx.fill();
+    }
+    ctx.globalAlpha=P.dim;
+    // mean line + bias arrow
+    if(nShow===TRIALS){
+      let mv=0;res.forEach(o=>mv+=P.get(o));mv/=TRIALS;
+      ctx.strokeStyle=P.col;ctx.lineWidth=3.2;
+      ctx.beginPath();ctx.moveTo(P.x0+pw*0.14,toY(mv));ctx.lineTo(P.x0+pw*0.86,toY(mv));ctx.stroke();
+      ctx.fillStyle=P.col;ctx.font='700 11px Segoe UI';ctx.textAlign='center';
+      ctx.fillText('mean '+(P.id==='F'?mv.toFixed(3):mv.toFixed(4)),P.x0+pw/2,toY(mv)-8);
+      if(P.id==='F'&&s>=2){
+        ctx.strokeStyle=NEG;ctx.lineWidth=2.4;
+        const xA=P.x0+pw*0.08;
+        ctx.beginPath();ctx.moveTo(xA,toY(0));ctx.lineTo(xA,toY(mv));ctx.stroke();
+        ctx.beginPath();ctx.moveTo(xA,toY(mv));ctx.lineTo(xA-4,toY(mv)+8);ctx.lineTo(xA+4,toY(mv)+8);ctx.closePath();ctx.fill();
+        ctx.save();ctx.translate(xA-7,(toY(0)+toY(mv))/2);ctx.rotate(-Math.PI/2);
+        ctx.fillStyle=NEG;ctx.font='700 10.5px Segoe UI';ctx.textAlign='center';ctx.fillText('pure bias',0,0);ctx.restore();
+      }
+      if(P.id==='K'&&s>=3){
+        const negs=res.filter(o=>o.kid<0).length;
+        ctx.fillStyle=NEG;ctx.font='700 11px Segoe UI';ctx.textAlign='center';
+        ctx.fillText(negs+' / '+TRIALS+' trials landed BELOW zero (red dots)',P.x0+pw/2,py1+16);
+      }
+    }
+    ctx.globalAlpha=1;ctx.textAlign='left';
+  });
+  // scale warning between panels
+  ctx.fillStyle='#c07a12';ctx.font='700 10.5px Segoe UI';ctx.textAlign='center';
+  ctx.fillText('⚠',W/2,py0+14);ctx.fillText('scales',W/2,py0+27);ctx.fillText('differ!',W/2,py0+39);
+  ctx.fillStyle=SOFT;ctx.font='10.5px Segoe UI';
+  if(s>=1)ctx.fillText('same 40 experiments, plotted twice — once per metric · red dots = negative values (impossible for FID)',W/2,H-14);
+  ctx.textAlign='left';
+  updateTable();
+}
+function drawBiasCurve(ctx,W,H,sub){
+  const x0=76,x1=W-24,y0=34,y1=H-56;
+  const vmax=(()=>{let m=0;NS.forEach((n,i)=>{const [mF]=meansAt(i),[sF]=sdsAt(i);m=Math.max(m,mF+sF);});return m*1.1;})();
+  const vmin=-vmax*0.08;
+  const toX=i=>x0+(x1-x0)*i/(NS.length-1), toY=v=>y1-(v-vmin)/(vmax-vmin)*(y1-y0);
+  ctx.strokeStyle='#e2e9f4';for(let g=1;g<6;g++){const y=y0+(y1-y0)*g/6;ctx.beginPath();ctx.moveTo(x0,y);ctx.lineTo(x1,y);ctx.stroke();}
+  ctx.strokeStyle=NEG;ctx.setLineDash([7,5]);ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x0,toY(0));ctx.lineTo(x1,toY(0));ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=NEG;ctx.font='700 11px Segoe UI';ctx.textAlign='left';
+  ctx.fillText('truth = 0',x0+4,toY(0)+14);
+  const grow=smf(sub*1.6);
+  // KID mean line — honest, unclamped
+  ctx.strokeStyle=TEAL;ctx.lineWidth=2.5;ctx.beginPath();
+  NS.forEach((n,i)=>{const mk=meansAt(i)[1];const X=toX(i),Y=toY(mk);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.stroke();
+  ctx.fillStyle=TEAL;ctx.font='700 11px Segoe UI';ctx.textAlign='left';
+  ctx.fillText('KID mean — hugs 0 at every n (unbiased)',toX(0),toY(meansAt(0)[1])-10);
+  // FID bias curve with ±1sd error bars
+  ctx.strokeStyle=ORANGE;ctx.lineWidth=3;ctx.beginPath();
+  NS.forEach((n,i)=>{const b=meansAt(i)[0]*grow;const X=toX(i),Y=toY(b);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.stroke();
+  NS.forEach((n,i)=>{
+    const b=meansAt(i)[0]*grow, sd=sdsAt(i)[0]*grow, X=toX(i);
+    ctx.strokeStyle='#e8b06a';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(X,toY(b-sd));ctx.lineTo(X,toY(b+sd));ctx.stroke();
+    ctx.beginPath();ctx.moveTo(X-5,toY(b-sd));ctx.lineTo(X+5,toY(b-sd));ctx.moveTo(X-5,toY(b+sd));ctx.lineTo(X+5,toY(b+sd));ctx.stroke();
+    ctx.fillStyle=i===nIdx?AC:ORANGE;ctx.beginPath();ctx.arc(X,toY(b),i===nIdx?7:5,0,7);ctx.fill();
+    ctx.fillStyle=ORANGE;ctx.font='700 11px Consolas';ctx.textAlign='center';ctx.fillText(meansAt(i)[0].toFixed(2),X,toY(b+sd)-8);
+    ctx.fillStyle=SOFT;ctx.font='11px Segoe UI';ctx.fillText('n='+NS[i],X,y1+16);
+    clickZones.push({x:X,i});
+  });
+  ctx.fillStyle=ORANGE;ctx.font='700 13px Segoe UI';ctx.textAlign='left';
+  ctx.fillText('mean FID when the truth is 0 — pure bias, shrinking with n but never gone (whiskers = ±1 sd)',x0,20);
+  ctx.fillStyle=SOFT;ctx.font='11px Segoe UI';ctx.textAlign='center';
+  ctx.fillText('moral: never compare FIDs measured at different sample counts — the bias itself moves · click a dot (or slide n) to inspect that n',(x0+x1)/2,H-16);
+  ctx.textAlign='left';
+}
+function updateTable(){
+  const res=RESULTS[nIdx];
+  const [mF,mK]=meansAt(nIdx),[sF,sK]=sdsAt(nIdx);
+  let negF=0,negK=0;res.forEach(o=>{if(o.fid<0)negF++;if(o.kid<0)negK++;});
+  $('mF').textContent=mF.toFixed(3);$('mK').textContent=mK.toFixed(4);
+  $('sF').textContent='±'+sF.toFixed(3);$('sK').textContent='±'+sK.toFixed(4);
+  $('nF').textContent=negF+' / '+TRIALS;$('nK').textContent=negK+' / '+TRIALS;
+  $('vF').textContent='biased ↑';$('vK').textContent='unbiased, noisy';
+  $('note').innerHTML='At n='+NS[nIdx]+': FID\'s <b>average</b> is '+mF.toFixed(3)+' when the truth is 0 — that entire amount is bias, and it can never go negative. KID\'s average is '+mK.toFixed(4)+' ≈ 0, with '+negK+' of '+TRIALS+' trials below zero — like the notebook\'s real-vs-real KID of −0.026. Relative to its own scatter, KID is the noisier of the two: unbiased ≠ precise.';
+}
+
+// ---------- stories + code ----------
+const STORIES=[
+`<b>① Rig the game.</b> To catch a metric lying, ask it a question with a known answer. Draw sample A and sample B from the <em>same</em> distribution — no generator, no fake images, just two honest handfuls of the same stuff. A perfect metric must report ≈ <b>0</b>. Anything systematically above 0 is the metric's own fingerprint, not a real difference. This is exactly the notebook's sanity check: scoring <em>real</em> images against real images.`,
+`<b>② Run 40 trials.</b> One experiment proves nothing — luck exists. So repeat: 40 times, fresh samples of size n, computing both metrics on every pair. Watch the dots land: <b>each dot is one full experiment</b>, plotted in <em>both</em> panels (left as its FID, right as its KID). Keep an eye on the red truth lines — an honest metric's dots should <em>center</em> on them. Note the ⚠: the panels' y-scales are wildly different, on purpose.`,
+`<b>③ FID floats above 0.</b> Every orange dot sits above the truth line — 40 out of 40, and no amount of re-rolling fixes it. That's <b>bias</b>: FID estimates a 512×512 covariance from finite samples, and the matrix-square-root term systematically over-reads distance from noisy Σ estimates. Worse: the red "pure bias" arrow <em>shrinks as n grows</em>, so FID at n=256 and FID at n=10,000 aren't on the same ruler. The notebook's real-vs-real FID of <b>6.61</b> (not 0!) is this bias in the flesh.`,
+`<b>④ KID straddles 0.</b> The teal dots scatter <em>around</em> the truth line — above and below (red dots = negative trials, like the notebook's real-vs-real KID of <b>−0.026</b>). Averaged over trials, KID lands on 0: <b>unbiased</b>, thanks to the diagonal-removal surgery from the previous visualization. The price is visible too: relative to the signal, its scatter is wide — <b>variance</b>. The classic trade: FID = steady but systematically wrong; KID = right on average but jittery.`,
+`<b>⑤ Bias vs sample size.</b> Sweep n and plot FID's average score when the truth is 0. The bias curve falls but never reaches 0 (whiskers show ±1 sd per n); KID's mean hugs 0 at <em>every</em> n — plotted honestly, no clamping. Practical rules the notebook lives by: (1) compare FIDs <b>only at identical n</b>, (2) use as many samples as you can afford, (3) when the sign matters or samples are scarce, get a second opinion from KID and accept its noise.`];
+const CODES=[
+`<span class="cm"># the rigged experiment: both "sides" come from the SAME data</span>
+<span class="hl">reals = self.get_feats(dl)         <span class="cm"># real features …</span></span>
+<span class="hl">ie.fid(reals)                       <span class="cm"># … scored against MORE real features</span></span>
+<span class="cm"># a perfect metric would print 0.0 here</span>`,
+`<span class="cm"># repeat the measurement — re-sampling gives new numbers each run</span>
+ie = <span class="fn">ImageEval</span>(xt, learn.dls)
+ie.<span class="fn">fid</span>(...)   <span class="cm"># trial 1, trial 2, … each with fresh samples of size n</span>
+ie.<span class="fn">kid</span>(...)   <span class="cm"># same trials, second metric — the dots on this screen</span>`,
+`<span class="cm"># the notebook's own sanity check — real images vs real images:</span>
+<span class="hl">ie.fid(xt2)    <span class="cm"># → 6.61   ← should be 0! that's FID's finite-sample bias</span></span>
+<span class="cm"># the culprit: Σ (a 512×512 matrix!) estimated from limited samples,</span>
+<span class="cm"># then pushed through sqrtm — the errors don't cancel, they pile up UPWARD</span>`,
+`<span class="cm"># the same sanity check for KID:</span>
+<span class="hl">ie.kid(xt2)    <span class="cm"># → -0.026  ← negative! only possible because KID is unbiased</span></span>
+<span class="cm"># the unbiased estimator (diagonal removed, ÷ m·(m−1)) centers on the truth,</span>
+<span class="cm"># so random noise can land it on either side of 0</span>`,
+`<span class="cm"># practical consequences baked into the notebook:</span>
+<span class="cm"># 1. it always compares FIDs at the SAME sample count</span>
+xs = L.range(<span class="num">0</span>, <span class="num">1000</span>, <span class="num">50</span>) + [<span class="num">975</span>, <span class="num">990</span>, <span class="num">999</span>]   <span class="cm"># every checkpoint: identical n</span>
+<span class="cm"># 2. more samples → less FID bias (but never zero)</span>
+<span class="cm"># 3. KID is the second opinion when the sign matters</span>`];
+
+let lastS=-1;
+function syncUI(force){
+  if(p>4.999)p=4.999;if(p<0)p=0;
+  const s=Math.min(4,Math.floor(p+1e-4));
+  if(force||s!==lastS){lastS=s;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+    $('story').innerHTML=STORIES[s];$('code').innerHTML=CODES[s];
+  }
+  draw();
+}
+function stopPlay(){playing=false;$('play').textContent='▶ Play all';}
+function startPlay(target){stopAt=target;playing=true;$('play').textContent='⏸ Pause';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}if(p>=4.95)p=0;startPlay(4.999);};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(4.999,Math.floor(p+1e-4)+1);syncUI(true);};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p-1e-4)-1);syncUI(true);};
+$('reset').onclick=()=>{stopPlay();p=0;nIdx=1;$('sN').value=1;$('vN').textContent=NS[1];syncUI(true);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('sN').oninput=e=>{nIdx=+e.target.value;$('vN').textContent=NS[nIdx];draw();};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopPlay();const s=+c.dataset.s;p=s;syncUI(true);startPlay(Math.min(4.999,s+0.999));});
+$('cv').addEventListener('click',e=>{
+  if(Math.floor(p+1e-4)!==4||!clickZones.length)return;
+  const r=$('cv').getBoundingClientRect();
+  const mx=(e.clientX-r.left);
+  let best=0,bd=1e9;
+  clickZones.forEach(z=>{if(Math.abs(mx-z.x)<bd){bd=Math.abs(mx-z.x);best=z.i;}});
+  nIdx=best;$('sN').value=best;$('vN').textContent=NS[best];draw();
+});
+let lastT=null;
+function loop(ts){requestAnimationFrame(loop);
+  if(playing&&lastT!=null){p=Math.min(stopAt,p+(ts-lastT)*0.001*0.42*speed);syncUI(false);if(p>=stopAt)stopPlay();}
+  lastT=ts;}
+addEventListener('resize',draw);
+syncUI(true);requestAnimationFrame(loop);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

@@ -1,0 +1,375 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>μ &amp; Σ in 3D — the only two things FID keeps</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--ok:#128a5a;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:104px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .match{background:#16a3a3;color:#fff;}
+  input[type=range]{width:92px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .sldv{font-family:monospace;font-weight:700;color:var(--out);min-width:38px;display:inline-block;}
+  .sldwrap{display:inline-flex;align-items:center;gap:4px;border-radius:10px;padding:2px 6px;transition:box-shadow .3s,background .3s;}
+  .sldwrap.hint{background:#e7f7f5;box-shadow:0 0 0 2px var(--out);}
+  .wrap{max-width:1060px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .c3dcard{flex:1 1 620px;min-width:320px;}
+  #c3d{display:block;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:grab;width:100%;height:420px;touch-action:none;}
+  .side{flex:1 1 320px;min-width:280px;display:flex;flex-direction:column;gap:10px;}
+  .statbox{font-family:"SF Mono",Consolas,monospace;font-size:11.8px;line-height:1.6;}
+  .statbox b.r{color:var(--in);} .statbox b.g{color:var(--out);}
+  .statbox .hovline{color:var(--ac);min-height:16px;display:block;}
+  .fidbox{border:2px dashed var(--ac);border-radius:12px;background:#faf8ff;padding:9px 11px;}
+  .fidbox .tt{font-weight:700;font-size:12px;color:var(--soft);text-align:center;}
+  .brow{display:flex;align-items:center;gap:7px;font-size:11.5px;margin-top:6px;}
+  .brow .lb{width:96px;font-weight:700;text-align:right;}
+  .brow .tr{flex:1;background:#f0f4fb;border-radius:7px;height:15px;position:relative;overflow:hidden;}
+  .brow .fl{position:absolute;left:0;top:0;bottom:0;border-radius:7px;transition:width .15s;}
+  .brow .vv{font-family:Consolas,monospace;font-weight:800;width:48px;}
+  .fidbox .big{font-family:Consolas,monospace;font-weight:800;font-size:27px;color:var(--ac);text-align:center;margin-top:4px;}
+  .fidbox .cap{font-size:10.5px;color:var(--soft);text-align:center;}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1060px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>Mean &amp; covariance in 3D — FID throws everything else away</h1>
+<p class="sub">Each dot = one image plotted along 3 of its 512 features (<b style="color:var(--in)">orange = real</b>, <b style="color:var(--out)">teal = generated</b>). Watch each cloud <b>collapse into its μ ball</b>, grow its <b>Σ rods</b>, get <b>shrink-wrapped by a Gaussian skin</b> — then <b>move the teal cloud with the sliders</b> and see the exact FID react. <b>Drag to rotate · scroll to zoom · hover a dot to inspect it · chips replay each idea.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① A cloud of images</button>
+  <button class="chip" data-s="1">② μ — collapse to the center</button>
+  <button class="chip" data-s="2">③ Σ — spread &amp; tilt rods</button>
+  <button class="chip" data-s="3">④ The Gaussian wrap</button>
+  <button class="chip" data-s="4">⑤ Compare → FID</button>
+</div>
+
+<div class="selrow">
+  <span class="sldwrap" id="wMu">Δmean <input id="sMu" type="range" min="0" max="3" step="0.05" value="1.2"><span class="sldv" id="vMu">1.20</span></span>
+  <span class="sldwrap" id="wSp">spread <input id="sSp" type="range" min="0.4" max="2.2" step="0.05" value="1.45"><span class="sldv" id="vSp">1.45</span></span>
+  <span class="sldwrap" id="wTi">tilt <input id="sTi" type="range" min="-60" max="60" step="2" value="30"><span class="sldv" id="vTi">30°</span></span>
+  <button class="match" id="match">✨ match the real cloud</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <button class="stepb" id="back">⏮</button>
+  <button class="play" id="play">▶ Play all</button>
+  <button class="stepb" id="fwd">⏭</button>
+  <button class="reset" id="reset">↺</button>
+</div>
+
+<div class="wrap">
+  <div class="card c3dcard"><canvas id="c3d"></canvas></div>
+  <div class="side">
+    <div class="card statbox" id="stats"></div>
+    <div class="card fidbox">
+      <div class="tt">live FID — exact Fréchet formula on this 3-D toy</div>
+      <div class="brow"><div class="lb" style="color:var(--in)">centers apart</div><div class="tr"><div class="fl" id="b1" style="background:var(--in)"></div></div><div class="vv" id="v1" style="color:var(--in)">–</div></div>
+      <div class="brow"><div class="lb" style="color:var(--out)">shapes apart</div><div class="tr"><div class="fl" id="b2" style="background:var(--out)"></div></div><div class="vv" id="v2" style="color:var(--out)">–</div></div>
+      <div class="big" id="fidv">–</div>
+      <div class="cap" id="fidcap">‖μ₁−μ₂‖² + Tr(Σ₁+Σ₂−2√(Σ₁Σ₂))</div>
+    </div>
+  </div>
+</div>
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b class="i">orange</b> = real features · <b class="o">teal</b> = generated features · glowing balls = μ (means) · rods = Σ's principal directions (length = 2σ along each) · translucent skins = the fitted Gaussians · <b class="a">purple dashes</b> = the μ₁→μ₂ gap that FID's first term measures</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const ORANGE=0xf6921e,TEAL=0x16a3a3,AC=0x7b5cd6;
+let p=0,playing=false,speed=1,stopAt=99;
+
+// ---------- deterministic points ----------
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const N=90,Z1=[],Z2=[];{const r1=mulberry(5),r2=mulberry(42);
+for(let i=0;i<N;i++){Z1.push([gauss(r1),gauss(r1),gauss(r1)]);Z2.push([gauss(r2),gauss(r2),gauss(r2)]);}}
+
+// real cloud: fixed affine X = A1·z + m1 ; generated: X = A2(sp,tilt)·z + m2(dmu)
+const A1=[[1.5,0,0],[0.45,0.85,0],[0,0.2,0.6]], m1=[-1.6,0,0];
+let dmu=1.2, sp=1.45, tiltDeg=30;
+function A2(){const t=tiltDeg*Math.PI/180,c=Math.cos(t),s=Math.sin(t);
+  const B=[[1.5*sp,0,0],[0.45,0.85*sp,0],[0,0.2,0.6]];
+  return [[c*B[0][0]-s*B[1][0], c*B[0][1]-s*B[1][1], 0],
+          [s*B[0][0]+c*B[1][0], s*B[0][1]+c*B[1][1], 0],
+          [B[2][0],B[2][1],B[2][2]]];}
+function m2(){return [-1.6+dmu*1.4, dmu*0.5, dmu*0.25];}
+
+// ---------- matrix math ----------
+const mm3=(A,B)=>A.map((r,i)=>B[0].map((_,j)=>r.reduce((s,v,k)=>s+v*B[k][j],0)));
+const mT3=A=>A[0].map((_,j)=>A.map(r=>r[j]));
+const covOf=A=>mm3(A,mT3(A));
+function jacobiFull(S){ // symmetric 3×3 → {vals:[λ], vecs:[[v1],[v2],[v3]] columns}
+  let a=S.map(r=>r.slice()), V=[[1,0,0],[0,1,0],[0,0,1]];
+  for(let it=0;it<40;it++){
+    let pq=[0,1],mx=Math.abs(a[0][1]);
+    if(Math.abs(a[0][2])>mx){mx=Math.abs(a[0][2]);pq=[0,2];}
+    if(Math.abs(a[1][2])>mx){mx=Math.abs(a[1][2]);pq=[1,2];}
+    if(mx<1e-11)break;
+    const[pi,qi]=pq,app=a[pi][pi],aqq=a[qi][qi],apq=a[pi][qi];
+    const th=0.5*Math.atan2(2*apq,aqq-app),c=Math.cos(th),s=Math.sin(th);
+    for(let k=0;k<3;k++){const akp=a[k][pi],akq=a[k][qi];a[k][pi]=c*akp-s*akq;a[k][qi]=s*akp+c*akq;}
+    for(let k=0;k<3;k++){const apk=a[pi][k],aqk=a[qi][k];a[pi][k]=c*apk-s*aqk;a[qi][k]=s*apk+c*aqk;}
+    for(let k=0;k<3;k++){const vkp=V[k][pi],vkq=V[k][qi];V[k][pi]=c*vkp-s*vkq;V[k][qi]=s*vkp+c*vkq;}
+  }
+  return {vals:[a[0][0],a[1][1],a[2][2]], vecs:V}; // vecs columns are eigenvectors
+}
+function calcFID(){
+  const S1=covOf(A1),S2=covOf(A2()),mu2=m2();
+  const d=[mu2[0]-m1[0],mu2[1]-m1[1],mu2[2]-m1[2]];
+  const t1=d[0]*d[0]+d[1]*d[1]+d[2]*d[2];
+  // Tr √(Σ1Σ2): Σ1=A1A1ᵀ ⇒ Σ1Σ2 similar to A1ᵀΣ2A1 (symmetric PSD, same eigenvalues)
+  const S=mm3(mm3(mT3(A1),S2),A1);
+  const ev=jacobiFull(S).vals.map(v=>Math.max(0,v));
+  const trS1=S1[0][0]+S1[1][1]+S1[2][2], trS2=S2[0][0]+S2[1][1]+S2[2][2];
+  const t2=Math.max(0,trS1+trS2-2*ev.reduce((s,v)=>s+Math.sqrt(v),0));
+  return {t1,t2,fid:t1+t2,S1,S2};
+}
+
+// ---------- scene ----------
+const cv=$('c3d');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(40,1.7,0.1,100);
+camera.position.set(0,3.2,12.8);camera.lookAt(0,0,0);
+scene.add(new THREE.AmbientLight(0xffffff,0.95));
+const dl=new THREE.DirectionalLight(0xffffff,0.4);dl.position.set(4,10,8);scene.add(dl);
+const group=new THREE.Group();scene.add(group);
+
+function axisLine(dir,len,col){const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3(...dir.map(v=>v*len))]);group.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:col})));}
+axisLine([1,0,0],5.4,0xb9c6de);axisLine([0,1,0],3.6,0xb9c6de);axisLine([0,0,1],3.6,0xb9c6de);
+function label(txt,pos,col,size,mono){const c=document.createElement('canvas'),x=c.getContext('2d');
+  const f=`700 ${size||22}px ${mono?'Consolas,monospace':'"Segoe UI",sans-serif'}`;x.font=f;
+  const w=x.measureText(txt).width+18,h=(size||22)+16;c.width=w*2;c.height=h*2;x.scale(2,2);x.font=f;
+  x.textAlign='center';x.textBaseline='middle';x.fillStyle=col;x.fillText(txt,w/2,h/2);
+  const spm=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,transparent:true}));
+  spm.scale.set(w*0.014,h*0.014,1);spm.position.set(...pos);spm.renderOrder=6;group.add(spm);return spm;}
+label('feature #17',[5.9,0,0],'#5a6b86',20);label('feature #305',[0,3.95,0],'#5a6b86',20);label('feature #488',[0,0,4.0],'#5a6b86',20);
+
+// point clouds (main dots) + collapse ghosts
+function makeCloud(col,r){const g=new THREE.SphereGeometry(r,8,8);const meshes=[];
+  for(let i=0;i<N;i++){const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:col,transparent:true,opacity:0.85}));
+    m.userData={idx:i,cloud:col===ORANGE?'real':'gen'};group.add(m);meshes.push(m);}return meshes;}
+const cloudR=makeCloud(ORANGE,0.075),cloudG=makeCloud(TEAL,0.075);
+const ghostR=makeCloud(0xf3b877,0.05),ghostG=makeCloud(0x6fc9c9,0.05);
+[...ghostR,...ghostG].forEach(m=>{m.material.opacity=0.5;m.visible=false;m.userData.ghost=true;});
+
+function meanBall(col){const m=new THREE.Mesh(new THREE.SphereGeometry(0.17,14,14),new THREE.MeshLambertMaterial({color:col,emissive:col,emissiveIntensity:0.4}));group.add(m);return m;}
+const muR=meanBall(ORANGE),muG=meanBall(TEAL);
+const muRlab=label('μ₁ (real)',[0,0,0],'#c56f05',21),muGlab=label('μ₂ (gen)',[0,0,0],'#0e7d7d',21);
+function ellip(col){const m=new THREE.Mesh(new THREE.SphereGeometry(1,26,26),new THREE.MeshLambertMaterial({color:col,transparent:true,opacity:0.15,depthWrite:false}));
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.SphereGeometry(1,12,8)),new THREE.LineBasicMaterial({color:col,transparent:true,opacity:0.3}));
+  m.add(e);group.add(m);return m;}
+const ellR=ellip(ORANGE),ellG=ellip(TEAL);
+function rods(col){const arr=[];for(let i=0;i<3;i++){const m=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,1,8),new THREE.MeshLambertMaterial({color:col}));group.add(m);arr.push(m);}return arr;}
+const rodR=rods(0xc56f05),rodG=rods(0x0e7d7d);
+const gapG=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);
+const gap=new THREE.Line(gapG,new THREE.LineDashedMaterial({color:AC,dashSize:0.18,gapSize:0.12}));
+group.add(gap);
+const gapLab=label('‖μ₁ − μ₂‖',[0,0,0],'#7b5cd6',22,true);
+group.rotation.y=-0.45;group.rotation.x=0.12;
+
+function applyAffine(mesh,A,m,scale){
+  const M=new THREE.Matrix4();
+  M.set(A[0][0]*scale,A[0][1]*scale,A[0][2]*scale,m[0],
+        A[1][0]*scale,A[1][1]*scale,A[1][2]*scale,m[1],
+        A[2][0]*scale,A[2][1]*scale,A[2][2]*scale,m[2],0,0,0,1);
+  mesh.matrixAutoUpdate=false;mesh.matrix.copy(M);
+}
+// TRUE principal axes: eigen of Σ; rod j along vecs col j, length 2·2√λ (±2σ)
+function setRods(rodArr,S,m,growT){
+  const E=jacobiFull(S);
+  for(let j=0;j<3;j++){
+    const rod=rodArr[j];
+    if(growT<=0){rod.visible=false;continue;}
+    rod.visible=true;
+    const lam=Math.max(1e-6,E.vals[j]);
+    const len=2*2*Math.sqrt(lam)*Math.min(1,growT);   // full length = 4σ (±2σ)
+    rod.scale.set(1,len,1);rod.position.set(...m);
+    const dir=new THREE.Vector3(E.vecs[0][j],E.vecs[1][j],E.vecs[2][j]).normalize();
+    rod.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
+  }
+}
+const lerp=(a,b,t)=>a+(b-a)*t,sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const ptPos=(A,m,z)=>[A[0][0]*z[0]+A[0][1]*z[1]+A[0][2]*z[2]+m[0],
+                      A[1][0]*z[0]+A[1][1]*z[1]+A[1][2]*z[2]+m[1],
+                      A[2][0]*z[0]+A[2][1]*z[1]+A[2][2]*z[2]+m[2]];
+
+let hoverInfo='';
+function rebuild(){
+  const A=A2(),M2=m2(),F=calcFID();
+  for(let i=0;i<N;i++){
+    cloudR[i].position.set(...ptPos(A1,m1,Z1[i]));
+    cloudG[i].position.set(...ptPos(A,M2,Z2[i]));
+  }
+  muR.position.set(...m1);muG.position.set(...M2);
+  muRlab.position.set(m1[0],m1[1]+0.52,m1[2]);muGlab.position.set(M2[0],M2[1]+0.52,M2[2]);
+  gap.geometry.setFromPoints([new THREE.Vector3(...m1),new THREE.Vector3(...M2)]);gap.computeLineDistances();
+  gapLab.position.set((m1[0]+M2[0])/2,(m1[1]+M2[1])/2+0.42,(m1[2]+M2[2])/2);
+  const f2=v=>v.toFixed(2);
+  $('stats').innerHTML=
+   `<span class="hovline">${hoverInfo||'hover any dot to inspect it…'}</span>`+
+   `<b class="r">real</b>&nbsp;&nbsp;μ₁ = [${m1.map(f2).join(', ')}]<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;diag Σ₁ = [${[F.S1[0][0],F.S1[1][1],F.S1[2][2]].map(f2).join(', ')}]<br>`+
+   `<b class="g">gen</b>&nbsp;&nbsp;&nbsp;μ₂ = [${M2.map(f2).join(', ')}]<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;diag Σ₂ = [${[F.S2[0][0],F.S2[1][1],F.S2[2][2]].map(f2).join(', ')}]<br>`+
+   `<span style="color:var(--soft)">in the notebook: μ is [512], Σ is [512×512] — same idea, more axes.</span>`;
+  const cap=14;
+  $('b1').style.width=Math.min(100,F.t1/cap*100)+'%';$('v1').textContent=F.t1.toFixed(2);
+  $('b2').style.width=Math.min(100,F.t2/cap*100)+'%';$('v2').textContent=F.t2.toFixed(2);
+  $('fidv').textContent=F.fid.toFixed(2);
+  $('fidv').style.color=F.fid>6?'#d64545':F.fid>1?'#c07a12':'#128a5a';
+  $('fidcap').textContent=F.fid<0.05?'0 = identical Gaussians — perfect ✨':'‖μ₁−μ₂‖² + Tr(Σ₁+Σ₂−2√(Σ₁Σ₂))';
+  syncStage(true);
+}
+
+// stage-dependent visibility; p ∈ [0,5)
+let lastS=-1;
+function syncStage(force){
+  p=clamp(p,0,4.999);
+  const s=Math.floor(p+1e-4),t=p-s;
+  const A=A2(),M2=m2(),S1=covOf(A1),S2=covOf(A);
+  const colT = s>1?1:(s===1?sm(t*1.5):0);          // collapse ghosts → μ
+  const rodT = s>2?1:(s===2?sm(t*1.3):0);
+  const ellT = s>3?1:(s===3?sm(t*1.2):0);
+  const cmpT = s>=4?sm(t*1.4):0;
+  // collapse ghosts: visible only mid-collapse (stage 1) — they merge into the ball
+  const ghostOn = s===1 && colT>0.02 && colT<0.98;
+  for(let i=0;i<N;i++){
+    ghostR[i].visible=ghostG[i].visible=ghostOn;
+    if(ghostOn){
+      const pr=ptPos(A1,m1,Z1[i]), pg=ptPos(A,M2,Z2[i]);
+      ghostR[i].position.set(lerp(pr[0],m1[0],colT),lerp(pr[1],m1[1],colT),lerp(pr[2],m1[2],colT));
+      ghostG[i].position.set(lerp(pg[0],M2[0],colT),lerp(pg[1],M2[1],colT),lerp(pg[2],M2[2],colT));
+      ghostR[i].material.opacity=0.55*(1-colT*0.5);ghostG[i].material.opacity=0.55*(1-colT*0.5);
+    }
+  }
+  const muOn = s>1 || colT>0.85;
+  muR.visible=muG.visible=muOn;
+  const pulse = (s===1&&colT>0.85)?1.35:1;
+  muR.scale.setScalar(pulse);muG.scale.setScalar(pulse);
+  muRlab.visible=muGlab.visible=muOn;
+  setRods(rodR,S1,m1,rodT);setRods(rodG,S2,M2,rodT);
+  ellR.visible=ellG.visible=ellT>0.02;
+  applyAffine(ellR,A1,m1,2*Math.max(0.02,ellT));applyAffine(ellG,A,M2,2*Math.max(0.02,ellT));
+  gap.visible=gapLab.visible=cmpT>0.15;
+  const dim=s>=3?0.32:(s===1?0.5:0.85);
+  cloudR.forEach(m=>m.material.opacity=dim);cloudG.forEach(m=>m.material.opacity=dim);
+  // slider hints: light up the slider the current stage talks about
+  $('wMu').classList.toggle('hint',s===4);
+  $('wSp').classList.toggle('hint',s===2);
+  $('wTi').classList.toggle('hint',s===2);
+  if(force||s!==lastS){lastS=s;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+    $('story').innerHTML=STORIES[s];$('code').innerHTML=CODES[s];
+  }
+}
+
+// ---------- stories & code ----------
+const STORIES=[
+ '<b>① A cloud of images.</b> After the extractor, every image is 512 numbers — a point in 512-D space. We can only draw 3 axes, so each dot here is one image plotted along 3 of its features (<b>hover a dot</b> to see its coordinates). Already the question FID asks is visible: do the <b style="color:var(--in)">orange</b> (real) and <b style="color:var(--out)">teal</b> (generated) dots live in the same region, spread the same way? <b>Drag to rotate</b> — the depth is real.',
+ '<b>② μ — collapse to the center.</b> Watch: a ghost copy of every dot <b>falls into one glowing ball</b> — that is literally what <code>feats.mean(0)</code> does: average the points, keep only the balance point. μ answers <em>where is the cloud?</em> and nothing else. Two clouds can share a center yet look totally different — which is why μ alone can\'t be the whole summary.',
+ '<b>③ Σ — spread &amp; tilt rods.</b> <code>feats.T.cov()</code> builds the covariance matrix, and the rods you see growing are its <b>true principal axes</b> (eigenvectors), each drawn ±2σ long. Long rod = the cloud stretches far in that direction; rod not aligned with an axis = features move <em>together</em> (that\'s what off-diagonal entries of Σ encode). <b>Drag spread or tilt</b> — only the teal rods change, its μ ball stays put. Σ answers <em>what shape is the cloud?</em>',
+ '<b>④ The Gaussian wrap.</b> Keeping exactly (μ, Σ) equals replacing each cloud with its <b>best-fitting Gaussian ellipsoid</b> — the translucent skin inflating along the rods. Everything about the skin is remembered; every individual dot is forgotten (they\'ve gone faint). This is FID\'s big bet: feature clouds are Gaussian-ish enough that the skin is a fair stand-in for the dots.',
+ '<b>⑤ Compare → FID.</b> The clouds are now just two skins, and FID measures: <b style="color:var(--ac)">how far apart the centers are</b> (dashed line → the orange bar) plus <b>how mismatched the skins are</b> (→ the teal bar). Slide <b>Δmean</b>: only the first bar grows. Slide <b>spread/tilt</b>: only the second. Press <b>✨ match</b> and watch both bars die as the sliders glide home — FID → 0, the only score with an absolute meaning. The number is the exact Fréchet formula on this toy.'
+];
+const CODES=[
+`<span class="cm"># each image is already a point: one row of feats</span>
+feats.shape    <span class="cm"># torch.Size([10000, 512])  ← 10,000 orange dots</span>
+feats2.shape   <span class="cm"># torch.Size([256, 512])    ← 256 teal dots</span>`,
+`<span class="cm"># the center of the cloud — average over images (dim 0)</span>
+<span class="hl">means = feats.<span class="fn">mean</span>(<span class="num">0</span>)      <span class="cm"># torch.Size([512])  ← the glowing ball</span></span>
+<span class="cm"># every dot contributes equally — the collapse you just watched</span>`,
+`<span class="cm"># the shape of the cloud — covariance of the 512 features</span>
+<span class="hl">covs = feats.T.<span class="fn">cov</span>()       <span class="cm"># torch.Size([512, 512]) ← the rods, all directions</span></span>
+<span class="cm"># covs[i][i] = spread of feature i · covs[i][j] = how i and j co-move (the tilt)</span>`,
+`<span class="cm"># (μ, Σ) together = fitting a Gaussian to the cloud</span>
+<span class="hl">def <span class="fn">_calc_stats</span>(feats):
+    feats = feats.squeeze()
+    return feats.<span class="fn">mean</span>(<span class="num">0</span>), feats.T.<span class="fn">cov</span>()</span>
+s1, s2 = <span class="fn">_calc_stats</span>(feats), <span class="fn">_calc_stats</span>(feats2)`,
+`<span class="cm"># centers apart  +  shapes apart</span>
+<span class="hl">FID = ((m1-m2)**<span class="num">2</span>).<span class="fn">sum</span>() + (c1.<span class="fn">trace</span>() + c2.<span class="fn">trace</span>() - <span class="num">2</span>*csr.<span class="fn">trace</span>())</span>
+<span class="cm"># csr = sqrtm(Σ₁Σ₂) — the matrix square root, next visualization!</span>`];
+
+// ---------- controls ----------
+function stopPlay(){playing=false;$('play').textContent='▶ Play all';}
+function startPlay(target){stopAt=target;playing=true;$('play').textContent='⏸ Pause';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}if(p>=4.95)p=0;startPlay(4.999);};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(4.999,Math.floor(p+1e-4)+1);syncStage(true);};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p-1e-4)-1);syncStage(true);};
+$('reset').onclick=()=>{stopPlay();p=0;syncStage(true);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopPlay();const s=+c.dataset.s;p=s;syncStage(true);startPlay(Math.min(4.999,s+0.999));});
+function setSliderUI(){$('sMu').value=dmu;$('sSp').value=sp;$('sTi').value=tiltDeg;
+  $('vMu').textContent=dmu.toFixed(2);$('vSp').textContent=sp.toFixed(2);$('vTi').textContent=Math.round(tiltDeg)+'°';}
+function slider(id,fn){$(id).oninput=e=>{fn(+e.target.value);matching=false;setSliderUI();rebuild();};}
+slider('sMu',v=>dmu=v);slider('sSp',v=>sp=v);slider('sTi',v=>tiltDeg=v);
+// animated match: sliders glide to (0,1,0)
+let matching=false;
+$('match').onclick=()=>{stopPlay();p=4.6;matching=true;syncStage(true);};
+
+// orbit + hover raycast
+let drag=false,px0=0,py0=0,moved=0;
+cv.addEventListener('pointerdown',e=>{drag=true;moved=0;px0=e.clientX;py0=e.clientY;cv.style.cursor='grabbing';});
+addEventListener('pointerup',()=>{drag=false;cv.style.cursor='grab';});
+const ray=new THREE.Raycaster(),mou=new THREE.Vector2();
+ray.params.Points={threshold:0.1};
+addEventListener('pointermove',e=>{
+  if(drag){moved+=Math.abs(e.clientX-px0)+Math.abs(e.clientY-py0);
+    group.rotation.y+=(e.clientX-px0)*0.008;
+    group.rotation.x=Math.max(-0.8,Math.min(0.8,group.rotation.x+(e.clientY-py0)*0.006));
+    px0=e.clientX;py0=e.clientY;return;}
+  const r=cv.getBoundingClientRect();
+  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)return;
+  mou.x=((e.clientX-r.left)/r.width)*2-1;mou.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(mou,camera);
+  const hit=ray.intersectObjects([...cloudR,...cloudG])[0];
+  const info=hit?`▸ ${hit.object.userData.cloud==='real'?'<b class="r">real</b>':'<b class="g">generated</b>'} image #${hit.object.userData.idx+1} = (${hit.object.position.x.toFixed(2)}, ${hit.object.position.y.toFixed(2)}, ${hit.object.position.z.toFixed(2)})`:'';
+  if(info!==hoverInfo){hoverInfo=info;
+    const el=document.querySelector('.hovline');if(el)el.innerHTML=hoverInfo||'hover any dot to inspect it…';}
+});
+cv.addEventListener('wheel',e=>{e.preventDefault();camera.position.z=Math.max(7,Math.min(22,camera.position.z+e.deltaY*0.012));},{passive:false});
+
+function fit(){const w=Math.min(cv.parentElement.clientWidth-4,680);renderer.setSize(w,420,false);camera.aspect=w/420;camera.updateProjectionMatrix();}
+let lastT=null;
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT);
+  if(playing)  {p=Math.min(stopAt,p+dt*0.001*0.6*speed);syncStage(false);if(p>=stopAt)stopPlay();}
+  if(matching){ // glide the sliders home
+    const k=Math.min(1,dt*0.004);
+    dmu+= (0-dmu)*k*2.2; sp+=(1-sp)*k*2.2; tiltDeg+=(0-tiltDeg)*k*2.2;
+    if(Math.abs(dmu)<0.005&&Math.abs(sp-1)<0.005&&Math.abs(tiltDeg)<0.3){dmu=0;sp=1;tiltDeg=0;matching=false;}
+    setSliderUI();rebuild();
+  }
+  lastT=ts;renderer.render(scene,camera);}
+fit();addEventListener('resize',fit);
+setSliderUI();rebuild();requestAnimationFrame(loop);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

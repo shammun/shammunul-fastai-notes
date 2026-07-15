@@ -1,0 +1,394 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KID: the kernel arena</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--ok:#128a5a;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#eee9fb;color:var(--ac);padding:6px 10px;}
+  .reset{background:#f0f4fb;color:var(--soft);}
+  .snap{background:#16a3a3;color:#fff;}
+  input[type=range]{width:92px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .sldv{font-family:monospace;font-weight:700;color:var(--out);min-width:36px;display:inline-block;}
+  .wrap{max-width:1080px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cnv{flex:1 1 460px;min-width:320px;}
+  canvas{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:grab;}
+  canvas.grab{cursor:grabbing;}
+  .side{flex:1 1 480px;min-width:320px;display:flex;flex-direction:column;gap:8px;}
+  .mats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  .mat{text-align:center;}
+  .mat .tt{font-size:11.5px;font-weight:800;margin-bottom:2px;}
+  .mat .den{font-size:10px;font-family:Consolas,monospace;color:var(--soft);margin-top:2px;transition:color .3s;}
+  .mat .den.ub{color:var(--ok);font-weight:800;}
+  .grid{display:grid;grid-template-columns:repeat(8,17px);grid-auto-rows:17px;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden;}
+  .cell{background:#fff;transition:background .1s;cursor:pointer;position:relative;}
+  .cell.dead{background:repeating-linear-gradient(45deg,#fff,#fff 2px,#f3d4d4 2px,#f3d4d4 4px)!important;}
+  .cell.skip{background:repeating-linear-gradient(45deg,#eef1f6,#eef1f6 2px,#dde3ec 2px,#dde3ec 4px)!important;}
+  .cell.hl{outline:2px solid var(--ac);z-index:2;}
+  .cell:hover{outline:2px solid var(--in);z-index:3;}
+  .hoverbox{font-family:"SF Mono",Consolas,monospace;font-size:11.8px;background:#fffdf4;border:1px dashed var(--in);border-radius:8px;padding:6px 9px;min-height:48px;line-height:1.5;}
+  .mmdrow{display:flex;align-items:center;gap:8px;font-size:12px;}
+  .mmdrow .lb{width:158px;font-weight:700;text-align:right;font-family:Consolas,monospace;font-size:11.5px;}
+  .mmdrow .tr{flex:1;background:#f0f4fb;border-radius:8px;height:17px;position:relative;overflow:hidden;}
+  .mmdrow .fl{position:absolute;left:0;top:0;bottom:0;border-radius:8px;transition:width .15s;}
+  .mmdrow .vv{font-family:Consolas,monospace;font-weight:800;width:58px;}
+  .total{border-top:2px dashed var(--line);padding-top:6px;text-align:center;}
+  .total .arith{font-family:Consolas,monospace;font-size:12px;color:var(--soft);}
+  .total .big{font-family:Consolas,monospace;font-weight:800;font-size:25px;color:var(--ac);}
+  .savings{font-family:Consolas,monospace;font-size:11.5px;color:var(--ok);font-weight:800;text-align:center;margin-top:4px;}
+  .story{max-width:1080px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1080px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>KID: score every pair of images, then average</h1>
+<p class="sub">FID squashed each cloud into a Gaussian first. KID skips the assumption — it compares the <b>raw points</b>, pair by pair, with a <b>kernel</b> that scores similarity. <b style="color:var(--in)">Drag either cloud</b> on the plane, <b>hover any point</b> to light up its row in the grids, <b>hover any grid cell</b> for its exact arithmetic — and watch the estimator itself change as the stages fix its bias.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Points, not Gaussians</button>
+  <button class="chip" data-s="1">② Fill the 3 kernel grids</button>
+  <button class="chip" data-s="2">③ Kill the diagonal</button>
+  <button class="chip" data-s="3">④ near − far = KID</button>
+  <button class="chip" data-s="4">⑤ Chunks of 50</button>
+</div>
+
+<div class="selrow">
+  <button class="play" id="play">▶ Play all</button>
+  <button class="stepb" id="back">⏮</button>
+  <button class="stepb" id="fwd">⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  teal spread <input id="sSp" type="range" min="0.5" max="2.2" step="0.05" value="1"><span class="sldv" id="vSp">1.00</span>
+  <button class="snap" id="snap">🧲 snap the clouds together</button>
+</div>
+
+<div class="wrap">
+  <div class="card cnv"><canvas id="cv" height="380"></canvas></div>
+  <div class="side">
+    <div class="card">
+      <div class="mats">
+        <div class="mat"><div class="tt" style="color:var(--in)">k(x,x′) real·real</div><div class="grid" id="gxx"></div><div class="den" id="dxx">mean = Σ ÷ m²</div></div>
+        <div class="mat"><div class="tt" style="color:var(--out)">k(y,y′) gen·gen</div><div class="grid" id="gyy"></div><div class="den" id="dyy">mean = Σ ÷ m²</div></div>
+        <div class="mat"><div class="tt" style="color:var(--ac)">k(x,y) real·gen</div><div class="grid" id="gxy"></div><div class="den" id="dxy">mean = Σ ÷ m·m</div></div>
+      </div>
+      <div class="savings" id="save" style="display:none"></div>
+    </div>
+    <div class="card hoverbox" id="hov">hover a grid cell → the polynomial-kernel arithmetic for that exact pair · hover a point on the plane → its row lights up in the grids</div>
+    <div class="card">
+      <div class="mmdrow"><div class="lb" id="lxx" style="color:var(--in)">mean k(x,x′)</div><div class="tr"><div class="fl" id="bxx" style="background:var(--in)"></div></div><div class="vv" id="vxx" style="color:var(--in)">–</div></div>
+      <div class="mmdrow"><div class="lb" id="lyy" style="color:var(--out)">mean k(y,y′)</div><div class="tr"><div class="fl" id="byy" style="background:var(--out)"></div></div><div class="vv" id="vyy" style="color:var(--out)">–</div></div>
+      <div class="mmdrow"><div class="lb" style="color:var(--ac)">mean k(x,y)</div><div class="tr"><div class="fl" id="bxy" style="background:var(--ac)"></div></div><div class="vv" id="vxy" style="color:var(--ac)">–</div></div>
+      <div class="total"><div class="arith" id="arith"></div><div class="big" id="kid">–</div><div style="font-size:11px;color:var(--soft)" id="verdict"></div></div>
+    </div>
+  </div>
+</div>
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b style="color:var(--in)">orange = real features x</b> · <b style="color:var(--out)">teal = generated features y</b> · cell darkness = kernel value (similarity) · <span style="color:var(--neg)">red-hatched</span> = removed diagonal (self-matches) · <span style="color:#8ea0bb">grey-hatched</span> = never computed thanks to chunking · in the notebook the same recipe runs on 512-D features in chunks of 50</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const ORANGE='#f6921e',TEAL='#16a3a3',AC='#7b5cd6',SOFT='#5a6b86',NEG='#d64545',OK='#128a5a';
+let p=0,playing=false,speed=1,stopAt=99;
+
+// ---------- data ----------
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const M=8;
+const ZX=[],ZY=[];{const r1=mulberry(7),r2=mulberry(19);for(let i=0;i<M;i++){ZX.push([gauss(r1)*.55,gauss(r1)*.4]);ZY.push([gauss(r2)*.5,gauss(r2)*.45]);}}
+let cX=[-1.05,0.15], cY=[0.95,-0.2], spY=1;
+let snapT=null;
+function ptsX(){return ZX.map(z=>[cX[0]+z[0],cX[1]+z[1]]);}
+function ptsY(){return ZY.map(z=>[cY[0]+z[0]*spY,cY[1]+z[1]*spY]);}
+
+// ---------- kernel + stage-aware means ----------
+const D=2;
+const kpoly=(a,b)=>Math.pow((a[0]*b[0]+a[1]*b[1])/D+1,3);
+function kernels(){
+  const X=ptsX(),Y=ptsY();
+  const Kxx=[],Kyy=[],Kxy=[];
+  for(let i=0;i<M;i++){Kxx.push([]);Kyy.push([]);Kxy.push([]);
+    for(let j=0;j<M;j++){Kxx[i].push(kpoly(X[i],X[j]));Kyy[i].push(kpoly(Y[i],Y[j]));Kxy[i].push(kpoly(X[i],Y[j]));}}
+  return {X,Y,Kxx,Kyy,Kxy};
+}
+// struck = how many diagonal cells removed so far in each of xx, yy (0..M)
+function struckCounts(){
+  const s=Math.min(4,Math.floor(p+1e-4)),sub=p-s;
+  if(s<2)return [0,0];
+  if(s>2)return [M,M];
+  const total=Math.floor(sub*2*M);
+  return [Math.min(M,total),Math.max(0,Math.min(M,total-M))];
+}
+function meansNow(K){
+  const [kx,ky]=struckCounts();
+  let sxx=0,syy=0,sxy=0,dxx=0,dyy=0;
+  for(let i=0;i<M;i++)for(let j=0;j<M;j++){
+    sxx+=K.Kxx[i][j];syy+=K.Kyy[i][j];sxy+=K.Kxy[i][j];
+  }
+  for(let i=0;i<kx;i++)dxx+=K.Kxx[i][i];
+  for(let i=0;i<ky;i++)dyy+=K.Kyy[i][i];
+  const mxx=(sxx-dxx)/(M*M-kx), myy=(syy-dyy)/(M*M-ky), mxy=sxy/(M*M);
+  return {mxx,myy,mxy,kx,ky,val:mxx+myy-2*mxy};
+}
+
+// ---------- kernel matrix grids ----------
+function mkGrid(id){const g=$(id);for(let i=0;i<M*M;i++){const c=document.createElement('div');c.className='cell';c.dataset.i=Math.floor(i/M);c.dataset.j=i%M;g.appendChild(c);}}
+mkGrid('gxx');mkGrid('gyy');mkGrid('gxy');
+const heat=(v,vmax,rgb)=>{const t=Math.pow(Math.min(1,Math.max(0,v/vmax)),0.6);return `rgba(${rgb},${(0.06+0.94*t).toFixed(3)})`;};
+let hovPair=null, hovPoint=null;  // hovPoint = {cloud:'x'|'y', i}
+function paintGrids(K,mn){
+  const s=Math.min(4,Math.floor(p+1e-4)), sub=p-s;
+  const vmax=Math.max(mn.mxx,mn.myy,mn.mxy)*2.2+1e-9;
+  const nShow = s===0?0 : (s===1? Math.floor(sub*3*M*M) : 3*M*M);
+  const chunked = s===4;
+  const half=M/2;
+  [['gxx',K.Kxx,'246,146,30',0],['gyy',K.Kyy,'22,163,163',1],['gxy',K.Kxy,'123,92,214',2]].forEach((G,gi)=>{
+    const cells=$(G[0]).children;
+    for(let n=0;n<M*M;n++){
+      const i=Math.floor(n/M),j=n%M,c=cells[n];
+      const globalIdx=gi*M*M+n;
+      const on = s>=2 || globalIdx<nShow;
+      const dead = gi<2 && i===j && ((gi===0&&i<mn.kx)||(gi===1&&i<mn.ky));
+      const skip = chunked && ((i<half)!==(j<half));   // cross-chunk pair: never computed
+      c.style.background = on&&!skip ? heat(G[1][i][j],vmax,G[2]) : '#fff';
+      c.classList.toggle('dead', dead&&!skip);
+      c.classList.toggle('skip', skip);
+      // point-hover highlight: this cell involves the hovered point
+      let hl=false;
+      if(hovPoint){
+        if(hovPoint.cloud==='x'&&(gi===0&&(i===hovPoint.i||j===hovPoint.i) || gi===2&&i===hovPoint.i))hl=true;
+        if(hovPoint.cloud==='y'&&(gi===1&&(i===hovPoint.i||j===hovPoint.i) || gi===2&&j===hovPoint.i))hl=true;
+      }
+      c.classList.toggle('hl',hl);
+    }
+  });
+  // denominators
+  const ub1=mn.kx>=M, ub2=mn.ky>=M, mid1=mn.kx>0&&!ub1, mid2=mn.ky>0&&!ub2;
+  $('dxx').textContent='mean = Σ ÷ '+(ub1?'m·(m−1)':mid1?(M*M-mn.kx)+' cells':'m²');
+  $('dyy').textContent='mean = Σ ÷ '+(ub2?'m·(m−1)':mid2?(M*M-mn.ky)+' cells':'m²');
+  $('dxx').classList.toggle('ub',ub1);$('dyy').classList.toggle('ub',ub2);
+  $('save').style.display=chunked?'block':'none';
+  if(chunked)$('save').textContent='cells actually computed: 2 chunks × 3 grids × 4×4 = 96  (full grids would be 192) — 50% saved';
+}
+// grid-cell hover arithmetic
+['gxx','gyy','gxy'].forEach((id,gi)=>{
+  $(id).addEventListener('mousemove',e=>{
+    const c=e.target;if(!c.classList.contains('cell'))return;
+    const i=+c.dataset.i,j=+c.dataset.j,K=kernels();
+    const A=gi===1?K.Y[i]:K.X[i], B=gi===0?K.X[j]:K.Y[j];
+    const names=[['x'+(i+1),'x'+(j+1)],['y'+(i+1),'y'+(j+1)],['x'+(i+1),'y'+(j+1)]][gi];
+    const dot=A[0]*B[0]+A[1]*B[1], inner=dot/D+1, v=Math.pow(inner,3);
+    const mn=meansNow(K);
+    const dead=(gi===0&&i===j&&i<mn.kx)||(gi===1&&i===j&&i<mn.ky);
+    const skip=Math.min(4,Math.floor(p+1e-4))===4 && ((i<M/2)!==(j<M/2));
+    const note=skip?'  ← <b style="color:#8ea0bb">cross-chunk: never computed (that\'s the memory saving)</b>'
+      :dead?'  ← <b style="color:var(--neg)">diagonal: thrown away — a point always matches itself, pure flattery</b>':'';
+    $('hov').innerHTML=`k(${names[0]}, ${names[1]}) = (${names[0]}·${names[1]}/d + 1)³ = (${dot.toFixed(2)}/2 + 1)³ = ${inner.toFixed(2)}³ = <b>${v.toFixed(2)}</b>${note}`;
+    hovPair=[gi,i,j];draw();
+  });
+  $(id).addEventListener('mouseleave',()=>{hovPair=null;draw();});
+});
+
+// ---------- canvas ----------
+const cv=$('cv');let W=600,H=380;
+function toPx(pt){return [W/2+pt[0]*W/5.2, H/2-pt[1]*H/3.4];}
+function fromPx(mx,my){return [(mx-W/2)/(W/5.2), -(my-H/2)/(H/3.4)];}
+function draw(){
+  const ctx=cv.getContext('2d');
+  const dpr=Math.min(devicePixelRatio||1,2);W=cv.parentElement.clientWidth-22;H=380;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='#dbe4f2';ctx.lineWidth=1;
+  for(let g=1;g<6;g++){ctx.beginPath();ctx.moveTo(g*W/6,12);ctx.lineTo(g*W/6,H-12);ctx.stroke();}
+  for(let g=1;g<5;g++){ctx.beginPath();ctx.moveTo(16,g*H/5);ctx.lineTo(W-16,g*H/5);ctx.stroke();}
+  const K=kernels(),s=Math.min(4,Math.floor(p+1e-4)),sub=p-s;
+  // chunk frames (stage ⑤): each chunk = first/second half of BOTH clouds
+  if(s===4){
+    ctx.setLineDash([6,5]);ctx.lineWidth=2;
+    [[0,'chunk 1 → its own MMD²',AC],[1,'chunk 2 → its own MMD²','#b39ddb']].forEach(([ci,lab,col])=>{
+      const idx=ci===0?[0,1,2,3]:[4,5,6,7];
+      const all=[...idx.map(i=>K.X[i]),...idx.map(i=>K.Y[i])].map(toPx);
+      const xs=all.map(q=>q[0]),ys=all.map(q=>q[1]);
+      const x0=Math.min(...xs)-16,x1=Math.max(...xs)+16,y0=Math.min(...ys)-16,y1=Math.max(...ys)+16;
+      ctx.strokeStyle=col;ctx.strokeRect(x0,y0,x1-x0,y1-y0);
+      ctx.fillStyle=col;ctx.font='700 11px Segoe UI';ctx.fillText(lab,x0+4,y0-5);
+    });
+    ctx.setLineDash([]);
+  }
+  // hovered-cell pair line
+  if(hovPair){
+    const [gi,i,j]=hovPair;
+    const A=gi===1?K.Y[i]:K.X[i], B=gi===0?K.X[j]:K.Y[j];
+    const a=toPx(A),b=toPx(B);
+    ctx.strokeStyle=[ORANGE,TEAL,AC][gi];ctx.lineWidth=2.5;ctx.setLineDash([5,4]);
+    ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();ctx.setLineDash([]);
+  }
+  // stage ② sweep line while grids fill
+  if(s===1&&playing){
+    const idx=Math.floor(sub*3*M*M),gi=Math.min(2,Math.floor(idx/(M*M))),n=idx%(M*M),i=Math.floor(n/M),j=n%M;
+    const A=gi===1?K.Y[i]:K.X[i], B=gi===0?K.X[j]:K.Y[j];
+    const a=toPx(A),b=toPx(B);
+    ctx.strokeStyle=['rgba(246,146,30,.8)','rgba(22,163,163,.8)','rgba(123,92,214,.8)'][gi];
+    ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();
+  }
+  // points
+  function blob(pts,col,label,center,cloudKey){
+    pts.forEach((q,i)=>{const [x,y]=toPx(q);
+      const hot=hovPoint&&hovPoint.cloud===cloudKey&&hovPoint.i===i;
+      if(hot){ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(x,y,11,0,7);ctx.stroke();}
+      ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,7,0,7);ctx.fill();
+      ctx.fillStyle='#fff';ctx.font='700 8.5px Segoe UI';ctx.textAlign='center';ctx.fillText(i+1,x,y+3);ctx.textAlign='left';});
+    const [cx2,cy2]=toPx(center);
+    ctx.fillStyle=col;ctx.font='700 12px Segoe UI';ctx.textAlign='center';
+    ctx.fillText(label,Math.max(70,Math.min(W-70,cx2)),Math.max(18,cy2-44));ctx.textAlign='left';
+  }
+  blob(K.X,ORANGE,'real x₁…x₈ (drag me)',cX,'x');
+  blob(K.Y,TEAL,'generated y₁…y₈ (drag me)',cY,'y');
+  const mn=meansNow(K);
+  paintGrids(K,mn);
+  // score panel — progressive disclosure
+  const vmax=Math.max(mn.mxx,mn.myy,mn.mxy)*1.15+1e-9;
+  const showMeans=s>=2||(s>=1&&sub>0.95)||s>1;
+  $('bxx').style.width=showMeans?(100*mn.mxx/vmax)+'%':'0%';$('vxx').textContent=showMeans?mn.mxx.toFixed(2):'–';
+  $('byy').style.width=showMeans?(100*mn.myy/vmax)+'%':'0%';$('vyy').textContent=showMeans?mn.myy.toFixed(2):'–';
+  $('bxy').style.width=showMeans?(100*mn.mxy/vmax)+'%':'0%';$('vxy').textContent=showMeans?mn.mxy.toFixed(2):'–';
+  $('lxx').textContent='mean k(x,x′)'+(mn.kx>=M?' unbiased':'');
+  $('lyy').textContent='mean k(y,y′)'+(mn.ky>=M?' unbiased':'');
+  if(s>=3){
+    $('arith').innerHTML=`${mn.mxx.toFixed(2)} + ${mn.myy.toFixed(2)} − 2·${mn.mxy.toFixed(2)} =`;
+    $('kid').textContent=mn.val.toFixed(3);
+    $('kid').style.color=mn.val<0?NEG:mn.val<0.05?OK:mn.val<1?'#c07a12':NEG;
+    $('verdict').textContent=mn.val<0?'negative! only an unbiased estimator can do that (noise around a true 0)':mn.val<0.05?'≈ 0 → the clouds are indistinguishable':mn.val<1?'small gap — decent generator':'large gap — clearly different point sets';
+  }else{
+    $('arith').textContent=s===2?'(diagonal being removed — watch the within-cloud means tick DOWN)':'';
+    $('kid').textContent='–';
+    $('verdict').textContent=s<2?'the total is assembled in stage ④':'';
+  }
+}
+
+// drag clouds + hover points
+let dragging=null;
+cv.addEventListener('pointerdown',e=>{
+  const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  const dx=toPx(cX),dy=toPx(cY);
+  dragging=Math.hypot(mx-dx[0],my-dx[1])<Math.hypot(mx-dy[0],my-dy[1])?'x':'y';
+  snapT=null;cv.classList.add('grab');cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove',e=>{
+  const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  if(dragging){
+    const [wx,wy]=fromPx(mx,my);
+    if(dragging==='x')cX=[wx,wy];else cY=[wx,wy];
+    draw();return;
+  }
+  // hover-point detection
+  const K=kernels();let best=null,bd=13;
+  K.X.forEach((q,i)=>{const [x,y]=toPx(q);const d=Math.hypot(mx-x,my-y);if(d<bd){bd=d;best={cloud:'x',i};}});
+  K.Y.forEach((q,i)=>{const [x,y]=toPx(q);const d=Math.hypot(mx-x,my-y);if(d<bd){bd=d;best={cloud:'y',i};}});
+  const changed=JSON.stringify(best)!==JSON.stringify(hovPoint);
+  if(changed){hovPoint=best;
+    if(best)$('hov').innerHTML=`point <b style="color:${best.cloud==='x'?ORANGE:TEAL}">${best.cloud}${best.i+1}</b> — its kernel scores light up in the grids →`;
+    draw();}
+});
+cv.addEventListener('pointerup',()=>{dragging=null;cv.classList.remove('grab');});
+cv.addEventListener('pointerleave',()=>{if(hovPoint){hovPoint=null;draw();}});
+$('sSp').oninput=e=>{spY=+e.target.value;$('vSp').textContent=spY.toFixed(2);snapT=null;draw();};
+$('snap').onclick=()=>{snapT={cx:cX.slice(),to:cY.slice()};stopPlay();if(Math.floor(p)<3){p=3;syncUI(true);}};
+
+// ---------- stories + code ----------
+const STORIES=[
+`<b>① Points, not Gaussians.</b> FID's weak spot: it <em>assumes</em> each feature cloud is a perfect Gaussian, then compares the two Gaussians. Real feature clouds are lumpy. KID drops the assumption — it keeps every point as-is and asks a blunter question: <em>"do within-cloud pairs look more similar than across-cloud pairs?"</em> Here each cloud has 8 points (the notebook uses thousands); <b>drag either cloud</b> and <b>hover a point</b> to see its role in the grids.`,
+`<b>② Fill the 3 kernel grids.</b> The similarity scorer is the <b>polynomial kernel</b> k(a,b) = (a·b/d + 1)³ — big when two feature vectors point the same way. Three tables get filled: <b style="color:var(--in)">k(x,x′)</b> real-vs-real, <b style="color:var(--out)">k(y,y′)</b> gen-vs-gen, <b style="color:var(--ac)">k(x,y)</b> real-vs-gen — watch each cell light up as its pair is scored (the sweeping line shows which pair). For now the means naively divide by m² — <em>all</em> cells, including a suspicious bright diagonal…`,
+`<b>③ Kill the diagonal.</b> That bright diagonal is each point compared <em>with itself</em> — always a perfect match, pure flattery, and it <b>inflates the within-cloud means</b>. Watch the cells get struck out one by one and the orange/teal numbers <b>tick DOWN</b> as the flattery is removed; the divisor label flips from m² to <b>m·(m−1)</b>. The cross grid keeps everything — xᵢ and yᵢ are different images, no self-matches there. This little surgery is exactly what makes KID <b>unbiased</b>.`,
+`<b>④ near − far = KID.</b> Now the recipe assembles: <b>within-real + within-gen − 2·across</b>. If the clouds sit on top of each other, cross-similarity is just as high as within-similarity and the three terms cancel → 0. Press <b>🧲 snap the clouds together</b> and watch the arithmetic collapse — random noise can even push it <em>slightly negative</em>, something FID can never do. Then drag a cloud away and watch the gap reopen.`,
+`<b>⑤ Chunks of 50.</b> With n = 10,000 images each table would have 10⁸ cells — too much memory. The notebook's <code>_calc_kid</code> slices the data into chunks (here: 2 chunks of 4; notebook: chunks of 50), computes an MMD² <em>inside each chunk</em>, and averages. Look at the grids: the grey-hatched <b>cross-chunk cells are simply never computed</b> — that's the saving. Because each chunk's estimate is unbiased, the average of chunk estimates is still unbiased: you pay a little variance, zero bias.`];
+const CODES=[
+`<span class="cm"># FID needed (μ, Σ) — a Gaussian summary. KID works on raw feature points:</span>
+<span class="hl">feats  <span class="cm"># real      → torch.Size([10000, 512])   ← kept as points</span></span>
+<span class="hl">feats2 <span class="cm"># generated → torch.Size([256, 512])     ← kept as points</span></span>
+<span class="cm"># no .mean(), no .cov() — the points speak for themselves</span>`,
+`<span class="cm"># score every pair with the polynomial kernel (degree 3)</span>
+def <span class="fn">_squared_mmd</span>(x, y):
+    def <span class="fn">k</span>(a, b): <span class="hl">return (a @ b.transpose(-2, -1) / a.shape[-1] + <span class="num">1</span>) ** <span class="num">3</span></span>
+    m, n = x.shape[-2], y.shape[-2]
+    <span class="hl">kxx, kyy, kxy = <span class="fn">k</span>(x, x), <span class="fn">k</span>(y, y), <span class="fn">k</span>(x, y)  <span class="cm"># the 3 grids you see filling</span></span>`,
+`<span class="cm"># unbiased: subtract the self-match diagonal, divide by m·(m−1)</span>
+    kxx_sum = <span class="hl">kxx.sum([-1, -2]) - kxx.diagonal(...).sum(-1)</span>  <span class="cm"># ✂ diagonal gone</span>
+    kyy_sum = <span class="hl">kyy.sum([-1, -2]) - kyy.diagonal(...).sum(-1)</span>  <span class="cm"># ✂ diagonal gone</span>
+    kxy_sum = kxy.sum([-1, -2])                          <span class="cm"># cross grid keeps all cells</span>`,
+`<span class="cm"># near − far: within-cloud similarity minus cross-cloud similarity</span>
+    <span class="hl">return kxx_sum / (m * (m - <span class="num">1</span>)) + kyy_sum / (n * (n - <span class="num">1</span>)) - <span class="num">2</span> * kxy_sum / (m * n)</span>
+<span class="cm"># identical clouds → the terms cancel → ≈ 0, sometimes slightly BELOW 0</span>
+<span class="cm"># notebook result: _calc_kid(feats, feats2) → 0.056</span>`,
+`<span class="cm"># full grids would be 10000×10000 → chunk them (maxs=50) and average</span>
+def <span class="fn">_calc_kid</span>(x, y, maxs=<span class="num">50</span>):
+    xs, ys = x.shape[<span class="num">0</span>], y.shape[<span class="num">0</span>]
+    n = max(math.ceil(min(xs / maxs, ys / maxs)), <span class="num">1</span>)
+    mmd = <span class="num">0.</span>
+    for i in range(n):
+        <span class="hl">cur_x = x[round(i * xs / n) : round((i + <span class="num">1</span>) * xs / n)]</span>
+        <span class="hl">cur_y = y[round(i * ys / n) : round((i + <span class="num">1</span>) * ys / n)]</span>
+        mmd += <span class="fn">_squared_mmd</span>(cur_x, cur_y)   <span class="cm"># only within-chunk cells exist</span>
+    <span class="hl">return mmd / n   <span class="cm"># average of unbiased chunk estimates → still unbiased</span></span>`];
+
+let lastS=-1;
+function syncUI(force){
+  if(p>4.999)p=4.999;if(p<0)p=0;
+  const s=Math.min(4,Math.floor(p+1e-4));
+  if(force||s!==lastS){lastS=s;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+    $('story').innerHTML=STORIES[s];$('code').innerHTML=CODES[s];
+  }
+  draw();
+}
+function stopPlay(){playing=false;$('play').textContent='▶ Play all';}
+function startPlay(target){stopAt=target;playing=true;$('play').textContent='⏸ Pause';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}if(p>=4.95)p=0;startPlay(4.999);};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(4.999,Math.floor(p+1e-4)+1);syncUI(true);};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p-1e-4)-1);syncUI(true);};
+$('reset').onclick=()=>{stopPlay();p=0;cX=[-1.05,0.15];cY=[0.95,-0.2];spY=1;snapT=null;$('sSp').value=1;$('vSp').textContent='1.00';syncUI(true);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopPlay();const s=+c.dataset.s;p=s;syncUI(true);startPlay(Math.min(4.999,s+0.999));});
+let lastT=null;
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT);
+  if(playing){p=Math.min(stopAt,p+dt*0.001*0.4*speed);syncUI(false);if(p>=stopAt)stopPlay();}
+  if(snapT){ // glide the teal cloud onto the orange one, spread → 1
+    const k=Math.min(1,dt*0.004);
+    cY[0]+=(cX[0]-cY[0])*k*2.2;cY[1]+=(cX[1]-cY[1])*k*2.2;spY+=(1-spY)*k*2.2;
+    $('sSp').value=spY;$('vSp').textContent=spY.toFixed(2);
+    if(Math.hypot(cY[0]-cX[0],cY[1]-cX[1])<0.01&&Math.abs(spY-1)<0.01){cY=[cX[0],cX[1]];spY=1;snapT=null;}
+    draw();
+  }
+  lastT=ts;}
+addEventListener('resize',draw);
+syncUI(true);requestAnimationFrame(loop);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

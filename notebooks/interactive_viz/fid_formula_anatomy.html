@@ -1,0 +1,323 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The FID formula, term by term</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--ok:#128a5a;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:104px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .perf{background:#16a3a3;color:#fff;}
+  .worst{background:#fdeeee;color:var(--neg);}
+  .eqbtn{background:#f4efff;color:var(--ac);border:1.5px dashed var(--ac);padding:4px 10px;font-size:11.5px;}
+  input[type=range]{width:92px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .sldv{font-family:monospace;font-weight:700;color:var(--out);min-width:38px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:stretch;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cnv{flex:1 1 540px;min-width:320px;}
+  canvas{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+  .side{flex:1 1 380px;min-width:300px;display:flex;flex-direction:column;gap:10px;}
+  .formula{font-family:"SF Mono",Consolas,monospace;font-size:15px;text-align:center;line-height:1.9;font-weight:700;}
+  .term{border:2px solid transparent;border-radius:8px;padding:2px 6px;cursor:pointer;transition:all .15s;display:inline-block;}
+  .term:hover{border-color:var(--line);}
+  .term.t1{color:var(--in);} .term.t2{color:var(--out);}
+  .term.sel{border-color:currentColor;background:#fffdf7;box-shadow:0 3px 10px rgba(0,0,0,.08);}
+  .term .val{display:block;font-size:12px;color:inherit;opacity:.85;}
+  .bars{display:flex;flex-direction:column;gap:7px;font-size:12px;}
+  .brow{display:flex;align-items:center;gap:8px;}
+  .brow .lb{width:112px;font-weight:700;text-align:right;}
+  .brow .tr{flex:1;background:#f0f4fb;border-radius:8px;height:18px;position:relative;overflow:hidden;}
+  .brow .fl{position:absolute;left:0;top:0;bottom:0;border-radius:8px;transition:width .18s;}
+  .brow .vv{font-family:Consolas,monospace;font-weight:800;width:52px;}
+  .total{border-top:2px dashed var(--line);padding-top:7px;text-align:center;}
+  .total .big{font-family:Consolas,monospace;font-weight:800;font-size:28px;color:var(--ac);}
+  .anat{border:2px dashed var(--out);border-radius:10px;background:#f2fbfa;padding:7px 9px;font-size:11.5px;}
+  .anat .tt{font-weight:800;color:var(--out);margin-bottom:4px;text-align:center;}
+  .arow{display:flex;align-items:center;gap:6px;margin-top:3px;}
+  .arow .lb{width:96px;font-family:Consolas,monospace;font-weight:700;text-align:right;font-size:11px;}
+  .arow .tr{flex:1;background:#e8f1f0;border-radius:6px;height:13px;position:relative;overflow:hidden;}
+  .arow .fl{position:absolute;left:0;top:0;bottom:0;border-radius:6px;transition:width .18s;}
+  .arow .vv{font-family:Consolas,monospace;font-weight:800;width:44px;font-size:11px;}
+  .anat .net{text-align:center;font-family:Consolas,monospace;font-weight:800;margin-top:5px;color:var(--out);}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1060px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>FID, dissected: how far apart + how differently shaped</h1>
+<p class="sub">FID glues two questions into one number. <b style="color:var(--in)">Term 1</b>: are the cloud <em>centers</em> in the same place? <b style="color:var(--out)">Term 2</b>: do the clouds have the same <em>spread &amp; tilt</em>? Press <b>▶</b> to walk the formula, or <b>click either term</b> to isolate it. The sliders feed each term separately, and every number is the <b>exact Fréchet formula</b> computed live on these 2-D clouds.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Two clouds, one number?</button>
+  <button class="chip" data-s="1">② Term 1 — centers</button>
+  <button class="chip" data-s="2">③ Term 2 — shapes</button>
+  <button class="chip" data-s="3">④ The √(Σ₁Σ₂) glue</button>
+  <button class="chip" data-s="4">⑤ Reading FID ≈ 33.8</button>
+</div>
+
+<div class="selrow">
+  Δmean <input id="sMu" type="range" min="0" max="3" step="0.05" value="1.3"><span class="sldv" id="vMu">1.30</span>
+  spread <input id="sSp" type="range" min="0.4" max="2.4" step="0.05" value="1.5"><span class="sldv" id="vSp">1.50</span>
+  tilt <input id="sTi" type="range" min="-70" max="70" step="2" value="35"><span class="sldv" id="vTi">35°</span>
+  <button class="perf" id="perf">✨ perfect</button>
+  <button class="worst" id="worst">💥 awful</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <button class="stepb" id="back">⏮</button>
+  <button class="play" id="play">▶ Play all</button>
+  <button class="stepb" id="fwd">⏭</button>
+  <button class="reset" id="reset">↺</button>
+</div>
+
+<div class="wrap">
+  <div class="card cnv"><canvas id="cv" height="380"></canvas></div>
+  <div class="side">
+    <div class="card formula">FID = <span class="term t1" id="term1">‖μ₁ − μ₂‖²<span class="val" id="tv1">–</span></span> + <span class="term t2" id="term2">Tr(Σ₁+Σ₂−2√(Σ₁Σ₂))<span class="val" id="tv2">–</span></span></div>
+    <div class="card bars">
+      <div class="brow"><div class="lb" style="color:var(--in)">centers apart</div><div class="tr"><div class="fl" id="b1" style="background:var(--in)"></div></div><div class="vv" id="v1" style="color:var(--in)">0</div></div>
+      <div class="brow"><div class="lb" style="color:var(--out)">shapes apart</div><div class="tr"><div class="fl" id="b2" style="background:var(--out)"></div></div><div class="vv" id="v2" style="color:var(--out)">0</div></div>
+      <div class="total"><div style="font-size:11.5px;font-weight:700;color:var(--soft)">FID (exact, 2-D)</div><div class="big" id="fid">0</div><div style="font-size:11px;color:var(--soft)" id="verdict"></div></div>
+    </div>
+    <div class="card anat" id="anat" style="display:none">
+      <div class="tt">inside the shape term — the (a−b)² trick</div>
+      <div class="arow"><div class="lb">Tr(Σ₁)</div><div class="tr"><div class="fl" id="a1" style="background:#f6921e"></div></div><div class="vv" id="av1">–</div></div>
+      <div class="arow"><div class="lb">+ Tr(Σ₂)</div><div class="tr"><div class="fl" id="a2" style="background:#16a3a3"></div></div><div class="vv" id="av2">–</div></div>
+      <div class="arow"><div class="lb">− 2Tr√(Σ₁Σ₂)</div><div class="tr"><div class="fl" id="a3" style="background:#7b5cd6"></div></div><div class="vv" id="av3">–</div></div>
+      <div class="net" id="anet">net = –</div>
+      <div style="text-align:center;margin-top:5px"><button class="eqbtn" id="eqbtn">⇢ make the shapes equal &amp; watch it cancel</button></div>
+    </div>
+  </div>
+</div>
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend">the plane shows 2-D feature clouds with their 2σ ellipses (equal x/y scale, so shapes are honest) · dashed purple = the μ₁→μ₂ gap (term 1) · in the notebook the identical formula runs on 512-D features — nothing else changes</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const ORANGE='#f6921e',TEAL='#16a3a3',AC='#7b5cd6',SOFT='#5a6b86',NEG='#d64545',OK='#128a5a';
+let p=0,playing=false,speed=1,stopAt=99;
+let sel=0; // 0 both · 1 term1 · 2 term2
+let dmu=1.3,sp=1.5,tiltDeg=35;
+let tween=null; // {dmu,sp,ti} targets
+
+// clouds
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const N=80,Z1=[],Z2=[];{const r1=mulberry(3),r2=mulberry(31);for(let i=0;i<N;i++){Z1.push([gauss(r1),gauss(r1)]);Z2.push([gauss(r2),gauss(r2)]);}}
+const A1=[[1.15,0],[0.35,0.62]], m1=[-1.7,0.15];
+function A2(){const t=tiltDeg*Math.PI/180,c=Math.cos(t),s=Math.sin(t);
+  const B=[[1.15*sp,0],[0.35,0.62*sp]];
+  return [[c*B[0][0]-s*B[1][0],c*B[0][1]-s*B[1][1]],[s*B[0][0]+c*B[1][0],s*B[0][1]+c*B[1][1]]];}
+function m2(){return [-1.7+dmu*1.5,0.15+dmu*0.4];}
+const mm=(A,B)=>[[A[0][0]*B[0][0]+A[0][1]*B[1][0],A[0][0]*B[0][1]+A[0][1]*B[1][1]],[A[1][0]*B[0][0]+A[1][1]*B[1][0],A[1][0]*B[0][1]+A[1][1]*B[1][1]]];
+const mT=A=>[[A[0][0],A[1][0]],[A[0][1],A[1][1]]];
+function fid2d(){
+  const S1=mm(A1,mT(A1)),Ag=A2(),S2=mm(Ag,mT(Ag)),M2=m2();
+  const d=[M2[0]-m1[0],M2[1]-m1[1]];
+  const t1=d[0]*d[0]+d[1]*d[1];
+  const S=mm(mm(mT(A1),S2),A1);   // similar to Σ1Σ2, symmetric PSD
+  const tr=S[0][0]+S[1][1],det=S[0][0]*S[1][1]-S[0][1]*S[1][0];
+  const disc=Math.sqrt(Math.max(0,tr*tr/4-det));
+  const l1=Math.max(0,tr/2+disc),l2=Math.max(0,tr/2-disc);
+  const trR1=S1[0][0]+S1[1][1], trR2=S2[0][0]+S2[1][1], cross=2*(Math.sqrt(l1)+Math.sqrt(l2));
+  const t2=Math.max(0,trR1+trR2-cross);
+  return {t1,t2,fid:t1+t2,trR1,trR2,cross};
+}
+const lerp=(a,b,t)=>a+(b-a)*t, smf=t=>t<=0?0:t>=1?1:t*t*(3-2*t), clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+function draw(){
+  const cv=$('cv'),ctx=cv.getContext('2d');
+  const dpr=Math.min(devicePixelRatio||1,2),W=cv.parentElement.clientWidth-22,H=380;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const s=Math.min(4,Math.floor(p+1e-4)),t=p-s;
+  const cx=W/2,cy=H/2-10,S=46;                 // EQUAL scale on x and y
+  // grid
+  ctx.strokeStyle='#dbe4f2';ctx.lineWidth=1;
+  for(let g=-5;g<=5;g++){ctx.beginPath();ctx.moveTo(cx+g*S,12);ctx.lineTo(cx+g*S,H-42);ctx.stroke();}
+  for(let g=-3;g<=3;g++){ctx.beginPath();ctx.moveTo(18,cy+g*S);ctx.lineTo(W-18,cy+g*S);ctx.stroke();}
+  const Ag=A2(),M2=m2(),F=fid2d();
+  const px=(x,y)=>[cx+x*S,cy-y*S];
+  const cloudRev = s>0?1:smf(t*1.5);
+  const gapT     = s>1?1:(s===1?smf(t*1.8):0);
+  const ellT     = s>2?1:(s===2?smf(t*1.6):(sel===2?1:0));
+  function cloud(Z,A,m,col,alpha){
+    ctx.fillStyle=col;
+    const n=Math.floor(N*cloudRev);
+    for(let i=0;i<n;i++){const z=Z[i];
+      const [X,Y]=px(A[0][0]*z[0]+A[0][1]*z[1]+m[0],A[1][0]*z[0]+A[1][1]*z[1]+m[1]);
+      ctx.globalAlpha=0.62*alpha;ctx.beginPath();ctx.arc(X,Y,3,0,7);ctx.fill();}
+    ctx.globalAlpha=1;
+  }
+  function ellipse(A,m,col,alpha,grow){
+    if(grow<=0)return;
+    ctx.strokeStyle=col;ctx.lineWidth=2.6;ctx.globalAlpha=alpha;ctx.beginPath();
+    for(let a=0;a<=60;a++){const th=a/60*2*Math.PI,u=[2*Math.cos(th)*grow,2*Math.sin(th)*grow];
+      const [X,Y]=px(A[0][0]*u[0]+A[0][1]*u[1]+m[0],A[1][0]*u[0]+A[1][1]*u[1]+m[1]);
+      a?ctx.lineTo(X,Y):ctx.moveTo(X,Y);}
+    ctx.stroke();ctx.globalAlpha=1;
+  }
+  const dim1=sel===2?0.28:1, dim2=sel===1?0.35:1;
+  cloud(Z1,A1,m1,ORANGE,dim1);
+  cloud(Z2,Ag,M2,TEAL,sel===1?0.6:1);
+  ellipse(A1,m1,ORANGE,0.9*(sel===1?0.3:1),ellT);
+  ellipse(Ag,M2,TEAL,0.9*(sel===1?0.3:1),ellT);
+  // means
+  function cross(m,col,alpha){const [X,Y]=px(m[0],m[1]);
+    ctx.strokeStyle=col;ctx.lineWidth=3;ctx.globalAlpha=alpha;
+    ctx.beginPath();ctx.moveTo(X-8,Y);ctx.lineTo(X+8,Y);ctx.moveTo(X,Y-8);ctx.lineTo(X,Y+8);ctx.stroke();ctx.globalAlpha=1;}
+  cross(m1,'#c56f05',cloudRev*(sel===2?0.35:1));cross(M2,'#0e7d7d',cloudRev*(sel===2?0.35:1));
+  // gap line (term 1), drawn progressively
+  if(gapT>0&&sel!==2){
+    const [x1,y1]=px(m1[0],m1[1]),[x2,y2]=px(M2[0],M2[1]);
+    const xe=lerp(x1,x2,gapT),ye=lerp(y1,y2,gapT);
+    ctx.strokeStyle=AC;ctx.lineWidth=2.6;ctx.setLineDash([7,5]);ctx.globalAlpha=sel===1?1:0.85;
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(xe,ye);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+    if(gapT>0.4){
+      ctx.fillStyle=AC;ctx.font='700 12px Consolas,monospace';ctx.textAlign='center';
+      const gv=Math.sqrt(F.t1)*gapT;
+      ctx.fillText('‖μ₁−μ₂‖ = '+gv.toFixed(2)+'  →  ² = '+(gv*gv).toFixed(2),(x1+x2)/2,(y1+y2)/2-12);
+    }
+  }
+  // stage ⑤ context ruler
+  if(s===4){
+    const rT=smf(t*1.5), y=H-24, L=54, R=W-30;
+    const toX=v=>L+(R-L)*Math.log10(1+v)/Math.log10(331);
+    ctx.strokeStyle=SOFT;ctx.lineWidth=2;ctx.globalAlpha=rT;
+    ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(R,y);ctx.stroke();
+    const marks=[[0,'0\nperfect',OK],[6.6,'6.6\nreal-vs-real "floor"','#c07a12'],[33.8,'33.8\nthis DDPM',AC],[330,'≈330\npure noise',NEG]];
+    ctx.font='700 10.5px "Segoe UI",sans-serif';ctx.textAlign='center';
+    marks.forEach(([v,lab,col])=>{const X=toX(v);
+      ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(X,y-7);ctx.lineTo(X,y+7);ctx.stroke();
+      ctx.fillStyle=col;lab.split('\n').forEach((ln,i)=>ctx.fillText(ln,X,y-12-((1-i)*11)));});
+    // live marker for current toy FID mapped onto the notebook ruler (illustrative position)
+    const X=toX(Math.min(330,F.fid*10));
+    ctx.fillStyle=AC;ctx.beginPath();ctx.moveTo(X,y+9);ctx.lineTo(X-6,y+19);ctx.lineTo(X+6,y+19);ctx.closePath();ctx.fill();
+    ctx.fillStyle=SOFT;ctx.font='10px "Segoe UI",sans-serif';
+    ctx.fillText('▲ your toy clouds (×10, illustrative)',X,y+30);
+    ctx.globalAlpha=1;
+  }
+  ctx.font='700 12px "Segoe UI",sans-serif';ctx.textAlign='left';
+  ctx.fillStyle=ORANGE;ctx.fillText('real',24,24);ctx.fillStyle=TEAL;ctx.fillText('generated',24,40);
+}
+
+function update(){
+  const F=fid2d();
+  const cap=14;
+  $('b1').style.width=Math.min(100,F.t1/cap*100)+'%';
+  $('b2').style.width=Math.min(100,F.t2/cap*100)+'%';
+  $('v1').textContent=F.t1.toFixed(2);
+  $('v2').textContent=F.t2.toFixed(2);
+  $('tv1').textContent='= '+F.t1.toFixed(2);
+  $('tv2').textContent='= '+F.t2.toFixed(2);
+  $('fid').textContent=F.fid.toFixed(2);
+  $('fid').style.color=F.fid>6?NEG:F.fid>1?'#c07a12':OK;
+  $('verdict').textContent=F.fid<0.05?'identical distributions — a perfect generator':F.fid<1?'nearly indistinguishable':F.fid<6?'close, visible differences':'clearly different distributions';
+  // shape-term anatomy
+  const amax=Math.max(F.trR1+F.trR2,F.cross)*1.05+1e-9;
+  $('a1').style.width=(100*F.trR1/amax)+'%';$('av1').textContent=F.trR1.toFixed(2);
+  $('a2').style.width=(100*F.trR2/amax)+'%';$('av2').textContent=F.trR2.toFixed(2);
+  $('a3').style.width=(100*F.cross/amax)+'%';$('av3').textContent='−'+F.cross.toFixed(2);
+  $('anet').textContent='net = '+F.trR1.toFixed(2)+' + '+F.trR2.toFixed(2)+' − '+F.cross.toFixed(2)+' = '+F.t2.toFixed(2)+(F.t2<0.05?'  ✓ cancelled!':'');
+  $('anet').style.color=F.t2<0.05?OK:'var(--out)';
+  draw();
+}
+
+// stories & code
+const STORIES=[
+ '<b>① Two clouds, one number?</b> After the earlier sections we hold two feature clouds and their summaries (μ₁,Σ₁) and (μ₂,Σ₂). The Fréchet distance asks: <em>if each cloud were a Gaussian, how much "work" would it take to morph one into the other?</em> For Gaussians that has a closed form — the formula on the right, with <b>live values under each term</b>. Move any slider and watch which term responds.',
+ '<b>② Term 1 — centers.</b> <code>‖μ₁−μ₂‖²</code> is nothing more than the <b>squared length of the dashed line</b> being drawn between the two crosses — watch the measurement appear on the line and land in the orange bar. It only cares about <em>where</em> the clouds sit. Drag <b>Δmean</b>: only the orange bar moves. A generator whose images are systematically "off" (too dark, wrong class mix) shows up here.',
+ '<b>③ Term 2 — shapes.</b> <code>Tr(Σ₁+Σ₂−2√(Σ₁Σ₂))</code> compares the <b>ellipses</b> while ignoring the centers. Drag <b>spread</b> (generated images too samey → skinny ellipse → term grows) or <b>tilt</b> (features correlate the wrong way). A mode-collapsed generator with perfectly-centered but low-variety images is caught <em>only</em> by this term — that\'s why FID needs both.',
+ '<b>④ The √(Σ₁Σ₂) glue.</b> Why not just <code>Tr(Σ₁)+Tr(Σ₂)</code>? That would punish <em>any</em> spread, even identical spread. The new panel on the right shows the three ingredients: two positive bars, and the purple <b>credit bar 2Tr√(Σ₁Σ₂)</b> that grows when the shapes agree. It\'s the matrix version of <code>a²+b²−2ab = (a−b)²</code>. Press <b>⇢ make the shapes equal</b>: the credit grows to swallow the other two and the net drops to 0 — while term 1 (the centers) doesn\'t move. That cross-term is exactly why the notebook needed the matrix square root.',
+ '<b>⑤ Reading the number.</b> FID has no units and no universal scale — it\'s only comparable <em>within one setup</em> (same extractor, same sample sizes). The ruler below the plane shows this notebook\'s landmarks: pure noise ≈ 330, this DDPM = 33.8, and even real-vs-real scores 6.6, not 0 (small-sample bias — next visualization!). Press <b>✨ perfect</b>: your toy FID hits 0, the only value with an absolute meaning.'
+];
+const CODES=[
+`<span class="cm"># the inputs: two (mean, covariance) pairs from _calc_stats</span>
+s1, s2 = <span class="fn">_calc_stats</span>(feats), <span class="fn">_calc_stats</span>(feats2)
+<span class="fn">_calc_fid</span>(*s1, *s2)      <span class="cm"># → 33.834</span>`,
+`def <span class="fn">_calc_fid</span>(m1, c1, m2, c2):
+    csr = tensor(linalg.<span class="fn">sqrtm</span>(c1@c2, blocksize=<span class="num">256</span>).real)
+<span class="hl">    return (((m1-m2)**<span class="num">2</span>).<span class="fn">sum</span>() + ...   <span class="cm"># ← TERM 1: squared distance of centers</span></span>`,
+`def <span class="fn">_calc_fid</span>(m1, c1, m2, c2):
+    csr = tensor(linalg.<span class="fn">sqrtm</span>(c1@c2, blocksize=<span class="num">256</span>).real)
+<span class="hl">    return (... + c1.<span class="fn">trace</span>() + c2.<span class="fn">trace</span>() - <span class="num">2</span>*csr.<span class="fn">trace</span>()).item()   <span class="cm"># ← TERM 2: shape mismatch</span></span>`,
+`def <span class="fn">_calc_fid</span>(m1, c1, m2, c2):
+<span class="hl">    csr = tensor(linalg.<span class="fn">sqrtm</span>(c1@c2, blocksize=<span class="num">256</span>).real)   <span class="cm"># ← √(Σ₁Σ₂): the shared-shape credit</span></span>
+    return (((m1-m2)**<span class="num">2</span>).sum() + c1.trace() + c2.trace() - <span class="num">2</span>*csr.trace()).item()
+<span class="cm"># if Σ₁ = Σ₂ = Σ:  Tr(Σ+Σ−2Σ) = 0 — identical shapes cost nothing</span>`,
+`<span class="cm"># the actual numbers from this notebook</span>
+_calc_fid(*s1, *s2)   <span class="cm"># DDPM samples vs real   → 33.834</span>
+ie.<span class="fn">fid</span>(xt2)           <span class="cm"># real batch vs real set → 6.61  (bias! next viz)</span>
+<span class="cm"># rule: only compare FIDs that share extractor AND sample sizes</span>`];
+
+let lastS=-1;
+function syncUI(force){
+  p=clamp(p,0,4.999);
+  const s=Math.min(4,Math.floor(p+1e-4));
+  if(force||s!==lastS){lastS=s;
+    sel = s===1?1 : s===2?2 : 0;
+    $('term1').classList.toggle('sel',sel===1);
+    $('term2').classList.toggle('sel',sel===2);
+    $('anat').style.display = s===3?'block':'none';
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+    $('story').innerHTML=STORIES[s];$('code').innerHTML=CODES[s];
+  }
+  update();
+}
+function stopPlay(){playing=false;$('play').textContent='▶ Play all';}
+function startPlay(target){stopAt=target;playing=true;$('play').textContent='⏸ Pause';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}if(p>=4.95)p=0;startPlay(4.999);};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(4.999,Math.floor(p+1e-4)+1);syncUI(true);};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p-1e-4)-1);syncUI(true);};
+$('reset').onclick=()=>{stopPlay();p=0;tween=null;setSliders(1.3,1.5,35);syncUI(true);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopPlay();const s=+c.dataset.s;p=s;syncUI(true);startPlay(Math.min(4.999,s+0.999));});
+$('term1').onclick=()=>{stopPlay();p=1;syncUI(true);startPlay(1.999);};
+$('term2').onclick=()=>{stopPlay();p=2;syncUI(true);startPlay(2.999);};
+function setSliderUI(){$('sMu').value=dmu;$('sSp').value=sp;$('sTi').value=tiltDeg;
+  $('vMu').textContent=(+dmu).toFixed(2);$('vSp').textContent=(+sp).toFixed(2);$('vTi').textContent=Math.round(tiltDeg)+'°';}
+function setSliders(a,b,c){dmu=a;sp=b;tiltDeg=c;setSliderUI();update();}
+function slider(id,fn){$(id).oninput=e=>{fn(+e.target.value);tween=null;setSliderUI();update();};}
+slider('sMu',v=>dmu=v);slider('sSp',v=>sp=v);slider('sTi',v=>tiltDeg=v);
+$('perf').onclick=()=>{tween={dmu:0,sp:1,ti:0};stopPlay();p=4.2;syncUI(true);};
+$('worst').onclick=()=>{tween={dmu:3,sp:2.4,ti:-70};};
+$('eqbtn').onclick=()=>{tween={dmu:dmu,sp:1,ti:0};};   // shapes equal, centers untouched
+
+let lastT=null;
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT);
+  if(playing){p=Math.min(stopAt,p+dt*0.001*0.55*speed);syncUI(false);if(p>=stopAt)stopPlay();}
+  if(tween){const k=Math.min(1,dt*0.005);
+    dmu+=(tween.dmu-dmu)*k*2;sp+=(tween.sp-sp)*k*2;tiltDeg+=(tween.ti-tiltDeg)*k*2;
+    if(Math.abs(dmu-tween.dmu)<0.01&&Math.abs(sp-tween.sp)<0.01&&Math.abs(tiltDeg-tween.ti)<0.5){
+      dmu=tween.dmu;sp=tween.sp;tiltDeg=tween.ti;tween=null;}
+    setSliderUI();update();}
+  lastT=ts;}
+addEventListener('resize',update);
+setSliderUI();syncUI(true);requestAnimationFrame(loop);
+</script><style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>
