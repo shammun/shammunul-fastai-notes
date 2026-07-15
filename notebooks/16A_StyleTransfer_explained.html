@@ -8883,7 +8883,609 @@ The random noise should gradually transform to look like the content image!</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=582c48fb">
+</div><div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cell-16a-50">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="How-learn.fit(1)-Runs-100-Optimization-Steps">How <code>learn.fit(1)</code> Runs 100 Optimization Steps<a class="anchor-link" href="#How-learn.fit(1)-Runs-100-Optimization-Steps">¶</a></h1><p>The first time I read this cell, the arithmetic didn't work:</p>
+<div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">TensorModel</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">rand_like</span><span class="p">(</span><span class="n">content_im</span><span class="p">))</span>
+<span class="n">learn</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">get_dummy_dls</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">loss_fn_mse</span><span class="p">,</span>
+                <span class="n">lr</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="n">cbs</span><span class="p">,</span> <span class="n">opt_func</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">)</span>
+<span class="n">learn</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>          <span class="c1"># ← one epoch. So... one step?</span>
+</pre></div>
+<p>One epoch, one hundred gradient steps. The <code>100</code> I passed to <code>get_dummy_dls</code> is the only place that number appears, and nothing in <code>fit</code> says "loop 100 times."</p>
+<p><strong>The one-line answer:</strong> "epoch" means <em>one pass over the dataloader</em>, and the dataloader hands out 100 items. The rest of this note is why that's true — and why the items it hands out are worthless.</p>
+<hr/>
+<h2 id="The-inversion">The inversion<a class="anchor-link" href="#The-inversion">¶</a></h2><p>Normal training: data <strong>varies</strong> each batch; model params converge over many epochs.</p>
+<p>Here:</p>
+<ul>
+<li>data is <strong>constant</strong> — always <code>(0, 0)</code>, and thrown away unread</li>
+<li>the "model param" <strong>is the image</strong></li>
+<li>each batch is just a <strong>tick of a clock</strong> telling the loop to take one more gradient step</li>
+</ul>
+<p>The dummy dataloader is a hack to reuse <code>Learner</code>'s training loop as a plain optimization loop.</p>
+<p>Equivalent knobs for the same 100 steps:</p>
+<table>
+<thead>
+<tr>
+<th>approach</th>
+<th>mechanism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get_dummy_dls(100)</code>, <code>fit(1)</code></td>
+<td>100 items ÷ batch_size 1 = 100 batches × 1 epoch ✅ <em>(what I use)</em></td>
+</tr>
+<tr>
+<td><code>get_dummy_dls(10)</code>, <code>fit(10)</code></td>
+<td>10 batches × 10 epochs = 100 steps (10 progress bars though)</td>
+</tr>
+<tr>
+<td><code>get_dummy_dls(200)</code> w/ <code>batch_size=2</code>, <code>fit(1)</code></td>
+<td>200÷2 = 100 batches, each <code>tensor([0,0])</code>, still ignored</td>
+</tr>
+</tbody>
+</table>
+<hr/>
+<h2 id="The-two-things-that-matter">The two things that matter<a class="anchor-link" href="#The-two-things-that-matter">¶</a></h2><p>They live in <strong>parallel worlds that never touch</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Thing</th>
+<th>Variable</th>
+<th>Changes across the 100 steps?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The image</strong></td>
+<td><code>model.t</code></td>
+<td><strong>YES</strong> — this is what's being optimized</td>
+</tr>
+<tr>
+<td><strong>The index 0..99</strong></td>
+<td><code>idx</code> in <code>__getitem__</code></td>
+<td>Counts up, then <strong>thrown away unread</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="The-image">The image<a class="anchor-link" href="#The-image">¶</a></h3><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">TensorModel</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">clone</span><span class="p">())</span>    <span class="c1"># ← THE IMAGE IS BORN HERE</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span>                        <span class="c1"># ← x IS IGNORED</span>
+</pre></div>
+<p><code>t.clone()</code> copies shape, dtype, device <strong>and values</strong> — an element-wise copy, not a re-initialization. The clone detaches storage so updates don't write into the original. <code>nn.Parameter</code> adds two things: <code>requires_grad=True</code>, and registration in <code>model.parameters()</code> so the optimizer finds it.</p>
+<div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="n">model</span><span class="o">.</span><span class="n">t</span><span class="p">)</span>   <span class="c1"># True</span>
+</pre></div>
+<p>Adam holds <strong>a reference to the same object</strong> as <code>model.t</code>. When Adam mutates it in place, <code>model.t</code> changes. Same memory. That's the whole trick.</p>
+<hr/>
+<h2 id="What-get_dummy_dls(100)-actually-builds">What <code>get_dummy_dls(100)</code> actually builds<a class="anchor-link" href="#What-get_dummy_dls(100)-actually-builds">¶</a></h2><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">LengthDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="n">length</span>
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span>     <span class="c1"># "how many items exist"</span>
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>   <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>            <span class="c1"># "give me item #idx"</span>
+
+<span class="k">def</span> <span class="nf">get_dummy_dls</span><span class="p">(</span><span class="n">length</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">DataLoaders</span><span class="p">(</span>
+        <span class="n">DataLoader</span><span class="p">(</span><span class="n">LengthDataset</span><span class="p">(</span><span class="n">length</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>  <span class="c1"># ← positional arg #1 → .train</span>
+        <span class="n">DataLoader</span><span class="p">(</span><span class="n">LengthDataset</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>        <span class="c1"># ← positional arg #2 → .valid</span>
+    <span class="p">)</span>
+</pre></div>
+<p>A map-style <code>Dataset</code> is <em>defined</em> as "an object with <code>__len__</code> and <code>__getitem__</code>." PyTorch never looks inside it; it only calls those two methods.</p>
+<p><strong><code>LengthDataset(100)</code> produces an object with exactly one attribute: <code>.length = 100</code>. Zero items.</strong> No list, no array, no tensor.</p>
+<p><strong><code>DataLoader(...)</code> stores a reference to it and little else.</strong> It does not load, count, or touch any data. Constructing it calls neither <code>__len__</code> nor <code>__getitem__</code>:</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">LengthDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  __init__ ran"</span><span class="p">);</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="n">length</span>
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"  __len__ called"</span><span class="p">);</span> <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span>
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  __getitem__(</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">) called"</span><span class="p">);</span> <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"--- constructing ---"</span><span class="p">)</span>
+<span class="n">dl</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">LengthDataset</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"--- construction done ---"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">dl</span><span class="p">:</span> <span class="k">pass</span>
+</pre></div>
+<pre><code>--- constructing ---
+  __init__ ran
+--- construction done ---
+  __len__ called            ← only NOW does anyone ask "how many?"
+  __getitem__(0) called
+  __getitem__(1) called
+  __getitem__(2) called
+</code></pre>
+<p><strong><code>__len__</code> and <code>__getitem__</code> fire only when I iterate</strong> — during <code>fit(1)</code>, not during <code>Learner(...)</code>.</p>
+<h3 id="So-what-IS-learn.dls.train?">So what IS <code>learn.dls.train</code>?<a class="anchor-link" href="#So-what-IS-learn.dls.train?">¶</a></h3><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="p">)</span>
+<span class="c1"># &lt;torch.utils.data.dataloader.DataLoader object at 0x7f3c1a2b4d90&gt;</span>
+</pre></div>
+<p>One object. The print shows nothing because there's nothing to show. <code>range(100)</code> is the honest analogy — also lazy, also prints <code>range(0, 100)</code> instead of a hundred numbers.</p>
+<p>Chase every pointer and I hit bottom fast:</p>
+<div class="highlight"><pre><span></span><span class="n">dl</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="n">dl</span><span class="o">.</span><span class="n">dataset</span><span class="p">))</span>          <span class="c1"># {'length': 100}        ← the entire payload</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="n">dl</span><span class="o">.</span><span class="n">sampler</span><span class="p">))</span>          <span class="c1"># {'data_source': &lt;LengthDataset ...&gt;}</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="n">dl</span><span class="o">.</span><span class="n">batch_sampler</span><span class="p">))</span>    <span class="c1"># {'sampler': ..., 'batch_size': 1, 'drop_last': False}</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">dl</span><span class="o">.</span><span class="n">sampler</span><span class="o">.</span><span class="n">data_source</span> <span class="ow">is</span> <span class="n">dl</span><span class="o">.</span><span class="n">dataset</span><span class="p">)</span>   <span class="c1"># True — same object, not a copy</span>
+</pre></div>
+<p><strong><code>{'length': 100}</code> is the whole thing.</strong> Everything the DataLoader will ever produce — 100 batches, 200 tensors, 100 <code>opt.step()</code> calls — is generated from that one-key dictionary at iteration time.</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">getsizeof</span><span class="p">(</span><span class="nb">vars</span><span class="p">(</span><span class="n">dl</span><span class="p">)))</span>          <span class="c1"># ~640 bytes — configuration only</span>
+
+<span class="n">batches</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dl</span><span class="p">)</span>                      <span class="c1"># ← the moment the 100 exist</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">batches</span><span class="p">))</span>                     <span class="c1"># 100</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">batches</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="n">batches</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>         <span class="c1"># False — 100 separate objects, freshly made</span>
+
+<span class="n">batches2</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dl</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">batches2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="n">batches</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>        <span class="c1"># False — brand new, second manufacturing run</span>
+</pre></div>
+<p>Iterate twice, get two independent sets of 100. A list can't do that; a factory can.</p>
+<h3 id="The-batch-count-isn't-stored-either">The batch count isn't stored either<a class="anchor-link" href="#The-batch-count-isn't-stored-either">¶</a></h3><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="p">))</span>    <span class="c1"># 100  ← COMPUTED on demand</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">length</span><span class="p">)</span>  <span class="c1"># AttributeError! ← no such attribute</span>
+</pre></div>
+<p><code>len(dl)</code> is derived — PyTorch computes <code>ceil(length / batch_size)</code> when asked. Same dataset, different answers:</p>
+<div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">LengthDataset</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)))</span>    <span class="c1"># 100</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">LengthDataset</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)))</span>   <span class="c1"># 10</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">LengthDataset</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">7</span><span class="p">)))</span>    <span class="c1"># 15  ← ceil(100/7)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">LengthDataset</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">drop_last</span><span class="o">=</span><span class="kc">True</span><span class="p">)))</span>  <span class="c1"># 14  ← floor</span>
+</pre></div>
+<p><strong>Mental model:</strong> <code>learn.dls.train</code> is not a bucket with 100 things in it. It's a <strong>vending machine with a note taped inside</strong> saying "I have 100 slots." The machine is empty. Press the button (<code>next()</code>) and it reads the note, calls my <code>__getitem__</code> to manufacture a <code>(0,0)</code> on the spot, wraps it in tensors, hands it out. Press 100 times, get 100 items. Press again: "empty" (<code>StopIteration</code>).</p>
+<hr/>
+<h2 id="When-dls.train-gets-assigned-%E2%80%94-all-before-fit-runs">When <code>dls.train</code> gets assigned — all before <code>fit</code> runs<a class="anchor-link" href="#When-dls.train-gets-assigned-%E2%80%94-all-before-fit-runs">¶</a></h2><p>This confused me for a long time because I kept looking inside <code>fit</code> for it. <strong><code>dls.train</code> is set before <code>fit</code> is ever called</strong> — it's already sitting there, fully built, by the time <code>one_epoch</code> reads it.</p>
+<p><code>learn.dls.train</code> is really <strong>two chained attribute lookups</strong> — <code>.dls</code> on the Learner, then <code>.train</code> on the result — and each half is assigned at a different moment:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>What gets set</th>
+<th>Which line does it</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Half 1</strong></td>
+<td><code>.train</code> on the <code>DataLoaders</code> object</td>
+<td><code>self.train, self.valid = dls[:2]</code></td>
+<td>Time 1</td>
+</tr>
+<tr>
+<td><strong>Half 2</strong></td>
+<td><code>.dls</code> on the <code>Learner</code> object</td>
+<td><code>fc.store_attr()</code> → <code>self.dls = dls</code></td>
+<td>Time 2</td>
+</tr>
+</tbody>
+</table>
+<p>Both happen while this <strong>single line</strong> runs:</p>
+<div class="highlight"><pre><span></span><span class="n">learn</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">get_dummy_dls</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">loss_fn_mse</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="n">cbs</span><span class="p">,</span> <span class="n">opt_func</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">)</span>
+</pre></div>
+<h3 id="Time-1-%E2%80%94-arguments-evaluate-first,-before-Learner.__init__-even-starts">Time 1 — arguments evaluate first, before <code>Learner.__init__</code> even starts<a class="anchor-link" href="#Time-1-%E2%80%94-arguments-evaluate-first,-before-Learner.__init__-even-starts">¶</a></h3><p>Python must evaluate every argument before it can call <code>Learner</code>. So it hits <code>get_dummy_dls(100)</code> and runs it to completion first:</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_dummy_dls</span><span class="p">(</span><span class="n">length</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">DataLoaders</span><span class="p">(</span>
+        <span class="n">DataLoader</span><span class="p">(</span><span class="n">LengthDataset</span><span class="p">(</span><span class="n">length</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>  <span class="c1"># ← positional arg #1</span>
+        <span class="n">DataLoader</span><span class="p">(</span><span class="n">LengthDataset</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>        <span class="c1"># ← positional arg #2</span>
+    <span class="p">)</span>
+</pre></div>
+<p>Innermost-first:</p>
+<ol>
+<li><strong><code>LengthDataset(100)</code></strong> → <code>self.length = length</code> — <strong>the moment the 100 comes into existence.</strong> Nothing else in the program stores it.</li>
+<li><strong><code>DataLoader(that, batch_size=1)</code></strong> → wraps it. Still no <code>__len__</code>, no <code>__getitem__</code>, no data.</li>
+<li>Same again for arg #2 → a second DataLoader, whose dataset has <code>length=1</code>.</li>
+<li><strong><code>DataLoaders(dl_a, dl_b)</code></strong> finally runs:</li>
+</ol>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">DataLoaders</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">dls</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">valid</span> <span class="o">=</span> <span class="n">dls</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>      <span class="c1"># ★★★ THIS IS THE LINE THAT ASSIGNS .train ★★★</span>
+</pre></div>
+<p><code>*dls</code> gathers both arguments into the tuple <code>(dl_a, dl_b)</code>. <code>dls[:2]</code> slices the first two. Tuple-unpacking binds:</p>
+<ul>
+<li><code>self.train</code> = <strong>arg #1</strong> — the DataLoader whose dataset has <code>length=100</code> ← <strong>my 100 lives in here</strong></li>
+<li><code>self.valid</code> = <strong>arg #2</strong> — the DataLoader whose dataset has <code>length=1</code></li>
+</ul>
+<p><strong>That's it. That's the assignment.</strong> It runs exactly once, here, and <code>.train</code> is never reassigned for the rest of the program's life.</p>
+<p>Notice what decides which one becomes <code>.train</code>: <strong>argument order, nothing else.</strong> <code>LengthDataset(length)</code> is written first in <code>get_dummy_dls</code>, so it lands in the <code>.train</code> slot, so <code>fit</code> iterates it, so I get 100 steps. Swap those two lines and <code>fit(1)</code> would take <strong>1</strong> step and validate for 100.</p>
+<div class="highlight"><pre><span></span><span class="n">dls</span> <span class="o">=</span> <span class="n">get_dummy_dls</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>          <span class="c1"># ← .train is assigned during THIS line</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">length</span><span class="p">)</span>   <span class="c1"># 100</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">dls</span><span class="o">.</span><span class="n">valid</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">length</span><span class="p">)</span>   <span class="c1"># 1</span>
+</pre></div>
+<h3 id="Time-2-%E2%80%94-now-Learner.__init__-finally-begins">Time 2 — now <code>Learner.__init__</code> finally begins<a class="anchor-link" href="#Time-2-%E2%80%94-now-Learner.__init__-finally-begins">¶</a></h3><p>Only now, with a fully-built <code>DataLoaders</code> object in hand, does Python actually call <code>Learner</code>:</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Learner</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">dls</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">loss_func</span><span class="o">=</span><span class="n">F</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">opt_func</span><span class="o">=</span><span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">):</span>
+        <span class="n">cbs</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="p">(</span><span class="n">cbs</span><span class="p">)</span>
+        <span class="n">fc</span><span class="o">.</span><span class="n">store_attr</span><span class="p">()</span>          <span class="c1"># ★★★ THIS ASSIGNS self.dls ★★★</span>
+</pre></div>
+<p><code>fc.store_attr()</code> is a fastcore helper — it inspects the signature and does, in effect, <code>self.model = model; self.dls = dls; self.lr = lr; ...</code>. So <code>self.dls</code> now points at the object from Time 1, which <strong>already has <code>.train</code> set.</strong></p>
+<div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">dls</span> <span class="ow">is</span> <span class="n">dls</span><span class="p">)</span>                  <span class="c1"># True — same object, no copy</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">length</span><span class="p">)</span>    <span class="c1"># 100  ← resolvable already, fit hasn't run</span>
+</pre></div>
+<h3 id="Time-3-%E2%80%94-learn.fit(1)-%E2%80%94-a-lookup,-not-an-assignment">Time 3 — <code>learn.fit(1)</code> — a lookup, not an assignment<a class="anchor-link" href="#Time-3-%E2%80%94-learn.fit(1)-%E2%80%94-a-lookup,-not-an-assignment">¶</a></h3><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">one_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">train</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">dl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span> <span class="k">if</span> <span class="n">train</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">valid</span>   <span class="c1"># ← just a LOOKUP</span>
+</pre></div>
+<p><code>fit(1)</code> calls <code>one_epoch(True)</code>, so the ternary picks <code>self.dls.train</code>. <strong>This line creates nothing.</strong> It reads the object Time 1 put there, and <code>self.dl</code> becomes a <em>third name</em> for it — no copy, no new data.</p>
+<h3 id="The-three-times,-in-execution-order">The three times, in execution order<a class="anchor-link" href="#The-three-times,-in-execution-order">¶</a></h3><pre><code>TIME 1 — `learn = Learner(model, get_dummy_dls(100), ...)` starts evaluating its args
+  └─ get_dummy_dls(100) runs
+      ├─ LengthDataset(100)   → .length = 100          ← the 100 is born
+      ├─ DataLoader(...)      → wraps it, stores a reference
+      ├─ LengthDataset(1) + DataLoader(...)  → the valid one
+      └─ DataLoaders(dl_a, dl_b)
+          └─ self.train, self.valid = dls[:2]          ★ dls.train ASSIGNED HERE ★
+
+TIME 2 — Learner.__init__ now runs, receiving that object
+  └─ fc.store_attr()  →  self.dls = &lt;DataLoaders&gt;      ★ learn.dls ASSIGNED HERE ★
+
+TIME 3 — learn.fit(1)
+  └─ one_epoch(True)
+      ├─ self.dl = self.dls.train                       ← lookup only, assigns nothing new
+      └─ for self.iter, self.batch in enumerate(self.dl):   ← 100 pulls
+</code></pre>
+<p>Times 1 and 2 both happen when I run the <code>learn = Learner(...)</code> cell. Time 3 happens when I run <code>learn.fit(1)</code>. <strong>Nothing about "100" is decided at Time 3</strong> — it was fixed at Time 1 and sat there waiting.</p>
+<p>Watch the order for yourself:</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">LengthDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[TIME 1a] LengthDataset.__init__ → self.length = </span><span class="si">{</span><span class="n">length</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="n">length</span>
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>  <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span>
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span> <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+<span class="k">class</span> <span class="nc">DataLoaders</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">dls</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">valid</span> <span class="o">=</span> <span class="n">dls</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[TIME 1b] DataLoaders.__init__  → .train = DataLoader(length=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">length</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"[TIME 1b]                       → .valid = DataLoader(length=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">valid</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">length</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">"&gt;&gt;&gt; evaluating get_dummy_dls(100) ..."</span><span class="p">)</span>
+<span class="n">dls</span> <span class="o">=</span> <span class="n">get_dummy_dls</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"&gt;&gt;&gt; done — .train is already assigned. No __len__ or __getitem__ ran yet."</span><span class="p">)</span>
+</pre></div>
+<pre><code>&gt;&gt;&gt; evaluating get_dummy_dls(100) ...
+[TIME 1a] LengthDataset.__init__ → self.length = 100
+[TIME 1a] LengthDataset.__init__ → self.length = 1
+[TIME 1b] DataLoaders.__init__  → .train = DataLoader(length=100)
+[TIME 1b]                       → .valid = DataLoader(length=1)
+&gt;&gt;&gt; done — .train is already assigned. No __len__ or __getitem__ ran yet.
+</code></pre>
+<p><strong>All construction finishes before any iteration begins</strong> — and <code>.train</code> was set by <code>self.train, self.valid = dls[:2]</code>, one line, one time.</p>
+<h3 id="One-object,-three-names">One object, three names<a class="anchor-link" href="#One-object,-three-names">¶</a></h3><p>After Time 3, <code>learn.dl</code>, <code>learn.dls.train</code>, and the local <code>dl_a</code> inside <code>get_dummy_dls</code> (now dead) are all <strong>the same DataLoader at the same memory address</strong>:</p>
+<div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">dl</span> <span class="ow">is</span> <span class="n">learn</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="p">)</span>          <span class="c1"># True</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span> <span class="ow">is</span> <span class="n">learn</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">valid</span><span class="p">)</span>   <span class="c1"># False — two separate machines</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">length</span><span class="p">,</span> <span class="n">learn</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">valid</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">length</span><span class="p">)</span>   <span class="c1"># 100 1</span>
+</pre></div>
+<p><code>fit</code> presses the first machine's button 100 times (<code>one_epoch(True)</code>), then the second's once (<code>one_epoch(False)</code>).</p>
+<hr/>
+<h2 id="Why-the-for-loop-runs-100-times">Why the <code>for</code> loop runs 100 times<a class="anchor-link" href="#Why-the-for-loop-runs-100-times">¶</a></h2><p>The loop line contains no number:</p>
+<div class="highlight"><pre><span></span><span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dl</span><span class="p">):</span>    <span class="c1"># ← 100 times. But no "100" here.</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">one_batch</span><span class="p">()</span>
+</pre></div>
+<p>Desugared, a <code>for</code> loop is a <code>while True</code>:</p>
+<div class="highlight"><pre><span></span><span class="n">_it</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dl</span><span class="p">))</span>     <span class="c1"># ① ONCE, before the first iteration</span>
+<span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">iter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">_it</span><span class="p">)</span>   <span class="c1"># ② EVERY iteration — "give me one more"</span>
+    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>                   <span class="c1"># ③ the iterator saying "I'm empty"</span>
+        <span class="k">break</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">one_batch</span><span class="p">()</span>
+</pre></div>
+<p><strong>The loop has no counter.</strong> It asks <code>next()</code> forever and stops only when the iterator <em>refuses</em>. The trip count is decided entirely by <strong>when PyTorch chooses to raise <code>StopIteration</code></strong> — which it does on the 101st ask, because <code>len(my dataset)</code> said 100.</p>
+<h3 id="The-chain-of-ignorance">The chain of ignorance<a class="anchor-link" href="#The-chain-of-ignorance">¶</a></h3><p>This is what finally made it click. Ask each layer: <em>do you know it's 100?</em></p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Knows "100"?</th>
+<th>What it actually knows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>my <code>for</code> loop</td>
+<td>❌ No</td>
+<td>"Ask <code>next()</code> until someone raises <code>StopIteration</code>."</td>
+</tr>
+<tr>
+<td>PyTorch's dataloader iterator</td>
+<td>❌ No</td>
+<td>"Get an index, fetch it, collate it, hand it back."</td>
+</tr>
+<tr>
+<td>PyTorch's batch sampler</td>
+<td>❌ No</td>
+<td>"Group indices <code>batch_size</code> at a time."</td>
+</tr>
+<tr>
+<td>PyTorch's sequential sampler</td>
+<td>❌ No — it <strong>asks</strong></td>
+<td>"Call <code>len(my dataset)</code> and build a <code>range</code> that long."</td>
+</tr>
+<tr>
+<td><strong>my <code>LengthDataset</code></strong></td>
+<td>✅ <strong>YES</strong></td>
+<td><code>self.length = 100</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Four out of five are ignorant.</strong> The only code in the whole stack that knows the answer is <em>mine</em>. There is no line anywhere saying "loop 100 times" — only a line saying "ask how many," and a line saying "keep asking until refused."</p>
+<p>Poke the one integer and watch every layer follow:</p>
+<div class="highlight"><pre><span></span><span class="n">dls</span> <span class="o">=</span> <span class="n">get_dummy_dls</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="p">))</span>     <span class="c1"># 100</span>
+<span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="mi">7</span>         <span class="c1"># ← poke it</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="p">))</span>     <span class="c1"># 7    ← the loop count changed!</span>
+<span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="p">))</span>     <span class="c1"># 3</span>
+</pre></div>
+<p>Nothing was rebuilt. <code>len()</code> is asked fresh at every <code>iter()</code>, so one integer controls everything.</p>
+<h3 id="The-direction-of-flow">The direction of flow<a class="anchor-link" href="#The-direction-of-flow">¶</a></h3><p>Drawing this as data "flowing down" into the loop is exactly backwards — that's why the chain is so hard to follow. <strong>The flow runs upward:</strong> my <code>for</code> loop calls down, and answers come back.</p>
+<pre><code>   MY for loop
+      │  "give me one batch"
+      ▼
+   PyTorch's dataloader iterator     "sure, hold on"
+      │  "give me one index"
+      ▼
+   PyTorch's batch sampler           "sure, hold on"
+      │  "give me one index"
+      ▼
+   PyTorch's sequential sampler      "hmm, how many are there?"
+      │  "how many items do you have?"
+      ▼
+   MY LengthDataset.__len__          "100."      ← ★ THE ONLY ONE WHO KNOWS ★
+</code></pre>
+<p>Then answers come back down, each layer doing its small job:</p>
+<pre><code>   __len__          ── "100" ──►  sampler builds range(100), hands over the first: 0
+   sampler          ── "0" ────►  batch sampler wraps it: [0]  (full at batch_size=1)
+   batch sampler    ── "[0]" ──►  dataloader iterator:
+                                    calls MY __getitem__(0) → (0,0)
+                                    collates it → [tensor([0]), tensor([0])]
+   dataloader iter  ── batch ──►  MY for loop → body runs → opt.step()   ★ #1 ★
+</code></pre>
+<p><strong>On iterations 2–100 the chain is shorter.</strong> <code>__len__</code> is called <strong>exactly once</strong>, on the first <code>next()</code>. After that <code>range(100)</code> exists inside PyTorch and the sampler just walks it — <code>1</code>, <code>2</code>, <code>3</code>... That's why tracing <code>__len__</code> felt like a dead end: it fires once at the start, then the top of the chain goes silent for 99 iterations.</p>
+<p><code>__getitem__</code> is different — it <em>is</em> called every iteration. <strong>Two different questions to the same object:</strong> <code>__len__</code> = "how many?" asked once; <code>__getitem__</code> = "give me #N" asked 100 times.</p>
+<hr/>
+<h2 id="Which-line-calls-__getitem__?">Which line calls <code>__getitem__</code>?<a class="anchor-link" href="#Which-line-calls-__getitem__?">¶</a></h2><p>I couldn't find the caller by grepping, because <strong>the call is hidden behind square brackets.</strong></p>
+<p><code>obj[k]</code> is Python syntax that calls <code>type(obj).__getitem__(obj, k)</code>. So these are the same thing:</p>
+<div class="highlight"><pre><span></span><span class="n">ds</span> <span class="o">=</span> <span class="n">LengthDataset</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="mi">7</span><span class="p">])</span>                <span class="c1"># (0, 0)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="mi">7</span><span class="p">))</span>    <span class="c1"># (0, 0)   ← identical</span>
+</pre></div>
+<p><strong>Any line with <code>dataset[...]</code> is a call to my <code>__getitem__</code>.</strong> PyTorch's fetcher has exactly one, and it does the equivalent of:</p>
+<div class="highlight"><pre><span></span><span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="n">dataset</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">index_list</span><span class="p">]</span>     <span class="c1"># index_list is e.g. [0]</span>
+<span class="c1"># → dataset[0] → MY __getitem__(0) → returns (0,0)</span>
+<span class="c1"># → data == [(0, 0)]</span>
+</pre></div>
+<p>One index in → one call → one sample out. With <code>batch_size=4</code> the list would be <code>[0,1,2,3]</code> → four calls → <code>data == [(0,0), (0,0), (0,0), (0,0)]</code>.</p>
+<p>Make PyTorch confess who's calling:</p>
+<div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">traceback</span>
+<span class="k">class</span> <span class="nc">LengthDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="n">length</span>
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span>
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="n">traceback</span><span class="o">.</span><span class="n">print_stack</span><span class="p">()</span>
+        <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+<span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">LengthDataset</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)))</span>
+</pre></div>
+<pre><code>  File ".../torch/utils/data/_utils/fetch.py", line 51, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]   ← ★ THE CALLER ★
+  File "&lt;stdin&gt;", line 6, in __getitem__
+</code></pre>
+<h3 id="And-this-is-where-the-index-dies">And this is where the index dies<a class="anchor-link" href="#And-this-is-where-the-index-dies">¶</a></h3><div class="highlight"><pre><span></span><span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>        <span class="c1"># ← idx IS COMPLETELY IGNORED</span>
+</pre></div>
+<p><code>idx</code> came in as <code>0</code> (or <code>7</code>, or <code>99</code>). The body never mentions it. It returns the constant <code>(0, 0)</code>. <strong>The index is destroyed here, having done its only job: existing 100 times.</strong></p>
+<p>Watch every value arrive and get discarded:</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">LengthDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span> <span class="o">=</span> <span class="n">length</span>
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">length</span>
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  __getitem__(</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">) → returning (0,0), idx discarded"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span>
+
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">LengthDataset</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"iter </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: batch = </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</pre></div>
+<pre><code>  __getitem__(0) → returning (0,0), idx discarded
+iter 0: batch = [tensor([0]), tensor([0])]
+  __getitem__(1) → returning (0,0), idx discarded
+iter 1: batch = [tensor([0]), tensor([0])]
+  __getitem__(2) → returning (0,0), idx discarded
+iter 2: batch = [tensor([0]), tensor([0])]
+  __getitem__(3) → returning (0,0), idx discarded
+iter 3: batch = [tensor([0]), tensor([0])]
+</code></pre>
+<p><strong>Four calls, four identical batches.</strong> Change <code>4</code> to <code>100</code> and I get 100. The index varies; the output never does.</p>
+<hr/>
+<h2 id="(0,-0)-%E2%86%92-%5Btensor(%5B0%5D),-tensor(%5B0%5D)%5D"><code>(0, 0)</code> → <code>[tensor([0]), tensor([0])]</code><a class="anchor-link" href="#(0,-0)-%E2%86%92-%5Btensor(%5B0%5D),-tensor(%5B0%5D)%5D">¶</a></h2><p>My <code>__getitem__</code> returns a plain tuple of ints. What reaches the loop is a list of tensors. The step in between is <strong>collation</strong>, which PyTorch does automatically because I passed a <code>batch_size</code>.</p>
+<p>Collation is a <strong>transpose-and-stack</strong>. It flips a <em>list of samples</em> into a <em>list of batched fields</em>:</p>
+<pre><code>    BEFORE (list of samples)        AFTER (list of stacked fields)
+    sample0: (x0, y0)               field0: stack(x0, x1, x2)
+    sample1: (x1, y1)      ──►      field1: stack(y0, y1, y2)
+    sample2: (x2, y2)
+</code></pre>
+<p>For me, with <code>batch_size=1</code>, PyTorch collates <code>[(0, 0)]</code> — a list of one 2-tuple:</p>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">torch.utils.data._utils.collate</span> <span class="kn">import</span> <span class="n">default_collate</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">default_collate</span><span class="p">([(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">)]))</span>              <span class="c1"># [tensor([0]), tensor([0])]         shape (1,)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">default_collate</span><span class="p">([(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">)]))</span>        <span class="c1"># [tensor([0,0]), tensor([0,0])]     shape (2,)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">default_collate</span><span class="p">([(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">)]))</span>  <span class="c1"># [tensor([0,0,0]), tensor([0,0,0])] shape (3,)</span>
+</pre></div>
+<p>Three facts explain the exact shape:</p>
+<ul>
+<li><strong>Two elements</strong> because my <code>__getitem__</code> returns a <strong>2-tuple</strong>. Return <code>0, 0, 0</code> and I'd get three tensors. The transpose preserves position count.</li>
+<li><strong>Tensors not ints</strong> because collation converts each field into a tensor.</li>
+<li><strong><code>tensor([0])</code> not <code>tensor(0)</code></strong> because <code>batch_size=1</code> means collation receives a list of <strong>one</strong> sample → a <strong>1-element batch dimension</strong>. <strong>The number of zeros inside the brackets IS <code>batch_size</code>.</strong></li>
+</ul>
+<p>For my dummy dataset this is pure ceremony — a useless <code>(0,0)</code> becomes a useless <code>[tensor([0]), tensor([0])]</code> that nobody reads. It runs because the DataLoader is generic and doesn't know my dataset is fake. It performs the same transpose-and-stack it would on <code>[(img0,lbl0), (img1,lbl1)]</code>. Costs microseconds, and it means the batch has the <em>shape</em> the training loop expects (<code>batch[0]</code>, <code>batch[1]</code>), so <code>one_batch()</code> runs unmodified.</p>
+<hr/>
+<h2 id="From-batch-to-self.model(self.batch%5B0%5D)">From batch to <code>self.model(self.batch[0])</code><a class="anchor-link" href="#From-batch-to-self.model(self.batch%5B0%5D)">¶</a></h2><h3 id="How-self.batch-gets-its-value">How <code>self.batch</code> gets its value<a class="anchor-link" href="#How-self.batch-gets-its-value">¶</a></h3><div class="highlight"><pre><span></span><span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dl</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">one_batch</span><span class="p">()</span>
+</pre></div>
+<p>Loop variables are assigned every iteration — that's what a <code>for</code> loop <em>is</em>. Unusually, these aren't locals but <strong>attributes</strong>. Python allows <code>for self.batch in ...</code>, meaning "each time you pull a value, do <code>self.batch = &lt;value&gt;</code>." So invisibly:</p>
+<div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">iter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="n">tensor</span><span class="p">([</span><span class="mi">0</span><span class="p">]),</span> <span class="n">tensor</span><span class="p">([</span><span class="mi">0</span><span class="p">])])</span>     <span class="c1"># iteration 0</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">one_batch</span><span class="p">()</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">iter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="n">tensor</span><span class="p">([</span><span class="mi">0</span><span class="p">]),</span> <span class="n">tensor</span><span class="p">([</span><span class="mi">0</span><span class="p">])])</span>     <span class="c1"># iteration 1</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">one_batch</span><span class="p">()</span>
+</pre></div>
+<p><code>enumerate</code> produces <code>(counter, item)</code>; tuple-unpacking splits it. <code>self.batch</code> receives <strong>the exact list PyTorch's collation returned</strong> — same object, no copy.</p>
+<p>Then <code>self.one_batch()</code> runs with <strong>no arguments</strong>. How does it see the data? Through <code>self</code>:</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">one_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">predict</span><span class="p">()</span>      <span class="c1"># reads self.batch,  writes self.preds</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">get_loss</span><span class="p">()</span>     <span class="c1"># reads self.preds,  writes self.loss</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>     <span class="c1"># reads self.loss</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>         <span class="c1"># reads self.opt</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+</pre></div>
+<p>miniai passes state via attributes, not parameters. This is <em>why</em> callbacks can hook in — they get the <code>learn</code> object and can read/modify <code>learn.batch</code>, <code>learn.preds</code>. <code>DeviceCB</code> does exactly that: it replaces <code>learn.batch</code> with a GPU copy before <code>predict</code> runs.</p>
+<h3 id="What-self.batch%5B0%5D-picks-out">What <code>self.batch[0]</code> picks out<a class="anchor-link" href="#What-self.batch%5B0%5D-picks-out">¶</a></h3><p><code>self.batch</code> is a list of two tensors. <code>[0]</code> is plain list indexing → <code>tensor([0])</code>.</p>
+<p>The convention runs back to my <code>__getitem__</code>:</p>
+<pre><code>__getitem__ returned   (0,   0)
+                        ↑     ↑
+                        x     y      ← position 0 is x, position 1 is y. MY choice.
+collation transposed → field0  field1
+self.batch =          [tensor([0]), tensor([0])]
+self.batch[0] ─────────┘            │
+self.batch[1] ──────────────────────┘
+</code></pre>
+<p><code>one_batch</code> <strong>assumes</strong> position 0 is input, position 1 is target. Nothing enforces it — it's a handshake. If my <code>__getitem__</code> returned <code>(y, x)</code>, everything would silently break.</p>
+<p><em>(Real miniai often writes `self.preds = self.model(</em>self.batch[:-1])<code>— "everything but the last element is inputs, splatted." With a 2-element batch that's identical; the</code>[:-1]` form just supports multi-input datasets.)*</p>
+<h3 id="What-self.model(...)-does">What <code>self.model(...)</code> does<a class="anchor-link" href="#What-self.model(...)-does">¶</a></h3><p><code>obj(x)</code> is syntax sugar for <code>type(obj).__call__(obj, x)</code> — exactly like <code>[...]</code> was for <code>__getitem__</code>. <code>nn.Module</code> defines <code>__call__</code>, which runs any forward hooks and then calls <strong>my</strong> <code>forward</code>.</p>
+<p><strong>Why go through <code>__call__</code> instead of <code>forward</code> directly?</strong> Because <code>__call__</code> does the hook bookkeeping. This matters <em>enormously</em> for style transfer: grabbing intermediate VGG activations works by registering a forward hook, and hooks fire only if the module is <strong>called</strong>. Hence: never <code>model.forward(x)</code>, always <code>model(x)</code>.</p>
+<h3 id="The-moment-the-input-dies">The moment the input dies<a class="anchor-link" href="#The-moment-the-input-dies">¶</a></h3><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span>          <span class="c1"># ← x IS IGNORED</span>
+</pre></div>
+<p><code>x</code> is bound to <code>tensor([0])</code>. The body never mentions it. It returns <code>self.t</code>.</p>
+<p>That <code>tensor([0])</code> was built by collation, carried through PyTorch, bound to <code>self.batch</code>, sliced with <code>[0]</code>, passed as <code>x</code> — <strong>and dropped on the floor, unread.</strong></p>
+<div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span> <span class="ow">is</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">t</span><span class="p">)</span>   <span class="c1"># True — every single iteration</span>
+</pre></div>
+<p><code>forward</code> is a <strong>constant function</strong> that happens to return an <code>nn.Parameter</code>, so autograd can differentiate through it and Adam can update it. That is the entire trick of this notebook.</p>
+<hr/>
+<h2 id="One-full-iteration,-start-to-finish">One full iteration, start to finish<a class="anchor-link" href="#One-full-iteration,-start-to-finish">¶</a></h2><pre><code> 1. `for batch in self.dl:`  →  Python asks PyTorch for an iterator
+ 2. Python asks it for the first item
+ 3.   PyTorch's sampler asks: len(my dataset)
+ 4.     MY __len__ returns 100                      ★ THE 100, asked ONCE ★
+ 5.   PyTorch builds range(100) internally, takes the first index: 0
+ 6.   PyTorch groups it into [0]                    (batch_size=1)
+ 7.   PyTorch calls MY __getitem__(0) → returns (0, 0)   (index ignored!)
+ 8.   PyTorch collates [(0,0)] → [tensor([0]), tensor([0])]
+ 9. `for batch in self.dl:`  →  batch = [tensor([0]), tensor([0])]
+10. LOOP BODY:
+      predict()   → self.preds = model(batch[0]) → forward ignores x → preds IS model.t
+      get_loss()  → self.loss = loss_fn_mse(self.preds)  → e.g. 0.83
+      backward()  → autograd → model.t.grad filled, shape (3,256,256)
+      step()      → Adam mutates model.t IN PLACE      ★ THE IMAGE CHANGED — STEP #1 ★
+      zero_grad() → model.t.grad cleared
+</code></pre>
+<p><strong>Iterations 2–100:</strong> repeat from line 2 — but <strong>lines 3–5 are skipped.</strong> PyTorch's <code>range(100)</code> already exists; it just takes the next index (<code>1</code>, then <code>2</code>, ...) and calls <code>__getitem__</code> with it. The batch is byte-identical every time. What's different is <code>model.t</code>, mutated by the previous step.</p>
+<p><strong>Iteration 101:</strong> PyTorch's <code>range(100)</code> is exhausted → it raises <code>StopIteration</code> → my <code>for</code> loop breaks.</p>
+<p><strong>Total: <code>opt.step()</code> called exactly 100 times. <code>model.t</code> mutated exactly 100 times.</strong></p>
+<h3 id="The-run-as-a-flat-list-of-assignments">The run as a flat list of assignments<a class="anchor-link" href="#The-run-as-a-flat-list-of-assignments">¶</a></h3><pre><code>model.t         = random noise (3,256,256)   [TensorModel.__init__]
+dataset.length  = 100                        [LengthDataset.__init__]
+
+--- iteration 0 ---
+idx             = 0        [PyTorch's sampler produces it]
+dataset[0]      = (0,0)    [MY __getitem__ ignores idx  ← 0..99 DIES HERE]
+collated        = [tensor([0]), tensor([0])]   [PyTorch]
+learn.batch     = [tensor([0]), tensor([0])]
+learn.preds     = model.t  [MY forward ignores x        ← IMAGE APPEARS HERE]
+learn.loss      = 0.83
+model.t.grad    = (3,256,256)
+model.t         = MUTATED  ← opt.step()
+
+--- iteration 1 ---     idx=1 ... everything identical except model.t = MUTATED AGAIN
+--- ...
+--- iteration 99 ---    idx=99 ... model.t = MUTATED (100th time)
+--- StopIteration → loop ends
+</code></pre>
+<p><strong>The index never reaches the image. The image never sees the index.</strong> Two parallel worlds; the index's only job is to make the body run 100 times.</p>
+<hr/>
+<h2 id="Sanity-checks">Sanity checks<a class="anchor-link" href="#Sanity-checks">¶</a></h2><div class="highlight"><pre><span></span><span class="n">dls</span> <span class="o">=</span> <span class="n">get_dummy_dls</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="p">))</span>                    <span class="c1"># 100</span>
+<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="p">):</span> <span class="k">pass</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>                             <span class="c1"># 100</span>
+</pre></div>
+<p>All 100 batches are identical:</p>
+<div class="highlight"><pre><span></span><span class="n">batches</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">LengthDataset</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">batches</span><span class="p">))</span>                                       <span class="c1"># 100</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">batches</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">batches</span><span class="p">[</span><span class="mi">57</span><span class="p">],</span> <span class="n">batches</span><span class="p">[</span><span class="mi">99</span><span class="p">])</span>               <span class="c1"># all [tensor([0]), tensor([0])]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">batches</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">batches</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>           <span class="c1"># torch.Size([1]) torch.int64</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">all</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">(</span><span class="n">batches</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">batches</span><span class="p">))</span>    <span class="c1"># True</span>
+</pre></div>
+<p>The image actually moves:</p>
+<div class="highlight"><pre><span></span><span class="n">before</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+<span class="n">learn</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">((</span><span class="n">model</span><span class="o">.</span><span class="n">t</span> <span class="o">-</span> <span class="n">before</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>   <span class="c1"># nonzero — pixels moved</span>
+</pre></div>
+<p>Count real <code>opt.step()</code> calls:</p>
+<div class="highlight"><pre><span></span><span class="n">n</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">orig</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="o">.</span><span class="n">step</span>
+<span class="k">def</span> <span class="nf">counting_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">k</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">n</span><span class="p">;</span> <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">orig</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">k</span><span class="p">)</span>
+<span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="n">counting_step</span>
+<span class="n">learn</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>          <span class="c1"># 100</span>
+<span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="o">.</span><span class="n">step</span> <span class="o">=</span> <span class="n">orig</span>
+</pre></div>
+<p>Watch the disconnect live — this printout is the whole story:</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">TensorModel</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">();</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">clone</span><span class="p">())</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  forward got x=</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2"> — discarding it"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  returning self.t, mean </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span>
+</pre></div>
+<pre><code>  forward got x=tensor([0]) — discarding it
+  returning self.t, mean 0.4998
+  forward got x=tensor([0]) — discarding it
+  returning self.t, mean 0.4991      ← changed! opt.step() ran
+  forward got x=tensor([0]) — discarding it
+  returning self.t, mean 0.4984      ← changed again
+</code></pre>
+<p><strong><code>x</code> identical every time. <code>self.t</code> different every time.</strong></p>
+<hr/>
+<h2 id="Where-the-callbacks-fit">Where the callbacks fit<a class="anchor-link" href="#Where-the-callbacks-fit">¶</a></h2><ul>
+<li><strong><code>DeviceCB</code></strong> — moves the dummy <code>(0,0)</code> batch to GPU. Pointless but harmless; the loop is generic.</li>
+<li><strong><code>ImageOptCB</code></strong> — overrides <code>predict</code>/<code>get_loss</code> so the loss is called on <code>self.preds</code> alone rather than <code>(preds, targets)</code>, since there's no real <code>y</code>.</li>
+<li><strong><code>ProgressCB</code></strong> — reads <code>len(self.dl)</code> → sizes the bar to 100.</li>
+<li><strong><code>MetricsCB</code></strong> — logs loss per epoch, so one line, since it's one epoch.</li>
+</ul>
+<hr/>
+<h2 id="The-summary-I'd-give-myself">The summary I'd give myself<a class="anchor-link" href="#The-summary-I'd-give-myself">¶</a></h2><p><strong><code>learn.dls.train</code></strong> is a single <code>DataLoader</code> object holding a reference to my <code>LengthDataset</code> — whose entire contents are <code>{'length': 100}</code> — plus <code>batch_size=1</code> and some samplers. No tensors. No batches. Not even the number 100 as its own attribute.</p>
+<p><strong>It's a factory, not a container.</strong> When <code>for batch in self.dl:</code> iterates it, PyTorch finally asks <code>len(my dataset)</code>, gets <code>100</code>, and builds <code>range(100)</code> internally. Then, one per <code>next()</code>, it takes an index, calls my <code>__getitem__</code> with it (which ignores it and returns <code>(0,0)</code>), collates that into <code>[tensor([0]), tensor([0])]</code>, and hands it to my loop. The 101st <code>next()</code> finds the range exhausted and raises <code>StopIteration</code>.</p>
+<p><strong>Those 100 <code>next()</code> calls are 100 clock ticks</strong>, each driving one <code>opt.step()</code> on <code>model.t</code> — the image, which lives somewhere else entirely and never touches the DataLoader at all.</p>
+<p><strong>The trip count lives in exactly one integer.</strong> Change <code>dataset.length</code> and every layer above it silently follows, because <code>len()</code> is asked fresh at every <code>iter()</code>. That's not a bug; that's the architecture.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=cell-16a-51">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># 🎮 INTERACTIVE -- run this cell. It loads ./interactive_viz/fit1_100_steps_workflow.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># How learn.fit(1) drives 100 optimization steps: the dummy DataLoader as a</span>
+<span class="c1"># 100-tick clock, the index that is born then discarded, and the image (model.t)</span>
+<span class="c1"># mutated in place -- two parallel worlds that never touch. Step through the</span>
+<span class="c1"># construction (Times 1-3), then watch the 100-step loop run tick by tick.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/fit1_100_steps_workflow.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"700px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/fit1_100_steps_workflow.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:700px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=582c48fb">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>

@@ -1,0 +1,487 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How fit(1) Runs 100 Optimization Steps</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:940px;line-height:1.45;}
+  .sub b.i{color:var(--in);} .sub b.o{color:var(--out);} .sub b.a{color:var(--ac);}
+
+  /* top-level tabs */
+  .tabbar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;}
+  .tab{font-family:inherit;font-weight:700;font-size:12.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:11px;padding:7px 16px;cursor:pointer;transition:all .15s;}
+  .tab:hover{border-color:var(--ac);color:var(--ac);}
+  .tab.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .pane{display:none;} .pane.on{display:block;}
+
+  .stagebar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 10px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:5px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .iter{font-family:monospace;font-weight:700;color:var(--out);}
+
+  .wrap{max-width:1000px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);padding:6px 8px 4px;}
+  svg text{font-family:"Segoe UI",system-ui,sans-serif;}
+  .mono{font-family:"SF Mono",Consolas,monospace;}
+
+  .story{max-width:920px;margin:7px auto 0;background:#f4f7fd;border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.5;color:var(--ink);min-height:56px;}
+  .story b.i{color:var(--in);} .story b.o{color:var(--out);} .story b.a{color:var(--ac);} .story b.n{color:var(--neg);}
+
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.62;max-width:920px;margin:8px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;} .code .num{color:#f6b86e;} .code .fn{color:#7ce0d3;} .code .kw{color:#c792ea;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin:6px 0 2px;}
+  .legend b.i{color:var(--in);} .legend b.o{color:var(--out);} .legend b.a{color:var(--ac);} .legend b.n{color:var(--neg);}
+  .dim{opacity:.16;transition:opacity .3s;} .lit{opacity:1;transition:opacity .3s;}
+  .flowdash{stroke-dasharray:6 5;animation:dash 1s linear infinite;}
+  @keyframes dash{to{stroke-dashoffset:-11;}}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+  .pulse{animation:pulse .5s ease;}
+</style></head><body>
+
+<h1>How <span class="mono">learn.fit(1)</span> runs 100 optimization steps</h1>
+<p class="sub">One epoch, one hundred gradient steps — because an <b>epoch</b> is <i>one pass over the dataloader</i>, and the dataloader promises 100 items. The <b class="i">index 0…99</b> and the <b class="o">image model.t</b> live in parallel worlds that never touch: the index exists only to make the loop tick, and dies unread inside <span class="mono">__getitem__</span>. Explore the three tabs below.</p>
+
+<div class="tabbar">
+  <button class="tab on" data-p="p1">① The Setup — a factory, not a container</button>
+  <button class="tab" data-p="p2">② One Pull — anatomy of next()</button>
+  <button class="tab" data-p="p3">③ The 100 Ticks — batch constant, image changes</button>
+</div>
+
+<!-- ============================================================ TAB 1 -->
+<div class="pane on" id="p1">
+<div class="stagebar">
+  <button class="chip on" data-s="0">① LengthDataset(100)</button>
+  <button class="chip" data-s="1">② DataLoader wraps it</button>
+  <button class="chip" data-s="2">③ DataLoaders → .train</button>
+  <button class="chip" data-s="3">④ Learner stores .dls</button>
+  <button class="chip" data-s="4">⑤ Nothing has run!</button>
+</div>
+<div class="wrap">
+<svg viewBox="0 0 1000 300" style="width:100%;height:auto;display:block" id="svg1">
+  <defs><marker id="a1" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 z" fill="#8a97b3"/></marker></defs>
+
+  <!-- LengthDataset -->
+  <g id="g1ds">
+    <rect x="712" y="96" width="252" height="110" rx="11" fill="#fff7ed" stroke="#f6921e" stroke-width="2.5"/>
+    <text x="838" y="118" text-anchor="middle" font-size="13" font-weight="700" fill="#f6921e">LengthDataset</text>
+    <text x="838" y="140" text-anchor="middle" font-size="13" class="mono" font-weight="700" fill="#25324a">{'length': 100}</text>
+    <text x="838" y="160" text-anchor="middle" font-size="10.5" fill="#5a6b86">the ENTIRE payload — zero items stored</text>
+    <text x="838" y="180" text-anchor="middle" font-size="10.5" class="mono" fill="#5a6b86">__len__ → self.length</text>
+    <text x="838" y="195" text-anchor="middle" font-size="10.5" class="mono" fill="#5a6b86">__getitem__(idx) → (0, 0)</text>
+  </g>
+
+  <!-- DataLoader -->
+  <g id="g1dl">
+    <rect x="452" y="82" width="220" height="140" rx="11" fill="#fff" stroke="#7b5cd6" stroke-width="2.5"/>
+    <text x="562" y="104" text-anchor="middle" font-size="13" font-weight="700" fill="#7b5cd6">DataLoader</text>
+    <text x="562" y="126" text-anchor="middle" font-size="11" class="mono" fill="#25324a">.dataset ──────▶</text>
+    <text x="562" y="146" text-anchor="middle" font-size="11" class="mono" fill="#25324a">.batch_size = 1</text>
+    <text x="562" y="166" text-anchor="middle" font-size="11" class="mono" fill="#25324a">.sampler, .batch_sampler</text>
+    <text x="562" y="192" text-anchor="middle" font-size="10.5" fill="#5a6b86">a vending machine with a note inside:</text>
+    <text x="562" y="207" text-anchor="middle" font-size="10.5" font-weight="700" fill="#7b5cd6">“I have 100 slots.” The machine is EMPTY.</text>
+    <path d="M672,120 h34" stroke="#8a97b3" stroke-width="2" marker-end="url(#a1)"/>
+  </g>
+
+  <!-- DataLoaders -->
+  <g id="g1dls">
+    <rect x="222" y="82" width="192" height="140" rx="11" fill="#fff" stroke="#16a3a3" stroke-width="2.5"/>
+    <text x="318" y="104" text-anchor="middle" font-size="13" font-weight="700" fill="#16a3a3">DataLoaders</text>
+    <text x="318" y="130" text-anchor="middle" font-size="11.5" class="mono" font-weight="700" fill="#25324a">.train ──────▶</text>
+    <text x="318" y="152" text-anchor="middle" font-size="11" class="mono" fill="#5a6b86">.valid → DataLoader</text>
+    <text x="318" y="167" text-anchor="middle" font-size="10" class="mono" fill="#5a6b86">(length=1, unused here)</text>
+    <text x="318" y="196" text-anchor="middle" font-size="10.5" fill="#5a6b86">arg #1 becomes .train —</text>
+    <text x="318" y="210" text-anchor="middle" font-size="10.5" fill="#5a6b86">position decides everything</text>
+    <path d="M414,126 h32" stroke="#8a97b3" stroke-width="2" marker-end="url(#a1)"/>
+  </g>
+
+  <!-- Learner -->
+  <g id="g1ln">
+    <rect x="30" y="96" width="156" height="110" rx="11" fill="#fff" stroke="#25324a" stroke-width="2.5"/>
+    <text x="108" y="120" text-anchor="middle" font-size="13" font-weight="700">Learner</text>
+    <text x="108" y="144" text-anchor="middle" font-size="11.5" class="mono" font-weight="700" fill="#25324a">.dls ──────▶</text>
+    <text x="108" y="166" text-anchor="middle" font-size="11" class="mono" fill="#5a6b86">.model  .opt</text>
+    <text x="108" y="186" text-anchor="middle" font-size="10.5" fill="#5a6b86">fc.store_attr()</text>
+    <path d="M186,140 h30" stroke="#8a97b3" stroke-width="2" marker-end="url(#a1)"/>
+  </g>
+
+  <!-- timeline note -->
+  <g id="g1time">
+    <text x="500" y="30" text-anchor="middle" font-size="12" font-weight="700" fill="#5a6b86" id="t1title">Time 1 — arguments evaluate BEFORE Learner.__init__ starts</text>
+    <text x="500" y="48" text-anchor="middle" font-size="11" fill="#5a6b86" id="t1sub">Python must run get_dummy_dls(100) first. Innermost call first: LengthDataset(100).</text>
+  </g>
+
+  <!-- "nothing ran" badges -->
+  <g id="g1none" class="dim">
+    <rect x="712" y="234" width="252" height="46" rx="9" fill="#fdf0f0" stroke="#d64545" stroke-width="2"/>
+    <text x="838" y="253" text-anchor="middle" font-size="11" font-weight="700" fill="#d64545">__len__ calls so far: 0</text>
+    <text x="838" y="270" text-anchor="middle" font-size="11" font-weight="700" fill="#d64545">__getitem__ calls so far: 0</text>
+  </g>
+</svg>
+</div>
+<div class="story" id="story1"></div>
+<div class="code" id="code1"></div>
+<div class="legend"><b class="i">orange = the dataset & its one integer</b> · <b class="a">purple = the DataLoader (lazy factory)</b> · <b class="o">teal = the .train slot</b> · <b class="n">red = proof nothing executed</b></div>
+</div>
+
+<!-- ============================================================ TAB 2 -->
+<div class="pane" id="p2">
+<div class="stagebar">
+  <button class="chip on" data-s="0">① loop asks next()</button>
+  <button class="chip" data-s="1">② len() → 100 (once!)</button>
+  <button class="chip" data-s="2">③ range → idx</button>
+  <button class="chip" data-s="3">④ __getitem__ — idx dies</button>
+  <button class="chip" data-s="4">⑤ collate → batch</button>
+  <button class="chip" data-s="5">⑥ forward ignores x</button>
+  <button class="chip" data-s="6">⑦ opt.step() mutates t</button>
+</div>
+<div class="selrow">
+  <button class="stepb" id="back2">⏮ Step</button>
+  <button class="play" id="play2">▶ Play</button>
+  <button class="stepb" id="fwd2">Step ⏭</button>
+  <button class="reset" id="reset2">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed2" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv2">1×</span>
+  <span class="div"></span>
+  pull <span class="iter" id="pull2">1</span> of 100
+</div>
+<div class="wrap">
+<svg viewBox="0 0 1000 372" style="width:100%;height:auto;display:block" id="svg2">
+  <defs>
+    <marker id="a2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 z" fill="#8a97b3"/></marker>
+    <marker id="a2a" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 z" fill="#7b5cd6"/></marker>
+    <marker id="a2o" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 z" fill="#f6921e"/></marker>
+    <marker id="a2t" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L8,4.5 L0,9 z" fill="#16a3a3"/></marker>
+  </defs>
+
+  <!-- TOP ROW : the ASK chain, left → right -->
+  <text x="500" y="20" text-anchor="middle" font-size="11.5" font-weight="700" fill="#f6921e" id="askLbl">THE ASK — control flows this way ⟶ (my loop calls down the chain)</text>
+
+  <g id="b2loop"><rect x="18" y="34" width="168" height="66" rx="10" fill="#fff" stroke="#25324a" stroke-width="2.5"/>
+    <text x="102" y="56" text-anchor="middle" font-size="12" font-weight="700">my for loop</text>
+    <text x="102" y="74" text-anchor="middle" font-size="10.5" class="mono" fill="#5a6b86">for batch in self.dl:</text>
+    <text x="102" y="90" text-anchor="middle" font-size="10" fill="#5a6b86">no counter — asks until refused</text></g>
+
+  <g id="b2iter"><rect x="226" y="34" width="168" height="66" rx="10" fill="#fff" stroke="#7b5cd6" stroke-width="2.5"/>
+    <text x="310" y="56" text-anchor="middle" font-size="12" font-weight="700" fill="#7b5cd6">DataLoader iterator</text>
+    <text x="310" y="74" text-anchor="middle" font-size="10" fill="#5a6b86">“get an index, fetch it,</text>
+    <text x="310" y="88" text-anchor="middle" font-size="10" fill="#5a6b86">collate it, hand it back”</text></g>
+
+  <g id="b2bs"><rect x="434" y="34" width="168" height="66" rx="10" fill="#fff" stroke="#7b5cd6" stroke-width="2.5"/>
+    <text x="518" y="56" text-anchor="middle" font-size="12" font-weight="700" fill="#7b5cd6">batch sampler</text>
+    <text x="518" y="74" text-anchor="middle" font-size="10" fill="#5a6b86">groups indices,</text>
+    <text x="518" y="88" text-anchor="middle" font-size="10" class="mono" fill="#5a6b86">batch_size = 1</text></g>
+
+  <g id="b2ss"><rect x="642" y="34" width="168" height="66" rx="10" fill="#fff" stroke="#7b5cd6" stroke-width="2.5"/>
+    <text x="726" y="56" text-anchor="middle" font-size="12" font-weight="700" fill="#7b5cd6">sequential sampler</text>
+    <text x="726" y="74" text-anchor="middle" font-size="10" fill="#5a6b86">“how many are there?”</text>
+    <text x="726" y="88" text-anchor="middle" font-size="10" class="mono" fill="#5a6b86" id="rangeLbl">range(?) — not built yet</text></g>
+
+  <g id="b2ds"><rect x="850" y="34" width="136" height="66" rx="10" fill="#fff7ed" stroke="#f6921e" stroke-width="2.5"/>
+    <text x="918" y="56" text-anchor="middle" font-size="12" font-weight="700" fill="#f6921e">MY dataset</text>
+    <text x="918" y="74" text-anchor="middle" font-size="10.5" class="mono" fill="#25324a">__len__ → 100</text>
+    <text x="918" y="90" text-anchor="middle" font-size="9.5" fill="#5a6b86">the ONLY one who knows</text></g>
+
+  <path id="e2a" d="M186,60 h32" stroke="#f6921e" stroke-width="2.5" marker-end="url(#a2o)" class="dim"/>
+  <path id="e2b" d="M394,60 h32" stroke="#f6921e" stroke-width="2.5" marker-end="url(#a2o)" class="dim"/>
+  <path id="e2c" d="M602,60 h32" stroke="#f6921e" stroke-width="2.5" marker-end="url(#a2o)" class="dim"/>
+  <path id="e2d" d="M810,60 h32" stroke="#f6921e" stroke-width="2.5" marker-end="url(#a2o)" class="dim"/>
+
+  <!-- MIDDLE : the ANSWER chain, right → left -->
+  <text x="500" y="136" text-anchor="middle" font-size="11.5" font-weight="700" fill="#16a3a3" id="ansLbl">THE ANSWER — data flows back ⟵ each layer does one small job</text>
+
+  <g id="b2idx"><rect x="700" y="150" width="120" height="52" rx="10" fill="#fff" stroke="#16a3a3" stroke-width="2.5"/>
+    <text x="760" y="171" text-anchor="middle" font-size="11" font-weight="700" fill="#16a3a3">index</text>
+    <text x="760" y="190" text-anchor="middle" font-size="13" class="mono" font-weight="700" id="idxVal">[0]</text></g>
+
+  <g id="b2get"><rect x="470" y="150" width="196" height="52" rx="10" fill="#fff7ed" stroke="#f6921e" stroke-width="2.5"/>
+    <text x="568" y="168" text-anchor="middle" font-size="11" font-weight="700" fill="#f6921e">MY __getitem__(idx)</text>
+    <text x="568" y="186" text-anchor="middle" font-size="11" class="mono">return 0, 0</text>
+    <text x="568" y="198" text-anchor="middle" font-size="9" font-weight="700" fill="#d64545" id="dieLbl">idx IGNORED — dies here</text></g>
+
+  <g id="b2col"><rect x="252" y="150" width="184" height="52" rx="10" fill="#fff" stroke="#7b5cd6" stroke-width="2.5"/>
+    <text x="344" y="168" text-anchor="middle" font-size="11" font-weight="700" fill="#7b5cd6">collate</text>
+    <text x="344" y="186" text-anchor="middle" font-size="10" class="mono">[(0,0)] → [t([0]), t([0])]</text>
+    <text x="344" y="198" text-anchor="middle" font-size="9" fill="#5a6b86">the [0] shape IS batch_size=1</text></g>
+
+  <g id="b2bat"><rect x="40" y="150" width="180" height="52" rx="10" fill="#fff" stroke="#25324a" stroke-width="2.5"/>
+    <text x="130" y="168" text-anchor="middle" font-size="11" font-weight="700">self.batch</text>
+    <text x="130" y="187" text-anchor="middle" font-size="10.5" class="mono">[tensor([0]), tensor([0])]</text>
+    <text x="130" y="199" text-anchor="middle" font-size="9" fill="#5a6b86">identical, all 100 times</text></g>
+
+  <path id="e2e" d="M842,120 q10,30 -22,42" stroke="#16a3a3" stroke-width="2.5" fill="none" marker-end="url(#a2t)" class="dim"/>
+  <path id="e2f" d="M700,176 h-30" stroke="#16a3a3" stroke-width="2.5" marker-end="url(#a2t)" class="dim"/>
+  <path id="e2g" d="M470,176 h-30" stroke="#16a3a3" stroke-width="2.5" marker-end="url(#a2t)" class="dim"/>
+  <path id="e2h" d="M252,176 h-28" stroke="#16a3a3" stroke-width="2.5" marker-end="url(#a2t)" class="dim"/>
+
+  <!-- BOTTOM : the loop body -->
+  <text x="500" y="238" text-anchor="middle" font-size="11.5" font-weight="700" fill="#7b5cd6" id="bodyLbl">THE BODY — where the batch is finally… thrown away</text>
+
+  <g id="b2fw"><rect x="60" y="252" width="230" height="70" rx="10" fill="#fff" stroke="#7b5cd6" stroke-width="2.5"/>
+    <text x="175" y="272" text-anchor="middle" font-size="11.5" font-weight="700" fill="#7b5cd6">model(batch[0]) → forward(x)</text>
+    <text x="175" y="291" text-anchor="middle" font-size="11" class="mono">return self.t</text>
+    <text x="175" y="308" text-anchor="middle" font-size="9.5" font-weight="700" fill="#d64545">x never read → 🗑</text></g>
+
+  <g id="b2ls"><rect x="340" y="252" width="180" height="70" rx="10" fill="#fff" stroke="#25324a" stroke-width="2.5"/>
+    <text x="430" y="274" text-anchor="middle" font-size="11.5" font-weight="700">loss → backward()</text>
+    <text x="430" y="293" text-anchor="middle" font-size="10.5" class="mono">model.t.grad filled</text>
+    <text x="430" y="309" text-anchor="middle" font-size="9.5" fill="#5a6b86">(3, 256, 256)</text></g>
+
+  <g id="b2op"><rect x="570" y="252" width="180" height="70" rx="10" fill="#fff" stroke="#16a3a3" stroke-width="2.5"/>
+    <text x="660" y="274" text-anchor="middle" font-size="11.5" font-weight="700" fill="#16a3a3">opt.step()</text>
+    <text x="660" y="293" text-anchor="middle" font-size="10" fill="#5a6b86">Adam holds the SAME object</text>
+    <text x="660" y="308" text-anchor="middle" font-size="10" font-weight="700" fill="#16a3a3">mutates t IN PLACE</text></g>
+
+  <g id="b2t"><rect x="800" y="252" width="176" height="70" rx="10" fill="#e9f7f7" stroke="#16a3a3" stroke-width="3"/>
+    <text x="888" y="274" text-anchor="middle" font-size="12" font-weight="700" fill="#16a3a3">model.t — THE IMAGE</text>
+    <text x="888" y="293" text-anchor="middle" font-size="10.5" class="mono" id="tState">pixels: noise</text>
+    <text x="888" y="309" text-anchor="middle" font-size="9.5" fill="#5a6b86" id="tMut">mutations so far: 0</text></g>
+
+  <path id="e2i" d="M130,202 q0,36 40,50" stroke="#8a97b3" stroke-width="2" fill="none" marker-end="url(#a2)" class="dim"/>
+  <path id="e2j" d="M290,287 h44" stroke="#8a97b3" stroke-width="2" marker-end="url(#a2)" class="dim"/>
+  <path id="e2k" d="M520,287 h44" stroke="#8a97b3" stroke-width="2" marker-end="url(#a2)" class="dim"/>
+  <path id="e2l" d="M750,287 h44" stroke="#16a3a3" stroke-width="2.5" marker-end="url(#a2t)" class="dim"/>
+
+  <!-- travelling token -->
+  <circle id="tok2" r="7" fill="#f6921e" stroke="#fff" stroke-width="2" opacity="0"/>
+
+  <text x="500" y="356" text-anchor="middle" font-size="10.5" fill="#5a6b86" id="onceNote">step ② happens ONLY on the first pull — after that range(100) exists and the sampler just walks it: 1, 2, 3 …</text>
+</svg>
+</div>
+<div class="story" id="story2"></div>
+<div class="code" id="code2"></div>
+<div class="legend"><b class="i">orange = the ask travelling right / my dataset</b> · <b class="o">teal = the answer travelling left / mutation</b> · <b class="a">purple = PyTorch plumbing (ignorant of “100”)</b> · <b class="n">red = where things die unread</b></div>
+</div>
+
+<!-- ============================================================ TAB 3 -->
+<div class="pane" id="p3">
+<div class="selrow">
+  <button class="stepb" id="back3">⏮ Step</button>
+  <button class="play" id="play3">▶ Play</button>
+  <button class="stepb" id="fwd3">Step ⏭</button>
+  <button class="reset" id="reset3">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed3" type="range" min="0.25" max="4" step="0.25" value="1"><span class="speedv" id="spv3">1×</span>
+  <span class="div"></span>
+  opt.step() calls <span class="iter" id="iter3">0</span>/100
+</div>
+<div class="tline" style="max-width:920px;margin:0 auto 8px;">
+  <input id="tslider3" type="range" min="0" max="100" step="1" value="0" style="width:100%;">
+  <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--soft);font-weight:700;font-family:monospace;"><span>step 0 (pure noise)</span><span id="tcur3">step 0</span><span>step 100 (StopIteration)</span></div>
+</div>
+<div class="wrap" style="padding:10px 12px;">
+  <div style="display:flex;gap:18px;justify-content:center;align-items:flex-start;flex-wrap:wrap;">
+    <!-- left column : the constant world -->
+    <div style="text-align:center;">
+      <div style="font-size:12px;font-weight:700;color:var(--ac);margin-bottom:4px;">the batch world — <span style="color:var(--neg)">never changes</span></div>
+      <div class="mono" style="background:#f4f7fd;border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px;line-height:1.7;min-width:250px;">
+        idx = <b id="idxNow" style="color:var(--in)">—</b> <span style="color:var(--soft)">→ ignored →</span> 🗑<br>
+        batch = <b>[tensor([0]), tensor([0])]</b><br>
+        <span id="batSame" style="color:var(--neg);font-weight:700;font-size:11px">identical to every other batch</span>
+      </div>
+      <div style="font-size:10.5px;color:var(--soft);margin-top:5px;max-width:250px;">the index counts 0…99 purely to make the loop tick; <span class="mono">__getitem__</span> never reads it</div>
+    </div>
+    <!-- middle : the image -->
+    <div style="text-align:center;">
+      <div style="font-size:12px;font-weight:700;color:var(--out);margin-bottom:4px;">model.t — <span style="color:var(--out)">mutated in place each step</span></div>
+      <canvas id="img3" width="28" height="28" style="width:196px;height:196px;border:2px solid var(--line);border-radius:10px;image-rendering:pixelated;"></canvas>
+      <div class="mono" style="font-size:11.5px;font-weight:700;margin-top:4px;" id="imgLbl3">noise (step 0)</div>
+    </div>
+    <!-- right : loss curve -->
+    <div style="text-align:center;">
+      <div style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:4px;">loss = mse(model.t, target)</div>
+      <canvas id="loss3" width="260" height="170" style="border:1.5px solid var(--line);border-radius:10px;background:#fff;"></canvas>
+      <div class="mono" style="font-size:11.5px;margin-top:4px;">loss = <b id="lossV" style="color:var(--ac)">—</b></div>
+    </div>
+  </div>
+</div>
+<div class="story" id="story3"></div>
+<div class="code" id="code3"><span class="cm"># the whole run, seen honestly:</span>
+<span class="kw">for</span> batch <span class="kw">in</span> self.dl:          <span class="cm"># 100 identical batches — pure clock ticks</span>
+    preds = self.model()          <span class="cm"># forward ignores the batch → returns model.t</span>
+    loss  = loss_fn_mse(preds)    <span class="cm"># compare the IMAGE to the target</span>
+    loss.backward()               <span class="cm"># grad lands on model.t</span>
+    <span class="hl">self.opt.step()</span>               <span class="cm"># ← the ONE line that changes anything</span>
+    self.opt.zero_grad()</div>
+<div class="legend"><b class="i">orange = the throwaway index</b> · <b class="a">purple = loss falling</b> · <b class="o">teal = the only thing that changes: the image</b></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');$(t.dataset.p).classList.add('on');
+});
+
+/* ================= TAB 1 ================= */
+const S1=[
+ {lit:['g1ds','g1time'],title:'Time 1a — arguments evaluate before Learner.__init__ even starts',
+  sub:'Python must run get_dummy_dls(100) first. Innermost call first: LengthDataset(100).',
+  story:'<b class="i">LengthDataset(100)</b> runs <span class="mono">self.length = length</span> — <b>the moment the 100 comes into existence.</b> The object it produces holds exactly one attribute: <span class="mono">{\'length\': 100}</span>. Zero items. No list, no array, no tensor. Everything the whole pipeline will ever do is generated from this one integer.',
+  code:'<span class="cm"># get_dummy_dls(100), innermost first:</span>\n<span class="hl">ds = LengthDataset(100)</span>          <span class="cm"># self.length = 100  ← the 100 is BORN here</span>\nprint(vars(ds))                <span class="cm"># {\'length\': 100} — the ENTIRE payload</span>'},
+ {lit:['g1ds','g1dl','g1time'],title:'Time 1b — DataLoader wraps it, stores a reference, does nothing',
+  sub:'No loading. No counting. Neither __len__ nor __getitem__ has been called.',
+  story:'<b class="a">DataLoader(ds, batch_size=1)</b> just records two facts: a pointer to my dataset, and “serve items 1 at a time.” It is a <b>lazy factory</b>, not a container — a vending machine with a note taped inside saying <i>“I have 100 slots.”</i> The machine is empty. Even <span class="mono">len(dl)</span> is computed on demand later: <span class="mono">ceil(100/1)=100</span>, but <span class="mono">ceil(100/10)=10</span> — same dataset, different answer, because it counts <b>batches</b>, not items.',
+  code:'<span class="hl">dl = DataLoader(ds, batch_size=1)</span>   <span class="cm"># stores a reference. Nothing runs.</span>\nprint(len(DataLoader(ds, batch_size=1)))    <span class="cm"># 100  ← ceil(100/1)</span>\nprint(len(DataLoader(ds, batch_size=10)))   <span class="cm"># 10   ← ceil(100/10) — counts BATCHES</span>'},
+ {lit:['g1ds','g1dl','g1dls','g1time'],title:'Time 1c — DataLoaders assigns .train by POSITION',
+  sub:'self.train, self.valid = dls[:2] — one line, runs once, never reassigned.',
+  story:'<b class="o">DataLoaders(dl_a, dl_b)</b> is a dumb two-slot holder. Tuple-unpacking binds <span class="mono">.train</span> to <b>argument #1</b> — the length-100 one — purely because it is written first in <span class="mono">get_dummy_dls</span>. Swap the two lines and <span class="mono">fit(1)</span> would take <b>1</b> step and validate for 100. Position decides everything.',
+  code:'<span class="kw">class</span> <span class="fn">DataLoaders</span>:\n    <span class="kw">def</span> <span class="fn">__init__</span>(self, *dls):\n        <span class="hl">self.train, self.valid = dls[:2]</span>   <span class="cm"># ★ .train ASSIGNED HERE — arg order! ★</span>'},
+ {lit:['g1ds','g1dl','g1dls','g1ln','g1time'],title:'Time 2 — Learner.__init__ finally runs and stores .dls',
+  sub:'fc.store_attr() ⇒ self.dls = dls — which ALREADY has .train set.',
+  story:'Only now does <b>Learner.__init__</b> begin, receiving a fully-built object. <span class="mono">fc.store_attr()</span> does <span class="mono">self.dls = dls</span>. So <span class="mono">learn.dls.train</span> is two chained lookups — <span class="mono">.dls</span> set at Time 2, <span class="mono">.train</span> set at Time 1 — and both are done <b>before fit is ever called</b>. Inside fit, <span class="mono">self.dl = self.dls.train</span> is just a lookup: a third name for the same object.',
+  code:'learn = Learner(model, get_dummy_dls(100), ...)   <span class="cm"># Time 1 happens INSIDE the parens</span>\nprint(learn.dl <span class="kw">is</span> learn.dls.train)     <span class="cm"># True — same object, three names</span>\nprint(learn.dls.train.dataset.length)   <span class="cm"># 100 — resolvable before fit runs</span>'},
+ {lit:['g1ds','g1dl','g1dls','g1ln','g1none','g1time'],title:'⑤ Proof: after ALL of this construction, nothing has executed',
+  sub:'The red counters are real — add prints to __len__/__getitem__ and watch.',
+  story:'<b class="n">Zero calls to __len__. Zero calls to __getitem__.</b> Construction wires up references and stops. The 100 sits in one integer, waiting. It will be read for the first time on the <b>first next()</b> of the training loop — that story is Tab ②. If the object held 100 batches, printing it would flood the screen; instead <span class="mono">print(dl)</span> shows one bare line, like <span class="mono">range(100)</span> — lazy, empty, honest.',
+  code:'print(learn.dls.train)   <span class="cm"># &lt;DataLoader object at 0x7f…&gt; — nothing to show</span>\nprint(vars(learn.dls.train.dataset))   <span class="cm"># {\'length\': 100} — still just the note</span>\n<span class="cm"># __len__ calls: 0    __getitem__ calls: 0   ← verified with print-tracing</span>'}
+];
+const p1chips=[...document.querySelectorAll('#p1 .chip')];
+const g1all=['g1ds','g1dl','g1dls','g1ln','g1none'];
+function set1(i){
+  p1chips.forEach((c,j)=>c.classList.toggle('on',j===i));
+  const st=S1[i];
+  g1all.forEach(g=>$(g).setAttribute('class',st.lit.includes(g)?'lit':'dim'));
+  $('t1title').textContent=st.title;$('t1sub').textContent=st.sub;
+  $('story1').innerHTML=st.story;$('code1').innerHTML=st.code;
+}
+p1chips.forEach((c,i)=>c.onclick=()=>set1(i));set1(0);
+
+/* ================= TAB 2 ================= */
+const CODE2=[
+`<span class="cm"># ① the pull — a for loop is a while-True in disguise</span>
+<span class="hl"><span class="kw">for</span> self.iter, self.batch <span class="kw">in</span> enumerate(self.dl):</span>   <span class="cm"># asks next() until refused</span>
+    self.one_batch()`,
+`<span class="cm"># ② FIRST pull only: the sampler finally asks my dataset</span>
+<span class="kw">def</span> <span class="fn">__len__</span>(self): <span class="hl"><span class="kw">return</span> self.length</span>       <span class="cm"># → 100. Asked exactly ONCE.</span>
+<span class="cm"># PyTorch now builds range(100) internally — the clock is wound.</span>`,
+`<span class="cm"># ③ the sampler walks range(100); batch_size=1 wraps each index</span>
+idx = <span class="num">0</span>   <span class="cm"># then 1, 2, … 99 — one per pull</span>
+index = [idx]   <span class="cm"># “possibly batched”: a 1-element list because batch_size=1</span>`,
+`<span class="cm"># ④ obj[k] IS obj.__getitem__(k) — the call hides behind brackets</span>
+<span class="kw">def</span> <span class="fn">__getitem__</span>(self, idx):
+    <span class="hl"><span class="kw">return</span> <span class="num">0</span>, <span class="num">0</span></span>        <span class="cm"># idx NEVER READ. 0…99 dies here, every time.</span>`,
+`<span class="cm"># ⑤ collate: list-of-samples → list-of-batched-fields (transpose + stack)</span>
+default_collate([(<span class="num">0</span>,<span class="num">0</span>)])   <span class="cm"># → [tensor([0]), tensor([0])]</span>
+<span class="cm"># two fields because __getitem__ returns a 2-tuple; [0] not 0 because batch_size=1</span>`,
+`<span class="cm"># ⑥ the batch reaches the model… and is discarded</span>
+self.preds = self.model(self.batch[<span class="num">0</span>])
+<span class="kw">def</span> <span class="fn">forward</span>(self, x=<span class="num">0</span>): <span class="hl"><span class="kw">return</span> self.t</span>   <span class="cm"># x ignored → preds IS model.t</span>`,
+`<span class="cm"># ⑦ the only line that changes anything</span>
+self.loss.backward()      <span class="cm"># grad lands on model.t (the only leaf)</span>
+<span class="hl">self.opt.step()</span>           <span class="cm"># Adam holds the SAME object → mutates pixels IN PLACE</span>`];
+const S2=[
+ {lit:['b2loop','e2a','b2iter'],tok:[102,67],story:'<b>① The pull.</b> My loop line contains no number — desugared it is <span class="mono">while True: next()</span> plus <span class="mono">except StopIteration: break</span>. It has <b>no counter</b>; it asks until refused. Every one of the 100 <span class="mono">opt.step()</span> calls happens because this line asked for one more item.'},
+ {lit:['b2loop','b2iter','b2bs','b2ss','b2ds','e2a','e2b','e2c','e2d'],tok:[918,67],story:'<b>② The ask travels up the whole chain — and the top answers ONCE.</b> Iterator → batch sampler → sequential sampler, each ignorant of “100”, until the sampler phones <b class="i">my <span class="mono">__len__</span></b>: “how many?” → <b>100</b>. PyTorch builds <span class="mono">range(100)</span> and never asks again. On pulls 2–100 this whole top row is skipped — that is why tracing <span class="mono">__len__</span> feels like a dead end: it fires once, then goes silent for 99 pulls.'},
+ {lit:['b2ss','b2ds','b2idx','e2e'],tok:[760,176],story:'<b>③ range(100) hands over one index.</b> This pull: <span class="mono" id="s3idx">idx = 0</span>, wrapped into a 1-element list <span class="mono">[0]</span> because <span class="mono">batch_size=1</span>. Over the 100 pulls this value will be [0], [1], [2] … [99] — the <b>only</b> thing that varies anywhere in the data path. With batch_size=10 it would be [0..9] → only 10 pulls → only 10 optimizer steps.'},
+ {lit:['b2idx','b2get','e2f'],tok:[568,176],story:'<b class="n">④ The index dies unread.</b> <span class="mono">dataset[idx]</span> is Python sugar for <span class="mono">__getitem__(idx)</span> — the call hides behind square brackets, which is why grepping never finds it. And my body is <span class="mono">return 0, 0</span>: it never mentions <span class="mono">idx</span>. The index travelled through the entire chain just to be thrown away. Its only job was to <b>exist 100 times</b>.'},
+ {lit:['b2get','b2col','b2bat','e2g','e2h'],tok:[344,176],story:'<b>⑤ Collate manufactures the batch.</b> <span class="mono">[(0,0)]</span> — a list of one 2-tuple — gets transposed and stacked into <span class="mono">[tensor([0]), tensor([0])]</span>. Two fields because <span class="mono">__getitem__</span> returns a 2-tuple; <span class="mono">tensor([0])</span> not <span class="mono">tensor(0)</span> because the 1-element batch dimension IS batch_size. For a real dataset this step is essential; here it dresses a worthless tuple in worthless tensors — but it gives the batch the <i>shape</i> the loop expects.'},
+ {lit:['b2bat','b2fw','e2i'],tok:[175,287],story:'<b class="n">⑥ The batch is discarded too.</b> <span class="mono">self.batch[0]</span> → <span class="mono">tensor([0])</span> → passed as <span class="mono">x</span> into <span class="mono">forward</span> — whose body is <span class="mono">return self.t</span>. <b>x is never read.</b> The output has nothing to do with the input: <span class="mono">learn.preds is learn.model.t</span> → True, every single pull. <span class="mono">forward</span> is a constant function that happens to return an <span class="mono">nn.Parameter</span> — which is exactly what lets autograd differentiate through it.'},
+ {lit:['b2fw','b2ls','b2op','b2t','e2j','e2k','e2l'],tok:[888,287],story:'<b class="o">⑦ The one line that changes anything.</b> Loss compares <b>the image</b> to the target, <span class="mono">backward()</span> puts a (3,256,256) gradient on <span class="mono">model.t</span> — the only leaf with <span class="mono">requires_grad</span> — and <span class="mono">opt.step()</span> mutates it <b>in place</b>, because Adam holds a reference to the very same object. The batch was a clock tick; this is what the tick triggered. Press ▶ to loop pulls and watch the mutation counter climb.'}];
+const p2chips=[...document.querySelectorAll('#p2 .chip')];
+const g2all=['b2loop','b2iter','b2bs','b2ss','b2ds','b2idx','b2get','b2col','b2bat','b2fw','b2ls','b2op','b2t','e2a','e2b','e2c','e2d','e2e','e2f','e2g','e2h','e2i','e2j','e2k','e2l'];
+let s2=0,pull2=1,mut2=0,timer2=null,speed2=1;
+function set2(i,fromPlay){
+  s2=i;p2chips.forEach((c,j)=>c.classList.toggle('on',j===i));
+  const st=S2[i];
+  g2all.forEach(g=>$(g).setAttribute('class',(st.lit.includes(g)?'lit':'dim')+($(g).tagName==='path'&&st.lit.includes(g)?' flowdash':'')));
+  $('story2').innerHTML=st.story.replace('idx = 0','idx = '+(pull2-1));
+  $('code2').innerHTML=CODE2[i];
+  const tk=$('tok2');tk.setAttribute('cx',st.tok[0]);tk.setAttribute('cy',st.tok[1]);tk.setAttribute('opacity',1);
+  $('idxVal').textContent='['+(pull2-1)+']';
+  $('rangeLbl').textContent=(pull2===1&&i<2)?'range(?) — not built yet':'range(100) — walking it';
+  $('pull2').textContent=pull2;
+  if(i===6&&fromPlay){mut2=Math.min(100,mut2+1);$('tMut').textContent='mutations so far: '+mut2;
+    $('tState').textContent=mut2>=100?'pixels: converged!':(mut2>50?'pixels: taking shape…':'pixels: less noisy');}
+}
+function step2(d){let n=s2+d;
+  if(n>6){n=0;pull2=Math.min(100,pull2+1);if(pull2>=100&&mut2>=100){stop2();}}
+  if(n<0){n=6;pull2=Math.max(1,pull2-1);}
+  set2(n,d>0);}
+function play2(){if(timer2){stop2();return;}timer2=setInterval(()=>step2(1),Math.round(700/speed2));$('play2').textContent='⏸ Pause';}
+function stop2(){clearInterval(timer2);timer2=null;$('play2').textContent='▶ Play';}
+$('play2').onclick=play2;$('fwd2').onclick=()=>{stop2();step2(1);};$('back2').onclick=()=>{stop2();step2(-1);};
+$('reset2').onclick=()=>{stop2();pull2=1;mut2=0;$('tMut').textContent='mutations so far: 0';$('tState').textContent='pixels: noise';set2(0);};
+$('speed2').oninput=e=>{speed2=+e.target.value;$('spv2').textContent=speed2+'×';if(timer2){stop2();play2();}};
+p2chips.forEach((c,i)=>c.onclick=()=>{stop2();set2(i);});
+set2(0);
+
+/* ================= TAB 3 ================= */
+const W=28,H=28;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+// target: same procedural sneaker as my DDPM visual
+const target=new Float32Array(W*H);
+(function(){for(let y=0;y<H;y++)for(let x=0;x<W;x++){let v=0;
+  if(y>=19&&y<=22&&x>=3&&x<=25)v=.95; if(y===23&&x>=4&&x<=24)v=.55;
+  const top=19-(x<12?(12-x)*.9:0)-2;
+  if(y>=Math.max(6,top)&&y<19&&x>=4&&x<=24){v=.62;if(x>19)v=.75;
+    if(((x===10&&y>=9)||(x===13&&y>=10)||(x===16&&y>=12))&&y<18)v=.25;
+    if(x<9&&y<Math.max(6,top)+3)v=.8;}
+  target[y*W+x]=v;}})();
+const noise=new Float32Array(W*H);(function(){const r=mulberry32(11);for(let i=0;i<W*H;i++)noise[i]=.5+.5*gauss(r)*.6;})();
+function decay(k){return Math.exp(-k/22);}                 // mimics Adam convergence
+function draw3(k){
+  const c=$('img3').getContext('2d'),im=c.createImageData(W,H),d=decay(k);
+  for(let i=0;i<W*H;i++){let v=target[i]*(1-d)+noise[i]*d;v=Math.max(0,Math.min(1,v));
+    const g=Math.round(v*255);im.data[4*i]=g;im.data[4*i+1]=g;im.data[4*i+2]=g;im.data[4*i+3]=255;}
+  c.putImageData(im,0,0);}
+function loss3(k){const d=decay(k);let s=0;for(let i=0;i<W*H;i++){const e=(noise[i]-target[i])*d;s+=e*e;}return s/(W*H);}
+function drawLoss(k){
+  const cv=$('loss3'),c=cv.getContext('2d');c.clearRect(0,0,260,170);
+  c.strokeStyle='#dde5f2';c.beginPath();c.moveTo(30,10);c.lineTo(30,150);c.lineTo(250,150);c.stroke();
+  c.fillStyle='#5a6b86';c.font='9px monospace';c.fillText('loss',4,80);c.fillText('step→',218,164);
+  const L0=loss3(0);
+  c.strokeStyle='#7b5cd6';c.lineWidth=2;c.beginPath();
+  for(let i=0;i<=k;i++){const x=30+220*i/100,y=150-136*loss3(i)/L0;i?c.lineTo(x,y):c.moveTo(x,y);}
+  c.stroke();
+  if(k>0){const x=30+220*k/100,y=150-136*loss3(k)/L0;
+    c.fillStyle='#16a3a3';c.beginPath();c.arc(x,y,4,0,7);c.fill();}
+  c.lineWidth=1;}
+let k3=0,timer3=null,speed3=1;
+function set3(k){k3=Math.max(0,Math.min(100,k));
+  $('tslider3').value=k3;$('tcur3').textContent='step '+k3;$('iter3').textContent=k3;
+  $('idxNow').textContent=k3===0?'—':(k3-1);
+  draw3(k3);drawLoss(k3);
+  $('lossV').textContent=loss3(k3).toFixed(4);
+  $('imgLbl3').textContent=k3===0?'noise (step 0)':(k3>=100?'converged (StopIteration next!)':'step '+k3+' — nudged '+k3+'×');
+  $('story3').innerHTML = k3===0
+   ?'<b>Step 0.</b> <span class="mono">model.t</span> is pure noise; the DataLoader hasn’t been asked yet. Press ▶. Each tick you’ll see: an index appears (<b class="i">orange</b>), gets ignored, an identical batch is produced — and the <b>only thing that changes</b> is the image, because <span class="mono">opt.step()</span> mutated <span class="mono">model.t</span> in place.'
+   :(k3>=100
+   ?'<b>Step 100 — done.</b> The 101st <span class="mono">next()</span> finds <span class="mono">range(100)</span> exhausted → <b>StopIteration</b> → the for loop breaks. Final tally: 100 identical batches manufactured and discarded, 100 real mutations of <span class="mono">model.t</span>. The batch column of this run never changed once; the image column changed every single step. That asymmetry <i>is</i> the whole design.'
+   :'<b>Step '+k3+'.</b> idx <b class="i">'+(k3-1)+'</b> was produced, wrapped as <span class="mono">['+(k3-1)+']</span>, ignored by <span class="mono">__getitem__</span>, and collated into the same <span class="mono">[tensor([0]), tensor([0])]</span> as always. Meanwhile the loss fell to <b class="a">'+loss3(k3).toFixed(4)+'</b> because this tick’s <span class="mono">opt.step()</span> nudged every pixel of <span class="mono">model.t</span>. '+(k3<30?'Early steps make big moves — the gradient is huge when the image is mostly noise.':'Later steps refine — the gradient shrinks as the image approaches the target.'));
+  const b=$('batSame');b.classList.remove('pulse');void b.offsetWidth;b.classList.add('pulse');
+}
+function play3(){if(timer3){stop3();return;}if(k3>=100)k3=0;
+  timer3=setInterval(()=>{set3(k3+1);if(k3>=100)stop3();},Math.round(160/speed3));$('play3').textContent='⏸ Pause';}
+function stop3(){clearInterval(timer3);timer3=null;$('play3').textContent='▶ Play';}
+$('play3').onclick=play3;$('fwd3').onclick=()=>{stop3();set3(k3+1);};$('back3').onclick=()=>{stop3();set3(k3-1);};
+$('reset3').onclick=()=>{stop3();set3(0);};
+$('tslider3').oninput=e=>{stop3();set3(+e.target.value);};
+$('speed3').oninput=e=>{speed3=+e.target.value;$('spv3').textContent=speed3+'×';if(timer3){stop3();play3();}};
+set3(0);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}
+  function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+  addEventListener('load',postH);addEventListener('resize',postH);
+  if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>
