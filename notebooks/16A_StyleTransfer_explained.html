@@ -10603,6 +10603,230 @@ Mean reshaped:(3, 1, 1)       # Can broadcast!
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cell-16a-99">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="I-Never-Wrote-loss_function_perceptual(input_image)-%E2%80%94-So-How-Does-__call__-Run?">I Never Wrote <code>loss_function_perceptual(input_image)</code> — So How Does <code>__call__</code> Run?<a class="anchor-link" href="#I-Never-Wrote-loss_function_perceptual(input_image)-%E2%80%94-So-How-Does-__call__-Run?">¶</a></h1><p>Here is the reasoning that tripped me up, laid out step by step so the gap is visible.</p>
+<p><strong>Step 1 — this part I understood.</strong> When I define:</p>
+<div class="highlight"><pre><span></span><span class="n">loss_function_perceptual</span> <span class="o">=</span> <span class="n">ContentLossToTarget</span><span class="p">(</span><span class="n">content_im</span><span class="p">)</span>
+</pre></div>
+<p><code>ContentLossToTarget(content_im)</code> runs <code>__init__</code>, and inside it <code>target_im</code> is now <code>content_im</code>. The target's VGG features get precomputed and stored. Fine.</p>
+<p><strong>Step 2 — this part I also understood.</strong> The class has a <code>__call__(self, input_im)</code> method. My mental model: <code>__call__</code> will fire <strong>only if</strong> I call the instance with a new argument — something like:</p>
+<div class="highlight"><pre><span></span><span class="n">loss_function_perceptual</span><span class="p">(</span><span class="n">input_image</span><span class="p">)</span>      <span class="c1"># ← THIS would run __call__, with input_im = input_image</span>
+</pre></div>
+<p><strong>Step 3 — and here's the contradiction.</strong> In the actual notebook, that call never appears. All I write is:</p>
+<div class="highlight"><pre><span></span><span class="n">learn</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">get_dummy_dls</span><span class="p">(</span><span class="mi">150</span><span class="p">),</span> <span class="n">loss_function_perceptual</span><span class="p">,</span>
+                <span class="n">lr</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="n">cbs</span><span class="p">,</span> <span class="n">opt_func</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">)</span>
+<span class="n">learn</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="p">[</span><span class="n">ImageLogCB</span><span class="p">(</span><span class="n">log_every</span><span class="o">=</span><span class="mi">30</span><span class="p">)])</span>
+</pre></div>
+<p>I pass <code>loss_function_perceptual</code> into <code>Learner</code> <strong>as a bare name — no parentheses, no argument</strong>. Nowhere in my code does anything shaped like <code>loss_function_perceptual(some_image)</code> exist. By my mental model from Step 2, <code>__call__</code> should never run.</p>
+<p><strong>And yet the loss is computed on every one of the 150 iterations.</strong> The training works. So either <code>__call__</code> runs without being called — impossible — or somebody, somewhere, IS writing <code>loss_function_perceptual(input_image)</code> and I just can't see it.</p>
+<p>The second one is true. My Step 2 mental model was correct all along — the call <strong>does</strong> happen, exactly in that shape, 150 times. What I missed is <em>where</em>: it happens inside code I wrote earlier, under a <strong>different name for the same object</strong>.</p>
+<hr/>
+<h2 id="Following-the-object:-the-rename-that-hid-the-call">Following the object: the rename that hid the call<a class="anchor-link" href="#Following-the-object:-the-rename-that-hid-the-call">¶</a></h2><p>When I passed <code>loss_function_perceptual</code> as the third positional argument to <code>Learner</code>, <code>fc.store_attr()</code> stored my instance under a new name:</p>
+<div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">loss_func</span> <span class="ow">is</span> <span class="n">loss_function_perceptual</span><span class="p">)</span>    <span class="c1"># True — same object, renamed</span>
+</pre></div>
+<p>Then during <code>fit</code>, every iteration runs <code>one_batch</code>, which calls my own <code>ImageOptCB.get_loss</code>:</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+    <span class="n">learn</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss_func</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span><span class="p">)</span>
+    <span class="c1">#            ^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>
+    <span class="c1">#            ★ THIS is loss_function_perceptual(input_im) ★</span>
+</pre></div>
+<p><code>learn.loss_func</code> <strong>is</strong> my <code>ContentLossToTarget</code> instance, and putting <code>(...)</code> after an instance triggers <code>__call__</code>. So that line is <em>exactly</em> the call my Step-2 mental model predicted — <code>loss_function_perceptual(input_image)</code> — just spelled with the object's other name, and with <code>learn.preds</code> playing the role of <code>input_image</code>:</p>
+<div class="highlight"><pre><span></span><span class="n">learn</span><span class="o">.</span><span class="n">loss_func</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span><span class="p">)</span>
+<span class="c1"># ≡ loss_function_perceptual(learn.preds)</span>
+<span class="c1"># ≡ ContentLossToTarget.__call__(loss_function_perceptual, learn.preds)</span>
+<span class="c1">#   → inside __call__, input_im = learn.preds</span>
+</pre></div>
+<p>I was grepping my notebook for the literal text <code>loss_function_perceptual(</code> — but the instance got renamed to <code>learn.loss_func</code> on its way into the Learner, so the call site spells it differently. One object, two names, and the call happens under the name I wasn't searching for — once per batch, 150 times.</p>
+<hr/>
+<h2 id="The-same-sugar,-third-time-now">The same sugar, third time now<a class="anchor-link" href="#The-same-sugar,-third-time-now">¶</a></h2><p>This is the third appearance in this notebook of one Python rule: <em>syntax on an object secretly invokes a dunder method.</em></p>
+<table>
+<thead>
+<tr>
+<th>what I write</th>
+<th>what Python runs</th>
+<th>where I met it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dataset[7]</code></td>
+<td><code>dataset.__getitem__(7)</code></td>
+<td>the dummy dataloader</td>
+</tr>
+<tr>
+<td><code>model(x)</code></td>
+<td><code>model.__call__(x)</code> → <code>forward</code></td>
+<td><code>TensorModel</code></td>
+</tr>
+<tr>
+<td><code>learn.loss_func(learn.preds)</code></td>
+<td><code>loss_function_perceptual.__call__(learn.preds)</code></td>
+<td><strong>here</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Parentheses after <em>any</em> object call its <code>__call__</code>. A plain <code>def</code> function is just an object whose <code>__call__</code> is its body. An instance with <code>__call__</code> is a function with luggage.</p>
+<hr/>
+<h2 id="So-what-is-input_im?">So what is <code>input_im</code>?<a class="anchor-link" href="#So-what-is-input_im?">¶</a></h2><p><code>learn.preds</code> — which, from <code>ImageOptCB.predict</code>, is <code>learn.model()</code>, which is <code>model.t</code>: <strong>the optimizable image itself.</strong> So per iteration:</p>
+<pre><code>input_im  =  model.t   (as mutated by the previous opt.step())
+
+iter 0:    __call__(t₀ = noise)        → features far from target → big loss
+iter 1:    __call__(t₁)                → slightly closer          → smaller loss
+...
+iter 149:  __call__(t₁₄₉ ≈ content)    → features match           → tiny loss
+</code></pre>
+<p>It's the same object every time, with different pixel values each time — because <code>opt.step()</code> mutated it in place between calls.</p>
+<hr/>
+<h2 id="Why-a-class-instead-of-a-plain-function?">Why a class instead of a plain function?<a class="anchor-link" href="#Why-a-class-instead-of-a-plain-function?">¶</a></h2><p>Because the loss needs to <strong>remember something</strong>: the target's features.</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ContentLossToTarget</span><span class="p">():</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_im</span><span class="p">,</span> <span class="n">target_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mi">25</span><span class="p">)):</span>
+        <span class="n">fc</span><span class="o">.</span><span class="n">store_attr</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">target_features</span> <span class="o">=</span> <span class="n">calc_features</span><span class="p">(</span><span class="n">target_im</span><span class="p">,</span> <span class="n">target_layers</span><span class="p">)</span>   <span class="c1"># ← ONCE</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_im</span><span class="p">):</span>
+        <span class="n">input_features</span> <span class="o">=</span> <span class="n">calc_features</span><span class="p">(</span><span class="n">input_im</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_layers</span><span class="p">)</span>          <span class="c1"># ← 150 times</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">((</span><span class="n">f1</span> <span class="o">-</span> <span class="n">f2</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                   <span class="k">for</span> <span class="n">f1</span><span class="p">,</span> <span class="n">f2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">input_features</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_features</span><span class="p">))</span>
+</pre></div>
+<p><code>__init__</code> computes the target's VGG features <em>once</em>, under <code>torch.no_grad()</code> — the target is never optimized, so tracking gradients for it would only waste memory. <code>__call__</code> then reuses those stored features 150 times. The input's features, by contrast, <strong>must</strong> be recomputed every call, because the input changed since last time.</p>
+<p>A bare <code>def</code> has nowhere to stash <code>target_features</code> — I'd either recompute the target's features 150 times (identical result, pure waste) or lean on a global variable. The callable object <em>is</em> "a function with precomputed state."</p>
+<p>And the reason it must be <code>__call__</code> specifically, not some method named <code>compute_loss</code>: <strong>the Learner doesn't know or care what kind of thing <code>loss_func</code> is.</strong> It just writes <code>self.loss_func(...)</code>. Earlier I passed <code>loss_fn_mse</code> (a plain function); now I pass a class instance. Both work in the same slot because both respond to <code>(...)</code>. That interchangeability is the entire point of defining <code>__call__</code>.</p>
+<hr/>
+<h2 id="Proving-it-fires">Proving it fires<a class="anchor-link" href="#Proving-it-fires">¶</a></h2><p>Add a print and run a short fit:</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ContentLossToTarget</span><span class="p">():</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_im</span><span class="p">,</span> <span class="n">target_layers</span><span class="o">=</span><span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mi">25</span><span class="p">)):</span>
+        <span class="n">fc</span><span class="o">.</span><span class="n">store_attr</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">target_features</span> <span class="o">=</span> <span class="n">calc_features</span><span class="p">(</span><span class="n">target_im</span><span class="p">,</span> <span class="n">target_layers</span><span class="p">)</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_im</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"__call__ fired! input_im is model.t: </span><span class="si">{</span><span class="n">input_im</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">t</span><span class="si">}</span><span class="s2">, "</span>
+              <span class="sa">f</span><span class="s2">"mean=</span><span class="si">{</span><span class="n">input_im</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">input_features</span> <span class="o">=</span> <span class="n">calc_features</span><span class="p">(</span><span class="n">input_im</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_layers</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">((</span><span class="n">f1</span> <span class="o">-</span> <span class="n">f2</span><span class="p">)</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                   <span class="k">for</span> <span class="n">f1</span><span class="p">,</span> <span class="n">f2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">input_features</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_features</span><span class="p">))</span>
+
+<span class="n">loss_function_perceptual</span> <span class="o">=</span> <span class="n">ContentLossToTarget</span><span class="p">(</span><span class="n">content_im</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">TensorModel</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">rand_like</span><span class="p">(</span><span class="n">content_im</span><span class="p">))</span>
+<span class="n">learn</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">get_dummy_dls</span><span class="p">(</span><span class="mi">5</span><span class="p">),</span> <span class="n">loss_function_perceptual</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span>
+                <span class="n">cbs</span><span class="o">=</span><span class="n">cbs</span><span class="p">,</span> <span class="n">opt_func</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">)</span>
+<span class="n">learn</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+<pre><code>__call__ fired! input_im is model.t: True, mean=0.5001
+__call__ fired! input_im is model.t: True, mean=0.4987   ← mean changed: step() ran
+__call__ fired! input_im is model.t: True, mean=0.4975
+__call__ fired! input_im is model.t: True, mean=0.4964
+__call__ fired! input_im is model.t: True, mean=0.4952
+</code></pre>
+<p>Five batches, five firings, and <code>input_im</code> is the very tensor Adam is mutating — the mean drifts a little lower after each <code>opt.step()</code>. With <code>get_dummy_dls(150)</code> it fires 150 times: once per tick of the dummy clock.</p>
+<hr/>
+<h2 id="The-one-paragraph-summary">The one-paragraph summary<a class="anchor-link" href="#The-one-paragraph-summary">¶</a></h2><p>My mental model was right: <code>__call__</code> fires only when someone writes <code>loss_function_perceptual(input_image)</code>. What I missed is that someone <em>does</em> write it — me, in <code>ImageOptCB.get_loss</code> — under the object's other name. Passing <code>loss_function_perceptual</code> into <code>Learner</code> as a bare name doesn't call it; it hands the object over, and <code>fc.store_attr()</code> rebinds it as <code>learn.loss_func</code>. From then on, <code>learn.loss_func(learn.preds)</code> on every batch <em>is</em> <code>loss_function_perceptual(learn.preds)</code>, which is <code>ContentLossToTarget.__call__(instance, learn.preds)</code> — so <code>input_im</code> receives <code>model.t</code> itself, freshly mutated by the previous <code>opt.step()</code>. The class exists (rather than a plain function) so <code>__init__</code> can compute the target's VGG features exactly once and <code>__call__</code> can reuse them across all 150 iterations — and it's <code>__call__</code> specifically so the instance is a drop-in replacement for any ordinary loss function like <code>loss_fn_mse</code>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=cell-16a-100">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="Starting-From-the-Content-Image:-Isn't-the-Content-Loss-Just-Zero?">Starting From the Content Image: Isn't the Content Loss Just Zero?<a class="anchor-link" href="#Starting-From-the-Content-Image:-Isn't-the-Content-Loss-Just-Zero?">¶</a></h1><p>When I set up the combined style-transfer training, I initialized the model <strong>from the content image itself</strong> instead of random noise:</p>
+<div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">TensorModel</span><span class="p">(</span><span class="n">content_im</span><span class="p">)</span>                  <span class="c1"># start from the face, not noise</span>
+
+<span class="n">style_loss</span>   <span class="o">=</span> <span class="n">StyleLossToTarget</span><span class="p">(</span><span class="n">style_im</span><span class="p">)</span>       <span class="c1"># compare style to spiderweb</span>
+<span class="n">content_loss</span> <span class="o">=</span> <span class="n">ContentLossToTarget</span><span class="p">(</span><span class="n">content_im</span><span class="p">)</span>   <span class="c1"># compare content to face</span>
+
+<span class="k">def</span> <span class="nf">combined_loss</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">style_loss</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="n">content_loss</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="n">learn</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">get_dummy_dls</span><span class="p">(</span><span class="mi">150</span><span class="p">),</span> <span class="n">combined_loss</span><span class="p">,</span>
+                <span class="n">lr</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="n">cbs</span><span class="p">,</span> <span class="n">opt_func</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">)</span>
+<span class="n">learn</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="p">[</span><span class="n">ImageLogCB</span><span class="p">(</span><span class="mi">30</span><span class="p">)])</span>
+</pre></div>
+<p>And that raised a question: if <code>model.t</code> <strong>is</strong> <code>content_im</code>, then <code>ContentLossToTarget(content_im)</code> is comparing the image to itself. Shouldn't the content loss just be… zero? And if it's zero, what is it even doing there?</p>
+<p>The answer: <strong>yes, at step 0 it is exactly zero</strong> (up to floating-point dust) — and that's not a bug or a redundancy. It's the whole point of this initialization.</p>
+<hr/>
+<h2 id="Confirming-it:-zero-at-step-0">Confirming it: zero at step 0<a class="anchor-link" href="#Confirming-it:-zero-at-step-0">¶</a></h2><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">TensorModel</span><span class="p">(</span><span class="n">content_im</span><span class="p">)</span>     <span class="c1"># model.t = content_im.clone() — identical pixels</span>
+
+<span class="n">content_loss</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">t</span><span class="p">)</span>
+<span class="c1"># = Σ mse( calc_features(model.t),  calc_features(content_im) )</span>
+<span class="c1"># = Σ mse( features(X),  features(X) )       ← same input → same features</span>
+<span class="c1"># = 0.0</span>
+</pre></div>
+<p>Same pixels in → same VGG activations out → <code>(f1 - f2).pow(2).mean()</code> is zero at both target layers. Verify:</p>
+<div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">TensorModel</span><span class="p">(</span><span class="n">content_im</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">t</span><span class="p">,</span> <span class="n">content_im</span><span class="p">))</span>      <span class="c1"># ~0  (clone → identical values)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">content_loss</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">t</span><span class="p">))</span>                <span class="c1"># tensor(0., grad_fn=...) or ~1e-14</span>
+</pre></div>
+<p>(Why ~0 and not always a hard 0: <code>nn.Parameter(t.clone())</code> copies values exactly, so the first forward is bit-identical; any <code>1e-14</code> I see is float accumulation noise inside VGG, not a real difference.)</p>
+<hr/>
+<h2 id="But-it-doesn't-stay-zero-%E2%80%94-two-things-matter">But it doesn't stay zero — two things matter<a class="anchor-link" href="#But-it-doesn't-stay-zero-%E2%80%94-two-things-matter">¶</a></h2><p><strong>1. The style loss is very much NOT zero at step 0.</strong> <code>model.t</code> looks like a face; <code>style_im</code> is a spiderweb. Their Gram matrices are wildly different:</p>
+<div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">style_loss</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">t</span><span class="p">))</span>     <span class="c1"># big number</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">content_loss</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">t</span><span class="p">))</span>   <span class="c1"># ~0</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">combined_loss</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">t</span><span class="p">))</span>  <span class="c1"># ≈ style_loss — content contributes nothing yet</span>
+</pre></div>
+<p><strong>2. Gradients add.</strong> At step 0 the combined gradient is:</p>
+<pre><code>∇ combined = ∇ style_loss  +  ∇ content_loss
+           = (big, points toward spiderweb texture)  +  (zero)
+</code></pre>
+<p>So the very first <code>opt.step()</code> is driven <strong>entirely by the style loss</strong>. It drags the pixels toward spiderweb-ness — and the instant it does, <code>model.t</code> no longer equals <code>content_im</code>, so <strong>the content loss lifts off zero</strong> and starts pulling back.</p>
+<hr/>
+<h2 id="The-tug-of-war">The tug-of-war<a class="anchor-link" href="#The-tug-of-war">¶</a></h2><p>From step 1 onward the two losses fight:</p>
+<pre><code>step 0:    content = 0.000   style = 9.41    → style pulls freely
+step 1:    content = 0.003   style = 8.90    → content wakes up, resists
+step 10:   content = 0.19    style = 4.72
+...
+step 149:  content = 0.31    style = 1.05    → equilibrium-ish
+</code></pre>
+<p>(Numbers illustrative.) The optimization settles where the <em>marginal</em> gain from more style equals the <em>marginal</em> cost in lost content.</p>
+<p>The content loss acts as an <strong>anchor</strong>: it does no work at the start, but the further style drags the image away from the face, the harder it yanks back — MSE's gradient grows with the deviation. A loss term doesn't need to be nonzero to matter; it needs to <em>become</em> nonzero the moment the image moves in a direction it dislikes.</p>
+<hr/>
+<h2 id="Which-is-exactly-why-this-initialization-was-chosen">Which is exactly why this initialization was chosen<a class="anchor-link" href="#Which-is-exactly-why-this-initialization-was-chosen">¶</a></h2><p>Starting from <code>content_im</code> instead of noise is a deliberate trick, and the "isn't it zero?" observation explains it:</p>
+<table>
+<thead>
+<tr>
+<th>init</th>
+<th>content loss at step 0</th>
+<th>what training must do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>torch.rand_like(content_im)</code></td>
+<td><strong>large</strong></td>
+<td>simultaneously <em>build</em> the face AND acquire style — both gradients fight from the very first step, from a garbage starting point</td>
+</tr>
+<tr>
+<td><code>content_im</code></td>
+<td><strong>zero</strong></td>
+<td>content is already perfect for free; training only needs to <em>add</em> style, and the content loss merely limits the damage</td>
+</tr>
+</tbody>
+</table>
+<p>With the content-image start, I begin at the <strong>global minimum of one of the two objectives</strong> and let the other pull me away just far enough. That's what the comment "this helps preserve content structure" really means — the anchor starts taut, at the right place.</p>
+<hr/>
+<h2 id="Watching-the-tug-of-war-live">Watching the tug-of-war live<a class="anchor-link" href="#Watching-the-tug-of-war-live">¶</a></h2><p>A tiny instrumented version of the loss prints both terms every 30 steps:</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">combined_loss</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="n">sl</span><span class="p">,</span> <span class="n">cl</span> <span class="o">=</span> <span class="n">style_loss</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">content_loss</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">combined_loss</span><span class="p">,</span> <span class="s1">'k'</span><span class="p">):</span> <span class="n">combined_loss</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">combined_loss</span><span class="o">.</span><span class="n">k</span> <span class="o">%</span> <span class="mi">30</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"step </span><span class="si">{</span><span class="n">combined_loss</span><span class="o">.</span><span class="n">k</span><span class="si">}</span><span class="s2">: style=</span><span class="si">{</span><span class="n">sl</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">  content=</span><span class="si">{</span><span class="n">cl</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">combined_loss</span><span class="o">.</span><span class="n">k</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">sl</span> <span class="o">+</span> <span class="n">cl</span>
+</pre></div>
+<p>Running <code>fit</code> with this shows <code>content</code> print <code>0.00000</code> on step 0 and then creep upward as style pulls the image away — the anchor stretching, exactly as predicted.</p>
+<hr/>
+<h2 id="The-one-paragraph-summary">The one-paragraph summary<a class="anchor-link" href="#The-one-paragraph-summary">¶</a></h2><p>Yes — with <code>model = TensorModel(content_im)</code>, the content loss starts at exactly zero, because it compares the image to itself through frozen VGG features. But zero loss doesn't mean idle: gradients add, so step 0 is driven purely by the (large) style loss, and the moment style drags the pixels away from the face, the content loss lifts off zero and pulls back with force proportional to the deviation. It's an anchor, not a dead weight. And that's precisely why this initialization beats random noise: I start at the global minimum of the content objective and let style pull me away only as far as the anchor allows — content structure preserved for free, style added on top.</p>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d5bb8a2e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
