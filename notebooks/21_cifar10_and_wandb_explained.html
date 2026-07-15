@@ -2,8 +2,8 @@
 
 <html lang="en">
 <head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
 <title>21_cifar10_and_wandb_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
@@ -7525,6 +7525,8 @@ a.anchor-link {
   </a>
 </div>
 <main>
+
+<main>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7555,6 +7557,58 @@ a.anchor-link {
 - ~60K images               - ~60K images
 - Easier to generate        - More challenging
 </code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+<h2 id="%F0%9F%9B%A0%EF%B8%8F-Interactive-visualizations-%E2%80%94-one-time-setup">🛠️ Interactive visualizations &mdash; one-time setup<a class="anchor-link" href="#%F0%9F%9B%A0%EF%B8%8F-Interactive-visualizations-%E2%80%94-one-time-setup">¶</a></h2><p>The cells marked <strong>🎮 Interactive</strong> below embed standalone HTML/JS visualizations
+(published in the <code>interactive_viz/</code> folder on GitHub Pages) at <strong>full width</strong>, auto-fitted
+to their content height (no empty space below). Run the next cell once, then run any 🎮 cell.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE VISUALIZATIONS -- setup (run this cell ONCE).</span>
+<span class="c1"># Each "🎮 Interactive" cell below loads a standalone HTML file from the</span>
+<span class="c1"># published copy on GitHub Pages, in an isolated &lt;iframe&gt; (its CSS/JS can't leak</span>
+<span class="c1"># into the notebook). It is shown FULL WIDTH and auto-fits its content height.</span>
+<span class="c1"># No local files needed -- the visualizations are read from GitHub.</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+
+<span class="k">def</span> <span class="nf">show_viz</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"600px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Embed an interactive visualization full width; it auto-fits its height.</span>
+<span class="sd">    `path` may be a bare 'interactive_viz/&lt;file&gt;.html' (resolved to the GitHub</span>
+<span class="sd">    Pages copy) or a full https URL."""</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="s2">"https://shammun.github.io/shammunul-fastai-notes/notebooks/"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"http"</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">path</span>
+    <span class="k">return</span> <span class="n">HTML</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'&lt;iframe src="</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">" loading="lazy" allowfullscreen '</span>
+        <span class="sa">f</span><span class="s1">'style="width:100%;height:</span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s1">;border:1px solid #dde5f2;border-radius:12px;'</span>
+        <span class="sa">f</span><span class="s1">'box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"&gt;&lt;/iframe&gt;'</span>
+        <span class="s1">'&lt;script&gt;addEventListener("message",function(e){'</span>
+        <span class="s1">'if(e.data&amp;&amp;e.data.type==="ce-frame-height"&amp;&amp;e.data.height&gt;50){'</span>
+        <span class="s1">'var fs=document.querySelectorAll("iframe");for(var i=0;i&lt;fs.length;i++){'</span>
+        <span class="s1">'if(fs[i].contentWindow===e.source){fs[i].style.height=e.data.height+"px";break;}}}});&lt;/script&gt;'</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
 </div>
 </div>
 </div>
@@ -7791,18 +7845,32 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<p><strong>Shape breakdown</strong>: <code>[32, 3, 32, 32]</code></p>
-<ul>
-<li><code>32</code> = batch size (32 images per batch)</li>
-<li><code>3</code> = channels (Red, Green, Blue)</li>
-<li><code>32</code> = height (32 pixels)</li>
-<li><code>32</code> = width (32 pixels)</li>
-</ul>
-<p>Wait, the output shows <code>[32, 3, 32, 32]</code> for <code>xb[0]</code>? That's actually the shape of the whole batch! Let me clarify:</p>
-<ul>
-<li><code>xb.shape</code> = <code>[32, 3, 32, 32]</code> (whole batch)</li>
-<li><code>xb[0].shape</code> = <code>[3, 32, 32]</code> (single image)</li>
-</ul>
+<p><strong>Careful &mdash; a very common shape confusion!</strong></p>
+<p>The output above is <code>torch.Size([3, 32, 32])</code>, because <code>xb[0]</code> is <strong>one image</strong> taken out of the batch:</p>
+<table>
+<thead>
+<tr>
+<th>Expression</th>
+<th>Shape</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>xb.shape</code></td>
+<td><code>[32, 3, 32, 32]</code></td>
+<td>the <strong>whole batch</strong>: 32 images &times; 3 channels &times; 32 &times; 32</td>
+</tr>
+<tr>
+<td><code>xb[0].shape</code></td>
+<td><code>[3, 32, 32]</code></td>
+<td><strong>one image</strong>: 3 channels (R, G, B) &times; height 32 &times; width 32</td>
+</tr>
+</tbody>
+</table>
+<p>Reading <code>[32, 3, 32, 32]</code> left to right: <strong>batch size, channels, height, width</strong> &mdash; the standard PyTorch
+<code>NCHW</code> layout. Whenever a shape error appears in this notebook, checking which of these two you're holding
+is the first thing to do.</p>
 </div>
 </div>
 </div>
@@ -7839,6 +7907,51 @@ a.anchor-link {
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-from-grayscale-to-color-%E2%80%94-what-transformi-really-does">🎮 Interactive: from grayscale to color &mdash; what <code>transformi</code> really does<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-from-grayscale-to-color-%E2%80%94-what-transformi-really-does">¶</a></h3><p>Before going further, make sure the data itself is crystal clear: a color image is <strong>three stacked 32&times;32 grids</strong>
+(channels), and <code>transformi</code> turns each PIL image into a zero-centered tensor. This playground walks the full
+journey: PIL &rarr; channels &rarr; <code>to_tensor</code> (0&ndash;1) &rarr; <code>−0.5</code> (centered) &rarr; <code>[3, 32, 32]</code> &rarr; batch <code>[32, 3, 32, 32]</code>.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li><strong>Hover any image</strong> to read the real R/G/B values at that pixel &mdash; watch them change from <code>0&ndash;255</code> ints to
+<code>−0.5&hellip;0.5</code> floats as you advance stages.</li>
+<li>At stage ②, <strong>toggle R / G / B off</strong> and watch the car lose each color component.</li>
+<li>At stage ⑤, see the three channels as the grayscale planes the network actually receives.</li>
+<li>Stage ⑥ nails the classic confusion: <code>xb.shape</code> (whole batch) vs <code>xb[0].shape</code> (one image).</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/cifar_rgb_pipeline.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># The file is read from the published GitHub Pages copy of this repo.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/cifar_rgb_pipeline.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/cifar_rgb_pipeline.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -7928,6 +8041,52 @@ a.anchor-link {
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-noise-schedule,-live-%E2%80%94-and-why-betamax=0.01">🎮 Interactive: the noise schedule, live &mdash; and why <code>betamax=0.01</code><a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-noise-schedule,-live-%E2%80%94-and-why-betamax=0.01">¶</a></h3><p>The entire forward process is controlled by the tiny table <code>linear_sched</code> returns. Here you can <em>see</em> it:
+β rises linearly, while <strong>ᾱ = cumprod(α)</strong> decays smoothly &mdash; and its value at each timestep sets exactly how
+much signal survives.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Press <strong>Play ▶</strong> (or drag on the plot / the <strong>t slider</strong>) and watch the image blend from clean frog to pure
+noise as <code>&radic;ᾱ</code> and <code>&radic;(1−ᾱ)</code> trade places.</li>
+<li>Toggle <strong>betamax</strong> between <code>0.01</code> (this notebook) and <code>0.02</code> (the DDPM paper) &mdash; with 0.02 the signal is
+essentially gone by step ~500; the gentler 0.01 spends more of the schedule at informative noise levels.</li>
+<li>Park at <code>t = 999</code> and read the signal pill: ᾱ &asymp; 0 &mdash; the endpoint really is indistinguishable from
+<code>torch.randn</code>, which is why sampling can <em>start</em> from pure noise.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/noise_schedule_lab_2.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># The file is read from the published GitHub Pages copy of this repo.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/noise_schedule_lab_2.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"100vh"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe class="ce-nofit" src="interactive_viz/noise_schedule_lab_2.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:860px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="The-Noisify-Function">The Noisify Function<a class="anchor-link" href="#The-Noisify-Function">¶</a></h2><p>This adds noise to clean images during training.</p>
 </div>
@@ -7991,7 +8150,52 @@ a.anchor-link {
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-follow-a-mini-batch-through-noisify()">🎮 Interactive: follow a mini-batch through <code>noisify()</code><a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-follow-a-mini-batch-through-noisify()">¶</a></h3><p>Training never runs the 1000-step chain &mdash; <code>noisify</code> jumps every image <strong>directly</strong> to a random timestep with
+one formula. This playground pushes a batch of 4 images through the function, stage by stage, with the current
+line of code highlighted.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Step through the stages: sample <strong>t</strong> &rarr; sample <strong>ε</strong> &rarr; gather <strong>ᾱₜ</strong> and reshape <code>[4] &rarr; [4,1,1,1]</code> &rarr; mix.</li>
+<li>Press <strong>Re-roll 🎲</strong> to draw new random timesteps and noise &mdash; every image gets a <em>different</em> corruption level,
+which is exactly what makes one batch cover many noise levels at once.</li>
+<li>At stage ④, focus on the <strong>broadcasting</strong>: one scalar per image, stretched across all <code>3&times;32&times;32</code> values.</li>
+<li>At stage ⑤, compare the four results with their <code>&radic;ᾱ</code> / <code>&radic;(1−ᾱ)</code> chips &mdash; small t keeps the image, large t destroys it.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/noisify_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># The file is read from the published GitHub Pages copy of this repo.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/noisify_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1000px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/noisify_explorer.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:1000px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8204,6 +8408,57 @@ Input Image: 32&times;32
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-watch-one-tensor-travel-through-the-UNet-in-3D">🎮 Interactive: watch one tensor travel through the UNet in 3D<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-watch-one-tensor-travel-through-the-UNet-in-3D">¶</a></h3><p>Everything from the last two sections in one animated 3D scene. The thin panels are the model's blocks &mdash;
+<code>conv_in</code>, the four down blocks and their downsamplers, the bottleneck, the four up blocks, <code>conv_out</code> &mdash;
+and the <strong>solid box is the data itself</strong>, morphing at every block: its <strong>face</strong> is the pixel grid
+(32&times;32 &rarr; 4&times;4 &rarr; 32&times;32) and its <strong>thickness</strong> is the channel count (3 &rarr; 256 &rarr; 3). <em>(Needs internet access:
+loads three.js from cdnjs.)</em></p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Press <strong>▶ Play all</strong> (or <strong>⏭ one block at a time</strong>) and watch the encoder squeeze the box smaller-and-fatter,
+each down block <strong>parking a copy on a shelf</strong> &mdash; those are the future skip connections.</li>
+<li>Don't miss the <strong>dashed empty frame</strong> after Down 4: <code>downsamplers = None</code>. The box passes through unchanged &mdash;
+the visual reason <code>fc.L()</code> exists in <code>init_ddpm</code>.</li>
+<li>In the decoder, watch each <strong>shelf copy fly down the arc and visibly fatten the box</strong> &mdash; that's
+<code>torch.cat</code> along the channel dimension (256+256 &rarr; 512, then 256+128, 128+64, 64+32).</li>
+<li>The <strong>gold dot</strong> riding the box is the timestep embedding, injected into every glowing block.</li>
+<li><strong>Click any block</strong> for its shapes and its <code>init_ddpm</code> treatment; the <strong>story chips replay</strong> each part of the
+journey, and the shape <strong>pills</strong> below the scene jump straight to any waypoint.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/unet_3d_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># The file is read from the published GitHub Pages copy of this repo.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/unet_3d_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1280px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/unet_3d_explorer.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:1280px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="Comparing-Model-Sizes">Comparing Model Sizes<a class="anchor-link" href="#Comparing-Model-Sizes">¶</a></h2><p>Let's compare a small model (like we used for Fashion MNIST) with the default larger model.</p>
 </div>
@@ -8343,7 +8598,7 @@ Input Image: 32&times;32
 </table>
 <p>When you don't specify <code>block_out_channels</code>, HuggingFace uses its <strong>default values</strong>, which are much larger.</p>
 <h2 id="Why-Does-This-Matter-So-Much?">Why Does This Matter So Much?<a class="anchor-link" href="#Why-Does-This-Matter-So-Much?">¶</a></h2><p>The number of parameters in a convolutional layer scales with the <strong>square</strong> of the channel count:</p>
-<pre><code>Conv layer params &asymp; (in_channels &times; out_channels &times; kernel_size<sup>2</sup>)
+<pre><code>Conv layer params &asymp; (in_channels &times; out_channels &times; kernel_size²)
 </code></pre>
 <p>Let's compare just <strong>one layer</strong> at the deepest level:</p>
 <pre><code>Small model:  128 &rarr; 256 channels, 3&times;3 kernel
@@ -8372,7 +8627,51 @@ Level 4: 1280 filters  ███████████████████
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-where-do-274M-parameters-actually-live?">🎮 Interactive: where do 274M parameters actually live?<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-where-do-274M-parameters-actually-live?">¶</a></h3><p>The tables above tell you <em>that</em> the default model is ~17&times; bigger. This visualization shows you <strong>why</strong>:
+conv parameters scale with <code>in_channels &times; out_channels</code>, so widening every level ~10&times; costs ~100&times; per layer &mdash;
+and the deepest levels dominate the total.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li><strong>Click each level row</strong> &mdash; the exact parameter math for one 3&times;3 conv at that depth appears on the right
+(level 4 is the shocker: one conv &asymp; 14.7M parameters, nearly the whole small model).</li>
+<li>Toggle <strong>Linear / Log scale</strong> &mdash; on the linear scale, levels 1&ndash;2 of the small model all but vanish.</li>
+<li>Switch to <strong>Rough level totals</strong> to see the same square-law pattern across whole levels.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/unet_size_comparator.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># The file is read from the published GitHub Pages copy of this repo.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/unet_size_comparator.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1140px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/unet_size_comparator.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:1140px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8399,15 +8698,6 @@ Level 4: 1280 filters  ███████████████████
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Hyperparameter sweep &mdash; which run wins?</h3>
-  <p class="ce-interactive-hint">Each dot is one training run with a different (learning rate, batch size). Color = final validation loss. Hover/click to see the run. <strong>This is what you'd get from <code>wandb sweep</code> with 20 runs.</strong> The lowest-loss runs concentrate in a sweet spot &mdash; usually moderate LR (1e-3 to 5e-3) and moderate BS (64-256).</p>
-  <div class="hp-widget">
-    <canvas id="hp-canvas" width="500" height="320"
-            style="width: 100%; max-width: 500px; height: auto; background: white; border: 1px solid #e5e7eb; border-radius: 6px; touch-action: manipulation;"></canvas>
-    <div class="hp-info" id="hp-info">Click a dot to see its run details.</div>
-  </div>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -8415,7 +8705,6 @@ Level 4: 1280 filters  ███████████████████
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-
 <h2 id="Training-Setup">Training Setup<a class="anchor-link" href="#Training-Setup">¶</a></h2>
 </div>
 </div>
@@ -8613,7 +8902,53 @@ Scenario 2: Model on GPU with mixed precision (float16)
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-one-reverse-diffusion-step,-dissected">🎮 Interactive: one reverse-diffusion step, dissected<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-one-reverse-diffusion-step,-dissected">¶</a></h3><p>The <code>sample()</code> loop above runs <strong>1000 times</strong>, and every iteration does the same four things. This playground
+lets you scrub the timestep from 999 &rarr; 0 and watch an image emerge from static, while dissecting a single step:
+predict the noise <strong>ε̂</strong>, estimate the clean image <strong>x̂₀</strong>, blend it with the current image, then add back a pinch
+of fresh noise <strong>σ·z</strong>.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Press <strong>Play 999&rarr;0 ▶</strong> and watch the frog appear &mdash; then drag the <strong>t slider</strong> to any point in the trajectory.</li>
+<li><strong>Click the four stages</strong> &mdash; each highlights the exact lines of <code>sample()</code> it corresponds to.</li>
+<li>Watch the <strong>weight pills</strong> at stage ③: each step trusts <code>x_t</code> heavily and moves only a tiny way toward <code>x̂₀</code>.
+A thousand tiny corrections, not one big jump.</li>
+<li>Go to <code>t = 0</code> and check stage ④: <code>z = zeros</code> &mdash; the very last step adds <strong>no</strong> noise.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm_sampling_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># The file is read from the published GitHub Pages copy of this repo.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm_sampling_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1020px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddpm_sampling_explorer.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:1020px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9161,6 +9496,51 @@ after_fit() ───────────────► wandb.finish()
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-WandBCB-lifecycle-%E2%80%94-with-a-live-mock-W&amp;B-dashboard">🎮 Interactive: the WandBCB lifecycle &mdash; with a live mock W&amp;B dashboard<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-WandBCB-lifecycle-%E2%80%94-with-a-live-mock-W&amp;B-dashboard">¶</a></h3><p>A callback is nothing magical: it's a set of methods that the <code>Learner</code> promises to call at fixed moments
+(<code>before_fit</code>, <code>after_batch</code>, <code>_log</code>, <code>after_fit</code>). This playground runs one simulated <code>learn.fit()</code> and shows
+<strong>which method fires, which <code>wandb.*</code> call it makes, and what appears on the dashboard</strong> &mdash; the loss curve draws
+itself, the config table fills in, and the sample grid sharpens epoch by epoch.</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Press <strong>Play ▶</strong> to watch a full run: <code>wandb.init</code> &rarr; per-batch <code>wandb.log(loss)</code> &rarr; epoch <code>_log()</code> &rarr; samples &rarr; <code>wandb.finish</code>.</li>
+<li><strong>Click any stage</strong> on the rail to jump straight to it &mdash; the matching <code>WandBCB</code> method is highlighted in the code panel.</li>
+<li>Notice at stage ② that the loss starts near <strong>1.0</strong> &mdash; that's the <code>init_ddpm</code> zero-output initialization at work.</li>
+<li>Use the speed slider to slow down and read the run log line by line.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/wandb_flow_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># The file is read from the published GitHub Pages copy of this repo.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/wandb_flow_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1100px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/wandb_flow_explorer.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:1100px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="Training-with-W&amp;B-Logging">Training with W&amp;B Logging<a class="anchor-link" href="#Training-with-W&amp;B-Logging">¶</a></h2>
 </div>
@@ -9305,42 +9685,6 @@ Training Speed: 2.5 it/s
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: W&amp;B-style training dashboard</h3>
-  <p class="ce-interactive-hint">A simulated W&amp;B run: loss curve, sample images at three checkpoints, and a hyperparameter card. <strong>This is what you'd see in your browser at wandb.ai during an actual training run.</strong> Click <strong>Run training</strong> to animate epoch-by-epoch.</p>
-  <div class="wb-widget">
-    <div class="wb-header">
-      <div class="wb-title">project / cifar10_ddpm</div>
-      <div class="wb-run">run: bumblebee-92 &middot; status: <span id="wb-status">idle</span></div>
-    </div>
-    <div class="wb-body">
-      <div class="wb-panel">
-        <div class="wb-panel-title">training loss</div>
-        <canvas id="wb-loss-canvas" width="380" height="180" style="width: 100%; max-width: 380px; height: auto; background: white; border-radius: 4px;"></canvas>
-      </div>
-      <div class="wb-panel">
-        <div class="wb-panel-title">sample images</div>
-        <div class="wb-samples" id="wb-samples"></div>
-      </div>
-      <div class="wb-panel">
-        <div class="wb-panel-title">config</div>
-        <div class="wb-config">
-          <div><span>lr</span><span>0.001</span></div>
-          <div><span>bs</span><span>128</span></div>
-          <div><span>epochs</span><span>10</span></div>
-          <div><span>schedule</span><span>cosine</span></div>
-          <div><span>model</span><span>UNet</span></div>
-          <div><span>dataset</span><span>CIFAR-10</span></div>
-        </div>
-      </div>
-    </div>
-    <div class="ms-controls">
-      <button id="wb-run" class="ms-btn">Run training</button>
-      <button id="wb-reset" class="ms-btn ms-secondary">Reset</button>
-      <span class="ms-val" id="wb-epoch">epoch 0</span>
-    </div>
-  </div>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9380,7 +9724,6 @@ Training Speed: 2.5 it/s
 <li><strong><code>wandb.log()</code></strong>: Log metrics, images, and other data</li>
 <li><strong><code>wandb.finish()</code></strong>: Close the run</li>
 </ol>
-
 <h3 id="WandBCB-Callback">WandBCB Callback<a class="anchor-link" href="#WandBCB-Callback">¶</a></h3><ul>
 <li>Extends MetricsCB to add W&amp;B logging</li>
 <li>Logs loss after each batch</li>
@@ -9427,254 +9770,15 @@ Training Speed: 2.5 it/s
 </div>
 </div>
 </div>
-<style>
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 70px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactive .ms-btn.ms-secondary { background: transparent; color: var(--ce-purple, #6c5ce7); border: 1px solid var(--ce-purple, #6c5ce7); box-shadow: none; }
-
-/* W&B widget */
-.wb-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.wb-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: white; border-radius: 6px 6px 0 0; border: 1px solid #e5e7eb; }
-.wb-title { font-family: var(--ce-font-mono, monospace); font-weight: 600; color: var(--ce-text, #1a1f36); }
-.wb-run { font-family: var(--ce-font-mono, monospace); font-size: 0.85em; color: var(--ce-text-muted, #697386); }
-.wb-status { color: #0f766e; font-weight: 600; }
-.wb-body { display: grid; grid-template-columns: 2fr 1.4fr 1fr; gap: 12px; padding: 12px; background: white; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb; }
-@media (max-width: 700px) { .wb-body { grid-template-columns: 1fr; } }
-.wb-panel { background: #fbfbfd; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; }
-.wb-panel-title { font-family: var(--ce-font-mono, monospace); font-size: 0.78em; color: var(--ce-text-muted, #697386); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-.wb-samples { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.wb-samples canvas { width: 100%; height: auto; aspect-ratio: 1; background: white; border-radius: 4px; image-rendering: pixelated; }
-.wb-config div { display: flex; justify-content: space-between; padding: 3px 0; font-family: var(--ce-font-mono, monospace); font-size: 0.82em; }
-.wb-config div span:first-child { color: var(--ce-text-muted, #697386); }
-.wb-config div span:last-child { color: var(--ce-purple-dark, #4f3dd0); font-weight: 600; }
-
-/* Hyperparameter sweep */
-.hp-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-.hp-info { margin-top: 12px; padding: 10px 14px; background: white; border: 1px solid #e5e7eb; border-radius: 6px; font-family: var(--ce-font-mono, monospace); font-size: 0.86em; }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-// ============================================================================
-// Interactive 1: W&B dashboard
-// ============================================================================
-(function wandbDashboard() {
-  var canvas = document.getElementById('wb-loss-canvas');
-  if (!canvas) return;
-  var samplesEl = document.getElementById('wb-samples');
-  var epochLbl = document.getElementById('wb-epoch');
-  var statusEl = document.getElementById('wb-status');
-
-  // pre-populate 3 sample image placeholders
-  function initSamples() {
-    samplesEl.innerHTML = '';
-    for (var i = 0; i < 3; i++) {
-      var c = document.createElement('canvas');
-      c.width = 64; c.height = 64;
-      samplesEl.appendChild(c);
-    }
-  }
-
-  function drawSampleImg(canvas, quality) {
-    var ctx = canvas.getContext('2d');
-    var W = canvas.width, H = canvas.height;
-    // generate a blob-like shape with controllable "structure"
-    for (var i = 0; i < H; i++) {
-      for (var j = 0; j < W; j++) {
-        var dy = i - H / 2, dx = j - W / 2;
-        var r = Math.sqrt(dx * dx + dy * dy) / (W / 2);
-        var n = (Math.random() - 0.5);
-        var sig = (1 - r) * quality + n * (1 - quality);
-        sig = Math.max(0, Math.min(1, sig + 0.5));
-        var hue = 30 + sig * 200;
-        ctx.fillStyle = 'hsl(' + hue + ', 50%, ' + (60 + sig * 25) + '%)';
-        ctx.fillRect(j, i, 1, 1);
-      }
-    }
-  }
-
-  var losses = [];
-  var EPOCHS = 30;
-  var running = false;
-  var timer = null;
-
-  function reset() {
-    losses = [];
-    running = false;
-    if (timer) clearInterval(timer);
-    statusEl.textContent = 'idle';
-    epochLbl.textContent = 'epoch 0';
-    document.getElementById('wb-run').textContent = 'Run training';
-    initSamples();
-    drawLoss();
-  }
-  initSamples();
-
-  function drawLoss() {
-    var ctx = canvas.getContext('2d');
-    var W = canvas.width, H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#fafafa'; ctx.fillRect(0, 0, W, H);
-    var margin = { l: 36, r: 8, t: 12, b: 24 };
-    var iW = W - margin.l - margin.r, iH = H - margin.t - margin.b;
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-    for (var i = 0; i <= 4; i++) {
-      var y = margin.t + (i / 4) * iH;
-      ctx.beginPath(); ctx.moveTo(margin.l, y); ctx.lineTo(margin.l + iW, y); ctx.stroke();
-    }
-    ctx.fillStyle = '#6b7280'; ctx.font = '10px monospace';
-    var yMax = Math.max(1, losses[0] || 1);
-    for (var i = 0; i <= 4; i++) {
-      var y = margin.t + iH - (i / 4) * iH;
-      ctx.fillText((yMax * i / 4).toFixed(2), 6, y + 3);
-    }
-    for (var i = 0; i <= 4; i++) {
-      var x = margin.l + (i / 4) * iW;
-      ctx.fillText((EPOCHS * i / 4).toFixed(0), x - 6, margin.t + iH + 12);
-    }
-    if (losses.length > 1) {
-      ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 2;
-      ctx.beginPath();
-      for (var i = 0; i < losses.length; i++) {
-        var x = margin.l + (i / Math.max(EPOCHS - 1, 1)) * iW;
-        var y = margin.t + iH - (losses[i] / yMax) * iH;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    }
-    if (losses.length > 0) {
-      var i = losses.length - 1;
-      var x = margin.l + (i / Math.max(EPOCHS - 1, 1)) * iW;
-      var y = margin.t + iH - (losses[i] / yMax) * iH;
-      ctx.fillStyle = '#0fb9b1';
-      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
-    }
-  }
-
-  function step() {
-    var i = losses.length;
-    if (i >= EPOCHS) {
-      running = false;
-      clearInterval(timer);
-      statusEl.textContent = 'finished';
-      document.getElementById('wb-run').textContent = 'Run again';
-      return;
-    }
-    // loss decay
-    var l = 0.9 * Math.exp(-i / 9) + 0.05 + (Math.random() - 0.5) * 0.04;
-    losses.push(l);
-    epochLbl.textContent = 'epoch ' + (i + 1);
-    drawLoss();
-    if (i === 4 || i === 14 || i === 24) {
-      var idx = i === 4 ? 0 : (i === 14 ? 1 : 2);
-      var quality = (i + 1) / EPOCHS;
-      drawSampleImg(samplesEl.children[idx], quality);
-    }
-  }
-
-  document.getElementById('wb-run').addEventListener('click', function() {
-    if (running) { running = false; clearInterval(timer); statusEl.textContent = 'paused'; this.textContent = 'Resume'; return; }
-    if (losses.length >= EPOCHS) reset();
-    running = true;
-    statusEl.textContent = 'running';
-    this.textContent = 'Pause';
-    timer = setInterval(step, 220);
-  });
-  document.getElementById('wb-reset').addEventListener('click', reset);
-
-  reset();
-})();
-
-// ============================================================================
-// Interactive 2: Hyperparameter sweep
-// ============================================================================
-(function hpSweep() {
-  var canvas = document.getElementById('hp-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-  var info = document.getElementById('hp-info');
-
-  var runs = [];
-  function gen() {
-    runs = [];
-    var lrChoices = [1e-4, 3e-4, 1e-3, 3e-3, 1e-2, 3e-2];
-    var bsChoices = [16, 32, 64, 128, 256, 512];
-    for (var i = 0; i < 25; i++) {
-      var lr = lrChoices[Math.floor(Math.random() * lrChoices.length)];
-      var bs = bsChoices[Math.floor(Math.random() * bsChoices.length)];
-      var lrLog = Math.log10(lr);
-      var bsLog = Math.log2(bs);
-      var bestLrLog = -3, bestBsLog = 7;
-      var d = (lrLog - bestLrLog) * (lrLog - bestLrLog) * 0.6 + (bsLog - bestBsLog) * (bsLog - bestBsLog) * 0.05;
-      var loss = 0.1 + d + Math.random() * 0.05;
-      runs.push({ lr: lr, bs: bs, loss: loss });
-    }
-  }
-  gen();
-
-  function draw() {
-    ctx.clearRect(0, 0, W, H);
-    var margin = { l: 56, r: 12, t: 28, b: 40 };
-    var iW = W - margin.l - margin.r, iH = H - margin.t - margin.b;
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-    for (var i = 0; i <= 5; i++) {
-      var y = margin.t + (i / 5) * iH;
-      ctx.beginPath(); ctx.moveTo(margin.l, y); ctx.lineTo(margin.l + iW, y); ctx.stroke();
-      var x = margin.l + (i / 5) * iW;
-      ctx.beginPath(); ctx.moveTo(x, margin.t); ctx.lineTo(x, margin.t + iH); ctx.stroke();
-    }
-    ctx.fillStyle = '#6b7280'; ctx.font = '11px monospace';
-    for (var i = 0; i <= 5; i++) {
-      var x = margin.l + (i / 5) * iW;
-      var lr = Math.pow(10, -5 + i);
-      ctx.fillText('10^' + (-5 + i), x - 12, margin.t + iH + 14);
-    }
-    ctx.fillText('learning rate (log)', margin.l + iW / 2 - 40, margin.t + iH + 30);
-    for (var i = 0; i <= 5; i++) {
-      var y = margin.t + iH - (i / 5) * iH;
-      var bs = Math.pow(2, 3 + i);
-      ctx.fillText(bs.toString(), 16, y + 4);
-    }
-    ctx.fillText('batch', 14, margin.t - 8);
-
-    var minLoss = Math.min.apply(null, runs.map(function(r) { return r.loss; }));
-    var maxLoss = Math.max.apply(null, runs.map(function(r) { return r.loss; }));
-
-    runs.forEach(function(r) {
-      var lrLog = Math.log10(r.lr);
-      var bsLog = Math.log2(r.bs);
-      var x = margin.l + ((lrLog + 5) / 5) * iW;
-      var y = margin.t + iH - ((bsLog - 3) / 5) * iH;
-      var norm = (r.loss - minLoss) / (maxLoss - minLoss + 1e-9);
-      var hue = (1 - norm) * 160;
-      ctx.fillStyle = 'hsl(' + hue + ', 70%, 55%)';
-      ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
-      r._x = x; r._y = y;
-    });
-  }
-  draw();
-
-  canvas.addEventListener('click', function(e) {
-    var rect = canvas.getBoundingClientRect();
-    var px = (e.clientX - rect.left) * (canvas.width / rect.width);
-    var py = (e.clientY - rect.top) * (canvas.height / rect.height);
-    var best = null, bestD = Infinity;
-    runs.forEach(function(r) {
-      var d = (r._x - px) * (r._x - px) + (r._y - py) * (r._y - py);
-      if (d < bestD) { bestD = d; best = r; }
-    });
-    if (best && bestD < 800) {
-      info.innerHTML = 'Run: lr=<strong>' + best.lr.toExponential(0) + '</strong>, bs=<strong>' + best.bs + '</strong> &mdash; final val loss <strong>' + best.loss.toFixed(3) + '</strong>';
-    }
-  });
-})();
-
+<script id="ce-fullbleed-resize">
+(function(){
+  function fit(f){ try{var d=f.contentDocument; if(d&&d.body){var h=Math.ceil(Math.max(d.body.scrollHeight,d.body.offsetHeight)); if(h>50){f.style.height=(h+8)+"px";return true;}}}catch(e){} return false; }
+  function all(){ document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(fit); }
+  addEventListener("message",function(e){ if(!e.data||e.data.type!=="ce-frame-height"||!(e.data.height>50))return;
+    var ifr=document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)");
+    for(var i=0;i<ifr.length;i++){ if(ifr[i].contentWindow===e.source){ ifr[i].style.height=(e.data.height+8)+"px"; break; } } });
+  document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(function(f){ f.addEventListener("load",function(){fit(f);setTimeout(function(){fit(f);},400);setTimeout(function(){fit(f);},1200);}); });
+  addEventListener("resize",all); setInterval(all,1500); all();
 })();
 </script>
 </main>

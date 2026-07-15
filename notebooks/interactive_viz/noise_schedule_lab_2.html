@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noise Schedule Lab</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 8px 22px rgba(108,92,231,.13);
+    --radius:14px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--ink);
+    font:14px/1.5 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:12px 14px;overflow:hidden;
+    height:100svh;display:flex;flex-direction:column;gap:10px;}
+  header h1{font-size:19px;font-weight:800;letter-spacing:-.02em;display:inline}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);font-size:12.5px;margin-top:2px;line-height:1.45}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:5px;padding:0 5px;box-shadow:0 2px 6px rgba(108,92,231,.10)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:8px 14px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:10px;cursor:pointer;
+    padding:7px 15px;transition:transform .12s;}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 5px 13px rgba(108,92,231,.35)}
+  #play:hover{transform:translateY(-1px)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:7px 6px}
+  .ctl{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);font-weight:700}
+  .ctl input[type=range]{accent-color:var(--purple);width:160px}
+  .ctl .val{font-family:var(--mono);color:var(--purple);min-width:44px;font-weight:800}
+  .spd{display:flex;align-items:center;gap:7px;margin-left:auto;font-size:12.5px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:100px}
+  .bmaxbtns{display:flex;gap:5px}
+  .bmaxbtns button{padding:5px 10px;font-size:12px;border-radius:9px;background:#fff;border:2px solid var(--line);color:var(--muted)}
+  .bmaxbtns button.on{background:var(--purple-soft);border-color:var(--purple);color:var(--purple)}
+
+  .main{flex:1;display:grid;grid-template-columns:1.25fr 1fr;gap:12px;min-height:0}
+  .main>*{min-width:0;min-height:0}
+  .colL{display:flex;flex-direction:column;gap:10px;min-height:0}
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:11px 13px}
+  .stage-card h2,.panel h2{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .plotcard{flex:1;display:flex;flex-direction:column;min-height:0}
+  .plotbox{flex:1;min-height:0;position:relative}
+  canvas.plot{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .legend{display:flex;gap:12px;justify-content:center;font-size:11px;font-weight:700;margin-top:5px;flex-wrap:wrap}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .legend i{width:14px;height:4px;border-radius:2px;display:inline-block}
+
+  .mixrow{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap}
+  .mbox{display:flex;flex-direction:column;align-items:center;gap:3px}
+  .mbox .cap{font-size:10.5px;font-weight:800}
+  .mbox .cap.in{color:var(--orange)} .mbox .cap.mid{color:var(--purple)} .mbox .cap.out{color:var(--teal)}
+  .mbox .co{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+  canvas.px{border-radius:7px;border:1px solid var(--line);image-rendering:pixelated;width:92px;height:92px;background:#fff}
+  .op{font-size:19px;font-weight:800;color:var(--muted)}
+
+  .colR{display:flex;flex-direction:column;gap:10px;min-height:0;overflow-y:auto;padding-right:2px}
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:11px 14px;flex-shrink:0}
+  .bigform{font-family:var(--mono);font-size:13px;background:#F6F8FE;border-radius:10px;padding:8px 11px;line-height:1.6;overflow-x:auto;white-space:nowrap}
+  .bigform b.o{color:var(--orange)} .bigform b.t{color:var(--teal)}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+  .pill{background:#F6F8FE;border-radius:9px;padding:6px 8px;text-align:center}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:15px}
+  .pill .t{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .pill.sig .n{color:var(--orange)} .pill.noi .n{color:var(--teal)} .pill.tt .n{color:var(--purple)}
+  .explain{color:#33415C;margin-top:8px;font-size:12.5px;line-height:1.5}
+  .explain p{margin:0 0 6px}
+  .explain p:last-child{margin-bottom:0}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:5px;padding:0 5px}
+  pre.code{font-family:var(--mono);font-size:11.5px;line-height:1.34;background:#F6F8FE;border-radius:10px;padding:7px 0;overflow-x:auto;white-space:normal}
+  .cl{padding:0 11px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:3px solid var(--purple);font-weight:700}
+  .cl.cm{color:var(--muted)}
+
+  /* short / narrow fallbacks: page flows & scrolls naturally */
+  @media (max-width:900px), (max-height:560px){
+    body{height:auto;min-height:100svh;overflow:auto}
+    .main{grid-template-columns:1fr}
+    .plotbox{min-height:260px}
+    canvas.plot{position:static;height:260px}
+    .colR{overflow:visible}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Noise Schedule Lab: <span class="hl">β, α and ᾱ, live</span></h1>
+  <p class="sub">One tiny table — the <code>linear_sched</code> output — controls the whole forward process. Drag the
+  <b>t</b> slider (or the plot) from clean image to pure noise, and toggle <code>betamax</code>: the paper's
+  <code>0.02</code> vs this notebook's gentler <code>0.01</code>.</p>
+</header>
+
+<div class="controls">
+  <button id="play">Play ▶</button>
+  <button id="reset">Reset</button>
+  <span class="ctl">t <input type="range" id="tsl" min="0" max="999" value="0"><span class="val" id="tval">0</span></span>
+  <span class="ctl">betamax
+    <span class="bmaxbtns">
+      <button id="bm001" class="on">0.01 (ours)</button>
+      <button id="bm002">0.02 (DDPM paper)</button>
+    </span>
+  </span>
+  <label class="spd">Speed <input type="range" id="spd" min="1" max="6" value="3"><span id="spdv">1.0×</span></label>
+</div>
+
+<div class="main">
+  <div class="colL">
+    <div class="stage-card plotcard">
+      <h2>Schedule curves — drag on the plot to set t</h2>
+      <div class="plotbox"><canvas class="plot" id="plot" width="640" height="330"></canvas></div>
+      <div class="legend">
+        <span><i style="background:#E05252"></i>β (per-step noise)</span>
+        <span><i style="background:var(--orange)"></i>ᾱ = cumprod(α) → signal²</span>
+        <span><i style="background:var(--teal)"></i>1 − ᾱ → noise²</span>
+        <span><i style="background:#C9D4EA"></i>ᾱ if betamax = <span id="ghostlab">0.02</span></span>
+      </div>
+    </div>
+    <div class="stage-card">
+      <h2>The image at timestep t   —   x<sub>t</sub> = √ᾱ<sub>t</sub>·x₀ + √(1−ᾱ<sub>t</sub>)·ε</h2>
+      <div class="mixrow">
+        <div class="mbox"><div class="cap in">clean x₀</div><canvas class="px" id="cImg" width="32" height="32"></canvas><div class="co">× √ᾱ = <span id="c1">1.000</span></div></div>
+        <div class="op">+</div>
+        <div class="mbox"><div class="cap out">noise ε</div><canvas class="px" id="cNoise" width="32" height="32"></canvas><div class="co">× √(1−ᾱ) = <span id="c2">0.000</span></div></div>
+        <div class="op">=</div>
+        <div class="mbox"><div class="cap mid">noisy x<sub>t</sub></div><canvas class="px" id="cMix" width="32" height="32"></canvas><div class="co">t = <span id="c3">0</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="colR">
+    <div class="panel">
+      <h2>Live values at this timestep</h2>
+      <div class="bigform">x<sub>t</sub> = <b class="o"><span id="f1">1.000</span></b> · x₀ &nbsp;+&nbsp; <b class="t"><span id="f2">0.000</span></b> · ε</div>
+      <div class="stats">
+        <div class="pill sig"><div class="n" id="p-sig">100%</div><div class="t">signal kept (ᾱ)</div></div>
+        <div class="pill noi"><div class="n" id="p-noi">0%</div><div class="t">noise variance (1−ᾱ)</div></div>
+        <div class="pill tt"><div class="n" id="p-beta">1.0e-4</div><div class="t">β at this step</div></div>
+      </div>
+      <div class="explain" id="explain"></div>
+    </div>
+    <div class="panel">
+      <h2>The code this corresponds to</h2>
+      <pre class="code">
+<div class="cl">def linear_sched(betamin=0.0001, betamax=0.02,</div>
+<div class="cl">                 n_steps=1000):</div>
+<div class="cl hl">    beta = torch.linspace(betamin, betamax, n_steps)</div>
+<div class="cl">    return SimpleNamespace(</div>
+<div class="cl">        a    = 1. - beta,</div>
+<div class="cl hl">        abar = (1.-beta).cumprod(dim=0),</div>
+<div class="cl">        sig  = beta.sqrt())</div>
+<div class="cl cm"># this notebook uses a gentler schedule:</div>
+<div class="cl hl">lin_abar = linear_sched(betamax=0.01)</div>
+</pre>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const NS=1000;
+
+/* schedules */
+function makeSched(bmax){
+  const beta=[],a=[],abar=[]; let cp=1;
+  for(let i=0;i<NS;i++){
+    const b=1e-4+(bmax-1e-4)*i/(NS-1);
+    beta.push(b); a.push(1-b); cp*=(1-b); abar.push(cp);
+  }
+  return {beta,a,abar};
+}
+const S001=makeSched(0.01), S002=makeSched(0.02);
+let bmax=0.01, S=S001, t=0, playing=false, timer=null;
+const speeds=[0.5,0.75,1.0,1.5,2.0,3.0];
+
+/* base image + fixed N(0,1) noise field (Box–Muller, like torch.randn) */
+const N=32, img=[], noise=[];
+(function(){
+  let seed=42;const rnd=()=>{seed=(seed+0x6D2B79F5)|0;let z=seed;
+    z=Math.imul(z^(z>>>15),z|1);z^=z+Math.imul(z^(z>>>7),z|61);
+    return((z^(z>>>14))>>>0)/4294967296;};
+  const gauss=()=>{let u=0;while(u===0)u=rnd();
+    return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*rnd());};
+  for(let y=0;y<N;y++){img.push([]);noise.push([]);
+    for(let x=0;x<N;x++){
+      let r=118+y*1.5,g=160+y*1.2,b=222-y*0.5;
+      if(y>=23){r=100;g=140;b=88;}
+      const dx=x-16,dy=y-17;
+      if(dx*dx*0.7+dy*dy<70){r=70;g=150;b=60;}
+      if((dx+5)*(dx+5)+(dy+6)*(dy+6)<6||(dx-5)*(dx-5)+(dy+6)*(dy+6)<6){r=20;g=25;b=20;}
+      img[y].push([r/255-0.5,g/255-0.5,b/255-0.5]);
+      noise[y].push([gauss(),gauss(),gauss()]);
+    }
+  }
+})();
+
+function draw(canvas,fn){
+  const g=canvas.getContext('2d'),d=g.createImageData(N,N);
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const v=fn(x,y),i=(y*N+x)*4;
+    for(let c=0;c<3;c++)d.data[i+c]=Math.max(0,Math.min(255,(v[c]+0.5)*255));
+    d.data[i+3]=255;
+  }
+  g.putImageData(d,0,0);
+}
+
+/* plot — canvas sized to its flex box, redrawn on resize */
+const plot=$('plot'),pc=plot.getContext('2d');
+const PAD={l:46,r:14,t:14,b:26};
+function px(i){return PAD.l+(plot.width-PAD.l-PAD.r)*i/(NS-1);}
+function py(v){return PAD.t+(plot.height-PAD.t-PAD.b)*(1-v);}
+function drawPlot(){
+  pc.clearRect(0,0,plot.width,plot.height);
+  pc.strokeStyle='#DDE5F2';pc.lineWidth=1;pc.font='11px SF Mono,monospace';pc.fillStyle='#64748B';
+  for(let v=0;v<=1.001;v+=0.25){
+    pc.beginPath();pc.moveTo(PAD.l,py(v));pc.lineTo(plot.width-PAD.r,py(v));pc.stroke();
+    pc.fillText(v.toFixed(2),8,py(v)+4);
+  }
+  for(let i=0;i<=NS;i+=250){
+    pc.fillText(''+i,px(Math.min(i,NS-1))-10,plot.height-8);
+  }
+  const ghost=(bmax===0.01)?S002:S001;
+  pc.strokeStyle='#C9D4EA';pc.lineWidth=2;pc.setLineDash([5,4]);pc.beginPath();
+  for(let i=0;i<NS;i++){const X=px(i),Y=py(ghost.abar[i]);i?pc.lineTo(X,Y):pc.moveTo(X,Y);}pc.stroke();pc.setLineDash([]);
+  pc.strokeStyle='#E05252';pc.lineWidth=2;pc.beginPath();
+  for(let i=0;i<NS;i++){const X=px(i),Y=py(S.beta[i]/0.02);i?pc.lineTo(X,Y):pc.moveTo(X,Y);}pc.stroke();
+  pc.strokeStyle='#0E9C8F';pc.lineWidth=2.6;pc.beginPath();
+  for(let i=0;i<NS;i++){const X=px(i),Y=py(1-S.abar[i]);i?pc.lineTo(X,Y):pc.moveTo(X,Y);}pc.stroke();
+  pc.strokeStyle='#E8821F';pc.lineWidth=2.6;pc.beginPath();
+  for(let i=0;i<NS;i++){const X=px(i),Y=py(S.abar[i]);i?pc.lineTo(X,Y):pc.moveTo(X,Y);}pc.stroke();
+  pc.strokeStyle='#6C5CE7';pc.lineWidth=2;pc.beginPath();pc.moveTo(px(t),PAD.t);pc.lineTo(px(t),plot.height-PAD.b);pc.stroke();
+  pc.fillStyle='#6C5CE7';pc.beginPath();pc.arc(px(t),py(S.abar[t]),5,0,7);pc.fill();
+  pc.beginPath();pc.arc(px(t),py(1-S.abar[t]),5,0,7);pc.fill();
+  pc.font='bold 12px -apple-system,sans-serif';
+  pc.fillText('t='+t,Math.min(px(t)+7,plot.width-56),PAD.t+12);
+}
+function sizePlot(){
+  const box=plot.parentElement.getBoundingClientRect();
+  const w=Math.max(280,Math.floor(box.width)),h=Math.max(180,Math.floor(box.height));
+  if(plot.width!==w||plot.height!==h){plot.width=w;plot.height=h;}
+  drawPlot();
+}
+function plotPointer(e){
+  const r=plot.getBoundingClientRect();
+  const x=(e.clientX-r.left)/r.width*plot.width;
+  const i=Math.round((x-PAD.l)/(plot.width-PAD.l-PAD.r)*(NS-1));
+  t=Math.max(0,Math.min(NS-1,i)); $('tsl').value=t; stopPlay(); render();
+}
+let dragging=false;
+plot.addEventListener('pointerdown',e=>{dragging=true;plotPointer(e);});
+window.addEventListener('pointermove',e=>{if(dragging)plotPointer(e);});
+window.addEventListener('pointerup',()=>dragging=false);
+
+function explainFor(){
+  const ab=S.abar[t];
+  if(t===0) return `<p>At <code>t = 0</code> nothing has happened yet: <code>ᾱ₀ ≈ ${ab.toFixed(4)}</code>, so the
+    image is essentially untouched. β starts tiny (<code>betamin = 0.0001</code>) — early steps barely nudge the image.</p>
+    <p>Press <b>Play</b>, or drag the slider / the plot, to march toward pure noise.</p>`;
+  if(ab>0.75) return `<p>Early phase: β is still small, so each step removes only a whisper of signal. ᾱ (orange) has
+    only just started to bend downward — the frog is clearly visible through light noise.</p>`;
+  if(ab>0.25) return `<p>Middle phase: this is where the interesting learning happens. Signal and noise are comparable
+    (<code>ᾱ ≈ ${ab.toFixed(2)}</code>) — the model must use real image structure to figure out what is noise.</p>
+    <p>Notice ᾱ is a <b>cumulative product</b>: multiplying hundreds of numbers slightly below 1 makes it fall
+    smoothly, not linearly like β.</p>`;
+  if(ab>0.02) return `<p>Late phase: the orange curve is hugging zero — most signal is gone, and
+    <code>√(1−ᾱ) ≈ ${Math.sqrt(1-ab).toFixed(3)}</code> means the pixel values are almost all noise.</p>`;
+  return `<p>Near <code>t = 999</code>: <code>ᾱ ≈ ${ab.toFixed(4)}</code> — statistically indistinguishable from pure
+    Gaussian noise. This is crucial: <b>sampling starts from exactly this distribution</b>
+    (<code>torch.randn</code>), so the endpoint of the forward process must truly be noise.</p>
+    <p>Now toggle <b>betamax</b>: with 0.02 the signal dies much earlier (~step 500 is already very noisy); with 0.01
+    the descent is gentler and more of the schedule is spent at informative, partially-noisy images.</p>`;
+}
+
+function render(){
+  const ab=S.abar[t], c1=Math.sqrt(ab), c2=Math.sqrt(1-ab);
+  drawPlot();
+  draw($('cImg'),(x,y)=>img[y][x]);
+  draw($('cNoise'),(x,y)=>noise[y][x].map(v=>v*0.28)); /* display-scaled preview of N(0,1) */
+  draw($('cMix'),(x,y)=>{
+    const p=img[y][x],n=noise[y][x];
+    return [0,1,2].map(c=>Math.max(-0.5,Math.min(0.5,c1*p[c]+c2*n[c])));
+  });
+  $('c1').textContent=c1.toFixed(3); $('c2').textContent=c2.toFixed(3); $('c3').textContent=t;
+  $('f1').textContent=c1.toFixed(3); $('f2').textContent=c2.toFixed(3);
+  $('p-sig').textContent=(ab*100).toFixed(ab<0.01?2:1)+'%';
+  $('p-noi').textContent=((1-ab)*100).toFixed(1)+'%';
+  $('p-beta').textContent=S.beta[t].toExponential(1);
+  $('tval').textContent=t;
+  $('explain').innerHTML=explainFor();
+}
+
+/* controls */
+function stopPlay(){playing=false;if(timer)clearInterval(timer);$('play').textContent='Play ▶';}
+$('play').addEventListener('click',()=>{
+  if(playing){stopPlay();return;}
+  if(t>=NS-1)t=0;
+  playing=true;$('play').textContent='Pause ⏸';
+  timer=setInterval(()=>{
+    t=Math.min(NS-1,t+Math.round(6*speeds[+$('spd').value-1]));
+    $('tsl').value=t;render();
+    if(t>=NS-1)stopPlay();
+  },40);
+});
+$('reset').addEventListener('click',()=>{stopPlay();t=0;$('tsl').value=0;render();});
+$('tsl').addEventListener('input',()=>{stopPlay();t=+$('tsl').value;render();});
+$('spd').addEventListener('input',()=>{$('spdv').textContent=speeds[+$('spd').value-1].toFixed(1)+'×';});
+function setBmax(v){
+  bmax=v;S=(v===0.01)?S001:S002;
+  $('bm001').classList.toggle('on',v===0.01);
+  $('bm002').classList.toggle('on',v!==0.01);
+  $('ghostlab').textContent=(v===0.01)?'0.02':'0.01';
+  render();
+}
+$('bm001').addEventListener('click',()=>setBmax(0.01));
+$('bm002').addEventListener('click',()=>setBmax(0.02));
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){stopPlay();t=Math.min(NS-1,t+10);$('tsl').value=t;render();}
+  if(e.key==='ArrowLeft'){stopPlay();t=Math.max(0,t-10);$('tsl').value=t;render();}
+});
+
+/* 100vh fit + auto-height handshake:
+   - app mode (wide & tall): page is exactly the viewport → report the viewport height, unchanged
+   - flow mode (narrow/short fallback): page flows naturally → report content height */
+function flowMode(){return window.matchMedia('(max-width:900px), (max-height:560px)').matches;}
+function postH(){
+  const h=flowMode()
+    ? Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight))
+    : Math.ceil(window.innerHeight);
+  if(h>50&&window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){sizePlot();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(update).observe(plot.parentElement);
+sizePlot();render();
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

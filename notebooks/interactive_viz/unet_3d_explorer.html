@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The UNet in 3D — Watch the Tensor Travel</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --gold:#D9A21B;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:1050px}
+  header p.sub code{font-family:var(--mono);font-size:.9em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:0 2px 8px rgba(108,92,231,.10)}
+  header p.sub b.o{color:var(--orange)} header p.sub b.t{color:var(--teal)} header p.sub b.p{color:var(--purple)}
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 10px}
+  .chip{font:inherit;font-weight:700;font-size:13px;border:2px solid var(--line);background:#fff;
+    color:var(--muted);border-radius:999px;padding:7px 15px;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--purple);color:var(--purple)}
+  .chip.on{border-color:var(--purple);background:var(--purple);color:#fff;box-shadow:0 5px 14px rgba(108,92,231,.32)}
+
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:12px 16px;margin:0 0 14px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;padding:8px 16px;transition:transform .12s}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35);min-width:118px}
+  #play:hover{transform:translateY(-1px)}
+  #back,#fwd{background:var(--purple-soft);color:var(--purple)}
+  #reset,#resetv{background:transparent;color:var(--muted);text-decoration:underline;padding:8px 6px}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:120px}
+  .hint{font-size:12px;color:var(--muted);font-weight:600}
+
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px}
+  #c3d{display:block;width:100%;height:440px;border-radius:12px;cursor:grab;touch-action:none;
+    background:linear-gradient(180deg,#F8FBFF,#EDF2FB)}
+  #c3d.grabbing{cursor:grabbing}
+
+  .pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:12px 0 0}
+  .pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 8px;cursor:pointer;
+    text-align:center;min-width:84px;transition:.15s}
+  .pill:hover{border-color:var(--purple)}
+  .pill .t{font-size:9.5px;font-weight:800;color:var(--muted);letter-spacing:.02em;white-space:nowrap}
+  .pill .s{font-family:var(--mono);font-size:10px;color:var(--ink);white-space:nowrap}
+  .pill.on{border-color:var(--purple);background:var(--purple-soft);box-shadow:0 3px 10px rgba(108,92,231,.25)}
+  .pill.on .t{color:var(--purple)}
+  .pill.none{border-style:dashed}
+
+  .inforow{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0 0;align-items:stretch}
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 17px}
+  .inspect{flex:1 1 460px;min-width:300px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .steptitle{font-size:16px;font-weight:800;letter-spacing:-.01em;margin-bottom:6px}
+  .shapes{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+  .shp{font-family:var(--mono);font-size:11.5px;background:var(--purple-soft);color:var(--purple);
+    border:1.5px solid #D9D1FB;border-radius:8px;padding:2px 9px;font-weight:700}
+  .explain{color:#33415C;font-size:13.5px}
+  .explain p{margin:0 0 7px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.o{color:var(--orange)} .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)}
+  .keybox{margin-top:7px;background:var(--purple-soft);border-radius:12px;padding:8px 12px;color:#4636C9;font-weight:600;font-size:12.5px}
+
+  .story{flex:1 1 460px;min-width:300px;border-left:5px solid var(--purple)}
+  .story .body{color:#33415C;font-size:13.5px;line-height:1.6}
+  .story .body code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .story .body b.o{color:var(--orange)} .story .body b.t{color:var(--teal)} .story .body b.p{color:var(--purple)} .story .body b.g{color:var(--gold)}
+
+  pre.code{font-family:var(--mono);font-size:12px;line-height:1.65;background:#1F2940;color:#DCE6F5;
+    border-radius:var(--radius);box-shadow:var(--shadow);padding:13px 16px;overflow-x:auto;margin:14px 0 0;white-space:pre}
+  pre.code .hl{background:rgba(123,92,214,.42);border-radius:4px;padding:1px 4px}
+  pre.code .cm{color:#7D8DB0} pre.code .num{color:#F6B86E} pre.code .fn{color:#7CE0D3}
+
+  .legend{text-align:center;font-size:11.5px;color:var(--muted);margin-top:10px;font-weight:600}
+  .legend b.o{color:var(--orange)} .legend b.t{color:var(--teal)} .legend b.p{color:var(--purple)} .legend b.g{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+<header>
+  <h1>The UNet in 3D: <span class="hl">watch one tensor travel</span> through the small CIFAR-10 model</h1>
+  <p class="sub">Thin panels = the model's <b>blocks</b> (click any for details + how <code>init_ddpm</code> treats it).
+  The <b class="o">solid box is the data itself</b> — a batch <code>[bs, 3, 32, 32]</code> — and it <b>morphs at every
+  block</b>: <b>face = the pixel grid</b> (32×32 → 4×4 → 32×32), <b>thickness = channels</b> (3 → 256 → 3). The little
+  <b class="g">gold dot</b> is the timestep embedding riding along — injected into every block. On the way down, each
+  block <b class="o">parks a copy on a shelf</b>; on the way up, each copy <b class="p">flies back in and visibly
+  fattens the box</b> — that's a skip connection's <code>torch.cat</code>. <b>Drag = rotate · scroll = zoom · ⏭ = one
+  block · chips replay their part of the story.</b></p>
+</header>
+
+<div class="chips" id="chips">
+  <button class="chip on" data-s="0">① Meet the UNet</button>
+  <button class="chip" data-s="1">② The squeeze (encoder)</button>
+  <button class="chip" data-s="2">③ downsamplers = None</button>
+  <button class="chip" data-s="3">④ The climb back (skips!)</button>
+  <button class="chip" data-s="4">⑤ The prediction ε̂</button>
+</div>
+
+<div class="controls">
+  <button id="back">⏮ 1 block</button>
+  <button id="play">▶ Play all</button>
+  <button id="fwd">1 block ⏭</button>
+  <button id="reset">↺ Reset</button>
+  <button id="resetv">Reset view</button>
+  <span class="hint" id="posLab"></span>
+  <label class="spd">Speed <input type="range" id="spd" min="0.25" max="3" step="0.25" value="1"><span id="spdv">1×</span></label>
+</div>
+
+<div class="stage-card"><canvas id="c3d"></canvas></div>
+
+<div class="pills" id="pills"></div>
+
+<div class="inforow">
+  <div class="panel inspect">
+    <h2>Block inspector — click any block in the scene</h2>
+    <div class="steptitle" id="title">How to read the scene</div>
+    <div class="shapes" id="shapes"></div>
+    <div class="explain" id="explain">The <b class="o">orange box</b> is the activation tensor. Its <b>face</b> is the
+    spatial grid, its <b>thickness</b> is the channel count — so the encoder makes it <i>smaller and fatter</i>, and the
+    decoder <i>bigger and thinner</i> again. Click any thin panel to inspect that block; the pills above trace every
+    shape the tensor takes.</div>
+  </div>
+  <div class="panel story">
+    <h2>The story so far</h2>
+    <div class="body" id="story"></div>
+  </div>
+</div>
+
+<pre class="code" id="code"></pre>
+
+<p class="legend"><b class="o">orange box</b> = data in the encoder · <b class="p">purple</b> = bottleneck ·
+<b class="t">teal</b> = decoder & prediction · <b class="g">gold dot</b> = timestep embedding (injected at every glowing block) ·
+shelf copies = activations saved for skip connections · faint boxes = shapes already taken · dashed frame = the missing 4th downsampler</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const cv=$('c3d');
+
+/* graceful fallback if three.js (cdnjs) could not load, e.g. offline */
+if(typeof THREE==='undefined'){
+  const d=document.createElement('div');
+  d.style.cssText='padding:40px 24px;text-align:center;color:#64748B;font-weight:600';
+  d.innerHTML='This 3D visualization needs internet access to load <code>three.js</code> from cdnjs.<br>'+
+    'Reconnect and re-run the cell — the block inspector text below still applies.';
+  cv.parentElement.replaceChild(d,cv);
+  const wrap=$('wrap');
+  const postH=()=>{const h=Math.ceil(wrap.getBoundingClientRect().height)+34;
+    if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');};
+  window.addEventListener('load',postH);setTimeout(postH,200);postH();
+  return;
+}
+
+/* ============ palette ============ */
+const ORANGE=0xE8821F, PURPLE=0x6C5CE7, TEAL=0x0E9C8F, GOLD=0xD9A21B, INKBLUE=0x8FA3C8;
+
+/* ============ ground truth: gates & waypoints ============
+   gate k is crossed during segment p∈[k, k+1]; waypoint w = state AFTER gate w-1 */
+const G=[ // 15 gates (index 8 is the phantom "None" slot)
+ {id:'conv_in',name:'conv_in',sub:'3→32',        sp:32,slim:1,ph:'enc'},
+ {id:'d1',  name:'Down 1',  sub:'32 ch · 32×32', sp:32,ph:'enc',skip:1},
+ {id:'ds1', name:'Downsampler',sub:'32→16',      sp:24,slim:1,ph:'enc'},
+ {id:'d2',  name:'Down 2',  sub:'64 ch · 16×16', sp:16,ph:'enc',skip:1},
+ {id:'ds2', name:'Downsampler',sub:'16→8',       sp:12,slim:1,ph:'enc'},
+ {id:'d3',  name:'Down 3',  sub:'128 ch · 8×8',  sp:8, ph:'enc',skip:1},
+ {id:'ds3', name:'Downsampler',sub:'8→4',        sp:6, slim:1,ph:'enc'},
+ {id:'d4',  name:'Down 4',  sub:'256 ch · 4×4',  sp:4, ph:'enc',skip:1},
+ {id:'none',name:'(4th downsampler?)',sub:'None',sp:6, none:1,ph:'enc'},
+ {id:'mid', name:'Bottleneck',sub:'256 ch · 4×4',sp:4, ph:'mid'},
+ {id:'u1',  name:'Up 1',    sub:'cat+256 · ↑8×8',sp:4, ph:'dec',cat:[256,256],skipFrom:7},
+ {id:'u2',  name:'Up 2',    sub:'cat+128 · ↑16', sp:8, ph:'dec',cat:[256,128],skipFrom:5},
+ {id:'u3',  name:'Up 3',    sub:'cat+64 · ↑32',  sp:16,ph:'dec',cat:[128,64],skipFrom:3},
+ {id:'u4',  name:'Up 4',    sub:'cat+32 · 32×32',sp:32,ph:'dec',cat:[64,32],skipFrom:1},
+ {id:'out', name:'conv_out',sub:'32→3',          sp:32,slim:1,ph:'dec'}
+];
+/* tensor state after each gate: [channels, spatial] ; W[0] = raw input */
+const W=[[3,32],[32,32],[32,32],[32,16],[64,16],[64,8],[128,8],[128,4],[256,4],[256,4],[256,4],[256,8],[128,16],[64,32],[32,32],[3,32]];
+const SHAPES=W.map(([c,s])=>`[bs, ${c}, ${s}, ${s}]`);
+const PILLT=['input','conv_in','Down 1','Downsampler','Down 2','Downsampler','Down 3','Downsampler','Down 4','downsamplers','Bottleneck','Up 1 ⤶cat','Up 2 ⤶cat','Up 3 ⤶cat','Up 4 ⤶cat','conv_out'];
+const th=c=>0.28+c/256*1.12, fc=s=>Math.max(0.55,s*0.12);
+const dims=w=>{const [c,s]=W[w];return [th(c),fc(s),fc(s)];};
+const catDims=k=>{const [a,b]=G[k].cat,[,s]=W[k];return [th(a+b),fc(s),fc(s)];};
+const phaseCol=w=>w<=9?(w>=9?PURPLE:ORANGE):(w===10?PURPLE:TEAL); // color of waypoint state
+const colOf=w=>w<9?ORANGE:(w<=10?PURPLE:TEAL);
+
+const GAP=1.30, gateX=k=>(k-7)*GAP;
+const INX=gateX(0)-1.25, EXITX=gateX(14)+1.35;
+const WX=[INX];for(let w=1;w<=15;w++)WX.push(gateX(w-1)+0.5*GAP);
+WX.push(EXITX); // WX[16] for the final glide out
+const SHELF_Y=3.05;
+
+/* ============ scene ============ */
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(36,2.4,0.1,200);
+scene.add(new THREE.AmbientLight(0xffffff,0.88));
+const dl=new THREE.DirectionalLight(0xffffff,0.5);dl.position.set(5,10,8);scene.add(dl);
+const group=new THREE.Group();scene.add(group);
+
+/* crisp text sprites */
+function makeLabel(lines,{size=22,color='#1F2A44',mono=false,bold=true}={}){
+  const c=document.createElement('canvas'),x=c.getContext('2d');
+  const font=`${bold?'700':'400'} ${size}px ${mono?'Consolas,monospace':'"Segoe UI",sans-serif'}`;
+  x.font=font;
+  const w=Math.max(...lines.map(t=>x.measureText(t).width))+20,h=lines.length*(size+8)+12;
+  c.width=w*2;c.height=h*2;x.scale(2,2);x.font=font;x.textAlign='center';x.textBaseline='middle';x.fillStyle=color;
+  lines.forEach((t,i)=>x.fillText(t,w/2,10+(size+8)*i+size/2));
+  const tx=new THREE.CanvasTexture(c);tx.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,depthTest:false,transparent:true}));
+  const k=0.0135;sp.scale.set(w*k,h*k,1);sp.renderOrder=6;
+  return sp;
+}
+
+/* gates */
+const gates=[],gateMeshes=[];
+G.forEach((q,k)=>{
+  const size=fc(q.sp)+0.95, thick=q.slim?0.16:0.24;
+  if(q.none){ // dashed empty frame
+    const eg=new THREE.EdgesGeometry(new THREE.BoxGeometry(0.20,size,size));
+    const l=new THREE.LineSegments(eg,new THREE.LineDashedMaterial({color:0xB6698A,dashSize:0.12,gapSize:0.09,transparent:true,opacity:0.95}));
+    l.computeLineDistances();l.position.set(gateX(k),0,0);group.add(l);
+    gates.push({q,mesh:null,frame:l});
+  }else{
+    const tint=q.ph==='enc'?0xF4CBA0:(q.ph==='mid'?0xC9BFF5:0xA8DCD5);
+    const g=new THREE.BoxGeometry(thick,size,size);
+    const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:tint,transparent:true,opacity:0.5}));
+    m.position.set(gateX(k),0,0);m.userData={k};group.add(m);gateMeshes.push(m);
+    const e=new THREE.LineSegments(new THREE.EdgesGeometry(g),new THREE.LineBasicMaterial({color:INKBLUE,transparent:true,opacity:0.8}));
+    e.position.copy(m.position);group.add(e);
+    gates.push({q,mesh:m,edge:e});
+  }
+  const labY=-2.62-(k%2)*0.82;
+  const labCol=q.none?'#B6698A':(q.ph==='enc'?'#B06A15':(q.ph==='mid'?'#5B4BD1':'#0B7D73'));
+  const lab=makeLabel([q.name,q.sub],{size:19,color:labCol});
+  lab.position.set(gateX(k),labY,0);group.add(lab);
+});
+/* axis line */
+{const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(INX-0.4,0,0),new THREE.Vector3(EXITX+0.5,0,0)]);
+ group.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:INKBLUE,transparent:true,opacity:0.45})));}
+const inLab=makeLabel(['input batch','[bs, 3, 32, 32]'],{size:19,color:'#B06A15'});
+inLab.position.set(INX,-2.62,0);group.add(inLab);
+const outLab=makeLabel(['ε̂  predicted noise','[bs, 3, 32, 32]'],{size:19,color:'#0B7D73'});
+outLab.position.set(EXITX+0.45,-3.44,0);group.add(outLab);
+
+/* skip arcs + shelves + parked copies + flying copies */
+const skipDefs=[[1,13],[3,12],[5,11],[7,10]]; // [downGate, upGate]
+const skips=[];
+for(const [dk,uk] of skipDefs){
+  const A=new THREE.Vector3(gateX(dk),SHELF_Y,0), Bv=new THREE.Vector3(gateX(uk)-0.42,0.35,0);
+  const curve=new THREE.QuadraticBezierCurve3(A,new THREE.Vector3((A.x+Bv.x)/2,SHELF_Y+1.45+(dk===1?0.55:0),0),Bv);
+  const arc=new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(46)),
+    new THREE.LineDashedMaterial({color:0x9A8DF0,dashSize:0.13,gapSize:0.10,transparent:true,opacity:0.55}));
+  arc.computeLineDistances();group.add(arc);
+  const [c,s]=W[dk+1], d=[th(c)*0.8,fc(s)*0.62,fc(s)*0.62];
+  const mk=op=>{const m=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),
+    new THREE.MeshLambertMaterial({color:ORANGE,transparent:true,opacity:op}));
+    m.scale.set(d[0],d[1],d[2]);group.add(m);return m;};
+  const parked=mk(0.34);parked.position.copy(A);
+  const flier=mk(0.85);flier.visible=false;
+  const shelfLab=makeLabel(['saved ⤴'],{size:16,color:'#C07417'});
+  shelfLab.position.set(gateX(dk),SHELF_Y+ (d[1]/2+0.42),0);group.add(shelfLab);
+  skips.push({dk,uk,curve,arc,parked,flier,shelfLab,parkAt:dk+1.18,flyA:uk+0.10,flyB:uk+0.44});
+}
+/* cat labels at up gates */
+const catLabs=G.map((q,k)=>{
+  if(!q.cat)return null;
+  const [a,b]=q.cat;const l=makeLabel([`cat: ${a}+${b} → ${a+b} ch`],{size:19,color:'#6C5CE7',mono:true});
+  l.position.set(gateX(k),-(fc(q.sp)+0.95)/2-0.55+3.2,0);l.position.y=fc(q.sp)/2+2.1;l.visible=false;group.add(l);return l;
+});
+/* "None" pass-through label */
+const noneLab=makeLabel(['passes through unchanged','fc.L(None) → loop runs 0×'],{size:16,color:'#B6698A'});
+noneLab.position.set(gateX(8),2.15,0);noneLab.visible=false;group.add(noneLab);
+
+/* traveling tensor */
+const tensor=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),
+  new THREE.MeshLambertMaterial({color:ORANGE,transparent:true,opacity:0.93}));
+group.add(tensor);
+const tEdge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)),
+  new THREE.LineBasicMaterial({color:0x9A5C10}));
+tensor.add(tEdge);
+/* noisy-image face while it's still image-like */
+const faceTex=(()=>{const c=document.createElement('canvas');c.width=c.height=32;const x=c.getContext('2d');
+ let sd=11;const r=()=>{sd=(sd+0x6D2B79F5)|0;let z=sd;z=Math.imul(z^(z>>>15),z|1);z^=z+Math.imul(z^(z>>>7),z|61);return((z^(z>>>14))>>>0)/4294967296;};
+ for(let y=0;y<32;y++)for(let xx=0;xx<32;xx++){
+   let R=120+y*2,Gc=165+y,B=225-y;if(y>24){R=105;Gc=145;B=92;}
+   if(xx>8&&xx<24&&y>12&&y<22){R=205;Gc=70;B=60;}
+   const n=(r()-0.5)*150;
+   x.fillStyle=`rgb(${R+n|0},${Gc+n|0},${B+n|0})`;x.fillRect(xx,y,1,1);}
+ const t=new THREE.CanvasTexture(c);t.magFilter=THREE.NearestFilter;return t;})();
+const face=new THREE.Mesh(new THREE.PlaneGeometry(0.96,0.96),
+  new THREE.MeshBasicMaterial({map:faceTex,transparent:true,opacity:0.95}));
+face.position.x=0.51;face.rotation.y=Math.PI/2;tensor.add(face);
+/* shape label riding on the tensor */
+const shapeLabs=SHAPES.map(s=>{const l=makeLabel([s],{size:22,mono:true});l.visible=false;group.add(l);return l;});
+const catShapeLabs=G.map((q,k)=>{if(!q.cat)return null;const [a,b]=q.cat,[,s]=W[k];
+  const l=makeLabel([`[bs, ${a+b}, ${s}, ${s}]`],{size:22,mono:true,color:'#6C5CE7'});l.visible=false;group.add(l);return l;});
+/* gold t-badge + injection tick */
+const badge=new THREE.Mesh(new THREE.SphereGeometry(0.12,14,14),new THREE.MeshLambertMaterial({color:GOLD,emissive:0x6b4e00}));
+group.add(badge);
+const tLab=makeLabel(['t'],{size:20,color:'#B78312',bold:true});group.add(tLab);
+const tickG=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);
+const tick=new THREE.Line(tickG,new THREE.LineBasicMaterial({color:GOLD,transparent:true,opacity:0.9}));
+tick.visible=false;group.add(tick);
+
+/* ghost trail on the axis */
+const ghosts=[];
+for(let w=1;w<=15;w++){
+  const d=dims(w);
+  const gm=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),
+    new THREE.MeshLambertMaterial({color:colOf(w),transparent:true,opacity:0.09,depthWrite:false}));
+  gm.scale.set(d[0],d[1],d[2]);gm.position.set(WX[w],0,0);gm.visible=false;group.add(gm);
+  ghosts.push({w,gm});
+}
+
+/* center group */
+{const bb=new THREE.Box3().setFromObject(group);group.position.x=-(bb.min.x+bb.max.x)/2;}
+
+/* ============ camera orbit ============ */
+let theta=0.05,phi=1.40,distC=21.0;
+const target=new THREE.Vector3(0,0.55,0);
+function applyCam(){
+  camera.position.set(
+    target.x+distC*Math.sin(phi)*Math.sin(theta),
+    target.y+distC*Math.cos(phi),
+    target.z+distC*Math.sin(phi)*Math.cos(theta));
+  camera.lookAt(target);
+}
+applyCam();
+let down=false,px=0,py=0,moved=0;
+cv.addEventListener('pointerdown',e=>{down=true;moved=0;px=e.clientX;py=e.clientY;cv.classList.add('grabbing');cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointermove',e=>{
+  if(!down)return;
+  const dx=e.clientX-px,dy=e.clientY-py;px=e.clientX;py=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);
+  theta-=dx*0.0052;phi=Math.max(0.35,Math.min(2.45,phi-dy*0.0052));applyCam();});
+cv.addEventListener('pointerup',e=>{down=false;cv.classList.remove('grabbing');if(moved<6)pick(e);});
+cv.addEventListener('wheel',e=>{e.preventDefault();distC=Math.max(9,Math.min(32,distC+e.deltaY*0.013));applyCam();},{passive:false});
+$('resetv').onclick=()=>{theta=0.05;phi=1.40;distC=21.0;applyCam();};
+
+/* ============ inspector ============ */
+const ray=new THREE.Raycaster(),mou=new THREE.Vector2();
+function pick(e){
+  const r=cv.getBoundingClientRect();
+  mou.x=((e.clientX-r.left)/r.width)*2-1;mou.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(mou,camera);
+  const hit=ray.intersectObjects(gateMeshes)[0];
+  if(hit)inspect(hit.object.userData.k);
+}
+const INFO={
+ conv_in:{t:'conv_in — the quiet first step: 3 → 32 channels',sh:['[bs, 32, 32, 32]'],
+  e:`<p>Before any "block", a plain 3×3 conv lifts the RGB image from 3 channels to 32 <b>working channels</b>, keeping
+  the 32×32 grid. Easy to forget — but without it, Down 1's "32 ch" input wouldn't make sense.</p>`},
+ d1:{t:'Down 1 — full resolution, 32 channels',sh:['[bs, 32, 32, 32]'],
+  e:`<p>Two ResNet blocks process the image at full 32×32 resolution. <code>init_ddpm</code> zeroes each ResNet's
+  <b>second conv</b> (<code>conv2</code>), so at step 0 every residual block is a clean <b>identity</b>: output = input.
+  Training then switches the blocks on gradually — far more stable than a random start.</p>
+  <p>Its output is also <b class="o">parked on the shelf</b> — Up 4 will pull it back in at the very end.</p>`},
+ ds1:{t:'Downsampler 1 — 32×32 → 16×16',sh:['[bs, 32, 16, 16]'],
+  e:`<p>A stride-2 conv halves height and width (channels untouched). <code>init_ddpm</code> gives it an
+  <b class="o">orthogonal init</b>: the signal's magnitude is preserved as it passes through — no explosion, no
+  vanishing.</p>`},
+ d2:{t:'Down 2 — 16×16, 64 channels',sh:['[bs, 64, 16, 16]'],
+  e:`<p>Half the pixels, double the channels — the classic UNet trade: give up <i>where</i>-precision to gain
+  <i>what</i>-capacity. <code>conv2</code> zeroed here too; output parked for Up 3.</p>`},
+ ds2:{t:'Downsampler 2 — 16×16 → 8×8',sh:['[bs, 64, 8, 8]'],
+  e:`<p>Same recipe: strided conv, orthogonal init. The grid is now a quarter of the original per side.</p>`},
+ d3:{t:'Down 3 — 8×8, 128 channels',sh:['[bs, 128, 8, 8]'],
+  e:`<p>Each "pixel" now summarizes a large patch of the image with a 128-dim feature vector. Output parked for Up 2.</p>`},
+ ds3:{t:'Downsampler 3 — 8×8 → 4×4',sh:['[bs, 128, 4, 4]'],
+  e:`<p>The final shrink, down to a 4×4 grid — the resolution where the bottleneck will reason about the whole image.</p>`},
+ d4:{t:'Down 4 — the block with NO downsampler',sh:['[bs, 256, 4, 4]','o.downsamplers = None'],
+  e:`<p>The <b>last down block has no downsampler</b> — there's nowhere smaller to go. HuggingFace represents this as
+  <code>o.downsamplers = None</code> (the dashed frame to its right).</p>
+  <div class="keybox">This is exactly why the init code says <code>for p in fc.L(o.downsamplers)</code>: plain iteration
+  over <code>None</code> raises <code>TypeError</code>, but <code>fc.L(None)</code> is an empty list — the loop simply
+  runs zero times for this block.</div>`},
+ mid:{t:'Bottleneck — global reasoning at 4×4',sh:['[bs, 256, 4, 4]'],
+  e:`<p>At 4×4×256 the network reasons about the <i>whole image at once</i>. Composition, object identity, overall
+  color — decided here. Note <code>init_ddpm</code> leaves the mid block alone: only down/up ResNets, downsamplers and
+  <code>conv_out</code> get special treatment.</p>`},
+ u1:{t:'Up 1 — cat the shelf copy, then grow',sh:['cat: [bs, 256+256, 4, 4]','out: [bs, 256, 8, 8]'],
+  e:`<p>Watch the animation: Down 4's parked copy flies in and the box <b>visibly fattens</b> —
+  <code>torch.cat</code> along the <b>channel dimension</b>. The ResNets (with <code>conv2</code> zeroed, as in the
+  encoder) then digest 512 → 256 channels, and an upsampler doubles the grid to 8×8.</p>
+  <div class="keybox">In the real model each up block holds 3 ResNets and each one cats its <i>own</i> saved
+  activation — block-to-block arcs are the honest simplification of that.</div>`},
+ u2:{t:'Up 2 — cat Down 3\'s copy → 16×16',sh:['cat: [bs, 256+128, 8, 8]','out: [bs, 128, 16, 16]'],
+  e:`<p>Space doubles, channels halve — the encoder's mirror image. The skip re-injects the 8×8 details the
+  bottleneck was too small to keep.</p>`},
+ u3:{t:'Up 3 — cat Down 2\'s copy → 32×32',sh:['cat: [bs, 128+64, 16, 16]','out: [bs, 64, 32, 32]'],
+  e:`<p>Back near full resolution; the skip restores mid-scale structure like object outlines.</p>`},
+ u4:{t:'Up 4 — cat Down 1\'s copy, stay at 32×32',sh:['cat: [bs, 64+32, 32, 32]','out: [bs, 32, 32, 32]'],
+  e:`<p>The last up block has <b>no upsampler</b> (mirror of Down 4 having no downsampler!). The skip from Down 1
+  carries the finest per-pixel detail straight across the whole network.</p>`},
+ out:{t:'conv_out — the prediction ε̂',sh:['[bs, 3, 32, 32]'],
+  e:`<p>A final conv maps 32 channels back to <b>3</b> — the same shape as the input, because the model predicts
+  <b>the noise</b>, pixel for pixel.</p>
+  <div class="keybox"><code>conv_out.weight.data.zero_()</code> ⇒ the untrained model predicts ε̂ = 0. Against
+  ε ~ N(0,1), MSE of the zero guess is exactly <b>1.0</b> — which is why the training loss starts at ≈1 instead of
+  exploding.</div>`},
+ none:{t:'downsamplers = None — the missing 4th slot',sh:['fc.L(None) == []'],
+  e:`<p>Not a block — the <b>absence</b> of one. The tensor passes through unchanged.</p>
+  <div class="keybox"><code>fc.L(o.downsamplers)</code> turns <code>None</code> into an empty list so the orthogonal-init
+  loop safely runs zero times here.</div>`}
+};
+function inspect(k){
+  const q=G[k],inf=INFO[q.id];
+  $('title').textContent=inf.t;
+  $('shapes').innerHTML=inf.sh.map(s=>`<span class="shp">${s}</span>`).join('');
+  $('explain').innerHTML=inf.e;
+}
+
+/* ============ pills ============ */
+const pillsEl=$('pills');
+for(let w=0;w<=15;w++){
+  const d=document.createElement('div');
+  d.className='pill'+(w===9?' none':'');
+  d.innerHTML=`<div class="t">${PILLT[w]}</div><div class="s">${w===9?'(skipped)':SHAPES[w]}</div>`;
+  d.onclick=()=>{stopPlay();p=w;sync(true);if(w>0)inspect(w-1);};
+  pillsEl.appendChild(d);
+}
+const pillEls=[...pillsEl.children];
+
+/* ============ stories & code ============ */
+const STORIES=[
+ `<b>① Meet the UNet.</b> Fifteen thin panels = the small model's pieces, in order: <code>conv_in</code>, four
+  <b class="o">down blocks</b> with three downsamplers, the <b class="p">bottleneck</b>, four <b class="t">up blocks</b>,
+  and <code>conv_out</code>. The <b class="o">orange box on the left is the data</b>: a batch of noisy CIFAR images,
+  <code>[bs, 3, 32, 32]</code> — big face, paper-thin (3 channels). The <b class="g">gold dot</b> is the timestep
+  embedding: it rides along and is injected into <i>every</i> block, so the network always knows how noisy its input is.
+  Press <b>1 block ⏭</b> to push the data through <code>conv_in</code>.`,
+ `<b>② The squeeze.</b> This chip <b>replays the whole encoder</b>. Each down block processes, then a downsampler
+  halves the grid: the box gets a <b>smaller face</b> (32→16→8→4) and <b>thicker</b> (32→64→128→256 channels) —
+  trading <i>where</i> for <i>what</i>. Crucially, every down block also <b class="o">parks a copy on the shelf
+  above it</b> ("saved ⤴") — those copies are the future skip connections. Faint boxes stay behind on the axis so you
+  can see the whole squeeze at once.`,
+ `<b>③ The dog that didn't bark.</b> After Down 4 the tensor reaches a <b style="color:#B6698A">dashed, empty
+  frame</b>: the 4th downsampler that <i>doesn't exist</i> (<code>o.downsamplers = None</code> — there's nowhere
+  smaller to go before the bottleneck). The box passes through <b>unchanged</b>. This absence is why the init code
+  wraps the loop in <code>fc.L(...)</code>: iterating <code>None</code> would crash; iterating <code>fc.L(None)</code>
+  just runs zero times. Then the <b class="p">bottleneck</b> reasons about the whole image at 4×4.`,
+ `<b>④ The climb back — skips!</b> Watch each up block carefully: the matching <b class="o">shelf copy flies down
+  the dashed arc</b> and the box <b>suddenly fattens</b> — that's <code>torch.cat</code> along the channel dim
+  (256+256→512, then 256+128, 128+64, 64+32). The block digests the fattened tensor and an upsampler doubles the grid:
+  face grows, thickness shrinks. Skips are why the decoder can restore <i>fine detail</i> the 4×4 bottleneck could never
+  remember. (Mirror symmetry: Up 4 has no upsampler, just like Down 4 had no downsampler.)`,
+ `<b>⑤ The prediction.</b> <code>conv_out</code> maps 32 channels back to <b class="t">3 — exactly the input's
+  shape</b>, because the model answers one question: <i>"what noise ε was added to this image?"</i> — pixel for pixel.
+  And because <code>init_ddpm</code> zeroed <code>conv_out</code>, the untrained answer is ε̂ = 0, whose MSE against
+  ε ~ N(0,1) is exactly <b>1.0</b> — the sensible starting loss you'll see in the training curve.`
+];
+const CODES=[
+`<span class="cm"># the model — and the wrapper that unpacks (x_t, t)</span>
+class <span class="fn">UNet</span>(UNet2DModel):
+    def <span class="fn">forward</span>(self, x): return super().forward(*x).sample  <span class="cm"># x = (noisy, t)</span>
+model = UNet(in_channels=<span class="num">3</span>, out_channels=<span class="num">3</span>,
+             block_out_channels=(<span class="num">32</span>, <span class="num">64</span>, <span class="num">128</span>, <span class="num">256</span>), norm_num_groups=<span class="num">8</span>)`,
+`<span class="cm"># init_ddpm — the encoder's treatment (runs before training)</span>
+for o in model.down_blocks:
+    <span class="hl">for p in o.resnets: p.conv2.weight.data.zero_()</span>   <span class="cm"># ResNets start as identity</span>
+    <span class="hl">for p in fc.L(o.downsamplers): init.orthogonal_(p.conv.weight)</span>  <span class="cm"># signal-preserving</span>`,
+`<span class="cm"># why fc.L()? Down 4 has NO downsampler:</span>
+model.down_blocks[<span class="num">3</span>].downsamplers   <span class="cm"># → None</span>
+for p in None: ...          <span class="cm"># ✗ TypeError: not iterable</span>
+<span class="hl">for p in fc.L(None): ...    <span class="cm"># ✓ empty list — loop runs 0 times</span></span>`,
+`<span class="cm"># decoder: every up-block ResNet cats a saved encoder activation</span>
+res = down_block_res_samples.pop()
+<span class="hl">hidden = torch.cat([hidden, res], dim=<span class="num">1</span>)</span>   <span class="cm"># channels add: 256+256 → 512</span>
+for o in model.up_blocks:
+    <span class="hl">for p in o.resnets: p.conv2.weight.data.zero_()</span>   <span class="cm"># same identity trick</span>`,
+`<span class="cm"># the head — and why the first loss is ≈ 1.0</span>
+<span class="hl">model.conv_out.weight.data.zero_()</span>   <span class="cm"># untrained prediction: ε̂ = 0</span>
+loss = F.mse_loss(model((x_t, t)), ε)  <span class="cm"># E[(0 − ε)²] = Var(ε) = 1.0  ✓</span>`
+];
+
+/* ============ sync — everything derives from p ============ */
+let p=0,playing=false,stopAt=99,speed=1;
+const lerp=(a,b,t)=>a+(b-a)*t, sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+const MAXP=15.6;
+let lastStage=-1,lastPill=-1;
+
+function sync(force){
+  p=Math.max(0,Math.min(MAXP,p));
+  const w=Math.min(Math.floor(p),15),t=p-w;
+  const x0=WX[w],x1=WX[Math.min(w+1,16)];
+  const x=lerp(x0,x1,Math.min(t,1));
+  const q=w<15?G[w]:null;               // gate being crossed this segment
+  const tg=q?(gateX(w)-x0)/(x1-x0):2;   // crossing param
+
+  /* dims: two-phase morph at cat gates, one-phase elsewhere */
+  let dm;
+  const d0=dims(w),d1=dims(Math.min(w+1,15));
+  if(q&&q.cat){
+    const dc=catDims(w);
+    const m1=sm((t-(tg-0.18))/0.14), m2=sm((t-(tg+0.04))/0.18);
+    dm=[0,1,2].map(i=>lerp(lerp(d0[i],dc[i],m1),d1[i],m2));
+  }else if(q&&q.none){
+    dm=d0; // truly unchanged
+  }else{
+    const mt=q?sm((t-(tg-0.15))/0.30):0;
+    dm=[0,1,2].map(i=>lerp(d0[i],d1[i],mt));
+  }
+  tensor.position.set(x,0,0);tensor.scale.set(dm[0],dm[1],dm[2]);
+  /* color: phase lerp */
+  const mtc=q?sm((t-(tg-0.15))/0.30):0;
+  const c0=new THREE.Color(colOf(Math.min(w,15))),c1=new THREE.Color(colOf(Math.min(w+1,15)));
+  tensor.material.color.copy(c0).lerp(c1,mtc);
+  tEdge.material.color.copy(tensor.material.color).multiplyScalar(0.55);
+  /* image face fades as channels grow, returns at the very end */
+  const chNow=lerp(W[w][0],W[Math.min(w+1,15)][0],mtc);
+  face.material.opacity=Math.max(0,0.95-Math.log2(Math.max(chNow,3))/8*1.15);
+  face.visible=face.material.opacity>0.04;
+
+  /* shape label riding the tensor (switches to cat shape inside the bump) */
+  const inCat=q&&q.cat&&t>tg-0.16&&t<tg+0.06;
+  shapeLabs.forEach((l,i)=>l.visible=false);
+  catShapeLabs.forEach(l=>{if(l)l.visible=false;});
+  const si=(mtc>0.5?Math.min(w+1,15):w);
+  const lab=inCat?catShapeLabs[w]:shapeLabs[si];
+  lab.visible=true;lab.position.set(x,dm[1]/2+0.55,0);
+
+  /* gold badge + injection tick */
+  badge.position.set(x,dm[1]/2+0.24,dm[2]/2*0.4);
+  tLab.position.set(x+0.34,dm[1]/2+0.42,dm[2]/2*0.4);
+  let nearGate=-1;
+  gates.forEach((g,k)=>{
+    const near=Math.abs(x-gateX(k))<0.46;
+    if(g.mesh){
+      g.mesh.material.emissive=g.mesh.material.emissive||new THREE.Color(0);
+      g.mesh.material.emissive.setHex(near?0x2E2560:0x000000);
+      const s=near?1.06:1;g.mesh.scale.setScalar(s);g.edge.scale.setScalar(s);
+      if(near)nearGate=k;
+    }else if(near){nearGate=k;}
+  });
+  if(nearGate>=0&&!G[nearGate].none){
+    tick.visible=true;
+    tick.geometry.setFromPoints([badge.position.clone(),new THREE.Vector3(gateX(nearGate),0.35,0)]);
+  }else tick.visible=false;
+  noneLab.visible=(nearGate===8);
+
+  /* ghosts */
+  ghosts.forEach(g=>{g.gm.visible=p>g.w+0.15;});
+
+  /* skips: parked / flying / consumed — all pure functions of p */
+  skips.forEach(s=>{
+    const flyT=sm((p-s.flyA)/(s.flyB-s.flyA));
+    const parkedVis=p>s.parkAt&&flyT<=0;
+    s.parked.visible=parkedVis;s.shelfLab.visible=parkedVis;
+    s.flier.visible=flyT>0&&flyT<1;
+    if(s.flier.visible)s.flier.position.copy(s.curve.getPoint(flyT));
+    s.arc.material.opacity=flyT>0&&flyT<1?0.95:0.5;
+  });
+  /* cat labels */
+  catLabs.forEach((l,k)=>{if(l)l.visible=p>k+0.28&&p<k+0.75;});
+
+  /* stage detection */
+  const s=p<0.04?0:p<=8.02?1:p<=10.05?2:p<=14.05?3:4;
+  if(force||s!==lastStage){
+    lastStage=s;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+    $('story').innerHTML=STORIES[s];
+    $('code').innerHTML=CODES[s];
+  }
+  /* pills */
+  const pIdx=Math.min(Math.round(p-0.5+1e-6)+ (t>tg?1:0)*0,15);
+  const pi=Math.min(t>tg?w+1:w,15);
+  if(force||pi!==lastPill){
+    lastPill=pi;
+    pillEls.forEach((el,i)=>el.classList.toggle('on',i===pi));
+  }
+  $('posLab').textContent=pi===0?'input':`after ${PILLT[pi]}`;
+}
+
+/* ============ controls ============ */
+function stopPlay(){playing=false;$('play').textContent='▶ Play all';}
+function startPlay(to){stopAt=Math.min(to,MAXP);playing=true;$('play').textContent='⏸ Pause';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}if(p>=MAXP-0.01)p=0;startPlay(MAXP);};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(15,Math.floor(p+1e-4)+1);sync(true);const k=Math.min(Math.round(p)-1,14);if(k>=0)inspect(k);};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p-1e-4)-1);sync(true);};
+$('reset').onclick=()=>{stopPlay();p=0;sync(true);};
+$('spd').oninput=e=>{speed=+e.target.value;$('spdv').textContent=speed+'×';};
+const CHIP_RANGE=[{a:0,b:0},{a:0,b:8},{a:7.6,b:10.1},{a:9.6,b:14.1},{a:13.7,b:15.6}];
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+  stopPlay();const r=CHIP_RANGE[+c.dataset.s];p=r.a;sync(true);
+  if(r.b>r.a)startPlay(r.b);
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){$('fwd').click();}
+  if(e.key==='ArrowLeft'){$('back').click();}
+});
+
+/* ============ render loop + sizing + auto-height ============ */
+function fit(){
+  const wpx=cv.parentElement.clientWidth-4;
+  renderer.setSize(wpx,440,false);
+  camera.aspect=wpx/440;camera.updateProjectionMatrix();
+}
+let lastT=null;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(playing&&lastT!=null){
+    p=Math.min(stopAt,p+(ts-lastT)*0.001*0.9*speed);sync(false);
+    if(p>=stopAt)stopPlay();
+  }
+  lastT=ts;
+  renderer.render(scene,camera);
+}
+const wrap=$('wrap');
+function postH(){
+  const h=Math.ceil(wrap.getBoundingClientRect().height)+34;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){fit();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap);
+fit();sync(true);requestAnimationFrame(loop);
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

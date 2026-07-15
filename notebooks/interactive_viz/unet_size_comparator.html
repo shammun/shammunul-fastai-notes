@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UNet Size Comparator</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:900px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 16px;margin:18px 0 16px;}
+  .seg{display:flex;background:#F1F4FC;border-radius:12px;padding:4px;gap:4px}
+  .seg button{font:inherit;font-weight:800;font-size:13px;border:none;border-radius:9px;cursor:pointer;padding:7px 16px;background:transparent;color:var(--muted)}
+  .seg button.on{background:var(--purple);color:#fff;box-shadow:0 4px 12px rgba(108,92,231,.3)}
+  .hint{margin-left:auto;font-size:12.5px;color:var(--muted);font-weight:600}
+
+  .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;align-items:start}
+  .grid>*{min-width:0}
+  .grid.is-narrow{grid-template-columns:1fr}
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+  .stage-card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+
+  .lvl{display:grid;grid-template-columns:88px 1fr;gap:10px;align-items:center;margin-bottom:12px;cursor:pointer;
+    border:2px solid transparent;border-radius:12px;padding:8px}
+  .lvl:hover{background:#F8FAFF}
+  .lvl.sel{border-color:var(--purple);background:var(--purple-soft)}
+  .lvl .name{font-size:12px;font-weight:800;text-align:right}
+  .lvl .name .ch{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:600;display:block}
+  .barpair{display:flex;flex-direction:column;gap:5px}
+  .bar{height:20px;border-radius:7px;position:relative;transition:width .7s cubic-bezier(.2,.9,.3,1.1);min-width:8px}
+  .bar.small{background:linear-gradient(90deg,var(--teal),#3CC2B4)}
+  .bar.big{background:linear-gradient(90deg,var(--purple),#9A8DF0)}
+  .bar span{position:absolute;left:calc(100% + 8px);top:1px;font-family:var(--mono);font-size:11.5px;font-weight:800;white-space:nowrap}
+  .bar.small span{color:var(--teal)} .bar.big span{color:var(--purple)}
+  .totals{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+  .pill{background:#F6F8FE;border-radius:10px;padding:9px 10px;text-align:center}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:18px}
+  .pill .t{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .pill.s .n{color:var(--teal)} .pill.b .n{color:var(--purple)} .pill.x .n{color:var(--orange)}
+
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .panel+.panel{margin-top:14px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .steptitle{font-size:17px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .explain{color:#33415C;font-size:14px}
+  .explain p{margin:0 0 8px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)} .explain b.o{color:var(--orange)}
+  .mathbox{font-family:var(--mono);font-size:13px;background:#F6F8FE;border-radius:12px;padding:11px 14px;line-height:1.9;overflow-x:auto}
+  .mathbox b.t{color:var(--teal)} .mathbox b.p{color:var(--purple)}
+  .keybox{margin-top:10px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13px}
+  pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:#F6F8FE;border-radius:12px;padding:11px 0;overflow-x:auto;margin-top:8px}
+  .cl{padding:0 14px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:3px solid var(--purple);font-weight:700}
+  .cl.cm{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>16M vs 274M parameters: <span class="hl">where do they all live?</span></h1>
+  <p class="sub">Both models are the <i>same architecture</i> — only <code>block_out_channels</code> differs. Because
+  conv parameters scale with <code>in_ch × out_ch</code>, making every level ~10× wider makes the model
+  <b>~17× heavier</b>. <b>Click a level</b> to see the exact parameter math for one 3×3 conv at that depth, and use
+  the toggle to view the bars on a linear or log scale.</p>
+</header>
+
+<div class="controls">
+  <div class="seg">
+    <button id="mLin" class="on">Linear scale</button>
+    <button id="mLog">Log scale</button>
+  </div>
+  <div class="seg">
+    <button id="vConv" class="on">One conv per level</button>
+    <button id="vTot">Rough level totals</button>
+  </div>
+  <span class="hint">click any level row for the math</span>
+</div>
+
+<div class="grid" id="grid">
+  <div class="stage-card">
+    <h2>Filters per level — <span style="color:var(--teal)">small (32,64,128,256)</span> vs <span style="color:var(--purple)">default (320,640,1280,1280)</span></h2>
+    <div id="levels"></div>
+    <div class="totals">
+      <div class="pill s"><div class="n">15.9M</div><div class="t">small model total</div></div>
+      <div class="pill b"><div class="n">274M</div><div class="t">default model total</div></div>
+      <div class="pill x"><div class="n">≈17×</div><div class="t">size ratio</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Parameter math at the selected level</h2>
+      <div class="steptitle" id="title"></div>
+      <div class="mathbox" id="math"></div>
+      <div class="explain" id="explain" style="margin-top:10px"></div>
+    </div>
+    <div class="panel">
+      <h2>The two constructors</h2>
+      <pre class="code">
+<div class="cl cm"># small — explicit channel widths</div>
+<div class="cl hl">model = UNet(in_channels=3, out_channels=3,</div>
+<div class="cl hl">    block_out_channels=(32, 64, 128, 256),</div>
+<div class="cl hl">    norm_num_groups=8)</div>
+<div class="cl">&nbsp;</div>
+<div class="cl cm"># default — widths fall back to HuggingFace's</div>
+<div class="cl cm"># defaults: (320, 640, 1280, 1280)</div>
+<div class="cl">model = UNet(in_channels=3, out_channels=3)</div>
+</pre>
+      <div class="keybox"><code>in_channels=3</code> / <code>out_channels=3</code> only touch the very first and very
+      last convs. Everything in between — 99.99% of the parameters — is decided by <code>block_out_channels</code>.</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const small=[32,64,128,256], big=[320,640,1280,1280];
+const K=9; // 3x3 kernel
+let mode='lin', view='conv', sel=3;
+
+/* per-level representative conv: in=prev level (or same), out=this level */
+function convParams(chs,i){
+  const cin=i===0?chs[0]:chs[i-1], cout=chs[i];
+  return {cin,cout,p:cin*cout*K};
+}
+/* rough "level total": pretend 2 resnets of (in->out)+(out->out) convs, encoder+decoder → x2 */
+function levelTotal(chs,i){
+  const c=convParams(chs,i);
+  return (c.p + c.cout*c.cout*K)*2*2;
+}
+function fmt(n){
+  if(n>=1e6)return (n/1e6).toFixed(2)+'M';
+  if(n>=1e3)return (n/1e3).toFixed(0)+'K';
+  return ''+n;
+}
+
+function values(i){
+  if(view==='conv')return [convParams(small,i).p, convParams(big,i).p];
+  return [levelTotal(small,i), levelTotal(big,i)];
+}
+function buildLevels(){
+  const holder=$('levels'); holder.innerHTML='';
+  const maxV=Math.max(...[0,1,2,3].map(i=>values(i)[1]));
+  for(let i=0;i<4;i++){
+    const [vs,vb]=values(i);
+    const row=document.createElement('div'); row.className='lvl'+(i===sel?' sel':''); row.dataset.i=i;
+    const W=v=>{
+      if(mode==='lin')return Math.max(2,v/maxV*100);
+      return Math.max(4,(Math.log10(v)-3)/(Math.log10(maxV)-3)*100);
+    };
+    row.innerHTML=`<div class="name">Level ${i+1}<span class="ch">${small[i]} vs ${big[i]} ch</span></div>
+      <div class="barpair">
+        <div class="bar small" style="width:${W(vs)*0.62}%"><span>${fmt(vs)}</span></div>
+        <div class="bar big" style="width:${W(vb)*0.62}%"><span>${fmt(vb)}</span></div>
+      </div>`;
+    row.addEventListener('click',()=>{sel=i;render();});
+    holder.appendChild(row);
+  }
+}
+function renderMath(){
+  const cs=convParams(small,sel), cb=convParams(big,sel);
+  $('title').textContent=`Level ${sel+1}: one 3×3 conv, ${cs.cin}→${cs.cout} vs ${cb.cin}→${cb.cout} channels`;
+  $('math').innerHTML=
+    `<b class="t">small</b>&nbsp;: ${cs.cin} × ${cs.cout} × 9 = <b class="t">${cs.p.toLocaleString()}</b><br>`+
+    `<b class="p">default</b>: ${cb.cin} × ${cb.cout} × 9 = <b class="p">${cb.p.toLocaleString()}</b><br>`+
+    `ratio&nbsp;&nbsp;: <b>${(cb.p/cs.p).toFixed(0)}× more</b> parameters in this ONE layer`;
+  let ex;
+  if(sel===3){
+    ex=`<p>The deepest level is where the explosion is worst: <code>1280×1280×9 ≈ 14.7M</code> parameters in a single
+    conv — nearly as many as the <i>entire</i> small model. And there are many such convs down here.</p>
+    <p>This is why parameters scale with the <b>square</b> of width: both the input channels <i>and</i> the output
+    channels of each conv grow together.</p>`;
+  }else if(sel===0){
+    ex=`<p>Even at level 1 the default model is ~100× heavier per conv. But note the level-1 convs are tiny compared
+    to deeper ones — most parameters live at the bottom of the U, where channel counts are largest.</p>`;
+  }else{
+    ex=`<p>Width multiplies on <b>both sides</b> of every conv (input channels × output channels), so a 10× wider
+    network costs ~100× per layer — the "square law" of widening. Spatial size doesn't matter for parameter count:
+    the same 3×3 kernel slides everywhere.</p>`;
+  }
+  ex+=`<div class="keybox">Trade-off: the default (274M) model produces clearly better CIFAR samples, but needs
+  far more GPU memory and time — hence <code>bs=32</code> and <code>MixedPrecision()</code>.</div>`;
+  $('explain').innerHTML=ex;
+}
+function render(){buildLevels();renderMath();postH();}
+
+$('mLin').addEventListener('click',()=>{mode='lin';$('mLin').classList.add('on');$('mLog').classList.remove('on');render();});
+$('mLog').addEventListener('click',()=>{mode='log';$('mLog').classList.add('on');$('mLin').classList.remove('on');render();});
+$('vConv').addEventListener('click',()=>{view='conv';$('vConv').classList.add('on');$('vTot').classList.remove('on');render();});
+$('vTot').addEventListener('click',()=>{view='tot';$('vTot').classList.add('on');$('vConv').classList.remove('on');render();});
+
+/* ---- responsive + auto-height ---- */
+const grid=$('grid'),wrap=document.querySelector('.wrap');
+function relayout(){grid.classList.toggle('is-narrow',window.innerWidth<900);}
+function postH(){
+  const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){relayout();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+relayout();render();
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

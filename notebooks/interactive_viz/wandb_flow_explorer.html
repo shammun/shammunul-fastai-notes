@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>W&B Callback Flow Explorer</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:900px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 16px;margin:18px 0 16px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;
+    padding:9px 18px;transition:transform .12s;}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35)}
+  #play:hover{transform:translateY(-1px)}
+  #prev,#next{background:var(--purple-soft);color:var(--purple)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:9px 8px}
+  .stepnum{color:var(--muted);font-size:13px;font-weight:700;min-width:92px}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:120px}
+
+  .rail{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:0 0 16px;}
+  .rail .st{background:#fff;border:2px solid var(--line);border-radius:12px;
+    padding:9px 5px;text-align:center;cursor:pointer;transition:.15s;user-select:none;}
+  .rail .st:hover{border-color:var(--purple)}
+  .rail .st .lab{font-size:11.5px;font-weight:800}
+  .rail .st .sh{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px}
+  .rail .st.active{background:var(--purple);border-color:var(--purple);box-shadow:var(--shadow)}
+  .rail .st.active .lab,.rail .st.active .sh{color:#fff}
+  .rail .st.done{background:var(--purple-soft);border-color:var(--purple-soft)}
+
+  .grid{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;align-items:start}
+  .grid>*{min-width:0}
+  .grid.is-narrow{grid-template-columns:1fr}
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+  .stage-card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+
+  /* mock W&B dashboard */
+  .dash{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .dash .bar{display:flex;align-items:center;gap:8px;background:#1F2A44;padding:8px 12px}
+  .dash .bar .dot{width:9px;height:9px;border-radius:50%;background:#FFCC33}
+  .dash .bar .ttl{color:#fff;font-size:12px;font-weight:800}
+  .dash .bar .status{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:#9FE8D8;background:rgba(255,255,255,.08);border-radius:7px;padding:2px 8px}
+  .dash .body{display:grid;grid-template-columns:1.2fr 1fr;gap:10px;padding:12px;background:#FBFCFF}
+  .dash .body.is-narrow{grid-template-columns:1fr}
+  .dcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px}
+  .dcard h3{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  canvas.chart{width:100%;height:120px;display:block}
+  .samples{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+  .samples canvas{width:100%;aspect-ratio:1;border-radius:6px;border:1px solid var(--line);image-rendering:pixelated;background:#fff}
+  table.cfg{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+  table.cfg td{padding:3px 6px;border-bottom:1px solid #EEF2FA}
+  table.cfg td:first-child{color:var(--muted)}
+  table.cfg tr.new td{background:var(--purple-soft);color:var(--purple);font-weight:800}
+  .loglines{font-family:var(--mono);font-size:10.6px;background:#0F1830;color:#B9E8DD;border-radius:10px;padding:8px 10px;height:96px;overflow-y:auto;line-height:1.55}
+  .loglines .k{color:#F2B441}
+
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .panel+.panel{margin-top:14px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .steptitle{font-size:17px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .explain{color:#33415C;font-size:14px}
+  .explain p{margin:0 0 8px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.o{color:var(--orange)} .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)}
+  .keybox{margin-top:8px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13px}
+  pre.code{font-family:var(--mono);font-size:11.8px;line-height:1.6;background:#F6F8FE;border-radius:12px;padding:11px 0;overflow-x:auto}
+  .cl{padding:0 14px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:3px solid var(--purple);font-weight:700}
+  .cl.cm{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>WandBCB: <span class="hl">who calls what, when</span> — with a live mock dashboard</h1>
+  <p class="sub">A callback is just a set of methods the <code>Learner</code> promises to call at the right moments.
+  Step through one training run of <code>learn.fit(epochs)</code> and watch which <code>WandBCB</code> method fires,
+  which <code>wandb.*</code> call it makes, and what appears on the (simulated) W&amp;B dashboard on the left.
+  Click any stage on the rail to jump straight to it.</p>
+</header>
+
+<div class="controls">
+  <button id="play">Play ▶</button>
+  <button id="prev">← Prev</button>
+  <button id="next">Next →</button>
+  <button id="reset">Reset</button>
+  <span class="stepnum" id="stepnum"></span>
+  <label class="spd">Speed <input type="range" id="spd" min="1" max="6" value="3"><span id="spdv">1.0×</span></label>
+</div>
+
+<div class="rail" id="rail">
+  <div class="st" data-s="0"><div class="lab">learn.fit()</div><div class="sh">training starts</div></div>
+  <div class="st" data-s="1"><div class="lab">before_fit</div><div class="sh">wandb.init()</div></div>
+  <div class="st" data-s="2"><div class="lab">batches</div><div class="sh">wandb.log(loss)</div></div>
+  <div class="st" data-s="3"><div class="lab">epoch end</div><div class="sh">_log() metrics</div></div>
+  <div class="st" data-s="4"><div class="lab">+ samples</div><div class="sh">sample_figure()</div></div>
+  <div class="st" data-s="5"><div class="lab">after_fit</div><div class="sh">wandb.finish()</div></div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="stage-card">
+    <h2>wandb.ai — your run, updating live</h2>
+    <div class="dash">
+      <div class="bar"><span class="dot"></span><span class="ttl">ddpm_cifar10 / <span id="runname">—</span></span><span class="status" id="runstat">no run</span></div>
+      <div class="body" id="dashbody">
+        <div>
+          <div class="dcard"><h3>train loss (per batch)</h3><canvas class="chart" id="lossc" width="420" height="120"></canvas></div>
+          <div class="dcard" style="margin-top:10px"><h3>samples (logged each epoch)</h3><div class="samples" id="samples"></div></div>
+        </div>
+        <div>
+          <div class="dcard"><h3>config</h3>
+            <table class="cfg" id="cfg">
+              <tr data-k="lr"><td>lr</td><td>—</td></tr>
+              <tr data-k="epochs"><td>epochs</td><td>—</td></tr>
+              <tr data-k="comments"><td>comments</td><td>—</td></tr>
+            </table>
+          </div>
+          <div class="dcard" style="margin-top:10px"><h3>run log</h3><div class="loglines" id="log"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Stage explanation</h2>
+      <div class="steptitle" id="title"></div>
+      <div class="explain" id="explain"></div>
+    </div>
+    <div class="panel">
+      <h2>WandBCB — current method highlighted</h2>
+      <pre class="code" id="code">
+<div class="cl" data-l="0">class WandBCB(MetricsCB):</div>
+<div class="cl" data-l="1">    order = 100   # run AFTER metrics are ready</div>
+<div class="cl" data-l="2">    def before_fit(self, learn):</div>
+<div class="cl" data-l="3">        wandb.init(project=self.project,</div>
+<div class="cl" data-l="4">                   config=self.config)</div>
+<div class="cl" data-l="5">    def after_batch(self, learn):   # via parent</div>
+<div class="cl" data-l="6">        wandb.log({'loss': learn.loss})</div>
+<div class="cl" data-l="7">    def _log(self, d):</div>
+<div class="cl" data-l="8">        wandb.log({'train_'+m: ...}) # or val_</div>
+<div class="cl" data-l="9">        wandb.log({'samples':</div>
+<div class="cl" data-l="10">                   self.sample_figure(learn)})</div>
+<div class="cl" data-l="11">    def after_fit(self, learn):</div>
+<div class="cl" data-l="12">        wandb.finish()</div>
+</pre>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+
+/* ---- mock dashboard state ---- */
+const lossc=$('lossc'),lc=lossc.getContext('2d');
+let lossPts=[];
+function drawLoss(){
+  lc.clearRect(0,0,lossc.width,lossc.height);
+  lc.strokeStyle='#EEF2FA';lc.lineWidth=1;
+  for(let i=1;i<4;i++){lc.beginPath();lc.moveTo(0,i*30);lc.lineTo(lossc.width,i*30);lc.stroke();}
+  if(lossPts.length<2)return;
+  lc.strokeStyle='#6C5CE7';lc.lineWidth=2;lc.beginPath();
+  lossPts.forEach((v,i)=>{
+    const x=i/(Math.max(60,lossPts.length-1))*lossc.width;
+    const y=10+ (v)*(lossc.height-20);
+    i?lc.lineTo(x,y):lc.moveTo(x,y);
+  });
+  lc.stroke();
+}
+function pushLoss(n){for(let i=0;i<n;i++){const t=lossPts.length;lossPts.push(Math.max(0.06,Math.exp(-t/22)*0.9+ (Math.sin(t*3.7)*0.5+0.5)*0.08));}drawLoss();}
+
+const sHold=$('samples'),sCanvases=[];
+for(let i=0;i<8;i++){const c=document.createElement('canvas');c.width=16;c.height=16;sHold.appendChild(c);sCanvases.push(c);}
+let sseed=5;const srnd=()=>{sseed=(sseed*1103515245+12345)&0x7fffffff;return sseed/0x7fffffff;};
+function drawSamples(quality){ // 0=hidden, 1=noise, 2=blobby, 3=shapes
+  sCanvases.forEach((c,k)=>{
+    const g=c.getContext('2d'),d=g.createImageData(16,16);
+    for(let y=0;y<16;y++)for(let x=0;x<16;x++){
+      const i=(y*16+x)*4;let r,gg,b;
+      if(quality===0){r=gg=b=246;}
+      else if(quality===1){const v=srnd()*255;r=v;gg=srnd()*255;b=srnd()*255;}
+      else{
+        const cx=8+(k%4-1.5),cy=8;const dx=x-cx,dy=y-cy;
+        const inside=dx*dx+dy*dy<(14+k);
+        const base=[[200,80,70],[90,140,200],[110,170,90],[210,170,80]][k%4];
+        if(inside){r=base[0];gg=base[1];b=base[2];}else{r=140+y*4;gg=170+y*3;b=225-y*2;}
+        if(quality===2){const n=(srnd()-0.5)*160;r+=n;gg+=n;b+=n;}
+        else{const n=(srnd()-0.5)*40;r+=n;gg+=n;b+=n;}
+      }
+      d.data[i]=r;d.data[i+1]=gg;d.data[i+2]=b;d.data[i+3]=255;
+    }
+    g.putImageData(d,0,0);
+  });
+}
+function setCfg(on){
+  const rows=$('cfg').querySelectorAll('tr');
+  const vals={lr:'0.001',epochs:'10',comments:"'default unet logging test'"};
+  rows.forEach(r=>{
+    r.classList.toggle('new',on);
+    r.children[1].textContent=on?vals[r.dataset.k]:'—';
+  });
+}
+const logEl=$('log');
+function log(html){const d=document.createElement('div');d.innerHTML=html;logEl.appendChild(d);logEl.scrollTop=1e6;}
+function clearLog(){logEl.innerHTML='';}
+
+let cur=0,playing=false,timer=null;
+const speeds=[0.5,0.75,1.0,1.5,2.0,3.0];
+
+const stages=[
+{lines:[0,1],run:'—',stat:'no run',title:'⓪ learn.fit(epochs) — nothing logged yet',
+ apply(){lossPts=[];drawLoss();drawSamples(0);setCfg(false);clearLog();log('<span class="k">$</span> learn.fit(10)  # WandBCB in cbs list');},
+ e:`<p><code>WandBCB</code> sits in the callbacks list <i>instead of</i> <code>MetricsCB</code> (it inherits from it,
+ so metric tracking comes for free).</p>
+ <p><code>order = 100</code> matters: callbacks run in order, and 100 guarantees WandBCB fires <b>after</b> the other
+ callbacks have finished computing the metrics it wants to log.</p>`},
+{lines:[2,3,4],run:'glowing-frog-7',stat:'● running',title:'① before_fit → wandb.init(project, config)',
+ apply(){lossPts=[];drawLoss();drawSamples(0);setCfg(true);clearLog();
+   log('wandb: Tracking run <span class="k">glowing-frog-7</span>');
+   log('wandb: project <span class="k">ddpm_cifar10</span> (auto-created if new)');
+   log('wandb: config saved: lr, epochs, comments');},
+ e:`<p>The Learner calls <code>before_fit</code> once. <code>wandb.init()</code> opens a run inside the project —
+ and if <code>'ddpm_cifar10'</code> doesn't exist yet, <b>W&amp;B creates it automatically</b>. No setup on the
+ website needed.</p>
+ <p>The <code>config</code> dict lands in the dashboard (right panel) — six months later you'll still know exactly
+ which hyperparameters produced this run.</p>`},
+{lines:[5,6],run:'glowing-frog-7',stat:'● running',title:'② every batch → wandb.log({loss})',
+ apply(){lossPts=[];drawLoss();drawSamples(0);setCfg(true);clearLog();pushLoss(34);
+   log('wandb.log({"loss": 0.912}) <span class="k">step 1</span>');
+   log('wandb.log({"loss": 0.664}) <span class="k">step 2</span>');
+   log('wandb.log({"loss": 0.471}) <span class="k">step 3</span>');
+   log('… one point per batch …');},
+ e:`<p>After each training batch, the callback logs the batch loss. Each <code>wandb.log()</code> appends one point —
+ the loss curve on the left is drawing itself in real time, viewable from any browser while the GPU crunches.</p>
+ <div class="keybox">Note it starts near <b>1.0</b>: with <code>init_ddpm</code>, the model initially predicts ε̂ = 0, and MSE against ε ~ N(0,1) is exactly 1.</div>`},
+{lines:[7,8],run:'glowing-frog-7',stat:'● running',title:'③ end of epoch → _log() writes train_/val_ metrics',
+ apply(){drawSamples(0);setCfg(true);clearLog();if(lossPts.length<30)pushLoss(34);
+   log('epoch 1 done');
+   log('wandb.log({"train_loss": 0.113})');
+   log('wandb.log({"val_loss": 0.098})');
+   log('{"loss": 0.113, "epoch": 1, "train": true}  # printed too');},
+ e:`<p><code>MetricsCB</code> (the parent) calls <code>self._log(d)</code> with the epoch's averaged metrics. Our
+ override sends them to W&amp;B with a <code>train_</code> or <code>val_</code> prefix — depending on
+ <code>self.train</code> — so the two phases become separate, comparable curves in the dashboard.</p>
+ <p>It still <code>print(d)</code>s at the end, so the notebook output looks unchanged.</p>`},
+{lines:[9,10],run:'glowing-frog-7',stat:'● running',title:'④ …and logs a grid of generated samples',
+ apply(){setCfg(true);if(lossPts.length<30)pushLoss(34);drawSamples(2);clearLog();
+   log('sampling 16 images (this pauses training ~1 min)…');
+   log('wandb.log({"samples": [Image]})');
+   log('epoch 5: samples getting less blobby ↗');
+   setTimeout(()=>{drawSamples(3);postH();},900);},
+ e:`<p>After each validation phase, <code>sample_figure()</code> runs the <b>full 1000-step sampler</b>, packs the
+ results into a matplotlib figure, and logs it as an image.</p>
+ <p>This is the killer feature for generative models: a <b>film strip of sample quality per epoch</b>. Loss curves
+ alone can look flat while samples are visibly improving — or the reverse.</p>
+ <div class="keybox">It costs real time (~1 min per epoch of pure sampling) — a price usually worth paying.</div>`},
+{lines:[11,12],run:'glowing-frog-7',stat:'✓ finished',title:'⑤ after_fit → wandb.finish()',
+ apply(){setCfg(true);if(lossPts.length<30)pushLoss(34);drawSamples(3);clearLog();
+   log('wandb: run <span class="k">glowing-frog-7</span> finished');
+   log('wandb: synced 320 log steps, 10 sample grids');
+   log('wandb: view at https://wandb.ai/you/ddpm_cifar10');},
+ e:`<p><code>wandb.finish()</code> flushes everything and marks the run complete (the yellow dot turns into a ✓).
+ The run — losses, metrics, samples, config, GPU stats — lives permanently at wandb.ai, ready to be compared against
+ your next run.</p>
+ <div class="keybox">That's the whole integration: <b>init → log → finish</b>, wired into the three matching callback moments: <b>before_fit → after_batch/_log → after_fit</b>.</div>`}
+];
+
+function render(){
+  const s=stages[cur];
+  s.apply();
+  $('runname').textContent=s.run;$('runstat').textContent=s.stat;
+  document.querySelectorAll('.rail .st').forEach((el,i)=>{el.classList.toggle('active',i===cur);el.classList.toggle('done',i<cur);});
+  $('stepnum').textContent=`Stage ${cur} / ${stages.length-1}`;
+  $('title').textContent=s.title;
+  $('explain').innerHTML=s.e;
+  document.querySelectorAll('#code .cl').forEach(el=>{el.classList.toggle('hl',s.lines.includes(+el.dataset.l));});
+  $('prev').disabled=cur===0;$('prev').style.opacity=cur===0?.45:1;
+  $('next').disabled=cur===stages.length-1;$('next').style.opacity=cur===stages.length-1?.5:1;
+  postH();
+}
+function go(i){cur=Math.max(0,Math.min(stages.length-1,i));render();}
+function stopPlay(){playing=false;if(timer)clearTimeout(timer);$('play').textContent='Play ▶';}
+function tick(){
+  if(!playing)return;
+  if(cur>=stages.length-1){stopPlay();return;}
+  go(cur+1);
+  timer=setTimeout(tick,2800/speeds[+$('spd').value-1]);
+}
+$('play').addEventListener('click',()=>{
+  if(playing){stopPlay();return;}
+  if(cur>=stages.length-1)go(0);
+  playing=true;$('play').textContent='Pause ⏸';
+  timer=setTimeout(tick,1800/speeds[+$('spd').value-1]);
+});
+$('next').addEventListener('click',()=>{stopPlay();go(cur+1);});
+$('prev').addEventListener('click',()=>{stopPlay();go(cur-1);});
+$('reset').addEventListener('click',()=>{stopPlay();go(0);});
+$('spd').addEventListener('input',()=>{$('spdv').textContent=speeds[+$('spd').value-1].toFixed(1)+'×';});
+document.querySelectorAll('.rail .st').forEach(el=>{
+  el.addEventListener('click',()=>{stopPlay();go(+el.dataset.s);});
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){stopPlay();go(cur+1);}
+  if(e.key==='ArrowLeft'){stopPlay();go(cur-1);}
+});
+
+/* ---- responsive + auto-height ---- */
+const grid=$('grid'),wrap=document.querySelector('.wrap');
+function relayout(){
+  grid.classList.toggle('is-narrow',window.innerWidth<940);
+  $('dashbody').classList.toggle('is-narrow',window.innerWidth<560);
+}
+function postH(){
+  const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){relayout();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+relayout();render();
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

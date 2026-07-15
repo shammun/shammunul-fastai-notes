@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CIFAR-10 RGB Pipeline Explorer</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:880px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 16px;margin:18px 0 16px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;
+    padding:9px 18px;transition:transform .12s,box-shadow .12s;}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35)}
+  #play:hover{transform:translateY(-1px)}
+  #prev,#next{background:var(--purple-soft);color:var(--purple)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:9px 8px}
+  .stepnum{color:var(--muted);font-size:13px;font-weight:700;min-width:92px}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:120px}
+
+  .rail{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:0 0 16px;}
+  .rail .st{background:#fff;border:2px solid var(--line);border-radius:12px;
+    padding:9px 6px;text-align:center;cursor:pointer;transition:.15s;user-select:none;}
+  .rail .st:hover{border-color:var(--purple)}
+  .rail .st .lab{font-size:12px;font-weight:800}
+  .rail .st .sh{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+  .rail .st.active{background:var(--purple);border-color:var(--purple);box-shadow:var(--shadow)}
+  .rail .st.active .lab,.rail .st.active .sh{color:#fff}
+  .rail .st.done{background:var(--purple-soft);border-color:var(--purple-soft)}
+
+  .grid{display:grid;grid-template-columns:1.25fr .95fr;gap:18px;align-items:start}
+  .grid>*{min-width:0}
+  .grid.is-narrow{grid-template-columns:1fr}
+
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 14px;}
+  .stage-card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+
+  .viz{min-height:330px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+  .imgrow{display:flex;align-items:flex-end;justify-content:center;gap:20px;flex-wrap:wrap}
+  .imgbox{display:flex;flex-direction:column;align-items:center;gap:6px;transition:opacity .4s}
+  .imgbox .cap{font-size:11.5px;font-weight:800;text-align:center}
+  .imgbox .cap.in{color:var(--orange)} .imgbox .cap.out{color:var(--teal)} .imgbox .cap.mid{color:var(--purple)}
+  .imgbox .shape{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+  canvas.px{border-radius:8px;border:1px solid var(--line);background:#fff;image-rendering:pixelated;cursor:crosshair}
+  .dim{opacity:.28}
+  .chtoggles{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .chtoggles button{padding:6px 14px;font-size:12.5px;border-radius:10px;border:2px solid var(--line);background:#fff;color:var(--muted)}
+  .chtoggles button.on-r{background:#FDE8E8;border-color:#E05252;color:#C03030}
+  .chtoggles button.on-g{background:#E4F5E6;border-color:#3E9E4B;color:#2E7F3A}
+  .chtoggles button.on-b{background:#E5EDFC;border-color:#4A6FD4;color:#3A57AE}
+  .hoverinfo{font-family:var(--mono);font-size:12px;color:var(--ink);background:#F6F8FE;border-radius:10px;padding:7px 14px;min-height:32px;text-align:center}
+  .hoverinfo b.r{color:#C03030}.hoverinfo b.g{color:#2E7F3A}.hoverinfo b.b{color:#3A57AE}
+
+  .rangebar{width:100%;max-width:520px;margin-top:2px}
+  .rangebar .track{position:relative;height:38px;background:#F6F8FE;border-radius:10px;border:1px solid var(--line);overflow:hidden}
+  .rangebar .fill{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,var(--orange-soft),var(--teal-soft));transition:left .6s,width .6s}
+  .rangebar .tick{position:absolute;top:0;bottom:0;width:2px;background:var(--purple);opacity:.7}
+  .rangebar .lbl{position:absolute;font-family:var(--mono);font-size:10.5px;color:var(--muted);top:100%;transform:translateX(-50%);margin-top:3px}
+  .counts{display:flex;gap:10px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+  .pill{background:#F6F8FE;border-radius:10px;padding:7px 13px;text-align:center;min-width:96px}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:16px}
+  .pill .t{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .pill.in .n{color:var(--orange)} .pill.mid .n{color:var(--purple)} .pill.out .n{color:var(--teal)}
+
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .panel+.panel{margin-top:14px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .steptitle{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .explain{color:#33415C}
+  .explain p{margin:0 0 8px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.o{color:var(--orange)} .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)}
+  .keybox{margin-top:8px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13.5px}
+  pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:#F6F8FE;border-radius:12px;padding:11px 0;overflow-x:auto}
+  .cl{padding:0 14px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:3px solid var(--purple);font-weight:700}
+  .cl.cm{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>From Grayscale to Color: <span class="hl">the CIFAR-10 data pipeline</span></h1>
+  <p class="sub">Fashion MNIST images were a single grid of numbers. A CIFAR-10 image is <b>three</b> stacked grids —
+  one each for <b>Red</b>, <b>Green</b> and <b>Blue</b>. Walk through exactly what <code>transformi</code> does to every
+  image, from PIL picture to the training tensor. <b>Hover the images</b> to inspect real pixel values, and toggle the
+  R / G / B channels on and off.</p>
+</header>
+
+<div class="controls">
+  <button id="play">Play ▶</button>
+  <button id="prev">← Prev</button>
+  <button id="next">Next →</button>
+  <button id="reset">Reset</button>
+  <span class="stepnum" id="stepnum"></span>
+  <label class="spd">Speed <input type="range" id="spd" min="1" max="6" value="3"><span id="spdv">1.0×</span></label>
+</div>
+
+<div class="rail" id="rail">
+  <div class="st" data-s="0"><div class="lab">PIL image</div><div class="sh">32×32 RGB</div></div>
+  <div class="st" data-s="1"><div class="lab">3 channels</div><div class="sh">R + G + B</div></div>
+  <div class="st" data-s="2"><div class="lab">to_tensor</div><div class="sh">[0, 1]</div></div>
+  <div class="st" data-s="3"><div class="lab">− 0.5</div><div class="sh">[−0.5, 0.5]</div></div>
+  <div class="st" data-s="4"><div class="lab">one tensor</div><div class="sh">[3, 32, 32]</div></div>
+  <div class="st" data-s="5"><div class="lab">a batch</div><div class="sh">[32, 3, 32, 32]</div></div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="stage-card">
+    <h2>What the data looks like</h2>
+    <div class="viz" id="viz">
+      <div class="imgrow" id="imgrow"></div>
+      <div class="chtoggles" id="chtoggles" style="display:none">
+        <button id="tR" class="on-r">R on</button>
+        <button id="tG" class="on-g">G on</button>
+        <button id="tB" class="on-b">B on</button>
+      </div>
+      <div class="rangebar" id="rangebar" style="display:none">
+        <div class="track" id="track"></div>
+      </div>
+      <div class="hoverinfo" id="hoverinfo">hover a pixel to inspect its values</div>
+      <div class="counts">
+        <div class="pill in"><div class="n" id="p-shape">32×32×3</div><div class="t">shape</div></div>
+        <div class="pill mid"><div class="n" id="p-range">0…255</div><div class="t">value range</div></div>
+        <div class="pill out"><div class="n" id="p-vals">3,072</div><div class="t">numbers / image</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Stage explanation</h2>
+      <div class="steptitle" id="title"></div>
+      <div class="explain" id="explain"></div>
+    </div>
+    <div class="panel">
+      <h2>Code being run</h2>
+      <pre class="code" id="code"></pre>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+
+/* ---------- procedural 32x32 CIFAR-like image (a little red car) ---------- */
+const N=32;
+const img=[]; // [y][x] = [r,g,b] 0..255
+(function(){
+  for(let y=0;y<N;y++){ img.push([]);
+    for(let x=0;x<N;x++){
+      // sky gradient
+      let r=120+ y*1.4, g=165+y*1.1, b=225-y*0.6;
+      // ground
+      if(y>=24){ r=105+((x*7+y*13)%17); g=150+((x*11+y*5)%15); b=95+((x*3+y*7)%13); }
+      img[y].push([r,g,b]);
+    }
+  }
+  // car body
+  for(let y=15;y<24;y++)for(let x=5;x<27;x++){ img[y][x]=[205,40,45]; }
+  // cabin
+  for(let y=10;y<15;y++)for(let x=10;x<22;x++){ img[y][x]=[190,35,42]; }
+  // windows
+  for(let y=11;y<15;y++)for(let x=12;x<20;x++){ img[y][x]=[150,200,235]; }
+  for(let y=11;y<15;y++){ img[y][15]=[190,35,42]; img[y][16]=[190,35,42]; }
+  // wheels
+  function wheel(cx,cy){ for(let y=-3;y<=3;y++)for(let x=-3;x<=3;x++){
+      if(x*x+y*y<=9){ const c=(x*x+y*y<=2)?[190,190,200]:[35,35,42]; if(img[cy+y]&&img[cy+y][cx+x])img[cy+y][cx+x]=c; } } }
+  wheel(9,24); wheel(23,24);
+  // headlight
+  img[18][26]=[255,235,150]; img[19][26]=[255,235,150];
+  // slight per-pixel noise for realism
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++)for(let c=0;c<3;c++)
+    img[y][x][c]=Math.max(0,Math.min(255,img[y][x][c]+((x*31+y*17+c*7)%9-4)*2));
+})();
+
+const chOn={r:true,g:true,b:true};
+let cur=0, playing=false, timer=null;
+const speeds=[0.5,0.75,1.0,1.5,2.0,3.0];
+
+/* ---------- canvas builders ---------- */
+function mkCanvas(size,css){ const c=document.createElement('canvas'); c.className='px'+(css?' '+css:''); c.width=N; c.height=N;
+  c.style.width=size+'px'; c.style.height=size+'px'; return c; }
+
+function drawRGB(c,mode){ // mode: 'full' | 'R' | 'G' | 'B' | 'toggled'
+  const g=c.getContext('2d'), d=g.createImageData(N,N);
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const [r,gg,b]=img[y][x]; const i=(y*N+x)*4; let R=r,G=gg,B=b;
+    if(mode==='R'){R=r;G=0;B=0;} else if(mode==='G'){R=0;G=gg;B=0;} else if(mode==='B'){R=0;G=0;B=b;}
+    else if(mode==='toggled'){R=chOn.r?r:0; G=chOn.g?gg:0; B=chOn.b?b:0;}
+    d.data[i]=R; d.data[i+1]=G; d.data[i+2]=B; d.data[i+3]=255;
+  }
+  g.putImageData(d,0,0);
+}
+function drawGrayChannel(c,ch){ // channel as grayscale heat (how the tensor "sees" it)
+  const g=c.getContext('2d'), d=g.createImageData(N,N);
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const v=img[y][x][ch], i=(y*N+x)*4;
+    d.data[i]=v; d.data[i+1]=v; d.data[i+2]=v; d.data[i+3]=255;
+  }
+  g.putImageData(d,0,0);
+}
+
+function hookHover(c, fmt){
+  c.addEventListener('mousemove',e=>{
+    const rc=c.getBoundingClientRect();
+    const x=Math.min(N-1,Math.max(0,Math.floor((e.clientX-rc.left)/rc.width*N)));
+    const y=Math.min(N-1,Math.max(0,Math.floor((e.clientY-rc.top)/rc.height*N)));
+    $('hoverinfo').innerHTML=fmt(x,y,img[y][x]);
+  });
+  c.addEventListener('mouseleave',()=>{$('hoverinfo').textContent='hover a pixel to inspect its values';});
+}
+const fmt255=(x,y,p)=>`pixel (${y}, ${x})  →  <b class="r">R ${p[0]}</b>  <b class="g">G ${p[1]}</b>  <b class="b">B ${p[2]}</b>  <span style="color:var(--muted)">(uint8, 0–255)</span>`;
+const fmt01=(x,y,p)=>`pixel (${y}, ${x})  →  <b class="r">R ${(p[0]/255).toFixed(3)}</b>  <b class="g">G ${(p[1]/255).toFixed(3)}</b>  <b class="b">B ${(p[2]/255).toFixed(3)}</b>  <span style="color:var(--muted)">(float, 0–1)</span>`;
+const fmtC=(x,y,p)=>`pixel (${y}, ${x})  →  <b class="r">R ${(p[0]/255-.5).toFixed(3)}</b>  <b class="g">G ${(p[1]/255-.5).toFixed(3)}</b>  <b class="b">B ${(p[2]/255-.5).toFixed(3)}</b>  <span style="color:var(--muted)">(float, −0.5–0.5)</span>`;
+
+/* ---------- range bar ---------- */
+function setRange(lo,hi,min,max,labels){
+  const tr=$('track'); tr.innerHTML='';
+  const f=document.createElement('div'); f.className='fill';
+  const P=v=>((v-min)/(max-min)*100);
+  f.style.left=P(lo)+'%'; f.style.width=(P(hi)-P(lo))+'%'; tr.appendChild(f);
+  for(const [v,txt] of labels){
+    const t=document.createElement('div'); t.className='tick'; t.style.left=P(v)+'%'; tr.appendChild(t);
+    const l=document.createElement('div'); l.className='lbl'; l.style.left=P(v)+'%'; l.textContent=txt; tr.appendChild(l);
+  }
+}
+
+/* ---------- stages ---------- */
+function box(cap,capCls,shape,canvas){
+  const d=document.createElement('div'); d.className='imgbox';
+  const c1=document.createElement('div'); c1.className='cap '+capCls; c1.textContent=cap; d.appendChild(c1);
+  d.appendChild(canvas);
+  const s=document.createElement('div'); s.className='shape'; s.textContent=shape; d.appendChild(s);
+  return d;
+}
+
+const stages=[
+{
+  title:'① One CIFAR-10 image, as it arrives',
+  pills:['32×32','0…255','3,072'],
+  build(row){
+    const c=mkCanvas(190); drawRGB(c,'full'); hookHover(c,fmt255);
+    row.appendChild(box('PIL image (what you see)','in','32 × 32 pixels, RGB',c));
+  },
+  explain:`<p>HuggingFace's <code>load_dataset("cifar10")</code> hands us <b class="o">PIL images</b>: 32×32 pixels,
+  each pixel storing three integers 0–255 for <b>Red, Green, Blue</b>.</p>
+  <p>Compare with Fashion MNIST: 28×28 with <b>one</b> number per pixel. Color triples the information —
+  <code>32×32×3 = 3,072</code> numbers per image instead of 784.</p>
+  <div class="keybox">Note the column is called <code>'img'</code> in CIFAR-10, not <code>'image'</code> — one of those tiny dataset quirks that breaks code if you miss it.</div>`,
+  code:[["xl, yl = 'img', 'label'   # CIFAR-10 column names",'hl'],
+        ["dsd = load_dataset('cifar10')",'hl'],
+        ["# each item: a 32×32 RGB PIL image + a label 0–9",'cm']]
+},
+{
+  title:'② A color image is 3 stacked grids',
+  pills:['3 × (32×32)','0…255','3,072'],
+  build(row){
+    const cf=mkCanvas(120); drawRGB(cf,'full'); hookHover(cf,fmt255);
+    row.appendChild(box('full image','in','all 3 channels',cf));
+    const specs=[['R channel',0,'R'],['G channel',1,'G'],['B channel',2,'B']];
+    for(const [cap,ch,mode] of specs){
+      const c=mkCanvas(100); drawRGB(c,mode); hookHover(c,fmt255);
+      row.appendChild(box(cap,'mid','one 32×32 grid',c));
+    }
+    $('chtoggles').style.display='flex';
+  },
+  explain:`<p>“RGB” literally means the image is <b class="p">three separate 32×32 grids</b> stacked on top of each other.
+  Each grid is called a <b>channel</b>.</p>
+  <p>Look at the red car: it is bright in the <b>R channel</b> and dark in G and B. The sky is bright in <b>B</b>.
+  A grayscale image is just the special case of <b>one</b> channel.</p>
+  <p><b>Try it:</b> toggle channels off below the images and watch the full-color image lose that component.</p>
+  <div class="keybox">This is why the model needs <code>in_channels=3</code> for CIFAR-10 but <code>in_channels=1</code> for Fashion MNIST.</div>`,
+  code:[['# an RGB image is a stack of 3 grids (channels):','cm'],
+        ['#   img[0] → Red    32×32','cm'],
+        ['#   img[1] → Green  32×32','cm'],
+        ['#   img[2] → Blue   32×32','cm']]
+},
+{
+  title:'③ TF.to_tensor — integers 0–255 become floats 0–1',
+  pills:['[3, 32, 32]','0.0…1.0','3,072'],
+  build(row){
+    const c1=mkCanvas(150); drawRGB(c1,'full'); hookHover(c1,fmt255);
+    row.appendChild(box('before: uint8 0–255','in','PIL, H×W×C',c1));
+    const c2=mkCanvas(150); drawRGB(c2,'full'); hookHover(c2,fmt01);
+    row.appendChild(box('after: float 0–1','out','tensor, C×H×W = [3,32,32]',c2));
+    $('rangebar').style.display='block';
+    setRange(0,1,-0.6,1.05,[[0,'0.0'],[1,'1.0']]);
+  },
+  explain:`<p><code>TF.to_tensor(o)</code> does two jobs at once:</p>
+  <p>1. <b>Scales values</b>: every integer is divided by 255, so 0–255 becomes <b class="t">0.0–1.0</b> floats
+  (neural nets train far better on small floats than on big integers).</p>
+  <p>2. <b>Reorders dimensions</b>: PIL stores <code>Height × Width × Channels</code>; PyTorch wants
+  <b class="p">Channels first</b>: <code>[3, 32, 32]</code>.</p>
+  <p>The picture looks identical — hover it: only the <i>numbers</i> changed.</p>`,
+  code:[['@inplace','cm'],
+        ['def transformi(b):'],
+        ['    b[xl] = [TF.to_tensor(o) - 0.5','hl'],
+        ['             for o in b[xl]]'],
+        ['# to_tensor: 0–255 ints → 0–1 floats, HWC → CHW','cm']]
+},
+{
+  title:'④ Subtract 0.5 — center the data around zero',
+  pills:['[3, 32, 32]','−0.5…0.5','3,072'],
+  build(row){
+    const c1=mkCanvas(150); drawRGB(c1,'full'); hookHover(c1,fmt01);
+    row.appendChild(box('before: 0…1','in','mean ≈ 0.47',c1));
+    const c2=mkCanvas(150); drawRGB(c2,'full'); hookHover(c2,fmtC);
+    row.appendChild(box('after: −0.5…0.5','out','mean ≈ 0, centered',c2));
+    $('rangebar').style.display='block';
+    setRange(-0.5,0.5,-0.6,1.05,[[-0.5,'−0.5'],[0,'0'],[0.5,'0.5']]);
+  },
+  explain:`<p>Subtracting <code>0.5</code> shifts the range from <code>[0, 1]</code> to <b class="p">[−0.5, 0.5]</b>,
+  roughly centered on zero.</p>
+  <p><b>Why bother?</b> DDPM training mixes the image with Gaussian noise <code>ε ~ N(0, 1)</code>, which is itself
+  centered at zero. A zero-centered image keeps signal and noise on the same footing, and zero-centered inputs also
+  play nicely with weight initialization.</p>
+  <div class="keybox">Remember the round trip: we display images later with <code>+ 0.5</code> (e.g. <code>show_images(xb[:25] + 0.5)</code>) to undo this shift.</div>`,
+  code:[['    b[xl] = [TF.to_tensor(o) - 0.5','hl'],
+        ['             for o in b[xl]]'],
+        [''],
+        ['# later, for display, undo it:','cm'],
+        ['show_images(xb[:25] + 0.5)','hl']]
+},
+{
+  title:'⑤ The result: one training tensor [3, 32, 32]',
+  pills:['[3, 32, 32]','−0.5…0.5','3,072'],
+  build(row){
+    // isometric channel stack
+    const holder=document.createElement('div');
+    holder.style.position='relative'; holder.style.width='260px'; holder.style.height='230px';
+    const cols=[['#E05252',2],['#3E9E4B',1],['#4A6FD4',0]]; // draw B back, R front
+    const order=[[2,'#4A6FD4','B'],[1,'#3E9E4B','G'],[0,'#E05252','R']];
+    order.forEach(([ch,color,lab],i)=>{
+      const c=mkCanvas(140); drawGrayChannel(c,ch); hookHover(c,fmtC);
+      c.style.position='absolute'; c.style.left=(i*40)+'px'; c.style.top=((2-i)*34)+'px';
+      c.style.border='3px solid '+color; c.style.boxShadow='var(--shadow-sm)';
+      holder.appendChild(c);
+      const t=document.createElement('div'); t.textContent=lab+' = img['+ch+']';
+      t.style.cssText='position:absolute;font:800 11px var(--mono);color:'+color+';left:'+(i*40+146)+'px;top:'+((2-i)*34+4)+'px';
+      holder.appendChild(t);
+    });
+    row.appendChild(holder);
+  },
+  explain:`<p>After <code>transformi</code>, every image is a single tensor of shape <b class="p">[3, 32, 32]</b> —
+  read it as <code>[channels, height, width]</code>.</p>
+  <p>The stack on the left shows each channel as the grayscale grid the network actually receives —
+  <code>img[0]</code> is Red, <code>img[1]</code> Green, <code>img[2]</code> Blue.
+  Bright = high value. The car body glows in the R plane; the sky glows in B.</p>
+  <div class="keybox">Convolutions will slide over <b>all 3 channels at once</b> — a first-layer kernel has shape <code>3×3×3</code>, not <code>3×3</code>.</div>`,
+  code:[['x = tds["train"][0][xl]'],
+        ['x.shape           # torch.Size([3, 32, 32])','hl'],
+        ['#                  channels, height, width','cm']]
+},
+{
+  title:'⑥ Batching: the DataLoader stacks 32 of these',
+  pills:['[32, 3, 32, 32]','−0.5…0.5','98,304'],
+  build(row){
+    const holder=document.createElement('div');
+    holder.style.position='relative'; holder.style.width='330px'; holder.style.height='240px';
+    for(let i=7;i>=0;i--){
+      const c=mkCanvas(120); drawRGB(c,'full'); if(i===0)hookHover(c,fmtC);
+      c.style.position='absolute'; c.style.left=(i*22)+'px'; c.style.top=(i*13)+'px';
+      c.style.opacity=(1-i*0.09); c.style.filter=i?`hue-rotate(${i*36}deg)`:'';
+      holder.appendChild(c);
+    }
+    const t=document.createElement('div'); t.innerHTML='… ×32 images';
+    t.style.cssText='position:absolute;font:800 12px var(--mono);color:var(--purple);left:190px;top:210px';
+    holder.appendChild(t);
+    row.appendChild(holder);
+  },
+  explain:`<p>The DataLoader groups <b class="p">32 images</b> into one batch tensor:
+  <code>[32, 3, 32, 32]</code> = <code>[batch, channels, height, width]</code>.</p>
+  <p><b>Careful with a classic confusion</b> (it even appears in this notebook!):
+  <code>xb.shape</code> is <code>[32, 3, 32, 32]</code> — the whole batch — while
+  <code>xb[0].shape</code> is <code>[3, 32, 32]</code> — one image.</p>
+  <p>Why only <code>bs=32</code> when Fashion MNIST used 512? Color triples memory per image <i>and</i>
+  we will train a much larger UNet — the GPU budget has to come from somewhere.</p>
+  <div class="keybox">One batch = <code>32 × 3 × 32 × 32</code> = <b>98,304</b> numbers, before the model even starts.</div>`,
+  code:[['dls = DataLoaders.from_dd(tds, bs, num_workers=8)'],
+        ['xb, yb = next(iter(dls.train))'],
+        ['xb.shape      # [32, 3, 32, 32]  ← whole batch','hl'],
+        ['xb[0].shape   # [3, 32, 32]      ← ONE image','hl']]
+}
+];
+
+/* ---------- render ---------- */
+const pillsMeta=[['p-shape'],['p-range'],['p-vals']];
+function render(){
+  const s=stages[cur];
+  const row=$('imgrow'); row.innerHTML='';
+  $('chtoggles').style.display='none';
+  $('rangebar').style.display='none';
+  s.build(row);
+  $('p-shape').textContent=s.pills[0];
+  $('p-range').textContent=s.pills[1];
+  $('p-vals').textContent=s.pills[2];
+  document.querySelectorAll('.rail .st').forEach((el,i)=>{
+    el.classList.toggle('active',i===cur); el.classList.toggle('done',i<cur);
+  });
+  $('stepnum').textContent=`Stage ${cur+1} / ${stages.length}`;
+  $('title').textContent=s.title;
+  $('explain').innerHTML=s.explain;
+  const codeEl=$('code'); codeEl.innerHTML='';
+  for(const line of s.code){
+    const d=document.createElement('div');
+    d.className='cl'+(line[1]?' '+line[1]:'');
+    d.textContent=line[0]===''?'\u00A0':line[0];
+    codeEl.appendChild(d);
+  }
+  $('prev').disabled=cur===0; $('prev').style.opacity=cur===0?.45:1;
+  $('next').disabled=cur===stages.length-1; $('next').style.opacity=cur===stages.length-1?.5:1;
+  postH();
+}
+function redrawToggled(){ // stage 1 only: redraw full image with channel toggles
+  if(cur!==1)return;
+  const c=document.querySelector('#imgrow canvas'); if(c)drawRGB(c,'toggled');
+}
+$('tR').addEventListener('click',()=>{chOn.r=!chOn.r;$('tR').className=chOn.r?'on-r':'';$('tR').textContent='R '+(chOn.r?'on':'off');redrawToggled();});
+$('tG').addEventListener('click',()=>{chOn.g=!chOn.g;$('tG').className=chOn.g?'on-g':'';$('tG').textContent='G '+(chOn.g?'on':'off');redrawToggled();});
+$('tB').addEventListener('click',()=>{chOn.b=!chOn.b;$('tB').className=chOn.b?'on-b':'';$('tB').textContent='B '+(chOn.b?'on':'off');redrawToggled();});
+
+let cur0; // silence lint
+function go(i){ cur=Math.max(0,Math.min(stages.length-1,i)); chOn.r=chOn.g=chOn.b=true;
+  $('tR').className='on-r';$('tR').textContent='R on';$('tG').className='on-g';$('tG').textContent='G on';$('tB').className='on-b';$('tB').textContent='B on';
+  render(); }
+function stopPlay(){ playing=false; if(timer)clearTimeout(timer); $('play').textContent='Play ▶'; }
+function tick(){
+  if(!playing)return;
+  if(cur>=stages.length-1){ stopPlay(); return; }
+  go(cur+1);
+  timer=setTimeout(tick, 2600/speeds[+$('spd').value-1]);
+}
+$('play').addEventListener('click',()=>{
+  if(playing){ stopPlay(); return; }
+  if(cur>=stages.length-1) go(0);
+  playing=true; $('play').textContent='Pause ⏸';
+  timer=setTimeout(tick, 1800/speeds[+$('spd').value-1]);
+});
+$('next').addEventListener('click',()=>{ stopPlay(); go(cur+1); });
+$('prev').addEventListener('click',()=>{ stopPlay(); go(cur-1); });
+$('reset').addEventListener('click',()=>{ stopPlay(); go(0); });
+$('spd').addEventListener('input',()=>{ $('spdv').textContent=speeds[+$('spd').value-1].toFixed(1)+'×'; });
+document.querySelectorAll('.rail .st').forEach(el=>{
+  el.addEventListener('click',()=>{ stopPlay(); go(+el.dataset.s); });
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){stopPlay();go(cur+1);}
+  if(e.key==='ArrowLeft'){stopPlay();go(cur-1);}
+});
+
+/* ---- responsive + auto-height ---- */
+const grid=$('grid'), wrap=document.querySelector('.wrap');
+function relayout(){ grid.classList.toggle('is-narrow', window.innerWidth<860); }
+function postH(){
+  const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){ relayout(); postH(); }
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver) new ResizeObserver(postH).observe(wrap||document.body);
+relayout(); render();
+setTimeout(update,200); setTimeout(update,700);
+})();
+</script>
+</body>
+</html>

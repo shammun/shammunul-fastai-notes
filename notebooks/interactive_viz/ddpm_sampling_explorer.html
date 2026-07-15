@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDPM Sampling Explorer</title>
+<style>
+  :root{
+    --bg:#EDF2FB; --card:#FFFFFF; --ink:#1F2A44; --muted:#64748B;
+    --purple:#6C5CE7; --purple-soft:#EFEBFF;
+    --teal:#0E9C8F; --teal-soft:#E0F5F2;
+    --orange:#E8821F; --orange-soft:#FDEEDC;
+    --line:#DDE5F2;
+    --shadow:0 10px 28px rgba(108,92,231,.14);
+    --shadow-sm:0 4px 14px rgba(108,92,231,.10);
+    --radius:16px;
+    --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:22px 16px 18px;overflow-x:hidden;}
+  .wrap{max-width:1180px;margin:0 auto}
+  header h1{font-size:24px;font-weight:800;letter-spacing:-.02em}
+  header h1 .hl{color:var(--purple)}
+  header p.sub{color:var(--muted);margin-top:6px;max-width:900px}
+  header p.sub code{font-family:var(--mono);font-size:.92em;background:#fff;border-radius:6px;padding:1px 6px;box-shadow:var(--shadow-sm)}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:13px 16px;margin:18px 0 16px;}
+  button{font:inherit;font-weight:700;border:none;border-radius:12px;cursor:pointer;
+    padding:9px 18px;transition:transform .12s;}
+  button:focus-visible{outline:3px solid var(--purple);outline-offset:2px}
+  #play{background:var(--purple);color:#fff;box-shadow:0 6px 16px rgba(108,92,231,.35)}
+  #play:hover{transform:translateY(-1px)}
+  #stepbtn{background:var(--purple-soft);color:var(--purple)}
+  #reset{background:transparent;color:var(--muted);text-decoration:underline;padding:9px 8px}
+  .ctl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:700}
+  .ctl input[type=range]{accent-color:var(--purple);width:200px;direction:rtl}
+  .ctl .val{font-family:var(--mono);color:var(--purple);min-width:60px;font-weight:800}
+  .spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--muted);font-weight:600}
+  .spd input{accent-color:var(--purple);width:110px}
+
+  .rail{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 16px;}
+  .rail .st{background:#fff;border:2px solid var(--line);border-radius:12px;
+    padding:9px 6px;text-align:center;cursor:pointer;transition:.15s;user-select:none;}
+  .rail .st:hover{border-color:var(--purple)}
+  .rail .st .lab{font-size:12px;font-weight:800}
+  .rail .st .sh{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+  .rail .st.active{background:var(--purple);border-color:var(--purple);box-shadow:var(--shadow)}
+  .rail .st.active .lab,.rail .st.active .sh{color:#fff}
+
+  .grid{display:grid;grid-template-columns:1.25fr .95fr;gap:18px;align-items:start}
+  .grid>*{min-width:0}
+  .grid.is-narrow{grid-template-columns:1fr}
+  .stage-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+  .stage-card h2{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+
+  .flowrow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+  .fbox{display:flex;flex-direction:column;align-items:center;gap:6px;transition:opacity .3s,transform .3s;opacity:.32}
+  .fbox.on{opacity:1;transform:translateY(-2px)}
+  .fbox .cap{font-size:11px;font-weight:800;text-align:center}
+  .fbox .cap.p{color:var(--purple)} .fbox .cap.o{color:var(--orange)} .fbox .cap.t{color:var(--teal)} .fbox .cap.m{color:var(--muted)}
+  canvas.px{border-radius:8px;border:1px solid var(--line);image-rendering:pixelated;width:108px;height:108px;background:#fff}
+  .op{font-size:20px;font-weight:800;color:var(--muted)}
+  .coefrow{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+  .pill{background:#F6F8FE;border-radius:10px;padding:7px 12px;text-align:center;min-width:100px}
+  .pill .n{font-family:var(--mono);font-weight:800;font-size:15px}
+  .pill .t{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+  .pill.a .n{color:var(--orange)} .pill.b .n{color:var(--teal)} .pill.c .n{color:var(--purple)}
+
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+  .panel+.panel{margin-top:14px}
+  .panel h2{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .steptitle{font-size:17px;font-weight:800;letter-spacing:-.01em;margin-bottom:7px}
+  .explain{color:#33415C;font-size:14px}
+  .explain p{margin:0 0 8px}
+  .explain code{font-family:var(--mono);font-size:.9em;background:#F1F4FC;border-radius:6px;padding:1px 6px}
+  .explain b.o{color:var(--orange)} .explain b.t{color:var(--teal)} .explain b.p{color:var(--purple)}
+  .keybox{margin-top:8px;background:var(--purple-soft);border-radius:12px;padding:9px 13px;color:#4636C9;font-weight:600;font-size:13px}
+  pre.code{font-family:var(--mono);font-size:11.8px;line-height:1.6;background:#F6F8FE;border-radius:12px;padding:11px 0;overflow-x:auto}
+  .cl{padding:0 14px;white-space:pre}
+  .cl.hl{background:var(--purple-soft);border-left:3px solid var(--purple);font-weight:700}
+  .cl.cm{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Sampling: <span class="hl">running diffusion in reverse</span>, one step dissected</h1>
+  <p class="sub">Generation starts from pure noise and applies the model 1000 times. Each iteration of the loop does
+  four things — <b>click the four stages</b> to see each one, and drag the <b>t slider</b> (or press Play) to run the
+  whole 999→0 journey and watch a frog emerge from static. Every panel is synced to the exact line in
+  <code>sample()</code>.</p>
+</header>
+
+<div class="controls">
+  <button id="play">Play 999→0 ▶</button>
+  <button id="stepbtn">One step −1</button>
+  <button id="reset">Reset to t=999</button>
+  <span class="ctl">t <input type="range" id="tsl" min="0" max="999" value="999"><span class="val" id="tval">999</span></span>
+  <label class="spd">Speed <input type="range" id="spd" min="1" max="6" value="3"><span id="spdv">1.0×</span></label>
+</div>
+
+<div class="rail" id="rail">
+  <div class="st" data-s="0"><div class="lab">① predict noise</div><div class="sh">model((x_t, t))</div></div>
+  <div class="st" data-s="1"><div class="lab">② estimate x̂₀</div><div class="sh">remove ALL noise</div></div>
+  <div class="st" data-s="2"><div class="lab">③ blend → mean</div><div class="sh">x̂₀ and x_t weighted</div></div>
+  <div class="st" data-s="3"><div class="lab">④ add σ·z</div><div class="sh">fresh noise back in</div></div>
+</div>
+
+<div class="grid" id="grid">
+  <div class="stage-card">
+    <h2>One reverse step at the current t</h2>
+    <div class="flowrow">
+      <div class="fbox" id="b0"><div class="cap p">current x<sub>t</sub></div><canvas class="px" id="cXt" width="32" height="32"></canvas></div>
+      <div class="op">→</div>
+      <div class="fbox" id="b1"><div class="cap t">predicted ε̂</div><canvas class="px" id="cEps" width="32" height="32"></canvas></div>
+      <div class="op">→</div>
+      <div class="fbox" id="b2"><div class="cap o">estimate x̂₀</div><canvas class="px" id="cX0" width="32" height="32"></canvas></div>
+      <div class="op">→</div>
+      <div class="fbox" id="b3"><div class="cap p">next x<sub>t−1</sub></div><canvas class="px" id="cXt1" width="32" height="32"></canvas></div>
+    </div>
+    <div class="coefrow">
+      <div class="pill a"><div class="n" id="p-ab">—</div><div class="t">ᾱ_t</div></div>
+      <div class="pill b"><div class="n" id="p-x0w">—</div><div class="t">weight on x̂₀</div></div>
+      <div class="pill b"><div class="n" id="p-xtw">—</div><div class="t">weight on x_t</div></div>
+      <div class="pill c"><div class="n" id="p-sig">—</div><div class="t">σ_t (noise added)</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Stage explanation</h2>
+      <div class="steptitle" id="title"></div>
+      <div class="explain" id="explain"></div>
+    </div>
+    <div class="panel">
+      <h2>sample() — current lines highlighted</h2>
+      <pre class="code" id="code">
+<div class="cl" data-l="0">for t in reversed(range(n_steps)):   # 999 … 0</div>
+<div class="cl" data-l="1">    z = randn if t>0 else zeros</div>
+<div class="cl" data-l="2">    noise = model((x_t, t_batch))</div>
+<div class="cl" data-l="3">    x_0_hat = (x_t - betabar_t.sqrt()*noise) \</div>
+<div class="cl" data-l="4">              / alphabar[t].sqrt()</div>
+<div class="cl" data-l="5">    x_t = x_0_hat * abar_t1.sqrt()*(1-alpha[t])/betabar_t \</div>
+<div class="cl" data-l="6">        + x_t * alpha[t].sqrt()*betabar_t1/betabar_t \</div>
+<div class="cl" data-l="7">        + sigma[t] * z</div>
+<div class="cl" data-l="8">    preds.append(x_t)</div>
+</pre>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const N=32,NS=1000;
+
+/* schedule betamax=0.01 */
+const beta=[],alpha=[],abar=[],sigma=[];
+{let cp=1;for(let i=0;i<NS;i++){const b=1e-4+(0.01-1e-4)*i/(NS-1);beta.push(b);alpha.push(1-b);cp*=(1-b);abar.push(cp);sigma.push(Math.sqrt(b));}}
+
+/* target image (frog) + fixed noise field: we FAKE a perfect model, so
+   x_t = sqrt(abar)*x0 + sqrt(1-abar)*eps with a slowly "annealing" eps */
+let seed=99;const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};
+const gauss=()=>{let s=0;for(let i=0;i<6;i++)s+=rnd();return(s-3)/1.2;};
+const img=[],eps=[];
+for(let y=0;y<N;y++){img.push([]);eps.push([]);
+  for(let x=0;x<N;x++){
+    let r=118+y*1.5,g=162+y*1.1,b=222-y*0.5;
+    if(y>=23){r=98;g=142;b=86;}
+    const dx=x-16,dy=y-17;
+    if(dx*dx*0.7+dy*dy<72){r=72;g=152;b=62;}
+    if(dx*dx*0.7+dy*dy<72&&dy>2){r=190;g=214;b=170;}
+    if((dx+5)*(dx+5)+(dy+7)*(dy+7)<7||(dx-5)*(dx-5)+(dy+7)*(dy+7)<7){r=250;g=245;b=230;}
+    if((dx+5)*(dx+5)+(dy+7)*(dy+7)<2||(dx-5)*(dx-5)+(dy+7)*(dy+7)<2){r=25;g=28;b=22;}
+    img[y].push([r/255-.5,g/255-.5,b/255-.5]);
+    eps[y].push([gauss(),gauss(),gauss()]);
+  }}
+
+function draw(c,fn){
+  const g=c.getContext('2d'),d=g.createImageData(N,N);
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const v=fn(x,y),i=(y*N+x)*4;
+    for(let ch=0;ch<3;ch++)d.data[i+ch]=Math.max(0,Math.min(255,(v[ch]+.5)*255));
+    d.data[i+3]=255;
+  }
+  g.putImageData(d,0,0);
+}
+const clamp=v=>Math.max(-.5,Math.min(.5,v));
+function xtAt(t){ // simulated trajectory point
+  const c1=Math.sqrt(abar[t]),c2=Math.sqrt(1-abar[t]);
+  return (x,y)=>[0,1,2].map(ch=>clamp(c1*img[y][x][ch]+c2*eps[y][x][ch]*0.5));
+}
+function x0hatAt(t){ // imperfect early, sharp late: blur img by noise level
+  const w=1-abar[t];
+  return (x,y)=>[0,1,2].map(ch=>{
+    // mix true x0 with a local average to fake "blurry estimate"
+    let s=0,n=0;
+    for(let yy=Math.max(0,y-1);yy<=Math.min(N-1,y+1);yy++)
+      for(let xx=Math.max(0,x-1);xx<=Math.min(N-1,x+1);xx++){s+=img[yy][xx][ch];n++;}
+    const blur=s/n + eps[y][x][ch]*0.10*w;
+    return clamp(img[y][x][ch]*(1-w*0.8)+blur*(w*0.8));
+  });
+}
+
+let t=999,stage=0,playing=false,timer=null;
+const speeds=[0.5,0.75,1.0,1.5,2.0,3.0];
+
+const stages=[
+{lines:[0,2],title:'① Ask the model: how much noise is in here?',
+ e:t=>`<p>The loop counts <b>backwards</b>: <code>for t in reversed(range(1000))</code>. At each step the trained UNet
+ receives the pair <code>(x_t, t)</code> — the timestep tells it <i>how corrupted</i> to expect the input — and outputs
+ <b class="t">ε̂</b>, its guess of the exact noise tensor inside x_t.</p>
+ <p>Note the <code>t_batch = torch.full((n,), t)</code>: all images in the batch are at the same t during sampling
+ (unlike training, where every image had its own).</p>`},
+{lines:[3,4],title:'② Estimate the clean image x̂₀ — algebraically',
+ e:t=>`<p>Rearrange the forward formula. If <code>x_t = √ᾱ·x₀ + √(1−ᾱ)·ε</code>, then:</p>
+ <p><code>x̂₀ = (x_t − √(1−ᾱ)·ε̂) / √ᾱ</code> — subtract the predicted noise, undo the scaling.</p>
+ <p>At high t (like now, t=${t}) this estimate is ${t>600?'<b>very blurry</b> — the model can only guess coarse structure from near-pure noise':t>200?'reasonable but soft — mid-range steps refine the shapes':'<b>sharp</b> — by low t the model is confident about details'}.</p>
+ <div class="keybox">We do NOT jump straight to x̂₀. It's just a waypoint used to compute a slightly less noisy x<sub>t−1</sub>.</div>`},
+{lines:[5,6],title:'③ Blend x̂₀ and x_t into the posterior mean',
+ e:t=>`<p>The next image is a <b>weighted average</b> of the clean estimate and the current noisy image:</p>
+ <p><code>mean = w₀·x̂₀ + w_t·x_t</code>, with weights built from the schedule
+ (<code>ᾱ_{t−1}</code>, <code>α_t</code>, <code>β̄_t</code>). Check the pills below the images: right now
+ w₀ is small and w_t large — each step trusts the current image a lot and moves only a <i>tiny</i> way toward x̂₀.
+ A thousand tiny corrections, not one big jump.</p>`},
+{lines:[1,7,8],title:'④ Add back a pinch of fresh noise (σ·z)',
+ e:t=>`<p>Surprisingly, we <b>add noise back</b>: <code>+ sigma[t]·z</code> with fresh <code>z ~ N(0,1)</code>. This
+ keeps the sampler exploring — without it, DDPM collapses to blurry, over-smoothed outputs.</p>
+ <p>The one exception: at <code>t = 0</code> the code uses <code>z = zeros</code> — the final image gets no extra
+ noise. ${t===0?'<b>You are at that final step now.</b>':''}</p>
+ <div class="keybox">Each of the 1000 steps is one full UNet forward pass — that's why sampling 32 images takes about a minute.</div>`}
+];
+
+function render(){
+  const tt=Math.max(0,Math.min(NS-1,t));
+  const ab=abar[tt];
+  const abt1=tt>0?abar[tt-1]:1;
+  const bb=1-ab, bb1=1-abt1;
+  const w0=Math.sqrt(abt1)*(1-alpha[tt])/bb;
+  const wt=Math.sqrt(alpha[tt])*bb1/bb;
+  draw($('cXt'),xtAt(tt));
+  draw($('cEps'),(x,y)=>eps[y][x].map(v=>v*0.26));
+  draw($('cX0'),x0hatAt(tt));
+  draw($('cXt1'),xtAt(Math.max(0,tt-1)));
+  $('p-ab').textContent=ab<0.001?ab.toExponential(1):ab.toFixed(3);
+  $('p-x0w').textContent=isFinite(w0)?w0.toFixed(4):'—';
+  $('p-xtw').textContent=isFinite(wt)?wt.toFixed(4):'—';
+  $('p-sig').textContent=tt>0?sigma[tt].toFixed(4):'0 (t=0!)';
+  ['b0','b1','b2','b3'].forEach((id,i)=>{
+    $(id).classList.toggle('on', i<=stage||i===0);
+  });
+  document.querySelectorAll('.rail .st').forEach((el,i)=>el.classList.toggle('active',i===stage));
+  const s=stages[stage];
+  $('title').textContent=s.title;
+  $('explain').innerHTML=s.e(tt);
+  document.querySelectorAll('#code .cl').forEach(el=>{
+    el.classList.toggle('hl',s.lines.includes(+el.dataset.l));
+  });
+  $('tval').textContent=tt; $('tsl').value=tt;
+  postH();
+}
+function stopPlay(){playing=false;if(timer)clearInterval(timer);$('play').textContent='Play 999→0 ▶';}
+$('play').addEventListener('click',()=>{
+  if(playing){stopPlay();return;}
+  if(t<=0)t=999;
+  playing=true;$('play').textContent='Pause ⏸';stage=3;
+  timer=setInterval(()=>{
+    t-=Math.round(5*speeds[+$('spd').value-1]);
+    if(t<=0){t=0;stopPlay();}
+    render();
+  },40);
+});
+$('stepbtn').addEventListener('click',()=>{stopPlay();t=Math.max(0,t-1);render();});
+$('reset').addEventListener('click',()=>{stopPlay();t=999;stage=0;render();});
+$('tsl').addEventListener('input',()=>{stopPlay();t=+$('tsl').value;render();});
+$('spd').addEventListener('input',()=>{$('spdv').textContent=speeds[+$('spd').value-1].toFixed(1)+'×';});
+document.querySelectorAll('.rail .st').forEach(el=>{
+  el.addEventListener('click',()=>{stage=+el.dataset.s;render();});
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){stopPlay();stage=Math.min(3,stage+1);render();}
+  if(e.key==='ArrowLeft'){stopPlay();stage=Math.max(0,stage-1);render();}
+  if(e.key==='ArrowDown'){stopPlay();t=Math.max(0,t-25);render();}
+  if(e.key==='ArrowUp'){stopPlay();t=Math.min(999,t+25);render();}
+});
+
+/* ---- responsive + auto-height ---- */
+const grid=$('grid'),wrap=document.querySelector('.wrap');
+function relayout(){grid.classList.toggle('is-narrow',window.innerWidth<900);}
+function postH(){
+  const h=wrap?Math.ceil(wrap.getBoundingClientRect().height)+34:document.body.offsetHeight;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');
+}
+function update(){relayout();postH();}
+window.addEventListener('load',update);
+window.addEventListener('resize',update);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(wrap||document.body);
+relayout();render();
+setTimeout(update,200);setTimeout(update,700);
+})();
+</script>
+</body>
+</html>
