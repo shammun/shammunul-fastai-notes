@@ -1,0 +1,251 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDPM v3 on One Screen — Destroy, Predict, Create</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  input[type=range].speed{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .main{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;}
+  .left{flex:1 1 380px;min-width:300px;display:flex;flex-direction:column;gap:8px;}
+  .right{flex:1 1 430px;min-width:300px;display:flex;flex-direction:column;gap:8px;}
+  #big{display:block;width:100%;border-radius:10px;background:#0d1526;image-rendering:pixelated;}
+  .readouts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;font-size:12px;}
+  .ro{background:#f7f9ff;border:1px solid var(--line);border-radius:9px;padding:4px 10px;font-family:"SF Mono",Consolas,monospace;}
+  .ro b{color:var(--ac);}
+  .bars{display:flex;flex-direction:column;gap:4px;font-size:11px;color:var(--soft);}
+  .barrow{display:flex;align-items:center;gap:6px;}
+  .barlabel{width:110px;text-align:right;font-family:monospace;}
+  .bartrack{flex:1;height:12px;background:#f0f3fa;border-radius:6px;overflow:hidden;border:1px solid var(--line);}
+  .barfill{height:100%;border-radius:6px;transition:width .1s;}
+  .sig .barfill{background:linear-gradient(90deg,#ffb35c,var(--in));}
+  .noi .barfill{background:linear-gradient(90deg,#b9a5ec,var(--ac));}
+  .tl{position:relative;height:46px;margin:2px 0 0;}
+  .tl input{position:absolute;left:0;right:0;top:14px;width:100%;accent-color:var(--ac);margin:0;}
+  .tl .lab{position:absolute;top:0;font-size:10px;color:var(--soft);font-family:monospace;}
+  .strip{display:flex;gap:5px;justify-content:space-between;margin-top:6px;}
+  .thumb{flex:1;border:2px solid var(--line);border-radius:8px;padding:3px 3px 1px;cursor:pointer;text-align:center;background:#fff;transition:all .12s;}
+  .thumb:hover{border-color:var(--ac);}
+  .thumb.on{border-color:var(--ac);background:#f4efff;box-shadow:0 3px 10px rgba(123,92,214,.25);}
+  .thumb canvas{width:100%;border-radius:5px;background:#0d1526;image-rendering:pixelated;display:block;}
+  .thumb .t{font-size:9.5px;font-family:monospace;color:var(--soft);}
+  .thumb.on .t{color:var(--ac);font-weight:700;}
+  .story{background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.62;overflow-x:auto;white-space:pre;flex:1;}
+  .code .hl{background:rgba(123,92,214,.42);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.a{color:var(--ac);}.legend b.o{color:var(--out);}
+</style></head><body>
+<h1>DDPM v3 on one screen: destroy → predict → create</h1>
+<p class="sub">One 32×32 image travels the <b>1000-step timeline</b> of this notebook's schedule (<code>linear_sched(betamax=0.01)</code>).
+<b style="color:var(--in)">Orange</b> = how much original signal survives (√ᾱ<sub>t</sub>); <b style="color:var(--ac)">purple</b> = how much noise has moved in (√(1−ᾱ<sub>t</sub>)).
+Click the <b>stage chips</b> to swap the story + code, <b>drag the timeline</b>, or <b>click any thumbnail</b> to jump straight to that t.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Forward: destroy with noisify()</button>
+  <button class="chip" data-s="1">② Training: predict the noise</button>
+  <button class="chip" data-s="2">③ Sampling: create from noise</button>
+</div>
+
+<div class="selrow">
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="back">⏮ −50</button>
+  <button class="stepb" id="fwd">+50 ⏭</button>
+  <span class="div"></span>
+  speed <input class="speed" id="speed" type="range" min="0.25" max="4" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="wrap">
+  <div class="main">
+    <div class="left">
+      <div class="card">
+        <canvas id="big" width="192" height="192"></canvas>
+        <div class="tl">
+          <span class="lab" style="left:0">t = 0 (clean)</span>
+          <span class="lab" style="right:0">t = 999 (pure noise)</span>
+          <input id="tslider" type="range" min="0" max="999" step="1" value="0">
+        </div>
+        <div class="readouts">
+          <span class="ro">t = <b id="rt">0</b></span>
+          <span class="ro">ᾱ<sub>t</sub> = <b id="rab">1.000</b></span>
+          <span class="ro">√ᾱ<sub>t</sub> = <b id="rsq">1.000</b></span>
+          <span class="ro">√(1−ᾱ<sub>t</sub>) = <b id="rnq">0.000</b></span>
+        </div>
+        <div class="bars" style="margin-top:6px">
+          <div class="barrow sig"><span class="barlabel">signal √ᾱ</span><div class="bartrack"><div class="barfill" id="bsig" style="width:100%"></div></div></div>
+          <div class="barrow noi"><span class="barlabel">noise √(1−ᾱ)</span><div class="bartrack"><div class="barfill" id="bnoi" style="width:0%"></div></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:11px;color:var(--soft);margin-bottom:3px;text-align:center">Click a thumbnail to jump the timeline to that t</div>
+        <div class="strip" id="strip"></div>
+      </div>
+    </div>
+    <div class="right">
+      <div class="story" id="story"></div>
+      <div class="code" id="code"></div>
+    </div>
+  </div>
+  <div class="legend">Everything here uses this notebook's real numbers: <b class="i">linear β from 1e-4 to 0.01</b>, 1000 steps, one fixed ε so the noise pattern is consistent as you scrub. <b class="a">Chip ③ plays the timeline in reverse</b> — a preview of <code>sample()</code> at the end of the notebook.</div>
+</div>
+
+<script>
+// ---------- schedule: linear_sched(betamax=0.01), exactly as in the notebook ----------
+const N=1000, beta=[], alpha=[], abar=[];
+for(let i=0;i<N;i++){ beta.push(1e-4 + (0.01-1e-4)*i/(N-1)); alpha.push(1-beta[i]); abar.push((i? abar[i-1]:1)*alpha[i]); }
+
+// ---------- deterministic RNG + base image (a little pullover) ----------
+let seed=1234; function rnd(){ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; }
+function gauss(){ let u=0,v=0; while(u===0)u=rnd(); while(v===0)v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+const S=32, x0=new Float32Array(S*S), eps=new Float32Array(S*S);
+(function makeShirt(){
+  for(let y=0;y<S;y++)for(let x=0;x<S;x++){
+    let v=-0.5; const cx=x-16;
+    if(y>=8&&y<=26&&Math.abs(cx)<=7) v=0.35;                       // torso
+    if(y>=8&&y<=15&&Math.abs(cx)>7&&Math.abs(cx)<=12) v=0.3;       // sleeves
+    if(y>=6&&y<8&&Math.abs(cx)<=5) v=0.15;                         // collar
+    if(v>0&&((x+y)%6===0)) v+=0.12;                                // texture stripes
+    x0[y*S+x]=v;
+  }
+  for(let i=0;i<S*S;i++) eps[i]=gauss();
+})();
+
+// ---------- rendering ----------
+function drawInto(ctx,w,t){
+  const sq=Math.sqrt(abar[t]), nq=Math.sqrt(1-abar[t]);
+  const img=ctx.createImageData(S,S);
+  for(let i=0;i<S*S;i++){
+    const v=sq*x0[i]+nq*eps[i];               // x_t = √ᾱ·x0 + √(1−ᾱ)·ε
+    const g=Math.max(0,Math.min(255,(v+1)/2*255));
+    img.data[i*4]=g; img.data[i*4+1]=g; img.data[i*4+2]=g; img.data[i*4+3]=255;
+  }
+  const off=document.createElement('canvas'); off.width=S; off.height=S;
+  off.getContext('2d').putImageData(img,0,0);
+  ctx.imageSmoothingEnabled=false; ctx.clearRect(0,0,w,w); ctx.drawImage(off,0,0,w,w);
+}
+const big=document.getElementById('big'), bctx=big.getContext('2d');
+
+// thumbnails
+const T_THUMBS=[0,100,250,400,550,700,850,999], strip=document.getElementById('strip'), thumbs=[];
+T_THUMBS.forEach(tt=>{
+  const d=document.createElement('div'); d.className='thumb';
+  const c=document.createElement('canvas'); c.width=S; c.height=S;
+  const lab=document.createElement('div'); lab.className='t'; lab.textContent='t='+tt;
+  d.appendChild(c); d.appendChild(lab); strip.appendChild(d);
+  drawInto(c.getContext('2d'),S,tt);
+  d.onclick=()=>{ stopPlay(); setT(tt); };
+  thumbs.push({d,tt});
+});
+
+// ---------- stages ----------
+const STORIES=[
+ `<b>① Forward = destruction, on purpose.</b> There is no neural network here at all — just the closed-form formula
+  <code>x_t = √ᾱ_t·x₀ + √(1−ᾱ_t)·ε</code>. Because <code>noisify()</code> can jump straight to <em>any</em> t in one line,
+  training never has to simulate 1000 steps. Watch the orange bar drain as the purple one fills:
+  their <em>squares always sum to 1</em>, so total variance stays constant — the image fades, it never "blows up".`,
+ `<b>② Training = a guessing game about ε.</b> The model is shown the noisy <code>x_t</code> and the timestep t, and must answer one question:
+  <em>"what exact noise field ε was mixed in?"</em>. Loss = <code>MSE(ε̂, ε)</code> — plain supervised regression; nothing generative happens during training.
+  Scrub the timeline: at small t the answer is easy (noise is faint), at large t the image is nearly all ε — the model leans on the t input to know how much to trust.`,
+ `<b>③ Sampling = running the film backwards.</b> Start from pure ε at t=999 and take 1000 small steps toward t=0, each time asking the model
+  "what noise do you see?" and removing a calculated fraction of it (plus re-injecting a little fresh σ·z noise to stay stochastic).
+  The reverse play you're watching is the <em>ideal</em> trajectory; the real <code>sample()</code> loop at the end of the notebook earns it step by step.`
+];
+const CODES=[
+`<span class="cm"># the forward process — one line does all 1000 steps</span>
+def <span class="fn">noisify</span>(x0, alphabar):
+    t = torch.randint(<span class="num">0</span>, n_steps, (n,))
+    epsilon = torch.randn(x0.shape)
+    alphabar_t = alphabar[t].reshape(-<span class="num">1</span>,<span class="num">1</span>,<span class="num">1</span>,<span class="num">1</span>)
+<span class="hl">    xt = alphabar_t.sqrt()*x0 + (1-alphabar_t).sqrt()*epsilon</span>
+    return (xt, t), epsilon`,
+`<span class="cm"># training = predict ε and regress on it</span>
+learn = Learner(model, dls, <span class="hl">nn.MSELoss()</span>, lr=lr,
+                cbs=cbs, opt_func=opt_func)
+<span class="cm"># every batch, behind the scenes:</span>
+(xt, t), eps = batch          <span class="cm"># from collate_ddpm</span>
+<span class="hl">eps_hat = model((xt, t))</span>      <span class="cm"># UNet forward</span>
+loss = F.mse_loss(eps_hat, eps)
+loss.backward(); opt.step()`,
+`<span class="cm"># reverse process — 1000 small steps of un-noising</span>
+x_t = torch.randn(sz)          <span class="cm"># start: pure noise</span>
+for t in <span class="hl">reversed(range(n_steps))</span>:
+    noise = model((x_t, t_batch))
+    x_0_hat = (x_t - betabar_t.sqrt()*noise) / alphabar[t].sqrt()
+<span class="hl">    x_t = x_0_hat*ᾱ₋.sqrt()*(1-α_t)/β̄_t + x_t*α_t.sqrt()*β̄₋/β̄_t + σ_t*z</span>`
+];
+let stage=0, t=0, playing=false, dir=1, speed=1, lastTs=null, acc=0;
+const chips=document.querySelectorAll('.chip');
+function setStage(s){
+  stage=s; chips.forEach((c,i)=>c.classList.toggle('on',i===s));
+  document.getElementById('story').innerHTML=STORIES[s];
+  document.getElementById('code').innerHTML=CODES[s];
+  stopPlay();
+  if(s===0){ dir=1; setT(0); startPlay(); }
+  if(s===1){ dir=1; setT(400); }
+  if(s===2){ dir=-1; setT(999); startPlay(); }
+}
+chips.forEach(c=>c.onclick=()=>setStage(+c.dataset.s));
+
+function setT(nt){
+  t=Math.max(0,Math.min(999,Math.round(nt)));
+  drawInto(bctx,192,t);
+  document.getElementById('tslider').value=t;
+  const ab=abar[t], sq=Math.sqrt(ab), nq=Math.sqrt(1-ab);
+  document.getElementById('rt').textContent=t;
+  document.getElementById('rab').textContent=ab.toFixed(3);
+  document.getElementById('rsq').textContent=sq.toFixed(3);
+  document.getElementById('rnq').textContent=nq.toFixed(3);
+  document.getElementById('bsig').style.width=(sq*100)+'%';
+  document.getElementById('bnoi').style.width=(nq*100)+'%';
+  let best=0,bd=1e9; thumbs.forEach((th,i)=>{const d=Math.abs(th.tt-t); if(d<bd){bd=d;best=i;}});
+  thumbs.forEach((th,i)=>th.d.classList.toggle('on',i===best));
+}
+document.getElementById('tslider').oninput=e=>{ stopPlay(); setT(+e.target.value); };
+document.getElementById('back').onclick=()=>{ stopPlay(); setT(t-50); };
+document.getElementById('fwd').onclick=()=>{ stopPlay(); setT(t+50); };
+const playBtn=document.getElementById('play');
+function startPlay(){ playing=true; playBtn.textContent='⏸ Pause'; }
+function stopPlay(){ playing=false; playBtn.textContent='▶ Play'; }
+playBtn.onclick=()=>{ if(playing) stopPlay(); else{ if((dir>0&&t>=999)||(dir<0&&t<=0)) setT(dir>0?0:999); startPlay(); } };
+document.getElementById('speed').oninput=e=>{ speed=+e.target.value; document.getElementById('spv').textContent=speed+'×'; };
+
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(playing&&lastTs!=null){
+    acc+=(ts-lastTs)*0.35*speed;
+    if(acc>=1){ const step=Math.floor(acc); acc-=step; let nt=t+dir*step;
+      if(nt>=999){nt=999; stopPlay();} if(nt<=0&&dir<0){nt=0; stopPlay();}
+      setT(nt);
+    }
+  }
+  lastTs=ts;
+}
+setStage(0); requestAnimationFrame(loop);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

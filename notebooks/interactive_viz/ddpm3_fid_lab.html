@@ -1,0 +1,245 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FID Lab — DDPM v3</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:9px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:130px;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:95px;accent-color:var(--ac);}
+  .sv{font-family:monospace;font-weight:700;color:var(--ac);min-width:38px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .top{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;}
+  .plotcol{flex:1 1 400px;min-width:300px;}
+  #plot{width:100%;height:330px;border-radius:10px;background:#fdfeff;border:1px solid var(--line);display:block;}
+  .fidbig{text-align:center;margin-top:6px;font-size:13px;color:var(--soft);}
+  .fidbig .v{font-family:monospace;font-weight:900;font-size:24px;}
+  .fidbig .grade{font-weight:700;font-size:12px;}
+  .rightcol{flex:1 1 400px;min-width:300px;display:flex;flex-direction:column;gap:8px;}
+  .story{border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.4px;line-height:1.55;background:#fff;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  .terms{display:flex;gap:6px;flex-wrap:wrap;}
+  .term{flex:1 1 110px;border:1.5px solid var(--line);border-radius:9px;padding:5px 8px;text-align:center;background:#fff;}
+  .term .lb{font-size:10px;color:var(--soft);}
+  .term .vv{font-family:monospace;font-weight:800;font-size:14px;color:var(--ink);}
+  .term.mean .vv{color:var(--in);}.term.cov .vv{color:var(--out);}.term.tot .vv{color:var(--ac);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.3px;line-height:1.62;overflow-x:auto;white-space:pre;margin-top:10px;}
+  .code .hl{background:rgba(123,92,214,.42);border-radius:4px;padding:1px 3px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend .t{color:var(--out);font-weight:700;}.legend .o{color:var(--in);font-weight:700;}
+</style></head><body>
+<h1>FID lab — measuring "how close is my fake distribution to the real one?"</h1>
+<p class="sub">FID never looks at images pixel-by-pixel. It pushes both sets through a <b>feature extractor</b> (a classifier with its head chopped off), fits a
+<b>Gaussian (μ, Σ)</b> to each cloud of feature vectors, and measures the distance between the two Gaussians. Here the features are 2-D so you can <em>see</em> everything —
+drag the sliders to deform the generated cloud and watch FID respond live.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① images → feature clouds</button>
+  <button class="chip" data-s="1">② fit μ and Σ to each</button>
+  <button class="chip" data-s="2">③ the Fréchet formula</button>
+  <button class="chip" data-s="3">④ interpreting the score</button>
+</div>
+<div class="selrow">
+  <button class="play" id="anneal">▶ Train! (anneal to real)</button>
+  <button class="reset" id="reset">↺ Reset knobs</button>
+  shift μ <input id="sh" type="range" min="0" max="3" step="0.05" value="1.6"><span class="sv" id="shv">1.60</span>
+  spread <input id="sp" type="range" min="0.3" max="2.5" step="0.05" value="1.7"><span class="sv" id="spv2">1.70</span>
+  rotate Σ <input id="ro" type="range" min="0" max="90" step="5" value="50"><span class="sv" id="rov">50°</span>
+  speed <input id="speed" type="range" min="0.5" max="3" step="0.5" value="1"><span class="sv" id="spd">1×</span>
+</div>
+
+<div class="wrap"><div class="card">
+  <div class="top">
+    <div class="plotcol">
+      <canvas id="plot"></canvas>
+      <div class="fidbig">FID = <span class="v" id="fid">—</span> <span class="grade" id="grade"></span></div>
+    </div>
+    <div class="rightcol">
+      <div class="story" id="story"></div>
+      <div class="terms">
+        <div class="term mean"><div class="lb">mean term ‖μ₁−μ₂‖²</div><div class="vv" id="mterm">—</div></div>
+        <div class="term cov"><div class="lb">cov term Tr(Σ₁+Σ₂−2(Σ₁Σ₂)^{½})</div><div class="vv" id="cterm">—</div></div>
+        <div class="term tot"><div class="lb">FID = mean + cov</div><div class="vv" id="tterm">—</div></div>
+      </div>
+      <div class="code" id="code"></div>
+    </div>
+  </div>
+  <div class="legend"><span class="t">● teal</span> = real Fashion-MNIST features &nbsp;·&nbsp; <span class="o">● orange</span> = generated-image features &nbsp;·&nbsp; solid dot = μ, ellipse = 2σ contour of Σ</div>
+</div></div>
+
+<script>
+// seeded RNG for stable clouds
+let seed=42;function rnd(){seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;}
+function gauss(){let u=0,v=0;while(!u)u=rnd();while(!v)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const NPT=220;
+// base clouds ~ N(0, I)
+const base1=[],base2=[];
+for(let i=0;i<NPT;i++){base1.push([gauss(),gauss()]);base2.push([gauss(),gauss()]);}
+// real distribution: fixed μ=(0,0), Σ = diag(1, .55) rotated 20°
+function xf(p,mu,sx,sy,th){const c=Math.cos(th),s=Math.sin(th);
+  const x=p[0]*sx,y=p[1]*sy;return [mu[0]+x*c-y*s, mu[1]+x*s+y*c];}
+const REAL={mu:[0,0],sx:1,sy:0.55,th:20*Math.PI/180};
+
+let sh=1.6,sp=1.7,ro=50,speed=1,stage=0,annealing=false;
+
+function clouds(){
+  const r=base1.map(p=>xf(p,REAL.mu,REAL.sx,REAL.sy,REAL.th));
+  const g=base2.map(p=>xf(p,[sh*0.8,sh*0.55],0.9*sp,0.5*sp,ro*Math.PI/180));
+  return {r,g};
+}
+function stats(pts){
+  let mx=0,my=0;pts.forEach(p=>{mx+=p[0];my+=p[1];});mx/=pts.length;my/=pts.length;
+  let a=0,b=0,c=0;pts.forEach(p=>{const dx=p[0]-mx,dy=p[1]-my;a+=dx*dx;b+=dx*dy;c+=dy*dy;});
+  const n=pts.length-1;return {mu:[mx,my],S:[[a/n,b/n],[b/n,c/n]]};
+}
+// 2x2 helpers
+function mmul(A,B){return [[A[0][0]*B[0][0]+A[0][1]*B[1][0],A[0][0]*B[0][1]+A[0][1]*B[1][1]],
+                          [A[1][0]*B[0][0]+A[1][1]*B[1][0],A[1][0]*B[0][1]+A[1][1]*B[1][1]]];}
+function sqrtm(A){ // principal sqrt of 2x2 PSD
+  const tr=A[0][0]+A[1][1],det=A[0][0]*A[1][1]-A[0][1]*A[1][0];
+  const s=Math.sqrt(Math.max(det,0)),t=Math.sqrt(Math.max(tr+2*s,1e-12));
+  return [[(A[0][0]+s)/t,A[0][1]/t],[A[1][0]/t,(A[1][1]+s)/t]];
+}
+function fid2d(st1,st2){
+  const dx=st1.mu[0]-st2.mu[0],dy=st1.mu[1]-st2.mu[1];
+  const mean=dx*dx+dy*dy;
+  const P=mmul(st1.S,st2.S),R=sqrtm(P);
+  const cov=st1.S[0][0]+st1.S[1][1]+st2.S[0][0]+st2.S[1][1]-2*(R[0][0]+R[1][1]);
+  return {mean,cov:Math.max(cov,0),fid:mean+Math.max(cov,0)};
+}
+function eig2(S){ // for ellipse
+  const tr=S[0][0]+S[1][1],det=S[0][0]*S[1][1]-S[0][1]*S[1][0];
+  const d=Math.sqrt(Math.max(tr*tr/4-det,0));
+  const l1=tr/2+d,l2=tr/2-d;
+  const th=Math.atan2(l1-S[0][0],S[0][1]||1e-9);
+  return {l1:Math.max(l1,1e-9),l2:Math.max(l2,1e-9),th};
+}
+
+const cv=document.getElementById('plot');
+function draw(){
+  const W=cv.clientWidth*2,H=660;cv.width=W;cv.height=H;
+  const g=cv.getContext('2d');g.clearRect(0,0,W,H);
+  const {r,g:gen}=clouds();
+  const S1=stats(r),S2=stats(gen),F=fid2d(S1,S2);
+  // world → screen: world range ~[-4,6]x[-4,5]
+  const sc=Math.min(W/10,H/9),ox=W*0.38,oy=H*0.55;
+  const px=p=>[ox+p[0]*sc,oy-p[1]*sc];
+  // grid
+  g.strokeStyle='#eef2fa';g.lineWidth=1;
+  for(let i=-4;i<=6;i++){const [x]=px([i,0]);g.beginPath();g.moveTo(x,0);g.lineTo(x,H);g.stroke();}
+  for(let j=-4;j<=5;j++){const [,y]=px([0,j]);g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke();}
+  // points
+  function dots(pts,col,al){g.fillStyle=col;g.globalAlpha=al;
+    pts.forEach(p=>{const [x,y]=px(p);g.beginPath();g.arc(x,y,4.5,0,7);g.fill();});g.globalAlpha=1;}
+  const showPts=(stage!==2);
+  if(showPts){dots(r,'#16a3a3',stage===1?0.28:0.6);dots(gen,'#f6921e',stage===1?0.28:0.6);}
+  // ellipses + means (stage>=1 emphasized, always visible faintly)
+  function ell(st,col,strong){
+    const e=eig2(st.S),[cx,cy]=px(st.mu);
+    g.save();g.translate(cx,cy);g.rotate(-e.th);
+    g.strokeStyle=col;g.lineWidth=strong?5:2.5;g.globalAlpha=strong?1:0.5;
+    g.beginPath();g.ellipse(0,0,2*Math.sqrt(e.l1)*sc,2*Math.sqrt(e.l2)*sc,0,0,7);g.stroke();
+    g.restore();g.globalAlpha=1;
+    g.fillStyle=col;g.beginPath();g.arc(cx,cy,strong?9:6,0,7);g.fill();
+  }
+  const strong=(stage>=1);
+  ell(S1,'#16a3a3',strong);ell(S2,'#f6921e',strong);
+  // μ distance line for stage 2/3
+  if(stage>=2){const [x1,y1]=px(S1.mu),[x2,y2]=px(S2.mu);
+    g.strokeStyle='#7b5cd6';g.lineWidth=4;g.setLineDash([10,8]);
+    g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke();g.setLineDash([]);
+    g.fillStyle='#7b5cd6';g.font='bold 20px monospace';
+    g.fillText('‖μ₁−μ₂‖',(x1+x2)/2+8,(y1+y2)/2-8);}
+  // readouts
+  document.getElementById('fid').textContent=F.fid.toFixed(3);
+  document.getElementById('mterm').textContent=F.mean.toFixed(3);
+  document.getElementById('cterm').textContent=F.cov.toFixed(3);
+  document.getElementById('tterm').textContent=F.fid.toFixed(3);
+  const gr=document.getElementById('grade');
+  if(F.fid<0.05){gr.textContent='≈ identical distributions';gr.style.color='#16a3a3';}
+  else if(F.fid<0.5){gr.textContent='excellent match';gr.style.color='#16a3a3';}
+  else if(F.fid<2){gr.textContent='good';gr.style.color='#7b5cd6';}
+  else if(F.fid<5){gr.textContent='fair — clearly different';gr.style.color='#f6921e';}
+  else {gr.textContent='poor — very different distributions';gr.style.color='#d64545';}
+  document.getElementById('fid').style.color=gr.style.color;
+}
+
+const stories=[
+ `<b>① Feature clouds:</b> in the notebook, every image (real <em>and</em> generated) is pushed through <code>cmodel</code> — the Fashion-MNIST classifier with its last two layers deleted — so each image becomes a feature <em>vector</em>. Real images form the <b>teal</b> cloud, your DDPM samples the <b>orange</b> one. (Real FID uses hundreds of dimensions; here it's 2-D so you can watch.)`,
+ `<b>② Fit a Gaussian to each cloud:</b> FID throws away the individual points and keeps only two summaries per cloud — the <b>mean μ</b> (solid dot) and <b>covariance Σ</b> (ellipse = shape, size, and tilt of the cloud). This is the "distributions, not images" idea: FID rewards matching the <em>whole variety</em> of real data, so a model that produces one perfect-looking image over and over still scores badly.`,
+ `<b>③ The Fréchet distance</b> between two Gaussians has a closed form: <b>‖μ₁−μ₂‖²</b> (are the clouds in the same place?) <b>+ Tr(Σ₁+Σ₂−2(Σ₁Σ₂)^{½})</b> (do they have the same shape/spread?). The dashed purple line is the mean term. Drag <b>shift μ</b> to grow it; drag <b>spread</b>/<b>rotate</b> to grow the covariance term with the means untouched.`,
+ `<b>④ Interpreting:</b> press <b>▶ Train!</b> — as the orange cloud anneals onto the teal one, FID → 0. In the notebook, full sampling scored <b>FID ≈ 8</b>, skip sampling ≈ 10, logarithmic ≈ 12 (in the classifier's high-dim feature space — not comparable to Inception-based FIDs in papers!). And <code>ie.fid(xb*2)</code> on <em>real</em> images isn't 0 either: two finite samples of the same distribution still differ a little.`
+];
+const codes=[
+`<span class="cm"># images → features: chop the classifier's head off</span>
+cmodel = torch.load(<span class="num">'models/data_aug2.pkl'</span>)
+{A}del(cmodel[8]); del(cmodel[7]){B}   <span class="cm"># keep conv features only</span>
+<span class="cm"># each image now maps to a feature vector, not 10 logits</span>`,
+`<span class="cm"># ImageEval fits μ,Σ on REAL features once, up front</span>
+from miniai.fid import ImageEval
+{A}ie = ImageEval(cmodel, dls2, cbs=[DeviceCB()]){B}
+<span class="cm"># internally: feats = cmodel(real_batches) → μ₁, Σ₁</span>`,
+`<span class="cm"># the Fréchet formula (inside miniai.fid)</span>
+{A}fid = ‖μ₁−μ₂‖² + Tr(Σ₁ + Σ₂ − 2·(Σ₁Σ₂)^(1/2)){B}
+<span class="cm"># matrix sqrt of Σ₁Σ₂ — the only expensive bit</span>`,
+`<span class="cm"># score your generated batch s (scaled to [-1,1]!)</span>
+{A}ie.fid(s){B}          <span class="cm"># ≈ 8 for full sampling</span>
+ie.fid(xb*<span class="num">2</span>)      <span class="cm"># real vs real ≠ 0 — finite samples</span>`
+];
+function setStage(s){stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  document.getElementById('story').innerHTML=stories[s];
+  document.getElementById('code').innerHTML=codes[s].replace('{A}','<span class="hl">').replace('{B}','</span>');
+  draw();
+}
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{annealing=false;setStage(+c.dataset.s);});
+
+function setKnobs(a,b,c){sh=a;sp=b;ro=c;
+  document.getElementById('sh').value=a;document.getElementById('shv').textContent=a.toFixed(2);
+  document.getElementById('sp').value=b;document.getElementById('spv2').textContent=b.toFixed(2);
+  document.getElementById('ro').value=c;document.getElementById('rov').textContent=Math.round(c)+'°';}
+document.getElementById('sh').oninput=e=>{annealing=false;sh=+e.target.value;document.getElementById('shv').textContent=sh.toFixed(2);draw();};
+document.getElementById('sp').oninput=e=>{annealing=false;sp=+e.target.value;document.getElementById('spv2').textContent=sp.toFixed(2);draw();};
+document.getElementById('ro').oninput=e=>{annealing=false;ro=+e.target.value;document.getElementById('rov').textContent=ro+'°';draw();};
+document.getElementById('speed').oninput=e=>{speed=+e.target.value;document.getElementById('spd').textContent=speed+'×';};
+document.getElementById('reset').onclick=()=>{annealing=false;setKnobs(1.6,1.7,50);draw();};
+
+// anneal: generated → real. Real cloud in gen's parameterization: sh→0, sp→? rotation→20°… we anneal gen params toward values that reproduce REAL: mu=(0,0) → sh=0; sx: 0.9*sp→1 → sp→1.111; sy: 0.5*sp→0.55 → sp→1.1; th→20.
+document.getElementById('anneal').onclick=function(){
+  if(annealing){annealing=false;this.textContent='▶ Train! (anneal to real)';return;}
+  annealing=true;this.textContent='⏸ Stop training';
+  const btn=this;
+  (function tick(){
+    if(!annealing)return;
+    const k=0.04*speed;
+    sh+=(0-sh)*k; sp+=(1.105-sp)*k; ro+=(20-ro)*k;
+    setKnobs(sh,sp,ro);draw();
+    if(Math.abs(sh)<0.01&&Math.abs(sp-1.105)<0.01&&Math.abs(ro-20)<0.5){annealing=false;btn.textContent='▶ Train! (anneal to real)';draw();return;}
+    requestAnimationFrame(tick);
+  })();
+};
+setStage(0);
+addEventListener('resize',draw);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

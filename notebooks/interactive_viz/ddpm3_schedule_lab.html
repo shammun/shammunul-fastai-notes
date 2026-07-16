@@ -1,0 +1,199 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noise Schedule Lab — Linear vs Cosine, Live</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:10px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  input[type=range]{accent-color:var(--ac);}
+  .val{font-family:monospace;font-weight:700;color:var(--ac);}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .main{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .left{flex:1 1 480px;min-width:320px;display:flex;flex-direction:column;gap:8px;}
+  .right{flex:1 1 340px;min-width:290px;display:flex;flex-direction:column;gap:8px;}
+  #plot{display:block;width:100%;height:300px;border-radius:10px;cursor:crosshair;background:#fdfeff;}
+  .imgs{display:flex;gap:10px;justify-content:center;}
+  .imcol{text-align:center;flex:1;}
+  .imcol canvas{width:100%;max-width:150px;border-radius:8px;background:#0d1526;image-rendering:pixelated;}
+  .imcol .cap{font-size:11px;color:var(--soft);font-family:monospace;margin-top:2px;}
+  .imcol .cap b{color:var(--ac);}
+  .story{background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.6;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.42);border-radius:4px;padding:1px 3px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .facts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;font-size:11.5px;}
+  .fact{background:#f7f9ff;border:1px solid var(--line);border-radius:9px;padding:4px 9px;font-family:monospace;}
+  .fact b{color:var(--ac);}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>The Noise Schedule Lab — β, α, ᾱ and Δᾱ, alive</h1>
+<p class="sub">Build the schedule idea in four moves with the chips. <b>Click or drag on the plot</b> to pick a timestep t —
+the right panel noises the <em>same image with the same ε</em> under both schedules, so any visual difference is 100% the schedule's fault.
+The <b>betamax slider</b> is the exact <code>betamax=0.01</code> decision this notebook makes.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① β — noise added per step</button>
+  <button class="chip" data-s="1">② α = 1−β — signal kept</button>
+  <button class="chip" data-s="2">③ ᾱ = cumprod — signal left</button>
+  <button class="chip" data-s="3">④ Δᾱ — destruction rate</button>
+</div>
+
+<div class="selrow">
+  linear <b>betamax</b> <input id="bmax" type="range" min="0.005" max="0.02" step="0.0005" value="0.01" style="width:150px">
+  <span class="val" id="bmaxv">0.0100</span>
+  <span style="color:var(--line)">|</span>
+  picked t = <span class="val" id="tv">500</span>
+</div>
+
+<div class="wrap">
+  <div class="main">
+    <div class="left">
+      <div class="card"><canvas id="plot" width="640" height="300"></canvas>
+        <div class="facts" style="margin-top:6px">
+          <span class="fact">t where ᾱ=0.5 → lin: <b id="hl_lin">?</b>, cos: <b id="hl_cos">?</b></span>
+          <span class="fact">ᾱ at t=999 → lin: <b id="end_lin">?</b>, cos: <b id="end_cos">?</b></span>
+        </div>
+      </div>
+      <div class="story" id="story"></div>
+    </div>
+    <div class="right">
+      <div class="card">
+        <div style="font-size:11px;color:var(--soft);text-align:center;margin-bottom:4px">same image, same ε — only the schedule differs</div>
+        <div class="imgs">
+          <div class="imcol"><canvas id="imL" width="32" height="32"></canvas><div class="cap">linear · ᾱ=<b id="abL">?</b></div></div>
+          <div class="imcol"><canvas id="imC" width="32" height="32"></canvas><div class="cap">cosine · ᾱ=<b id="abC">?</b></div></div>
+        </div>
+      </div>
+      <div class="code" id="code"></div>
+    </div>
+  </div>
+  <div class="legend"><b style="color:var(--in)">orange = linear</b> · <b style="color:var(--out)">teal = cosine</b> · the vertical purple line is your picked t. Chip ④ is the punchline: it shows <em>why</em> Improved-DDPM proposed the cosine schedule.</div>
+</div>
+
+<script>
+const N=1000;
+function linSched(betamax){ const b=[],a=[],ab=[]; for(let i=0;i<N;i++){ b.push(1e-4+(betamax-1e-4)*i/(N-1)); a.push(1-b[i]); ab.push((i?ab[i-1]:1)*a[i]); } return {b,a,ab}; }
+function cosSched(){ const ab=[],a=[],b=[]; const f=t=>Math.pow(Math.cos(t/N*Math.PI/2),2);
+  for(let i=0;i<N;i++){ ab.push(f(i)); a.push(f(i)/f(i-1)); b.push(1-a[i]); } return {b,a,ab}; }
+let lin=linSched(0.01); const cos=cosSched();
+let stage=2, t=500;
+
+// image + eps (seeded)
+let seed=77; function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
+function gauss(){let u=0,v=0;while(!u)u=rnd();while(!v)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const S=32,x0=new Float32Array(S*S),eps=new Float32Array(S*S);
+for(let y=0;y<S;y++)for(let x=0;x<S;x++){ let v=-0.5;const cx=x-16;
+  if(y>=10&&y<=28&&Math.abs(cx)<=3+((28-y)/3|0)) v=0.35;       // dress
+  if(y>=6&&y<10&&Math.abs(cx)<=4) v=0.2;
+  if(v>0&&y%5===0) v+=0.13; x0[y*S+x]=v; }
+for(let i=0;i<S*S;i++) eps[i]=gauss();
+function drawIm(id,ab){ const c=document.getElementById(id),ctx=c.getContext('2d');
+  const sq=Math.sqrt(ab),nq=Math.sqrt(1-ab),img=ctx.createImageData(S,S);
+  for(let i=0;i<S*S;i++){ const g=Math.max(0,Math.min(255,((sq*x0[i]+nq*eps[i])+1)/2*255));
+    img.data[i*4]=img.data[i*4+1]=img.data[i*4+2]=g; img.data[i*4+3]=255; }
+  ctx.putImageData(img,0,0); }
+
+const STORIES=[
+ `<b>① β is the per-step dose of noise.</b> The linear schedule raises β in a straight line from 1e-4 to betamax; the cosine schedule's implied β starts smaller and stays gentler until late. β is *tiny* either way — a single step barely changes the image. The damage comes from compounding a thousand of them.`,
+ `<b>② α = 1−β is the per-step survival rate.</b> Multiply the image's amplitude by √α each step. All α values are ≈0.99-something, which is why chips ① and ② look like mirror images. The interesting quantity is what happens when you multiply 1000 of these together…`,
+ `<b>③ ᾱ = cumprod(α) is the headline curve: total signal left.</b> Note it is signal <em>remaining</em>, not noise — a common early confusion. With betamax=0.02 the linear ᾱ crashes to ~0 hundreds of steps before t=999 (drag the slider up to see it), wasting the tail of the schedule on already-destroyed images. Lowering betamax to <b>0.01</b> (this notebook's choice) makes linear behave much more like cosine.`,
+ `<b>④ Δᾱ = how fast signal is being destroyed at each t.</b> This is the money plot: linear destruction <em>accelerates</em> into a spike, then starves; cosine spreads destruction evenly, so every training timestep t carries useful learning signal. This is exactly the argument of the Improved-DDPM paper — and why we compare the two before choosing.`
+];
+const CODES=[
+`def <span class="fn">linear_sched</span>(betamin=<span class="num">0.0001</span>, betamax=<span class="num">0.02</span>, n_steps=<span class="num">1000</span>):
+<span class="hl">    beta = torch.linspace(betamin, betamax, n_steps)</span>
+    a = <span class="num">1.</span> - beta
+    abar = a.cumprod(dim=<span class="num">0</span>)
+    sig = beta.sqrt()
+    return SimpleNamespace(a=a, abar=abar, sig=sig)`,
+`def <span class="fn">linear_sched</span>(betamin=<span class="num">0.0001</span>, betamax=<span class="num">0.02</span>, n_steps=<span class="num">1000</span>):
+    beta = torch.linspace(betamin, betamax, n_steps)
+<span class="hl">    a = 1. - beta   <span class="cm"># signal kept per step</span></span>
+    abar = a.cumprod(dim=<span class="num">0</span>)
+    return SimpleNamespace(a=a, abar=abar, sig=beta.sqrt())`,
+`<span class="cm"># linear:</span>
+<span class="hl">abar = a.cumprod(dim=0)  <span class="cm"># [a0, a0·a1, a0·a1·a2, …]</span></span>
+<span class="cm"># cosine (Improved DDPM): define abar DIRECTLY:</span>
+def <span class="fn">abar</span>(t, T): return (t/T * math.pi/<span class="num">2</span>).cos()**<span class="num">2</span>
+<span class="cm"># …then recover alpha as a ratio:</span>
+alp = ab / abar(ts-<span class="num">1</span>, n_steps)`,
+`<span class="cm"># the notebook's comparison plot:</span>
+<span class="hl">plt.plot(lin_abar[1:] - lin_abar[:-1], label='lin')</span>
+plt.plot(cos_abar[<span class="num">1</span>:] - cos_abar[:-<span class="num">1</span>], label='cos')
+<span class="cm"># verdict → keep linear but soften it:</span>
+lin_abar = linear_sched(<span class="hl">betamax=0.01</span>)</span>`
+];
+
+const cv=document.getElementById('plot'),ctx=cv.getContext('2d');
+function series(sch){ if(stage===0)return sch.b; if(stage===1)return sch.a; if(stage===2)return sch.ab;
+  const d=[]; for(let i=1;i<N;i++)d.push(sch.ab[i]-sch.ab[i-1]); return d; }
+function drawPlot(){
+  const W=cv.width=cv.clientWidth*devicePixelRatio, H=cv.height=300*devicePixelRatio;
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  const w=cv.clientWidth,h=300,padL=46,padB=24,padT=12,padR=10;
+  ctx.clearRect(0,0,w,h);
+  const sl=series(lin),sc=series(cos),n=sl.length;
+  let mn=Math.min(...sl,...sc),mx=Math.max(...sl,...sc); if(mx===mn)mx=mn+1e-9;
+  const X=i=>padL+(w-padL-padR)*i/(n-1), Y=v=>padT+(h-padT-padB)*(1-(v-mn)/(mx-mn));
+  // grid
+  ctx.strokeStyle='#eef2fa';ctx.lineWidth=1;ctx.font='10px monospace';ctx.fillStyle='#8a97b0';
+  for(let g=0;g<=4;g++){const v=mn+(mx-mn)*g/4,y=Y(v);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(w-padR,y);ctx.stroke();
+    ctx.fillText(Math.abs(v)<0.01?v.toExponential(1):v.toFixed(2),4,y+3);}
+  for(let g=0;g<=4;g++){const i=(n-1)*g/4;ctx.fillText(Math.round(i*(N-1)/(n-1)),X(i)-8,h-8);}
+  function line(s,col){ctx.strokeStyle=col;ctx.lineWidth=2.2;ctx.beginPath();for(let i=0;i<s.length;i++){const x=X(i),y=Y(s[i]);i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();}
+  line(sl,'#f6921e'); line(sc,'#16a3a3');
+  // t marker
+  const ti=Math.min(n-1,t); ctx.strokeStyle='#7b5cd6';ctx.lineWidth=1.6;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(X(ti),padT);ctx.lineTo(X(ti),h-padB);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#7b5cd6';[[sl,'#f6921e'],[sc,'#16a3a3']].forEach(([s,col])=>{ctx.beginPath();ctx.arc(X(ti),Y(s[ti]),4,0,7);ctx.fillStyle=col;ctx.fill();});
+}
+function pick(e){ const r=cv.getBoundingClientRect(),padL=46,padR=10;
+  const frac=Math.max(0,Math.min(1,(e.clientX-r.left-padL)/(r.width-padL-padR)));
+  t=Math.round(frac*(N-1)); update(); }
+let dragging=false;
+cv.addEventListener('pointerdown',e=>{dragging=true;pick(e);});
+addEventListener('pointermove',e=>{if(dragging)pick(e);});
+addEventListener('pointerup',()=>dragging=false);
+
+function halfLife(ab){ for(let i=0;i<N;i++) if(ab[i]<=0.5) return i; return '—'; }
+function update(){
+  document.getElementById('tv').textContent=t;
+  drawPlot();
+  drawIm('imL',lin.ab[t]); drawIm('imC',cos.ab[t]);
+  document.getElementById('abL').textContent=lin.ab[t].toFixed(3);
+  document.getElementById('abC').textContent=cos.ab[t].toFixed(3);
+  document.getElementById('hl_lin').textContent=halfLife(lin.ab);
+  document.getElementById('hl_cos').textContent=halfLife(cos.ab);
+  document.getElementById('end_lin').textContent=lin.ab[N-1].toExponential(1);
+  document.getElementById('end_cos').textContent=cos.ab[N-1].toExponential(1);
+}
+document.getElementById('bmax').oninput=e=>{ lin=linSched(+e.target.value);
+  document.getElementById('bmaxv').textContent=(+e.target.value).toFixed(4); update(); };
+const chips=document.querySelectorAll('.chip');
+function setStage(s){ stage=s; chips.forEach((c,i)=>c.classList.toggle('on',i===s));
+  document.getElementById('story').innerHTML=STORIES[s];
+  document.getElementById('code').innerHTML=CODES[s]; update(); }
+chips.forEach(c=>c.onclick=()=>setStage(+c.dataset.s));
+addEventListener('resize',update);
+setStage(2);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

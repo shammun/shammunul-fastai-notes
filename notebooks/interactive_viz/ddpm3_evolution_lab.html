@@ -1,0 +1,295 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDPM Evolution Lab — notebooks 15 → 17 → 19</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.7px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 11px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .wrap{max-width:1080px;margin:0 auto;}
+  .story{border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.4px;line-height:1.55;background:#fff;box-shadow:0 4px 12px rgba(123,92,214,.07);margin-bottom:9px;}
+  .story b{color:var(--ac);}
+  .cols{display:flex;gap:9px;flex-wrap:wrap;align-items:stretch;}
+  .col{flex:1 1 300px;min-width:280px;border:2px solid var(--line);border-radius:11px;background:#fff;overflow:hidden;display:flex;flex-direction:column;}
+  .col .hd{padding:6px 10px;font-size:12px;font-weight:800;color:#fff;display:flex;justify-content:space-between;align-items:center;}
+  .col.nb15 .hd{background:var(--in);}
+  .col.nb17 .hd{background:var(--out);}
+  .col.nb19 .hd{background:var(--ac);}
+  .col .hd .tag{font-weight:600;font-size:10px;opacity:.9;}
+  .col .code{flex:1;background:#1f2940;color:#dce6f5;padding:8px 10px;font-family:"SF Mono",Consolas,monospace;font-size:10.6px;line-height:1.58;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:3px;padding:0 2px;}
+  .code .hlo{background:rgba(246,146,30,.4);border-radius:3px;padding:0 2px;}
+  .code .hlt{background:rgba(22,163,163,.4);border-radius:3px;padding:0 2px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}
+  .col .why{padding:6px 10px;font-size:11.3px;line-height:1.5;color:var(--soft);border-top:1px solid var(--line);background:#fbfcff;}
+  .col.nb15 .why b{color:var(--in);}
+  .col.nb17 .why b{color:var(--out);}
+  .col.nb19 .why b{color:var(--ac);}
+  .verdict{margin-top:9px;border:1.5px dashed var(--ac);border-radius:10px;background:#f8f5ff;padding:7px 12px;font-size:12px;line-height:1.55;}
+  .verdict b{color:var(--ac);}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:7px;}
+  .legend .o{color:var(--in);font-weight:700;}.legend .t{color:var(--out);font-weight:700;}.legend .p{color:var(--ac);font-weight:700;}
+</style></head><body>
+<h1>Evolution lab — the same DDPM, three notebooks, ever fewer rough edges</h1>
+<p class="sub">Notebook <b style="color:var(--in)">15</b> gets DDPM <em>working</em>, <b style="color:var(--out)">17</b> makes it <em>fast and modular</em>, <b style="color:var(--ac)">19</b> makes it <em>good and measurable</em>.
+Click a topic chip to see the same block of code in all three notebooks side by side — highlights mark what changed, and each column explains <em>why</em>.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① noise schedule</button>
+  <button class="chip" data-s="1">② noisify</button>
+  <button class="chip" data-s="2">③ model & init</button>
+  <button class="chip" data-s="3">④ data loading</button>
+  <button class="chip" data-s="4">⑤ training config</button>
+  <button class="chip" data-s="5">⑥ sampling</button>
+  <button class="chip" data-s="6">⑦ evaluation & speed</button>
+</div>
+
+<div class="wrap">
+  <div class="story" id="story"></div>
+  <div class="cols">
+    <div class="col nb15"><div class="hd">NB 15 — first working DDPM <span class="tag">"make it run"</span></div><div class="code" id="c15"></div><div class="why" id="w15"></div></div>
+    <div class="col nb17"><div class="hd">NB 17 — refactor for speed <span class="tag">"make it fast"</span></div><div class="code" id="c17"></div><div class="why" id="w17"></div></div>
+    <div class="col nb19"><div class="hd">NB 19 — this notebook <span class="tag">"make it good"</span></div><div class="code" id="c19"></div><div class="why" id="w19"></div></div>
+  </div>
+  <div class="verdict" id="verdict"></div>
+  <div class="legend">highlights: <span class="o">orange</span> = the pain point · <span class="t">teal</span> = 17's fix · <span class="p">purple</span> = 19's addition</div>
+</div>
+
+<script>
+const D=[
+{ // 0 schedule
+story:`<b>① Noise schedule.</b> All three need β, α, ᾱ, σ. The question is <em>where they live</em> and <em>whether you can question them</em>. 15 hard-codes them inside a callback; 17 promotes them to module-level tensors; 19 turns them into <b>factories you can swap and compare</b> — and uses that freedom to actually improve the schedule (βmax 0.02 → 0.01).`,
+c15:`class DDPMCB(TrainCB):
+    def __init__(self, n_steps, beta_min, beta_max):
+        ...
+        <span class="hlo">self.beta = torch.linspace(beta_min,
+                       beta_max, n_steps)</span>
+        self.alpha = 1. - self.beta
+        self.alphabar = self.alpha.cumprod(dim=0)
+        self.sigma = self.beta.sqrt()
+<span class="cm"># constants trapped inside a training callback</span>`,
+c17:`<span class="cm"># module-level — visible, plottable, reusable</span>
+<span class="hlt">betamin, betamax, n_steps = 0.0001, 0.02, 1000
+beta = torch.linspace(betamin, betamax, n_steps)</span>
+alpha    = 1. - beta
+alphabar = alpha.cumprod(dim=0)
+sigma    = beta.sqrt()`,
+c19:`<span class="cm"># schedules as swappable factories</span>
+<span class="hl">def linear_sched(betamin=1e-4, betamax=0.02, n_steps=1000):
+    beta = torch.linspace(betamin, betamax, n_steps)
+    return SimpleNamespace(a=1.-beta,
+        abar=(1.-beta).cumprod(0), sig=beta.sqrt())</span>
+<span class="hl">def cos_sched(n_steps=1000): ...</span>  <span class="cm"># ᾱ = cos² curve</span>
+<span class="cm"># compared both, then chose:</span>
+sc = linear_sched(<span class="hl">betamax=0.01</span>)  <span class="cm"># gentler than 0.02!</span>`,
+w15:`<b>Why it's here:</b> simplest thing that works — the callback owns everything about diffusion, the Learner stays generic.`,
+w17:`<b>What 17 fixes:</b> you can't plot, test, or reuse constants buried in a callback. Module-level tensors make ᾱ a first-class object (and sampling can use them too).`,
+w19:`<b>What 19 adds:</b> a <em>factory</em> returns the whole schedule as one namespace → building a cosine schedule is one more function, and comparing Δᾱ curves led to a real finding: βmax=0.01 destroys signal less brutally at high t.`,
+verdict:`<b>Gap addressed by 19:</b> notebooks 15/17 treat the schedule as given; 19 treats it as a <em>hyperparameter to investigate</em>. The Δᾱ analysis showed linear-0.02 wastes many late steps on already-pure noise — linear-0.01 (close to cosine's behavior) noised more evenly and improved samples at zero runtime cost.`},
+
+{ // 1 noisify
+story:`<b>② Noisify — where does x_t get made?</b> The math (x_t = √ᾱ·x₀ + √(1−ᾱ)·ε) never changes. What changes is <em>who runs it and when</em>: 15 does it on the <b>GPU inside the training step</b>, 17 extracts a pure function, 19 (following 17) pushes it into <b>DataLoader workers on CPU</b> so it overlaps with GPU compute.`,
+c15:`class DDPMCB(TrainCB):
+    <span class="hlo">def before_batch(self, learn):</span>  <span class="cm"># every step, on GPU</span>
+        x0 = learn.batch[0]
+        eps = torch.randn(x0.shape, device=x0.device)
+        t = torch.randint(0, self.n_steps, (x0.size(0),))
+        abar_t = self.alphabar[t].reshape(-1,1,1,1)
+        xt = abar_t.sqrt()*x0 + (1-abar_t).sqrt()*eps
+        learn.batch = ((xt, t), eps)`,
+c17:`<span class="cm"># a pure, testable function</span>
+<span class="hlt">def noisify(x0, alphabar):</span>
+    device = x0.device
+    n = len(x0)
+    t = torch.randint(0, n_steps, (n,)).long()
+    eps = torch.randn(x0.shape, device=device)
+    abar_t = alphabar[t].reshape(-1,1,1,1).to(device)
+    xt = abar_t.sqrt()*x0 + (1-abar_t).sqrt()*eps
+    return (xt, t.to(device)), eps`,
+c19:`<span class="cm"># same noisify — 19 inherits 17's design…</span>
+def noisify(x0, ᾱ): ...
+<span class="cm"># …and keeps it inside the collate fn (see ④),</span>
+<span class="cm"># so CPU workers noisify WHILE the GPU trains</span>
+<span class="hl">def collate_ddpm(b):
+    return noisify(default_collate(b)[xl], alphabar)</span>`,
+w15:`<b>Why it's here:</b> before_batch is the natural hook — the batch is rewritten just before the model sees it. But the GPU sits idle while it happens, every single step.`,
+w17:`<b>What 17 fixes:</b> extraction. You can now call noisify on 25 images and <em>plot</em> them with their t values — the famous "titled noisy grid" — and unit-test the math in isolation.`,
+w19:`<b>What 19 adds:</b> nothing new here by design — it standardizes on 17's best version. The win is compounding: pure function + collate placement is what makes the 25-epoch training run of ④/⑤ affordable.`,
+verdict:`<b>Gap addressed:</b> in 15, noisify is serial with training (GPU waits). By 17/19, it's parallel and free — the noisify cost disappears into worker time. Same math, ~zero cost, plus testability.`},
+
+{ // 2 model & init
+story:`<b>③ Model & init.</b> All three use diffusers' <code>UNet2DModel</code>. 15 calls it raw and lets a callback unpack its output; 17 wraps it (<code>.sample</code> handled once, forever) and adds <b>init_ddpm</b> zero-init tricks; 19 keeps both and <b>scales the model up</b> (32,64,128,256) because now — with FID — it can prove the extra capacity pays.`,
+c15:`from diffusers import UNet2DModel
+model = UNet2DModel(in_channels=1, out_channels=1,
+    <span class="hlo">block_out_channels=(32, 64, 128, 128)</span>)
+<span class="cm"># callback must unpack the output object:</span>
+class DDPMCB(TrainCB):
+    <span class="hlo">def after_predict(self, learn):
+        learn.preds = learn.preds.sample</span>`,
+c17:`<span class="hlt">class UNet(UNet2DModel):
+    def forward(self, x):
+        return super().forward(*x).sample</span>
+<span class="cm"># zero-init: each block starts as identity</span>
+<span class="hlt">def init_ddpm(model):</span>
+    for o in model.down_blocks:
+        for p in o.resnets:
+            p.conv2.weight.data.zero_()  <span class="cm"># + orth dw</span>
+    model.conv_out.weight.data.zero_()`,
+c19:`model = UNet(in_channels=1, out_channels=1,
+    <span class="hl">block_out_channels=(32, 64, 128, 256)</span>,
+    norm_num_groups=8)
+init_ddpm(model)   <span class="cm"># same trick as 17</span>
+<span class="cm"># bigger decoder half → more capacity where</span>
+<span class="cm"># semantic content is assembled</span>`,
+w15:`<b>Why it's here:</b> quickest path to "it trains". The after_predict hack works but couples your training loop to diffusers' output type.`,
+w17:`<b>What 17 fixes:</b> the wrapper makes the model a plain tensor-in/tensor-out module — usable with <em>any</em> Learner, no special callback. init_ddpm makes early training stable enough for ~2× higher LR.`,
+w19:`<b>What 19 adds:</b> capacity. (32,64,128,<b>256</b>) roughly doubles deep-layer width vs 17's (16,32,64,128)-ish configs. That's only worth it because ⑦'s FID can measure the gain — otherwise you're just burning GPU on vibes.`,
+verdict:`<b>Gap addressed:</b> 15 couldn't scale (no init → unstable; callback plumbing everywhere). 17 built the stable chassis. 19 uses the chassis: bigger model + longer training, justified quantitatively by FID ≈ 8.`},
+
+{ // 3 data loading
+story:`<b>④ Data loading.</b> The single biggest speed refactor of the series. 15 noisifies on the GPU per step at <b>bs=128</b>; 17/19 move noisify into <code>collate_ddpm</code> so <b>DataLoader workers</b> prepare (x_t, t), ε on CPU — in parallel — and push the batch size to <b>512</b>.`,
+c15:`<span class="cm"># plain dataloaders; noisify happens later,</span>
+<span class="cm"># inside the callback, on the GPU (see ②)</span>
+<span class="hlo">bs = 128</span>
+tds = dsd.with_transform(transformi)
+dls = DataLoaders.from_dd(tds, bs)`,
+c17:`<span class="hlt">def collate_ddpm(b):
+    return noisify(default_collate(b)[xl], alphabar)
+def dl_ddpm(ds):
+    return DataLoader(ds, batch_size=bs,
+        collate_fn=collate_ddpm, num_workers=4)</span>
+<span class="hlt">bs = 512</span>
+dls = DataLoaders(dl_ddpm(tds['train']),
+                  dl_ddpm(tds['test']))`,
+c19:`<span class="cm"># identical machinery to 17 —</span>
+<span class="cm"># it was already the right design</span>
+def collate_ddpm(b):
+    return noisify(default_collate(b)[xl], alphabar)
+dls = DataLoaders(dl_ddpm(tds['train']),
+                  dl_ddpm(tds['test']))
+<span class="hl"># feeds the 25-epoch run in ⑤ — the speedup
+# is what makes long training practical</span>`,
+w15:`<b>Why it's here:</b> standard supervised-learning plumbing, reused unchanged. Fine for 5 epochs; wasteful beyond.`,
+w17:`<b>What 17 fixes:</b> workers noisify batch N+1 while the GPU trains on batch N. Combined with MixedPrecision, bs jumps 128 → 512 and epoch time collapses.`,
+w19:`<b>What 19 adds:</b> adoption, not invention. 19's contribution is <em>relying</em> on this pipeline hard: 25 epochs of a bigger model would be painful on 15's setup.`,
+verdict:`<b>Gap addressed:</b> data prep off the critical path. Rule of thumb the series teaches: anything that doesn't need gradients or the model should leave the GPU loop — collate functions are a perfect home.`},
+
+{ // 4 training config
+story:`<b>⑤ Training config.</b> Watch three dials move together: <b>epochs 5 → 8 → 25</b>, <b>LR 4e-3 → 1e-2 → 1e-2</b>, and precision fp32 → fp16. Plus two subtle upgrades in 19: <b>AdamW</b> (decoupled weight decay) and <b>eps=1e-5</b> (fp16 safety) — tiny lines, real consequences.`,
+c15:`lr = <span class="hlo">4e-3</span>; epochs = <span class="hlo">5</span>
+tmax = epochs * len(dls.train)
+sched = partial(lr_scheduler.OneCycleLR,
+                max_lr=lr, total_steps=tmax)
+learn = TrainLearner(model, dls, nn.MSELoss(),
+    lr=lr, cbs=[ddpm_cb, DeviceCB(),
+    ProgressCB(plot=True),
+    BatchSchedCB(sched)],
+    opt_func=<span class="hlo">optim.Adam</span>)  <span class="cm"># default eps=1e-8</span>`,
+c17:`lr = <span class="hlt">1e-2</span>; epochs = <span class="hlt">8</span>
+opt_func = partial(optim.Adam, <span class="hlt">eps=1e-5</span>)
+<span class="cm"># eps: with fp16, v ≈ 0 → grad/√v explodes;</span>
+<span class="cm"># bigger eps caps the step size</span>
+cbs = [DeviceCB(), <span class="hlt">MixedPrecision()</span>,
+       ProgressCB(plot=True), BatchSchedCB(sched)]
+learn = TrainLearner(model, dls, nn.MSELoss(),
+                     lr=lr, cbs=cbs, opt_func=opt_func)`,
+c19:`lr = 1e-2; epochs = <span class="hl">25</span>
+opt_func = partial(<span class="hl">optim.AdamW</span>, eps=1e-5)
+<span class="cm"># AdamW: weight decay applied to weights directly,</span>
+<span class="cm"># not mixed into the adaptive gradient stats</span>
+cbs = [DeviceCB(), MixedPrecision(),
+       ProgressCB(plot=True), BatchSchedCB(sched)]
+learn = TrainLearner(model, dls, nn.MSELoss(),
+                     lr=lr, cbs=cbs, opt_func=opt_func)`,
+w15:`<b>Why it's here:</b> conservative settings because nothing protects training yet — no init tricks, no eps guard. 5 epochs is a demo, not a model.`,
+w17:`<b>What 17 fixes:</b> init_ddpm + eps=1e-5 + MixedPrecision unlock 2.5× the LR at half the memory per image — the "go fast safely" kit.`,
+w19:`<b>What 19 adds:</b> commitment. 25 epochs + AdamW + the bigger model turn the demo into a model worth <em>measuring</em>. Every earlier refactor exists to make this run cheap enough to sit through.`,
+verdict:`<b>Gap addressed:</b> 15 couldn't train long (too slow, too fragile), 17 could but stopped early to demo the machinery. 19 actually cashes in: the FID ≈ 8 result is bought with these 25 epochs.`},
+
+{ // 5 sampling
+story:`<b>⑥ Sampling.</b> Same reverse loop everywhere — predict ε̂, estimate x̂₀, mix, add σz — but its <em>packaging</em> evolves: 15 hides it in the callback, 17 makes it a standalone function of explicit schedule tensors, 19 keeps 17's function and adds <b>skip variants</b> (⑦).`,
+c15:`class DDPMCB(TrainCB):
+    <span class="hlo">def sample(self, model, sz):</span>  <span class="cm"># callback method —</span>
+        <span class="cm"># needs the cb object to exist!</span>
+        x_t = torch.randn(sz)
+        for t in reversed(range(self.n_steps)):
+            ...
+            x_t = x̂₀·c1 + xt·c2 + σ·z
+<span class="cm"># samples = ddpm_cb.sample(model, (16,1,32,32))</span>`,
+c17:`@torch.no_grad()
+<span class="hlt">def sample(model, sz, alpha, alphabar, sigma, n_steps):</span>
+    x_t = torch.randn(sz)
+    for t in reversed(range(n_steps)):
+        noise = model((x_t, t_batch)).sample
+        x_0_hat = ((x_t - (1-ᾱ_t).sqrt()·noise)
+                   / ᾱ_t.sqrt())<span class="hlt">.clamp(-1, 1)</span>
+        x_t = x̂₀·c1 + xt·c2 + σ_t·z`,
+c19:`@torch.no_grad()
+def sample(model, sz):  <span class="cm"># closes over sc = the schedule</span>
+    ...same loop, <span class="hl">no clamp on x̂₀</span>
+<span class="cm"># plus two fast variants:</span>
+<span class="hl">sample_skip(model, sz)</span>  <span class="cm"># t%3==0 or t&lt;50 → ~383 calls</span>
+<span class="hl">sample2(model, sz)</span>      <span class="cm"># log spacing   → ~280 calls</span>`,
+w15:`<b>Why it's here:</b> the callback already owns β, ᾱ, σ, so sampling lives there too. Downside: you can't sample without re-creating the training callback.`,
+w17:`<b>What 17 fixes:</b> sampling becomes a function of (model, schedule) — deployable anywhere. The x̂₀ clamp to [-1,1] guards against wild early predictions.`,
+w19:`<b>What 19 adds:</b> sampling as a <em>family</em> of strategies with a measurable quality/speed dial. (It also drops the clamp — with the better-trained model, x̂₀ stays in range on its own.)`,
+verdict:`<b>Gap addressed:</b> once sampling is standalone (17), it becomes hackable — and 19 immediately hacks it: skip strategies cut generation from ~2 min to ~40 s. You can't iterate on what's buried in a callback.`},
+
+{ // 6 eval & speed
+story:`<b>⑦ Evaluation & speed — 19's genuinely new territory.</b> Notebooks 15 and 17 judge samples by eye. 19 adds <b>FID</b> (a classifier-with-no-head as feature extractor + <code>ImageEval</code>) — and the moment quality is a <em>number</em>, speed/quality trade-offs become engineering instead of taste.`,
+c15:`<span class="cm"># evaluation in notebook 15:</span>
+show_images(samples[-1][:25])
+<span class="hlo"># …look at them. Do they seem OK?</span>
+<span class="cm"># no way to compare two models objectively,</span>
+<span class="cm"># or to detect low diversity (mode collapse)</span>`,
+c17:`<span class="cm"># evaluation in notebook 17:</span>
+show_images(s[:16], imsize=1.5)
+<span class="hlo"># still eyeballing —</span>
+<span class="cm"># the notebook's focus was speed machinery</span>
+<span class="cm">(MixedPrecision, Accelerate, MultDL)</span>`,
+c19:`cmodel = torch.load('models/data_aug2.pkl')
+<span class="hl">del(cmodel[8]); del(cmodel[7])</span> <span class="cm"># head off → features</span>
+from miniai.fid import ImageEval
+<span class="hl">ie = ImageEval(cmodel, dls2, cbs=[DeviceCB()])</span>
+ie.fid(s)          <span class="cm"># full:  1000 calls, ~2min, FID ≈ 8</span>
+<span class="cm"># skip:  ~383 calls, ~50s,  FID ≈ 10</span>
+<span class="cm"># log:   ~280 calls, ~40s,  FID ≈ 12</span>`,
+w15:`<b>Why it's here:</b> at the "does it work at all" stage, eyes are enough — any recognizable shirt is a victory.`,
+w17:`<b>Why unchanged:</b> 17 optimizes the <em>training loop</em>; sample quality wasn't the question being asked yet.`,
+w19:`<b>What 19 adds:</b> the full measurement loop. FID both validates the bigger model (③/⑤) and prices the skip strategies (⑥) — e.g. "log skip costs +4 FID, saves 66% of calls" is a sentence 15 and 17 simply could not say.`,
+verdict:`<b>Gap addressed:</b> the missing feedback signal. 15 proved feasibility, 17 bought speed, but only 19 closes the loop: <b>measure → change → re-measure</b>. That's what turns a course demo into a real generative-modeling workflow.`}
+];
+
+function setStage(s){
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  const d=D[s];
+  document.getElementById('story').innerHTML=d.story;
+  document.getElementById('c15').innerHTML=d.c15;
+  document.getElementById('c17').innerHTML=d.c17;
+  document.getElementById('c19').innerHTML=d.c19;
+  document.getElementById('w15').innerHTML=d.w15;
+  document.getElementById('w17').innerHTML=d.w17;
+  document.getElementById('w19').innerHTML=d.w19;
+  document.getElementById('verdict').innerHTML=d.verdict;
+  if(window.parent!==window)setTimeout(()=>window.parent.postMessage({type:'ce-frame-height',
+    height:Math.ceil(document.body.scrollHeight)},'*'),50);
+}
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>setStage(+c.dataset.s));
+setStage(0);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

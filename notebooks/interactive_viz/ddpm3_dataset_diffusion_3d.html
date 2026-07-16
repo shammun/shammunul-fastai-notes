@@ -1,0 +1,177 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Whole Dataset Diffusing — 3D</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  input[type=range]{accent-color:var(--ac);}
+  #tsl{width:210px;}
+  .speedv,.tval{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  #c3d{display:block;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:grab;width:100%;height:420px;touch-action:none;}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>Zoom out: the <em>whole dataset</em> diffusing, not just one image</h1>
+<p class="sub">Every point is one image squashed to 3 coordinates (real images live in 32×32 = 1024-D; same idea, drawn where we can see it).
+The dataset isn't a blob — it has <b>structure</b>: here, two classes forming two ribbons. Forward diffusion <b>melts that structure into one featureless Gaussian ball</b>
+— and because every dataset melts into the <em>same</em> ball, sampling can start from plain <code>torch.randn</code>.
+<b>Drag to rotate · scroll to zoom · ▶ plays · drag the t-slider to scrub.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① the data shape (t=0)</button>
+  <button class="chip" data-s="1">② forward melt →</button>
+  <button class="chip" data-s="2">③ the Gaussian ball (t=999)</button>
+  <button class="chip" data-s="3">④ ← reverse (what sampling does)</button>
+</div>
+<div class="selrow">
+  <button class="play" id="play">▶ Play</button>
+  <span class="div"></span>
+  t = <span class="tval" id="tv">0</span> <input id="tsl" type="range" min="0" max="999" value="0">
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1" style="width:110px"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <label style="cursor:pointer"><input type="checkbox" id="trails"> ghost trails</label>
+</div>
+
+<div class="wrap">
+  <div class="card"><canvas id="c3d"></canvas></div>
+  <div class="story" id="story"></div>
+  <div class="legend"><b class="i">orange ribbon = class A</b> · <b class="o">teal ribbon = class B</b> · grey wireframe = the unit-variance Gaussian shell every dataset melts into.
+  Each point follows <code>x_t = √ᾱ_t·x₀ + √(1−ᾱ_t)·ε</code> with its own fixed ε — the same closed-form line as <code>noisify()</code>.</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// schedule (linear betamax=0.01, as trained in this notebook)
+const N=1000, abar=[]; let _a=1;
+for(let i=0;i<N;i++){ const b=1e-4+(0.01-1e-4)*i/(N-1); _a*=(1-b); abar.push(_a); }
+
+let seed=99; function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
+function gauss(){let u=0,v=0;while(!u)u=rnd();while(!v)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+// data: two interleaved helices ("classes"), 700 points
+const M=700, x0=[], eps=[], colA=new THREE.Color('#f6921e'), colB=new THREE.Color('#16a3a3');
+for(let i=0;i<M;i++){
+  const cls=i%2, u=rnd()*Math.PI*3;
+  const r=1.1+0.12*gauss(), ph=cls?Math.PI:0;
+  x0.push(new THREE.Vector3(Math.cos(u+ph)*r, (u/ (Math.PI*3) -0.5)*2.6 + 0.06*gauss(), Math.sin(u+ph)*r));
+  eps.push(new THREE.Vector3(gauss(),gauss(),gauss()));
+}
+
+// three.js scene
+const cv=document.getElementById('c3d');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45,2,0.1,100); camera.position.set(4.4,2.6,4.4);
+let camTheta=Math.atan2(4.4,4.4), camPhi=Math.acos(2.6/Math.sqrt(4.4*4.4+2.6*2.6+4.4*4.4)), camR=6.4;
+function applyCam(){ camera.position.set(camR*Math.sin(camPhi)*Math.sin(camTheta), camR*Math.cos(camPhi), camR*Math.sin(camPhi)*Math.cos(camTheta)); camera.lookAt(0,0,0); }
+applyCam();
+scene.add(new THREE.AmbientLight(0xffffff,0.9));
+const dl=new THREE.DirectionalLight(0xffffff,0.5); dl.position.set(3,5,2); scene.add(dl);
+
+// gaussian shell + axes
+const shell=new THREE.Mesh(new THREE.SphereGeometry(1.73,20,14), new THREE.MeshBasicMaterial({color:0x9aa8c4,wireframe:true,transparent:true,opacity:0.14}));
+scene.add(shell);
+const grid=new THREE.GridHelper(5,10,0xd0d9ea,0xe6ecf7); grid.position.y=-2.1; scene.add(grid);
+
+// points
+const geo=new THREE.BufferGeometry();
+const pos=new Float32Array(M*3), col=new Float32Array(M*3);
+for(let i=0;i<M;i++){ const c=i%2?colB:colA; col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b; }
+geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:0.075,vertexColors:true}));
+scene.add(pts);
+// ghost of t=0 shape
+const gpos=new Float32Array(M*3);
+for(let i=0;i<M;i++){gpos[i*3]=x0[i].x;gpos[i*3+1]=x0[i].y;gpos[i*3+2]=x0[i].z;}
+const ggeo=new THREE.BufferGeometry(); ggeo.setAttribute('position',new THREE.BufferAttribute(gpos,3));
+const ghost=new THREE.Points(ggeo,new THREE.PointsMaterial({size:0.045,color:0xb9c4da,transparent:true,opacity:0.35}));
+ghost.visible=false; scene.add(ghost);
+document.getElementById('trails').onchange=e=>ghost.visible=e.target.checked;
+
+let t=0, playing=false, dir=1, speed=1, lastTs=null, acc=0;
+function setT(nt){
+  t=Math.max(0,Math.min(999,Math.round(nt)));
+  const sq=Math.sqrt(abar[t]), nq=Math.sqrt(1-abar[t]);
+  for(let i=0;i<M;i++){
+    pos[i*3]  =sq*x0[i].x+nq*eps[i].x;
+    pos[i*3+1]=sq*x0[i].y+nq*eps[i].y;
+    pos[i*3+2]=sq*x0[i].z+nq*eps[i].z;
+  }
+  geo.attributes.position.needsUpdate=true;
+  document.getElementById('tv').textContent=t;
+  document.getElementById('tsl').value=t;
+  shell.material.opacity=0.08+0.22*nq;
+}
+const STORIES=[
+ `<b>① At t=0 the dataset is a shape, not a cloud.</b> Real images occupy a thin, curved sliver of pixel-space (most random pixel grids look like static, not clothes). Rotate the scene — the two ribbons never touch: that separation <em>is</em> the information a generative model must learn.`,
+ `<b>② Forward diffusion is a controlled melt.</b> Press ▶: every point slides along <code>√ᾱ·x₀ + √(1−ᾱ)·ε</code>. Two things happen at once — the shape shrinks toward the origin (√ᾱ→0) and each point's private noise takes over (√(1−ᾱ)→1). Structure doesn't vanish suddenly; it dissolves gradually, which is what gives the model 1000 learnable stepping stones.`,
+ `<b>③ At t=999, amnesia is complete.</b> The ribbons are gone; orange and teal are perfectly mixed inside the same unit Gaussian shell. Crucial consequence: this final distribution <b>doesn't depend on the dataset at all</b> — Fashion-MNIST, faces, or bedrooms all melt into this exact ball. That's why <code>sample()</code> can begin from <code>torch.randn(sz)</code>.`,
+ `<b>④ Sampling = running the melt backwards.</b> Watch the ball condense back onto the ribbons. In this demo we replay the stored trajectory; in reality nothing stores it — the trained UNet must <em>estimate</em> the direction back toward the data shape at every step. 1000 small, mostly-Gaussian steps are individually easy; their composition is the hard, structured journey.`];
+const chips=document.querySelectorAll('.chip');
+function setStage(s){
+  chips.forEach((c,i)=>c.classList.toggle('on',i===s));
+  document.getElementById('story').innerHTML=STORIES[s];
+  stopPlay();
+  if(s===0) setT(0);
+  if(s===1){ dir=1; setT(0); startPlay(); }
+  if(s===2) setT(999);
+  if(s===3){ dir=-1; setT(999); startPlay(); }
+}
+chips.forEach(c=>c.onclick=()=>setStage(+c.dataset.s));
+const playBtn=document.getElementById('play');
+function startPlay(){playing=true;playBtn.textContent='⏸ Pause';}
+function stopPlay(){playing=false;playBtn.textContent='▶ Play';}
+playBtn.onclick=()=>{ if(playing)stopPlay(); else{ if(dir>0&&t>=999)setT(0); if(dir<0&&t<=0)setT(999); startPlay(); } };
+document.getElementById('tsl').oninput=e=>{stopPlay();setT(+e.target.value);};
+document.getElementById('speed').oninput=e=>{speed=+e.target.value;document.getElementById('spv').textContent=speed+'×';};
+
+// orbit (manual, r128-safe)
+let drag=false,px=0,py=0;
+cv.addEventListener('pointerdown',e=>{drag=true;px=e.clientX;py=e.clientY;cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing';});
+cv.addEventListener('pointermove',e=>{if(!drag)return;camTheta-=(e.clientX-px)*0.008;camPhi=Math.max(0.15,Math.min(Math.PI-0.15,camPhi-(e.clientY-py)*0.008));px=e.clientX;py=e.clientY;applyCam();});
+addEventListener('pointerup',()=>{drag=false;cv.style.cursor='grab';});
+cv.addEventListener('wheel',e=>{e.preventDefault();camR=Math.max(3,Math.min(14,camR+e.deltaY*0.004));applyCam();},{passive:false});
+
+function fit(){const w=cv.parentElement.clientWidth-4;renderer.setSize(w,420,false);camera.aspect=w/420;camera.updateProjectionMatrix();}
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(playing&&lastTs!=null){
+    acc+=(ts-lastTs)*0.32*speed;
+    if(acc>=1){const st=Math.floor(acc);acc-=st;let nt=t+dir*st;
+      if(nt>=999){nt=999;stopPlay();} if(nt<=0&&dir<0){nt=0;stopPlay();}
+      setT(nt);}
+  }
+  lastTs=ts;
+  renderer.render(scene,camera);
+}
+fit(); addEventListener('resize',fit);
+setStage(0); requestAnimationFrame(loop);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

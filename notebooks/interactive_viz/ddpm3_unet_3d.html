@@ -1,0 +1,528 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ride the U — the (32,64,128,256) Denoiser in 3D</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.8px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 11px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:105px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:105px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .tv{font-family:monospace;font-weight:700;color:var(--ac);min-width:46px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  #c3d{display:block;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:grab;width:100%;height:450px;touch-action:none;}
+  .pills{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:8px auto 0;}
+  .pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:3px 7px;cursor:pointer;text-align:center;min-width:82px;transition:all .15s;}
+  .pill:hover{border-color:var(--ac);}
+  .pill .t{font-size:9.3px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+  .pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.2px;color:var(--ink);white-space:nowrap;}
+  .pill.on{border-color:var(--ac);background:#f4efff;box-shadow:0 3px 10px rgba(123,92,214,.25);}
+  .pill.on .t{color:var(--ac);}
+  .pill.star{border-style:dashed;border-color:#b9a5ec;}
+  .pill.star.on{border-style:solid;border-color:var(--ac);}
+  .story{margin-top:8px;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  .inforow{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;align-items:stretch;}
+  .inspect{flex:1 1 430px;min-width:300px;border-left:5px solid var(--out);}
+  .inspect h4{margin:0 0 4px;font-size:12.5px;color:var(--out);}
+  .inspect .body{font-size:12.2px;color:var(--soft);line-height:1.55;}
+  .inspect .body b{color:var(--ink);}
+  .inspect .body code{background:#eef2fb;border-radius:4px;padding:0 4px;font-size:11.3px;}
+  .code{flex:1 1 430px;min-width:300px;background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.4px;line-height:1.62;overflow-x:auto;white-space:pre;}
+  .code .ln{display:block;border-radius:4px;padding:0 4px;margin:0 -2px;transition:background .12s;}
+  .code .ln.rng{background:rgba(123,92,214,.16);}
+  .code .ln.cur{background:rgba(123,92,214,.52);box-shadow:inset 2.5px 0 0 #b9a5ec;}
+  .code .hl{background:rgba(123,92,214,.42);border-radius:4px;padding:1px 3px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;line-height:1.5;}
+  .legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.i{color:var(--in);}
+</style></head><body>
+<h1>Ride the U — <code>block_out_channels=(32, 64, 128, 256)</code>, block by block</h1>
+<p class="sub">This is the exact model the next cell builds, laid out as a real <b>U</b>. The <b>orange box is the data</b> — a batch of noisy images —
+and every block it enters <b>reshapes it</b>: <b>big face = big spatial grid, thick = many channels</b>.
+Watch the <b style="color:var(--out)">teal skip copies</b> get saved on the way down and <b>concatenated</b> back in on the way up.
+<b>Drag to rotate · scroll to zoom · click any block · ⏭ steps one block at a time · chips replay their part of the journey.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Meet the U</button>
+  <button class="chip" data-s="1">② Encoder: the squeeze</button>
+  <button class="chip" data-s="2">③ Bottleneck + attention</button>
+  <button class="chip" data-s="3">④ Decoder + skip concats</button>
+  <button class="chip" data-s="4">⑤ Where t goes</button>
+</div>
+<div class="selrow">
+  <button class="stepb" id="back">⏮ 1 block</button>
+  <button class="play" id="play">▶ Play all</button>
+  <button class="stepb" id="fwd">1 block ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  t <input id="tsl" type="range" min="0" max="999" step="1" value="500"><span class="tv" id="tv">500</span>
+</div>
+
+<div class="wrap">
+  <div class="card"><canvas id="c3d"></canvas></div>
+  <div class="pills" id="pills"></div>
+  <div class="story" id="story"></div>
+  <div class="inforow">
+    <div class="inspect card" style="box-shadow:none">
+      <h4 id="insTitle">How to read the scene</h4>
+      <div class="body" id="insBody">The ten boxes ARE the tensor at each stage (click one!): face size = spatial grid (32×32 … 4×4), thickness = channels (1 … 256). Left arm = encoder going <em>down</em>, bottom = bottleneck, right arm = decoder coming back <em>up</em>. The purple sphere below is the timestep t — dashed risers feed it into <b>every</b> block.</div>
+    </div>
+    <div class="code" id="code"></div>
+  </div>
+  <div class="legend"><b class="i">orange box = the batch</b> (its label tracks the shape) · brightened blocks = already visited ·
+  <b class="o">teal packet = a saved skip copy</b> riding its dashed highway, waiting to be concatenated ·
+  <b class="a">purple riser pulse = the t-embedding</b> entering each block · in and out are both <code>1@32×32</code>: <b>the output is the predicted noise ε̂, not an image</b>.</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let p=0, playing=false, speed=1, stage=0, tVal=500;
+
+// ================= model layout (a real U) =================
+const ORANGE=0xf6921e, PURPLE=0x7b5cd6, TEAL=0x16a3a3;
+const defs=[
+ {name:'input x_t', sub:'1@32×32',  sp:32, ch:1,   grp:'io',  x:-8.6, y: 2.3},
+ {name:'down₀',     sub:'32@32×32', sp:32, ch:32,  grp:'enc', x:-6.5, y: 2.3},
+ {name:'down₁',     sub:'64@16×16', sp:16, ch:64,  grp:'enc', x:-4.9, y: 0.55},
+ {name:'down₂',     sub:'128@8×8',  sp:8,  ch:128, grp:'enc', x:-3.5, y:-0.95},
+ {name:'down₃',     sub:'256@4×4',  sp:4,  ch:256, grp:'enc', x:-2.1, y:-2.25},
+ {name:'mid + attn',sub:'256@4×4',  sp:4,  ch:256, grp:'mid', x: 0.1, y:-2.6},
+ {name:'up₀',       sub:'256@8×8',  sp:8,  ch:256, grp:'dec', x: 2.3, y:-0.95},
+ {name:'up₁',       sub:'128@16×16',sp:16, ch:128, grp:'dec', x: 3.9, y: 0.55},
+ {name:'up₂',       sub:'64@32×32', sp:32, ch:64,  grp:'dec', x: 5.9, y: 2.3},
+ {name:'output ε̂', sub:'1@32×32',  sp:32, ch:1,   grp:'io',  x: 8.3, y: 2.3},
+];
+const SHAPES=['[bs, 1, 32, 32]','[bs, 32, 32, 32]','[bs, 64, 16, 16]','[bs, 128, 8, 8]','[bs, 256, 4, 4]',
+              '[bs, 256, 4, 4]','[bs, 256, 8, 8]','[bs, 128, 16, 16]','[bs, 64, 32, 32]','[bs, 1, 32, 32]'];
+const face=sp=>0.62+sp/32*1.95;
+const thick=ch=>0.16+Math.log2(ch+1)*0.165;
+const COL={io:0x93a0ba, enc:ORANGE, mid:PURPLE, dec:TEAL};
+const EDGE={io:0x6d7c99, enc:0xc9791a, mid:0x5f45ad, dec:0x0f7d7d};
+
+// ================= scene =================
+const cv=$('c3d');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(38,2.3,0.1,120);
+camera.position.set(0,1.6,18.6); camera.lookAt(0,-0.4,0);
+scene.add(new THREE.AmbientLight(0xffffff,0.9));
+const dlit=new THREE.DirectionalLight(0xffffff,0.45); dlit.position.set(4,10,8); scene.add(dlit);
+const group=new THREE.Group(); scene.add(group);
+
+// crisp text sprites (same recipe as the reference viz)
+function makeLabel(lines,{size=24,color='#25324a',mono=false,bold=true}={}){
+  const c=document.createElement('canvas'),x=c.getContext('2d');
+  const font=`${bold?'700':'400'} ${size}px ${mono?'Consolas,monospace':'"Segoe UI",sans-serif'}`;
+  x.font=font;
+  const w=Math.max(...lines.map(t=>x.measureText(t).width))+20, h=lines.length*(size+8)+12;
+  c.width=w*2; c.height=h*2; x.scale(2,2); x.font=font; x.textAlign='center'; x.textBaseline='middle'; x.fillStyle=color;
+  lines.forEach((t,i)=>x.fillText(t,w/2,10+(size+8)*i+size/2));
+  const tx=new THREE.CanvasTexture(c); tx.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,depthTest:false,transparent:true}));
+  const k=0.0135; sp.scale.set(w*k,h*k,1); sp.renderOrder=6;
+  return sp;
+}
+
+// ---- floor grid ----
+const grid=new THREE.GridHelper(24,24,0xd4dcec,0xe9eef8); grid.position.y=-4.35; group.add(grid);
+
+// ---- the ten blocks (= the tensor at each stage) ----
+const blocks=[],blockEdges=[];
+defs.forEach((d,i)=>{
+  const f=face(d.sp), th=thick(d.ch);
+  const g=new THREE.BoxGeometry(th,f,f);          // x = channels (thickness), y=z = spatial face
+  const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:COL[d.grp],transparent:true,opacity:0.5}));
+  m.position.set(d.x,d.y,0); m.userData={i}; group.add(m); blocks.push(m);
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(g),new THREE.LineBasicMaterial({color:EDGE[d.grp],transparent:true,opacity:0.7}));
+  e.position.copy(m.position); group.add(e); blockEdges.push(e);
+  // label beneath, staggered so neighbours never collide
+  const lab=makeLabel([d.name,d.sub],{size:19,color:d.grp==='io'?'#5a6b86':(d.grp==='enc'?'#c9791a':(d.grp==='mid'?'#7b5cd6':'#0f7d7d'))});
+  lab.position.set(d.x, d.y-f/2-0.52-(i%2)*0.52, 0); group.add(lab);
+});
+
+// ---- region titles ----
+const encT=makeLabel(['ENCODER  ↓','compress: “what is in this picture?”'],{size:21,color:'#c9791a'});
+encT.position.set(-6.1,4.6,0); group.add(encT);
+const decT=makeLabel(['DECODER  ↑','reconstruct: “where exactly is the noise?”'],{size:21,color:'#0f7d7d'});
+decT.position.set(5.4,4.6,0); group.add(decT);
+const midT=makeLabel(['bottleneck 4×4 — self-attention: 16 cells, all talking'],{size:18,color:'#7b5cd6'});
+midT.position.set(0.1,-4.05,0.6); group.add(midT);
+
+// ---- flow-direction cones along the U path ----
+const WP=defs.map(d=>new THREE.Vector3(d.x,d.y,0));
+for(let i=0;i<9;i++){
+  const a=WP[i],b=WP[i+1],dir=b.clone().sub(a).normalize();
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(0.10,0.30,10),
+    new THREE.MeshLambertMaterial({color:0xaab8d4,transparent:true,opacity:0.85}));
+  cone.position.lerpVectors(a,b,0.5); cone.position.z=0;
+  cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
+  group.add(cone);
+}
+
+// ---- skip highways: d0→u2, d1→u1, d2→u0 (bowing toward the camera) ----
+const SKIPS=[{wd:1,wu:8,z:2.6},{wd:2,wu:7,z:2.1},{wd:3,wu:6,z:1.6}];
+const skipLines=[],skipPts=[];
+SKIPS.forEach((s,i)=>{
+  const A=WP[s.wd],B=WP[s.wu],pts=[];
+  for(let k=0;k<=60;k++){const u=k/60;
+    pts.push(new THREE.Vector3(A.x+(B.x-A.x)*u, A.y+(B.y-A.y)*u+Math.sin(u*Math.PI)*0.55, Math.sin(u*Math.PI)*s.z));}
+  skipPts.push(pts);
+  const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineDashedMaterial({color:TEAL,dashSize:0.26,gapSize:0.16,transparent:true,opacity:0.8}));
+  l.computeLineDistances(); group.add(l); skipLines.push(l);
+});
+// skip packets (the saved copies) + their little labels
+const packets=[],packetLabs=[];
+SKIPS.forEach((s,i)=>{
+  const src=defs[s.wd], th=thick(src.ch), f=0.62;
+  const m=new THREE.Mesh(new THREE.BoxGeometry(th,f,f),
+    new THREE.MeshLambertMaterial({color:TEAL,transparent:true,opacity:0.95}));
+  m.visible=false; group.add(m); packets.push(m);
+  const lab=makeLabel([`saved: ${src.sub}`],{size:17,color:'#0f7d7d',mono:true});
+  lab.visible=false; group.add(lab); packetLabs.push(lab);
+});
+// concat flash labels above the up blocks
+const catLabs=SKIPS.map(s=>{
+  const lab=makeLabel(['⊕ concat!'],{size:21,color:'#0f7d7d'});
+  lab.position.set(WP[s.wu].x, WP[s.wu].y+face(defs[s.wu].sp)/2+0.9, 0.4);
+  lab.visible=false; group.add(lab); return lab;
+});
+
+// ---- timestep node + risers ----
+const tNode=new THREE.Mesh(new THREE.SphereGeometry(0.34,20,16),new THREE.MeshLambertMaterial({color:PURPLE}));
+tNode.position.set(0.1,-3.85,2.6); group.add(tNode);
+// t label on an updatable canvas texture (redrawn in place when the slider moves)
+const tLabCv=document.createElement('canvas'); tLabCv.width=220; tLabCv.height=52;
+const tLabTx=new THREE.CanvasTexture(tLabCv); tLabTx.minFilter=THREE.LinearFilter;
+function drawTLab(){const x=tLabCv.getContext('2d');x.clearRect(0,0,220,52);
+  x.font='700 42px Consolas,monospace';x.textAlign='center';x.textBaseline='middle';
+  x.fillStyle='#7b5cd6';x.fillText('t = '+tVal,110,27);tLabTx.needsUpdate=true;}
+drawTLab();
+const tLab=new THREE.Sprite(new THREE.SpriteMaterial({map:tLabTx,depthTest:false,transparent:true}));
+tLab.scale.set(220*0.0072,52*0.0072,1); tLab.renderOrder=6;
+tLab.position.set(0.1,-4.55,2.6); group.add(tLab);
+// embedding "barcode": sin/cos bands that change with t
+const embCv=document.createElement('canvas'); embCv.width=128; embCv.height=18;
+const embTx=new THREE.CanvasTexture(embCv); embTx.minFilter=THREE.LinearFilter;
+function drawEmb(){
+  const x=embCv.getContext('2d');
+  for(let i=0;i<32;i++){
+    const fr=Math.pow(10000,i/32), v=(i%2?Math.cos(tVal/fr):Math.sin(tVal/fr))*0.5+0.5;
+    const r=Math.round(123+(255-123)*(1-v)), g=Math.round(92+(255-92)*(1-v)), b=Math.round(214+(255-214)*(1-v));
+    x.fillStyle=`rgb(${r},${g},${b})`; x.fillRect(i*4,0,4,18);
+  }
+  embTx.needsUpdate=true;
+}
+drawEmb();
+const embSp=new THREE.Sprite(new THREE.SpriteMaterial({map:embTx,depthTest:false,transparent:true}));
+embSp.scale.set(1.9,0.28,1); embSp.position.set(1.75,-3.85,2.6); embSp.renderOrder=6; group.add(embSp);
+const embLab=makeLabel(['sin/cos embedding'],{size:15,color:'#8a7ab5'});
+embLab.position.set(1.75,-3.45,2.6); group.add(embLab);
+const risers=[],riserEnd=[];
+blocks.forEach((b,i)=>{
+  if(i===0||i===9){risers.push(null);riserEnd.push(null);return;}
+  const end=b.position.clone().add(new THREE.Vector3(0,-face(defs[i].sp)/2,0.25));
+  const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints([tNode.position.clone(),end]),
+    new THREE.LineDashedMaterial({color:PURPLE,dashSize:0.2,gapSize:0.14,transparent:true,opacity:0.42}));
+  l.computeLineDistances(); group.add(l); risers.push(l); riserEnd.push(end);
+});
+const tPulse=new THREE.Mesh(new THREE.SphereGeometry(0.13,12,10),
+  new THREE.MeshLambertMaterial({color:PURPLE,emissive:0x3c2a77}));
+tPulse.visible=false; group.add(tPulse);
+
+// ---- attention burst inside mid ----
+const attnGrp=new THREE.Group(); group.add(attnGrp);
+{
+  const c=WP[5], f=face(4)*0.62, off=thick(256)/2+0.05, pos=[];
+  for(let r=0;r<4;r++)for(let cc=0;cc<4;cc++)
+    pos.push(new THREE.Vector3(c.x+off, c.y+(r/3-0.5)*f, (cc/3-0.5)*f));
+  pos.forEach(pt=>{const d=new THREE.Mesh(new THREE.SphereGeometry(0.045,8,6),
+    new THREE.MeshBasicMaterial({color:0xffffff})); d.position.copy(pt); attnGrp.add(d);});
+  const pairs=[[0,15],[3,12],[5,10],[1,14],[7,8],[2,13],[4,11],[6,9],[0,10],[5,15]];
+  pairs.forEach(pr=>{const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints([pos[pr[0]],pos[pr[1]]]),
+    new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.9})); attnGrp.add(l);});
+  attnGrp.visible=false;
+}
+
+// ---- the traveling tensor ----
+function shirtTex(noisy){
+  const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');
+  x.fillStyle='#fff';x.fillRect(0,0,64,64);
+  if(!noisy||noisy<2){ x.fillStyle='#f6921e';
+    const sp=[0,1,1,0,0,1,1,0, 1,1,1,1,1,1,1,1, 1,0,1,1,1,1,0,1, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0, 0,0,1,1,1,1,0,0];
+    for(let r=0;r<8;r++)for(let cc=0;cc<8;cc++)if(sp[r*8+cc])x.fillRect(cc*8,r*8,8,8); }
+  if(noisy){ let s=noisy===2?991:317;
+    for(let i=0;i<520;i++){ s=(s*1103515245+12345)&0x7fffffff;
+      const g=Math.floor((s/0x7fffffff)*255);
+      x.fillStyle=`rgba(${g},${g},${g},${noisy===2?0.85:0.55})`;
+      s=(s*1103515245+12345)&0x7fffffff; const px=(s/0x7fffffff)*60;
+      s=(s*1103515245+12345)&0x7fffffff; const py=(s/0x7fffffff)*60;
+      x.fillRect(px,py,3.4,3.4); } }
+  return new THREE.CanvasTexture(c);
+}
+const tGeo=new THREE.BoxGeometry(1,1,1);
+const tMat=new THREE.MeshLambertMaterial({color:ORANGE,transparent:true,opacity:0.94});
+const tensor=new THREE.Mesh(tGeo,tMat); group.add(tensor);
+const tEdge=new THREE.LineSegments(new THREE.EdgesGeometry(tGeo),new THREE.LineBasicMaterial({color:0x9a5c10}));
+tensor.add(tEdge);
+const faceIn=new THREE.Mesh(new THREE.PlaneGeometry(0.94,0.94),
+  new THREE.MeshBasicMaterial({map:shirtTex(1),transparent:true,opacity:0.95}));
+faceIn.position.x=0.51; faceIn.rotation.y=Math.PI/2; tensor.add(faceIn);   // noisy shirt = x_t
+const faceOut=new THREE.Mesh(new THREE.PlaneGeometry(0.94,0.94),
+  new THREE.MeshBasicMaterial({map:shirtTex(2),transparent:true,opacity:0}));
+faceOut.position.x=0.515; faceOut.rotation.y=Math.PI/2; tensor.add(faceOut); // pure-noise face = ε̂
+// shape label riding the tensor
+const shapeTex=SHAPES.map(s=>{const l=makeLabel([s],{size:23,mono:true,color:'#25324a'});l.visible=false;group.add(l);return l;});
+
+// dims (slightly larger than the block it sits in, so they merge without z-fighting)
+function dimsOf(w){const d=defs[Math.min(w,9)];return [thick(d.ch)*1.07,face(d.sp)*1.07,face(d.sp)*1.07];}
+
+// center + tilt so the +x image faces peek toward the camera
+{const bb=new THREE.Box3().setFromObject(group);group.position.x=-(bb.min.x+bb.max.x)/2;}
+group.rotation.y=-0.30; group.rotation.x=0.05;
+
+// ================= pure p → scene sync =================
+const lerp=(a,b,t)=>a+(b-a)*t, sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+const hump=u=>(u<=0||u>=1)?0:Math.sin(Math.PI*u);
+const maxP=9;
+
+function packetState(i,pp){ // returns arc param u in [0,1], or -1 hidden
+  const {wd,wu}=SKIPS[i];
+  if(pp<wd+0.06||pp>=wu) return -1;
+  if(pp<=wd+0.95) return 0.82*sm((pp-wd-0.06)/0.89);
+  if(pp<wu-0.30)  return 0.82;
+  return 0.82+0.18*sm((pp-(wu-0.30))/0.30);
+}
+let lastStage=-1,lastPill=-1;
+function sync(force){
+  p=Math.max(0,Math.min(maxP,p));
+  const w=Math.min(Math.floor(p),maxP-1), fr=p-w;
+  // tensor position + morph in the last 35% of each segment
+  const A=WP[w],B=WP[w+1];
+  tensor.position.lerpVectors(A,B,fr);
+  const mt=sm((fr-0.62)/0.36);
+  const d0=dimsOf(w),d1=dimsOf(w+1);
+  const dm=[0,1,2].map(i=>lerp(d0[i],d1[i],mt));
+  // concat bump: tensor swells just after arriving at an up block
+  let bump=1,catI=-1;
+  SKIPS.forEach((s,i)=>{const h=hump((p-s.wu)/0.40); if(h>0){bump=1+0.55*h;catI=i;}});
+  tensor.scale.set(dm[0]*bump,dm[1],dm[2]);
+  catLabs.forEach((l,i)=>l.visible=(i===catI&&bump>1.12));
+  // faces: x_t image fades over the encoder; ε̂ noise face fades in on the last segment
+  faceIn.material.opacity=Math.max(0,0.95-(w+mt)*0.34);
+  faceIn.visible=faceIn.material.opacity>0.03;
+  faceOut.material.opacity=p>8?sm((p-8.3)/0.6)*0.95:0;
+  faceOut.visible=faceOut.material.opacity>0.03;
+  // shape label rides above
+  const si=mt>0.5?Math.min(w+1,9):w;
+  shapeTex.forEach((l,i)=>l.visible=i===si);
+  shapeTex[si].position.set(tensor.position.x,tensor.position.y+dm[1]/2+0.55,tensor.position.z);
+  // visited blocks brighten; stage emphasis multiplies
+  blocks.forEach((b,i)=>{
+    const visited=p>=i-0.02, g=defs[i].grp;
+    let emph=1;
+    if(stage===1)emph=(g==='enc'||g==='io')?1:0.42;
+    else if(stage===2)emph=(g==='mid')?1:0.42;
+    else if(stage===3)emph=(g==='dec'||g==='io')?1:0.42;
+    else if(stage===4)emph=0.35;
+    b.material.opacity=(visited?0.92:0.48)*emph;
+    blockEdges[i].material.opacity=(visited?0.95:0.6)*emph;
+    // glow the block the tensor currently occupies
+    const inside=Math.abs(p-i)<0.22;
+    b.material.emissive=b.material.emissive||new THREE.Color(0);
+    b.material.emissive.setHex(inside?0x2c2450:0x000000);
+  });
+  skipLines.forEach(l=>l.material.opacity=(stage===3)?1:(stage===4?0.15:0.75));
+  risers.forEach(l=>{if(l)l.material.opacity=(stage===4)?0.95:0.42;});
+  tNode.material.color.setHex(stage===4?PURPLE:0x9b83d8);
+  // skip packets ride their highways
+  SKIPS.forEach((s,i)=>{
+    const u=packetState(i,p), pts=skipPts[i];
+    const on=u>=0&&stage!==4;
+    packets[i].visible=on; packetLabs[i].visible=on&&u>0.55&&u<0.995;
+    if(on){const pt=pts[Math.min(60,Math.round(u*60))];
+      packets[i].position.copy(pt);
+      packetLabs[i].position.set(pt.x,pt.y+0.58,pt.z);}
+  });
+  // t-pulse rides the riser into the block being approached
+  const target=w+1;
+  const rf=sm((fr-0.50)/0.42);
+  const showPulse=target>=1&&target<=8&&rf>0&&rf<1&&stage!==4;
+  tPulse.visible=showPulse;
+  if(showPulse)tPulse.position.lerpVectors(tNode.position,riserEnd[target],rf);
+  // attention burst while inside mid
+  attnGrp.visible=Math.abs(p-5)<0.34;
+  // auto-advance the chip story while playing straight through
+  if(playing){
+    const s=p<0.05?0:p<=4.02?1:p<=5.3?2:3;
+    if(s!==stage)setStage(s,true);
+  }
+  // pills + code line follow the tensor
+  const pIdx=Math.max(0,Math.min(9,fr>0.55?w+1:w));
+  setCur(TAGS[pIdx]);
+  if(force||pIdx!==lastPill){lastPill=pIdx;
+    pillEls.forEach((el,i)=>el.classList.toggle('on',i===pIdx));}
+}
+
+// ================= inspect =================
+const GRP_TXT={
+ io:`<b>Same shape in, same shape out.</b> In: the noisy image x_t (<code>1@32×32</code>). Out: <b>ε̂</b> — the network's guess of the exact noise field hiding inside x_t, also <code>1@32×32</code>. The sampler subtracts a calculated fraction of ε̂, 1000 times, to recover an image.`,
+ enc:`<b>Encoder block</b> (2 ResNet blocks + stride-2 downsample). Each level <b>halves the grid and roughly doubles the channels</b>: trading <em>where</em> for <em>what</em>. Deep in the encoder the network can no longer point at pixels, but it knows "this is a boot on a dark background" — the context needed to judge what is noise.`,
+ mid:`<b>Bottleneck with self-attention.</b> At 4×4 there are only <b>16 positions</b>, so letting every position attend to every other costs almost nothing — that's exactly why diffusers puts attention <em>here</em> and not at 32×32 (which would be 1024² pairs). Distant clues agree on the garment before reconstruction starts.`,
+ dec:`<b>Decoder block</b> (upsample ×2 + ResNets). Upsampling alone knows <em>what</em> but has lost <em>where</em> — so the matching encoder features arrive over the <b>teal highway</b> and are <b>concatenated</b> onto the channel dim (watch the orange box swell!), then convs fuse them. Result: per-pixel-precise noise predictions.`};
+function inspect(i){
+  const d=defs[i];
+  setCur(TAGS[i]);
+  $('insTitle').textContent=`${d.name} — ${d.sub}`;
+  $('insBody').innerHTML=`tensor here: <code>${SHAPES[i]}</code> · spatial <b>${d.sp}×${d.sp}</b> · channels <b>${d.ch}</b><br>${GRP_TXT[d.grp]}`;
+}
+
+// ================= pills =================
+const pillsEl=$('pills');
+const PILLNAMES=['input','after down₀','after down₁','after down₂','after down₃','after mid','after up₀','after up₁','after up₂','output ε̂'];
+PILLNAMES.forEach((t,w)=>{
+  const d=document.createElement('div');
+  d.className='pill'+(w===9||w===5?' star':'');
+  d.innerHTML=`<div class="t">${t}</div><div class="s">${SHAPES[w]}</div>`;
+  d.onclick=()=>{stopPlay(); p=w; sync(true); inspect(w);};
+  pillsEl.appendChild(d);
+});
+const pillEls=[...pillsEl.children];
+
+// ================= stories & code =================
+const STORIES=[
+ `<b>① Meet the U.</b> Ten boxes, one path: down the left arm, across the bottom, up the right. Each box <b>is</b> the tensor at that stage — <b>face = spatial grid, thickness = channels</b> — so you can literally see the network trade resolution for meaning and back. The little cones show the flow direction. Press <b>1 block ⏭</b> to push the batch through <code>down₀</code>, or click any block to interrogate it.`,
+ `<b>② The squeeze (encoder).</b> This chip <b>replays</b> the descent: the orange box gets a <b>smaller face and a thicker body</b> at every level — 32×32 → 16×16 → 8×8 → 4×4 while channels climb 1 → 32 → 64 → 128 → 256 (watch its shape label). Two crucial side effects: the input image visibly <em>fades off the box</em> (spatial identity is being spent), and at down₀–down₂ a <b>teal copy pops out onto a highway</b> — the encoder is saving its homework for the decoder. And notice the <b>purple pulse entering every block</b>: t rides along the whole way.`,
+ `<b>③ Bottleneck + attention.</b> At 4×4, the tensor is 16 cells of pure "what". The white burst you see inside <code>mid</code> is <b>self-attention: all 16 positions exchanging messages</b> — cheap here (16×16 pairs), ruinous at 32×32 (1024×1024 pairs). This is where globally distant evidence ("collar up here, hem down there ⇒ it's a shirt") gets reconciled before any pixels are rebuilt.`,
+ `<b>④ Decoder + skip concats.</b> The replay now climbs the right arm. At each <code>up</code> block two things merge: the upsampled tensor (knows <em>what</em>) and the <b>parked teal packet</b> from the same-resolution encoder level (knows exactly <em>where</em>). Watch the packet dive in and the orange box <b>momentarily swell — that's channel concatenation</b> — before convs squeeze it back down. Without skips, ε̂ would be a blurry guess; with them it's pixel-sharp. Finally <code>conv_out</code> collapses 64 channels to 1: the noise map ε̂.`,
+ `<b>⑤ Where t goes.</b> The integer t (drag the <b>t slider</b>!) becomes a <b>sin/cos barcode</b> (same trick as transformer positions — watch it shift), runs through a small MLP, and is <b>added inside every ResNet block</b> — every dashed purple riser you see. That's the whole answer to "how can ONE network handle 1000 noise levels?": at t=950 the embedding tells every block "assume near-total static"; at t=20, "hunt for faint grain". Same weights, different instructions.`
+];
+// ================= full code panel with phase-synced line highlighting =================
+// waypoint w (0..9) → the code line that block corresponds to
+const TAGS=['cin','d0','d1','d2','d3','mid','u0','u1','u2','cout'];
+const CODE_LINES=[
+ {h:'<span class="cm"># ── the exact notebook code ─────────────────────────────────</span>'},
+ {t:'wrap',h:'class <span class="fn">UNet</span>(UNet2DModel):'},
+ {t:'wrap',h:'    def forward(self, x): return super().forward(*x).sample  <span class="cm"># x = (x_t, t)</span>'},
+ {h:' '},
+ {t:'inst',h:'model = <span class="fn">UNet</span>(in_channels=<span class="num">1</span>, out_channels=<span class="num">1</span>,'},
+ {t:'inst',h:'             block_out_channels=(<span class="num">32</span>, <span class="num">64</span>, <span class="num">128</span>, <span class="num">256</span>),'},
+ {t:'inst',h:'             norm_num_groups=<span class="num">8</span>)'},
+ {h:' '},
+ {h:'<span class="cm"># ── what those two calls build — one line per block in the scene ──</span>'},
+ {t:'temb',h:'<span class="cm"># t → sinusoidal embedding → MLP → ADDED inside every block below</span>'},
+ {t:'cin', h:'conv_in  : <span class="num">1</span>→<span class="num">32</span> ch                 <span class="cm"># x_t [bs,1,32,32] enters</span>'},
+ {t:'d0',  h:'down₀    : ResNet×2 (+t)           <span class="cm"># → 32@32×32,  skip saved ↘</span>'},
+ {t:'d1',  h:'down₁    : ↓½ + ResNet×2 (+t)      <span class="cm"># → 64@16×16,  skip saved ↘</span>'},
+ {t:'d2',  h:'down₂    : ↓½ + ResNet×2 (+t)      <span class="cm"># → 128@8×8,   skip saved ↘</span>'},
+ {t:'d3',  h:'down₃    : ↓½ + ResNet×2 (+t)      <span class="cm"># → 256@4×4</span>'},
+ {t:'mid', h:'mid      : ResNet → SelfAttn(4×4) → ResNet   <span class="cm"># 16 cells talk</span>'},
+ {t:'u0',  h:'up₀      : ↑×2 + <span class="fn">cat</span>(skip d₂) + ResNets     <span class="cm"># → 256@8×8</span>'},
+ {t:'u1',  h:'up₁      : ↑×2 + <span class="fn">cat</span>(skip d₁) + ResNets     <span class="cm"># → 128@16×16</span>'},
+ {t:'u2',  h:'up₂      : ↑×2 + <span class="fn">cat</span>(skip d₀) + ResNets     <span class="cm"># → 64@32×32</span>'},
+ {t:'cout',h:'conv_out : <span class="num">64</span>→<span class="num">1</span> ch                <span class="cm"># = ε̂ [bs,1,32,32], same shape as in</span>'},
+];
+// which lines each chip softly highlights as its range
+const STAGE_TAGS=[['wrap','inst'],['cin','d0','d1','d2','d3'],['mid'],['u0','u1','u2','cout'],['wrap','temb']];
+const codeEl=$('code');
+codeEl.innerHTML=CODE_LINES.map(l=>`<span class="ln">${l.h||' '}</span>`).join('');
+const lnEls=[...codeEl.querySelectorAll('.ln')];
+let curTag=null;
+function updateCodeHl(){
+  lnEls.forEach((el,i)=>{const t=CODE_LINES[i].t;
+    el.classList.toggle('rng',!!t&&STAGE_TAGS[stage].includes(t));
+    el.classList.toggle('cur',!!t&&t===curTag);
+  });
+}
+function setCur(tag){if(tag===curTag)return;curTag=tag;updateCodeHl();}
+
+function setStage(s,keep){
+  stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('story').innerHTML=STORIES[s];
+  updateCodeHl();
+  if(s===4&&!keep){
+    $('insTitle').textContent='⑤ The timestep embedding';
+    $('insBody').innerHTML=`Drag the <b>t slider</b> above and watch the barcode next to the purple node change — that pattern <em>is</em> what every block receives. One embedding, broadcast to all 8 blocks, is enough to make a single network behave like 1000 specialised denoisers.`;
+  }
+  if(!keep)sync(true); else {lastStage=s;}
+}
+const CHIP_RANGE=[{a:0,b:0},{a:0,b:4},{a:4.0,b:5.4},{a:5,b:9},null];
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+  stopPlay();
+  const s=+c.dataset.s; setStage(s);
+  const r=CHIP_RANGE[s];
+  if(r){p=r.a;sync(true);if(r.b>r.a)startPlay(r.b);}
+});
+
+// ================= controls =================
+let stopAt=99;
+function stopPlay(){playing=false;$('play').textContent='▶ Play all';}
+function startPlay(target){stopAt=Math.min(target,maxP);playing=true;$('play').textContent='⏸ Pause';}
+$('play').onclick=()=>{if(playing){stopPlay();return;} if(p>=maxP-0.01)p=0; setStage(p<0.05?0:stage,true); startPlay(maxP);};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(maxP,Math.floor(p+1e-4)+1);sync(true);inspect(Math.round(p));};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p-1e-4)-1);sync(true);inspect(Math.round(p));};
+$('reset').onclick=()=>{stopPlay();p=0;setStage(0);sync(true);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('tsl').oninput=e=>{tVal=+e.target.value;$('tv').textContent=tVal;drawTLab();drawEmb();};
+
+// orbit + zoom + click
+let drag=false,moved=0,px0=0,py0=0;
+cv.addEventListener('pointerdown',e=>{drag=true;moved=0;px0=e.clientX;py0=e.clientY;cv.style.cursor='grabbing';});
+addEventListener('pointerup',()=>{drag=false;cv.style.cursor='grab';});
+addEventListener('pointermove',e=>{if(!drag)return;
+  moved+=Math.abs(e.clientX-px0)+Math.abs(e.clientY-py0);
+  group.rotation.y+=(e.clientX-px0)*0.008;
+  group.rotation.x=Math.max(-0.7,Math.min(0.7,group.rotation.x+(e.clientY-py0)*0.006));
+  px0=e.clientX;py0=e.clientY;});
+cv.addEventListener('wheel',e=>{e.preventDefault();camera.position.z=Math.max(10,Math.min(28,camera.position.z+e.deltaY*0.012));},{passive:false});
+const ray=new THREE.Raycaster(),mou=new THREE.Vector2();
+cv.addEventListener('click',e=>{
+  if(moved>6)return;
+  const r=cv.getBoundingClientRect();
+  mou.x=((e.clientX-r.left)/r.width)*2-1; mou.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(mou,camera);
+  const hit=ray.intersectObjects(blocks)[0];
+  if(hit)inspect(hit.object.userData.i);
+});
+
+// ================= loop =================
+function fit(){const w=Math.min(cv.parentElement.clientWidth-4,1032);renderer.setSize(w,450,false);camera.aspect=w/450;camera.updateProjectionMatrix();}
+let lastT=null;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(playing&&lastT!=null){p=Math.min(stopAt,p+(ts-lastT)*0.001*0.75*speed);sync(false);if(p>=stopAt)stopPlay();}
+  lastT=ts;
+  renderer.render(scene,camera);
+}
+fit(); addEventListener('resize',fit);
+setStage(0); sync(true); requestAnimationFrame(loop);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

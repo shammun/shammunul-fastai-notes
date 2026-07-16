@@ -1,0 +1,202 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One Training Step, Dissected — DDPM v3</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:110px;}
+  .zap{background:var(--in);color:#fff;}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .pipe{display:flex;gap:6px;align-items:stretch;justify-content:space-between;flex-wrap:wrap;}
+  .node{flex:1 1 120px;min-width:118px;border:2px solid var(--line);border-radius:10px;padding:6px 6px 4px;text-align:center;cursor:pointer;transition:all .13s;background:#fff;position:relative;}
+  .node:hover{border-color:var(--ac);}
+  .node.on{border-color:var(--ac);background:#f4efff;box-shadow:0 3px 12px rgba(123,92,214,.25);}
+  .node .nm{font-size:11px;font-weight:700;color:var(--soft);}
+  .node.on .nm{color:var(--ac);}
+  .node canvas{width:72px;height:72px;border-radius:6px;background:#0d1526;image-rendering:pixelated;margin:3px auto 1px;display:block;}
+  .node .sub2{font-size:9.5px;font-family:monospace;color:var(--soft);}
+  .arrow{align-self:center;color:#b9c4da;font-size:16px;font-weight:900;}
+  .inforow{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;align-items:stretch;}
+  .leftcol{flex:1 1 380px;min-width:290px;display:flex;flex-direction:column;gap:8px;}
+  .story{border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.4px;line-height:1.55;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  #loss{width:100%;height:120px;border-radius:8px;background:#fdfeff;border:1px solid var(--line);}
+  .lossrow{display:flex;justify-content:space-between;font-size:11px;color:var(--soft);font-family:monospace;margin-top:2px;}
+  .lossrow b{color:var(--ac);}
+  .code{flex:1 1 430px;min-width:300px;background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.3px;line-height:1.62;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.42);border-radius:4px;padding:1px 3px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+</style></head><body>
+<h1>One training step, dissected — five moves, repeated ~2,900,000 times</h1>
+<p class="sub">DDPM training is just <b>supervised regression where the target is the noise itself</b>. Click the chips <em>or the pipeline tiles</em> to walk one optimizer step;
+press <b>⚡ Train 20 steps</b> repeatedly and watch the red error map |ε̂ − ε| fade as the simulated model learns.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① batch arrives</button>
+  <button class="chip" data-s="1">② noisify (in the DataLoader!)</button>
+  <button class="chip" data-s="2">③ UNet predicts ε̂</button>
+  <button class="chip" data-s="3">④ loss = MSE(ε̂, ε)</button>
+  <button class="chip" data-s="4">⑤ backward + step</button>
+</div>
+<div class="selrow">
+  <button class="play" id="play">▶ Play the step</button>
+  <button class="zap" id="zap">⚡ Train 20 steps</button>
+  <button class="reset" id="reset">↺ Reset model</button>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="pipe" id="pipe">
+      <div class="node on" data-s="0"><div class="nm">① x₀ (clean)</div><canvas id="n0" width="28" height="28"></canvas><div class="sub2">[512,1,32,32]</div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-s="1"><div class="nm">② x_t, t</div><canvas id="n1" width="28" height="28"></canvas><div class="sub2">t = <span id="tlab">?</span></div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-s="2"><div class="nm">③ ε̂ (predicted)</div><canvas id="n2" width="28" height="28"></canvas><div class="sub2">UNet((x_t, t))</div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-s="3"><div class="nm">④ |ε̂ − ε|</div><canvas id="n3" width="28" height="28"></canvas><div class="sub2">loss = <span id="llab">?</span></div></div>
+      <div class="arrow">→</div>
+      <div class="node" data-s="4"><div class="nm">⑤ update θ</div><canvas id="n4" width="28" height="28"></canvas><div class="sub2">AdamW + OneCycle</div></div>
+    </div>
+  </div>
+  <div class="inforow">
+    <div class="leftcol">
+      <div class="story" id="story"></div>
+      <div class="card" style="padding:8px 10px">
+        <canvas id="loss"></canvas>
+        <div class="lossrow"><span>simulated training loss</span><span>steps: <b id="stepc">0</b> · loss: <b id="lossv">1.00</b></span></div>
+      </div>
+    </div>
+    <div class="code" id="code"></div>
+  </div>
+  <div class="legend">Tile ④ is a real per-pixel |ε̂ − ε| map for the simulated model — bright red = badly wrong. The true ε is drawn once and kept fixed so you can watch predictions converge onto it.</div>
+</div>
+
+<script>
+const N=1000, abar=[]; let _a=1;
+for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);_a*=(1-b);abar.push(_a);}
+let seed=4242; function rnd(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;}
+function gauss(){let u=0,v=0;while(!u)u=rnd();while(!v)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const S=28, x0=new Float32Array(S*S), eps=new Float32Array(S*S), wrong=new Float32Array(S*S);
+for(let y=0;y<S;y++)for(let x=0;x<S;x++){let v=-0.5;const cx=x-14;
+  if(y>=15&&y<=22&&x>=4&&x<=23&&(y>=18||x>=10))v=0.4;  // ankle boot
+  if(y>=8&&y<15&&x>=10&&x<=16)v=0.35;
+  x0[y*S+x]=v;}
+for(let i=0;i<S*S;i++){eps[i]=gauss();wrong[i]=gauss();}
+let t=650, skill=0, steps=0, losses=[];   // skill 0→1; ε̂ = skill·ε + (1−skill)·wrong
+function loss(){ let s=0; for(let i=0;i<S*S;i++){const d=(skill*eps[i]+(1-skill)*wrong[i])-eps[i]; s+=d*d;} return s/(S*S); }
+
+function draw(id,px,mode){ const c=document.getElementById(id),ctx=c.getContext('2d'),img=ctx.createImageData(S,S);
+  for(let i=0;i<S*S;i++){
+    if(mode==='err'){ const e=Math.min(1,Math.abs(px[i])); img.data[i*4]=40+215*e; img.data[i*4+1]=40*(1-e)+20; img.data[i*4+2]=60*(1-e)+20; }
+    else{ const g=Math.max(0,Math.min(255,(px[i]+1)/2*255)); img.data[i*4]=img.data[i*4+1]=img.data[i*4+2]=g; }
+    img.data[i*4+3]=255; }
+  ctx.putImageData(img,0,0); }
+function drawBars(id,frac){ const c=document.getElementById(id),ctx=c.getContext('2d');
+  ctx.fillStyle='#0d1526';ctx.fillRect(0,0,S,S);
+  for(let k=0;k<6;k++){ const h=4+((Math.sin(k*3+frac*9)+1)/2)*18*(0.4+0.6*frac);
+    ctx.fillStyle=k%2?'#7b5cd6':'#16a3a3'; ctx.fillRect(2+k*4.4,S-2-h,3,h);} }
+
+function renderAll(){
+  const sq=Math.sqrt(abar[t]),nq=Math.sqrt(1-abar[t]);
+  const xt=new Float32Array(S*S),eh=new Float32Array(S*S),er=new Float32Array(S*S);
+  for(let i=0;i<S*S;i++){ xt[i]=sq*x0[i]+nq*eps[i]; eh[i]=skill*eps[i]+(1-skill)*wrong[i]; er[i]=eh[i]-eps[i]; }
+  draw('n0',x0); draw('n1',xt); draw('n2',eh.map?Array.from(eh).map(v=>v*0.55):eh);
+  // n2: scale for display
+  const ehd=new Float32Array(S*S); for(let i=0;i<S*S;i++)ehd[i]=eh[i]*0.55; draw('n2',ehd);
+  draw('n3',er,'err'); drawBars('n4',skill);
+  document.getElementById('tlab').textContent=t;
+  document.getElementById('llab').textContent=loss().toFixed(3);
+  document.getElementById('lossv').textContent=loss().toFixed(3);
+  document.getElementById('stepc').textContent=steps;
+  drawLoss();
+}
+const lc=document.getElementById('loss');
+function drawLoss(){
+  const w=lc.width=lc.clientWidth*devicePixelRatio,h=lc.height=120*devicePixelRatio;
+  const ctx=lc.getContext('2d');ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  const W=lc.clientWidth,H=120;ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='#eef2fa';for(let g=1;g<4;g++){ctx.beginPath();ctx.moveTo(0,H*g/4);ctx.lineTo(W,H*g/4);ctx.stroke();}
+  if(losses.length<2)return;
+  const mx=Math.max(...losses);
+  ctx.strokeStyle='#7b5cd6';ctx.lineWidth=2;ctx.beginPath();
+  losses.forEach((v,i)=>{const x=W*i/(losses.length-1),y=H-6-(H-14)*(v/mx);i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+  ctx.stroke();
+}
+const STORIES=[
+ `<b>① A batch of 512 clean images arrives</b> — but note what the DataLoader hands over in this notebook: not <code>(image, label)</code>. Thanks to <code>collate_ddpm</code>, noisification already happened on the CPU while the GPU was busy with the previous batch. Labels are thrown away — DDPM doesn't need them.`,
+ `<b>② noisify() ran inside the DataLoader.</b> Every image got its own random t and its own ε. The tuple that reaches the training loop is <code>((x_t, t), ε)</code>: inputs first, answer key second — exactly the (X, y) shape ordinary supervised learning expects.`,
+ `<b>③ The UNet makes its guess.</b> <code>model((x_t, t))</code> returns ε̂, a full 32×32 field: "here is the noise I believe is hiding in this image." Early in training tile ③ looks nothing like true ε; press ⚡ a few times and it converges.`,
+ `<b>④ The loss is plain MSE.</b> No adversary (GAN), no likelihood gymnastics (VAE): <code>nn.MSELoss()(ε̂, ε)</code> — average squared per-pixel error against the exact ε the DataLoader stored. Tile ④ shows that error per pixel; the number below it is the mean.`,
+ `<b>⑤ AdamW + OneCycle nudge the weights.</b> Backward computes gradients (with MixedPrecision's GradScaler keeping fp16 safe), AdamW(eps=1e-5) steps, OneCycleLR retunes the LR every batch. Then the loop repeats: 25 epochs × ~230 batches ≈ 5,750 steps for this notebook's model.`];
+const CODES=[
+`<span class="cm"># DataLoaders built with the DDPM collate:</span>
+def dl_ddpm(ds): return DataLoader(ds, batch_size=bs,
+        <span class="hl">collate_fn=collate_ddpm</span>, num_workers=<span class="num">4</span>)
+dls = DataLoaders(dl_ddpm(tds['train']), dl_ddpm(tds['test']))`,
+`def collate_ddpm(b):
+    images = default_collate(b)[xl]   <span class="cm"># labels dropped</span>
+<span class="hl">    return noisify(images, alphabar)</span>  <span class="cm"># ((x_t, t), ε)</span>`,
+`class UNet(UNet2DModel):
+    def forward(self, x): return super().forward(*x).sample
+<span class="cm"># in the training loop:</span>
+<span class="hl">eps_hat = model((x_t, t))</span>`,
+`learn = Learner(model, dls, <span class="hl">nn.MSELoss()</span>, lr=lr,
+                cbs=cbs, opt_func=opt_func)
+<span class="cm"># loss = mean((ε̂ − ε)²) over every pixel of every image</span>`,
+`opt_func = partial(optim.AdamW, eps=<span class="num">1e-5</span>)
+sched = partial(lr_scheduler.OneCycleLR, max_lr=lr, total_steps=tmax)
+cbs = [DeviceCB(), <span class="hl">MixedPrecision()</span>, ProgressCB(plot=True),
+       MetricsCB(), <span class="hl">BatchSchedCB(sched)</span>]
+learn.fit(<span class="num">25</span>)`];
+let stage=0,playing=false,speed=1;
+const chips=document.querySelectorAll('.chip'),nodes=document.querySelectorAll('.node');
+function setStage(s){stage=s;
+  chips.forEach((c,i)=>c.classList.toggle('on',i===s));
+  nodes.forEach(n=>n.classList.toggle('on',+n.dataset.s===s));
+  document.getElementById('story').innerHTML=STORIES[s];
+  document.getElementById('code').innerHTML=CODES[s];}
+chips.forEach(c=>c.onclick=()=>{stopPlay();setStage(+c.dataset.s);});
+nodes.forEach(n=>n.onclick=()=>{stopPlay();setStage(+n.dataset.s);});
+const playBtn=document.getElementById('play');
+function stopPlay(){playing=false;playBtn.textContent='▶ Play the step';}
+playBtn.onclick=()=>{
+  if(playing){stopPlay();return;}
+  playing=true;playBtn.textContent='⏸ Stop';let s=0;
+  (function nx(){if(!playing)return;setStage(s);
+    setTimeout(()=>{s++;if(s<5&&playing)nx();else{ // finish with a weight update
+      doTrain(1); stopPlay();}},1100/speed);})();
+};
+function doTrain(n){for(let k=0;k<n;k++){steps++;skill=Math.min(0.995,skill+(1-skill)*0.055);losses.push(loss());}
+  t=Math.floor(rnd()*N); renderAll();}
+document.getElementById('zap').onclick=()=>doTrain(20);
+document.getElementById('reset').onclick=()=>{skill=0;steps=0;losses=[loss()];t=650;renderAll();};
+document.getElementById('speed').oninput=e=>{speed=+e.target.value;document.getElementById('spv').textContent=speed+'×';};
+losses=[loss()]; renderAll(); setStage(0);
+addEventListener('resize',renderAll);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

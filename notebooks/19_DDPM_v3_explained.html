@@ -7652,11 +7652,11 @@ auto-fitted to their content height. Run the next cell once, then run any 🎮 c
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm_big_picture.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm3_big_picture.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># A map of the whole notebook -- come back to it whenever you feel lost.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm_big_picture.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"860px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm3_big_picture.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"860px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -7664,7 +7664,112 @@ auto-fitted to their content height. Run the next cell once, then run any 🎮 c
 </div>
 </div>
 <div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/ddpm_big_picture.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:860px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/ddpm3_big_picture.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:860px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+<h2 id="%F0%9F%94%AD-How-we-got-here:-notebook-15-%E2%86%92-17-%E2%86%92-19">🔭 How we got here: notebook 15 &rarr; 17 &rarr; 19<a class="anchor-link" href="#%F0%9F%94%AD-How-we-got-here:-notebook-15-%E2%86%92-17-%E2%86%92-19">¶</a></h2><p>You've already built DDPM twice. This notebook is the third pass, and it's worth being explicit about what each pass was <em>for</em>:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>NB 15</strong> &mdash; "make it run"</th>
+<th><strong>NB 17</strong> &mdash; "make it fast"</th>
+<th><strong>NB 19 (this one)</strong> &mdash; "make it good"</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Schedule</td>
+<td><code>linspace(1e-4, 0.02)</code> hidden in a callback</td>
+<td>module-level tensors</td>
+<td><strong>factories</strong> (<code>linear_sched</code>/<code>cos_sched</code>), compared, then <strong>tuned to betamax=0.01</strong></td>
+</tr>
+<tr>
+<td>noisify</td>
+<td>in <code>DDPMCB.before_batch</code>, on GPU, mid-step</td>
+<td>standalone function</td>
+<td>standalone, run <strong>in DataLoader workers</strong> via <code>collate_ddpm</code></td>
+</tr>
+<tr>
+<td>Model</td>
+<td>raw <code>UNet2DModel</code> + callback unwrapping <code>.sample</code></td>
+<td><code>UNet</code> wrapper + <code>init_ddpm</code> zero-init</td>
+<td>same, <strong>scaled up</strong> to (32,64,128,256)</td>
+</tr>
+<tr>
+<td>Training</td>
+<td>lr 4e-3, 5 epochs, Adam, fp32, bs 128</td>
+<td>lr 1e-2, 8 epochs, <code>eps=1e-5</code>, <strong>MixedPrecision</strong>, bs 512</td>
+<td>lr 1e-2, <strong>25 epochs, AdamW</strong>, fp16, bs 512</td>
+</tr>
+<tr>
+<td>Sampling</td>
+<td>callback method</td>
+<td>standalone <code>sample()</code> (+ x̂₀ clamp)</td>
+<td>standalone <strong>+ <code>sample_skip</code> + <code>sample2</code></strong> (3&times; faster)</td>
+</tr>
+<tr>
+<td>Evaluation</td>
+<td>eyeballing</td>
+<td>eyeballing</td>
+<td><strong>FID</strong> via <code>ImageEval</code> &mdash; quality becomes a number</td>
+</tr>
+</tbody>
+</table>
+<p>Throughout the notebook, <strong>🔍 15 &rarr; 17 &rarr; 19</strong> boxes appear after each shared building block with the specific comparison; the lab below holds the actual side-by-side code.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-Evolution-Lab-%E2%80%94-three-notebooks,-side-by-side">🎮 Interactive: the Evolution Lab &mdash; three notebooks, side by side<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-Evolution-Lab-%E2%80%94-three-notebooks,-side-by-side">¶</a></h3><p>Every shared building block of the three DDPM notebooks, with the real code in three columns and the <em>why</em> under each:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Click through the topic chips: <strong>① schedule &rarr; ② noisify &rarr; ③ model &amp; init &rarr; ④ data loading &rarr; ⑤ training config &rarr; ⑥ sampling &rarr; ⑦ evaluation &amp; speed</strong>.</li>
+<li>In each view, highlights mark the story: <strong>orange = the pain point in NB 15</strong>, <strong>teal = NB 17's fix</strong>, <strong>purple = what NB 19 adds</strong>.</li>
+<li>Read the dashed <strong>verdict box</strong> at the bottom of each topic &mdash; it names the precise gap notebook 19 closes.</li>
+<li>Come back after finishing the notebook: chip ⑦ is the punchline (measure &rarr; change &rarr; re-measure).</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm3_evolution_lab.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Orange = NB15 pain point, teal = NB17 fix, purple = NB19 addition.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm3_evolution_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"880px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddpm3_evolution_lab.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:880px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9038,18 +9143,20 @@ $$<p>They are two sides of the same coin. The notebook (and the DDPM literature)
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/noise_schedule_lab.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm3_schedule_lab.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># Chip ④ (Δᾱ) shows WHY the cosine schedule was proposed.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/noise_schedule_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm3_schedule_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
 </div><div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/noise_schedule_lab.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/ddpm3_schedule_lab.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9233,6 +9340,22 @@ $$<p>They are two sides of the same coin. The notebook (and the DDPM literature)
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-the-schedule-stops-being-furniture">🔍 15 &rarr; 17 &rarr; 19: the schedule stops being furniture<a class="anchor-link" href="#%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-the-schedule-stops-being-furniture">¶</a></h3><ul>
+<li><strong>NB 15:</strong> β, α, ᾱ, σ are computed <strong>inside <code>DDPMCB.__init__</code></strong> with <code>betamax=0.02</code> hard-coded at the call site. The schedule is furniture &mdash; present, unquestioned.</li>
+<li><strong>NB 17:</strong> promotes them to module-level tensors. Now they're <em>visible</em> (plottable, reusable by <code>sample</code>), but there is still exactly one schedule.</li>
+<li><strong>NB 19:</strong> wraps them in <strong>factories</strong> (<code>linear_sched</code>, <code>cos_sched</code>) returning a <code>SimpleNamespace</code> &mdash; schedules become swappable objects. And that immediately paid off: the Δᾱ comparison above exposed that linear-<code>0.02</code> burns nearly all signal long before t=999 (wasted steps), which is why this notebook trains with <strong><code>betamax=0.01</code></strong> &mdash; a genuine improvement over both earlier notebooks at zero runtime cost.</li>
+</ul>
+<p>So when you see <code>sc = linear_sched(betamax=0.01)</code> below, read it as: <em>the first time in this course the noise schedule was treated as a hyperparameter and tuned with evidence.</em></p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="The-Noisify-Function">The Noisify Function<a class="anchor-link" href="#The-Noisify-Function">¶</a></h2><p>This function implements the <strong>forward diffusion process</strong> - adding noise to clean images.</p>
 </div>
@@ -9324,6 +9447,23 @@ At t=999: ᾱ &asymp; 0   &rarr; x_t &asymp; 0*x_0 + 1*ε = ε          (pure no
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-same-formula,-three-homes">🔍 15 &rarr; 17 &rarr; 19: same formula, three homes<a class="anchor-link" href="#%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-same-formula,-three-homes">¶</a></h3><p>The math <code>x_t = &radic;ᾱ_t·x₀ + &radic;(1−ᾱ_t)·ε</code> is byte-for-byte the same idea in all three notebooks. What evolves is <em>where it runs</em>:</p>
+<ul>
+<li><strong>NB 15:</strong> inside <code>DDPMCB.before_batch</code> &mdash; rewrites <code>learn.batch</code> on the <strong>GPU, during the training step</strong>. Simple, but untestable in isolation and the GPU idles while it happens.</li>
+<li><strong>NB 17:</strong> extracted into the standalone <code>noisify(x0, ᾱ)</code> you see above &mdash; now you can call it on 25 images and plot the "titled noisy grid", unit-test it, and reuse it at sampling time.</li>
+<li><strong>NB 19:</strong> keeps 17's function <em>and</em> its best placement &mdash; inside <code>collate_ddpm</code> (next section), so CPU workers noisify in parallel with GPU training.</li>
+</ul>
+<p>Beginner takeaway: this is the fast.ai refactoring pattern in miniature &mdash; <strong>first make it work (callback), then make it a function (testable), then move it off the critical path (collate)</strong>.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="%F0%9F%8E%AE-Interactive:-the-noisify()-machine-%E2%80%94-one-batch,-four-moves">🎮 Interactive: the <code>noisify()</code> machine &mdash; one batch, four moves<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-noisify()-machine-%E2%80%94-one-batch,-four-moves">¶</a></h3><p>The formula you just read, acted out on a live mini-batch of six images:</p>
 <p><strong>What to try</strong></p>
 <ul>
@@ -9343,11 +9483,11 @@ At t=999: ᾱ &asymp; 0   &rarr; x_t &asymp; 0*x_0 + 1*ε = ε          (pure no
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/noisify_forward.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm3_noisify_machine.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># Watch how (&radic;ᾱ)² + (&radic;(1−ᾱ))² = 1 keeps total variance constant.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/noisify_forward.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm3_noisify_machine.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -9355,7 +9495,9 @@ At t=999: ᾱ &asymp; 0   &rarr; x_t &asymp; 0*x_0 + 1*ε = ε          (pure no
 </div>
 </div>
 <div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/noisify_forward.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/ddpm3_noisify_machine.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9475,11 +9617,11 @@ At t=999: ᾱ &asymp; 0   &rarr; x_t &asymp; 0*x_0 + 1*ε = ε          (pure no
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/diffusion_3d_cloud.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm3_dataset_diffusion_3d.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># NOTE: needs internet access (loads three.js from cdnjs).</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/diffusion_3d_cloud.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm3_dataset_diffusion_3d.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"760px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -9487,7 +9629,9 @@ At t=999: ᾱ &asymp; 0   &rarr; x_t &asymp; 0*x_0 + 1*ε = ε          (pure no
 </div>
 </div>
 <div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/diffusion_3d_cloud.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/ddpm3_dataset_diffusion_3d.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:760px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9551,12 +9695,14 @@ At t=999: ᾱ &asymp; 0   &rarr; x_t &asymp; 0*x_0 + 1*ε = ε          (pure no
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%F0%9F%8E%AE-Interactive:-poke-the-UNet">🎮 Interactive: poke the UNet<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-poke-the-UNet">¶</a></h3><p>The ASCII "U" above becomes clickable here &mdash; this is the exact architecture we instantiate below (<code>block_out_channels=(32, 64, 128, 256)</code> on 32&times;32 inputs):</p>
+<h3 id="%F0%9F%8E%AE-Interactive-(3D):-ride-the-U">🎮 Interactive (3D): ride the U<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-(3D):-ride-the-U">¶</a></h3><p>The ASCII "U" above, rebuilt as an actual U you can fly around &mdash; this is the exact architecture instantiated below (<code>block_out_channels=(32, 64, 128, 256)</code> on 32&times;32 inputs). The <strong>orange box is the batch itself</strong>: big face = big spatial grid, thick body = many channels.</p>
 <p><strong>What to try</strong></p>
 <ul>
-<li><strong>Click any block</strong> to see its resolution, channel count, and <em>why it exists</em> (encoder = "what is in this picture?", decoder = "where exactly is the noise?").</li>
-<li>Walk the chips: <strong>① encoder &rarr; ② bottleneck (with self-attention at 4&times;4) &rarr; ③ decoder + skip connections &rarr; ④ time embedding</strong> &mdash; chip ④ lights up the purple dashed lines showing how t is injected into <em>every</em> block, which is how one network handles all 1000 noise levels.</li>
-<li>Press <strong>▶ Send a tensor through</strong> to watch data flow down and up, lighting each skip connection as its saved activation is consumed.</li>
+<li>Press <strong>▶ Play all</strong> (or step with <strong>⏮ / ⏭</strong>) and watch the batch ride the U: its shape label morphs at every block &mdash; <code>[bs,1,32,32] &rarr; &hellip; &rarr; [bs,256,4,4] &rarr; &hellip; &rarr; [bs,1,32,32]</code> &mdash; while the input image visibly <em>fades off its face</em> as spatial identity is spent.</li>
+<li>Watch the <strong>teal skip packets</strong>: at <code>down₀&ndash;down₂</code> a copy pops onto a dashed highway and parks; when the batch reaches the matching <code>up</code> block the packet <strong>dives in and the box momentarily swells &mdash; that's channel concatenation</strong>, the reason UNet noise predictions are pixel-precise.</li>
+<li>The code panel shows the <strong>full model</strong> at all times &mdash; the exact notebook code plus one line per block it builds &mdash; and the <strong>line for the block the batch currently occupies stays lit</strong> as the animation runs (or when you step, click a block, or click a pill). Chips softly highlight their whole code region and ②&ndash;④ <em>replay</em> their leg of the journey.</li>
+<li>On chip ⑤, drag the <strong>t slider</strong> and watch the sin/cos barcode by the purple node change &mdash; that pattern is broadcast into <em>every</em> block (the purple pulses you saw riding the risers), which is how one network denoises at all 1000 noise levels.</li>
+<li><strong>Click any block</strong> (or any pill underneath) to inspect its tensor shape and its job. Drag to rotate, scroll to zoom.</li>
 </ul>
 </div>
 </div>
@@ -9570,18 +9716,21 @@ At t=999: ᾱ &asymp; 0   &rarr; x_t &asymp; 0*x_0 + 1*ε = ε          (pure no
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/unet_denoiser.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm3_unet_3d.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
-<span class="c1"># Click blocks; teal dashes = skips, purple dashes = timestep injection.</span>
+<span class="c1"># The orange box IS the batch: watch it reshape, and watch skip packets get</span>
+<span class="c1"># saved on the way down and concatenated (the box swells!) on the way up.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/unet_denoiser.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm3_unet_3d.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
 </div><div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/unet_denoiser.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/ddpm3_unet_3d.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9704,6 +9853,51 @@ At t=999: ᾱ &asymp; 0   &rarr; x_t &asymp; 0*x_0 + 1*ε = ε          (pure no
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-the-model-grows-a-wrapper,-an-init,-and-then-muscles">🔍 15 &rarr; 17 &rarr; 19: the model grows a wrapper, an init, and then muscles<a class="anchor-link" href="#%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-the-model-grows-a-wrapper,-an-init,-and-then-muscles">¶</a></h3><table>
+<thead>
+<tr>
+<th></th>
+<th>NB 15</th>
+<th>NB 17</th>
+<th>NB 19 (here)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model call</td>
+<td>raw <code>UNet2DModel</code>; a callback's <code>after_predict</code> unpacks <code>learn.preds.sample</code></td>
+<td><strong><code>UNet</code> wrapper</strong>: <code>forward(self, x): return super().forward(*x).sample</code></td>
+<td>same wrapper</td>
+</tr>
+<tr>
+<td>Init</td>
+<td>default HF init</td>
+<td><strong><code>init_ddpm</code></strong>: zero the 2nd conv of every ResBlock, orthogonal downsamplers, zero <code>conv_out</code></td>
+<td>same init</td>
+</tr>
+<tr>
+<td>Width</td>
+<td>(32, 64, 128, 128)</td>
+<td>(16, 32, 64, 128)</td>
+<td><strong>(32, 64, 128, 256)</strong></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>The wrapper (17)</strong> turns diffusers' object-returning model into a plain <em>tensors-in / tensor-out</em> module &mdash; so the generic <code>TrainLearner</code> works with <strong>no diffusion-specific callback at all</strong>. Notebook 15 needed <code>DDPMCB</code> partly just to unwrap <code>.sample</code> every step.</li>
+<li><strong><code>init_ddpm</code> (17)</strong> makes each residual block start as the identity (<code>x + f(x)</code> with <code>f &asymp; 0</code>) and the whole network output &asymp; 0 (matching ε's mean). Early training is then well-behaved enough for the aggressive <code>lr=1e-2</code> below.</li>
+<li><strong>19's change is capacity:</strong> doubling the deepest widths to 256 channels. It's the one knob 15/17 couldn't responsibly turn &mdash; without FID (later in this notebook), "bigger" is just "slower with vibes".</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h3 id="Custom-Collate-Function">Custom Collate Function<a class="anchor-link" href="#Custom-Collate-Function">¶</a></h3><p>A collate function determines how individual data samples are combined into batches.</p>
 </div>
@@ -9799,6 +9993,22 @@ To classifier                  To diffusion model
 <span class="p">)</span>
 </pre></div>
 </div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-who-makes-x_t,-and-when?">🔍 15 &rarr; 17 &rarr; 19: who makes x_t, and when?<a class="anchor-link" href="#%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-who-makes-x_t,-and-when?">¶</a></h3><ul>
+<li><strong>NB 15:</strong> the GPU does, <em>inside every training step</em> (<code>DDPMCB.before_batch</code>). The model waits while its own input is being noised &mdash; noisify sits <strong>on the critical path</strong>.</li>
+<li><strong>NB 17:</strong> moved into <code>collate_ddpm</code>, so <strong>DataLoader workers</strong> noisify batch <em>N+1</em> on CPU while the GPU trains on batch <em>N</em>. Noisify becomes effectively free, and bs jumps 128 &rarr; 512.</li>
+<li><strong>NB 19:</strong> adopts 17's design unchanged &mdash; it was already right. The rule of thumb this teaches: <em>anything that needs neither gradients nor the model should leave the GPU loop</em>; a collate function is the natural home for per-sample data prep.</li>
+</ul>
+<p>One subtlety worth noticing: with noisify in the collate function, the random <code>t</code> and <code>ε</code> are drawn by worker processes &mdash; so every epoch resamples fresh noise for every image (good &mdash; no memorization of specific noisy versions), and the main process's <code>set_seed</code> doesn't fully pin them.</p>
 </div>
 </div>
 </div>
@@ -9948,6 +10158,70 @@ To classifier                  To diffusion model
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-the-three-dials-that-moved">🔍 15 &rarr; 17 &rarr; 19: the three dials that moved<a class="anchor-link" href="#%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-the-three-dials-that-moved">¶</a></h3><table>
+<thead>
+<tr>
+<th></th>
+<th>NB 15</th>
+<th>NB 17</th>
+<th>NB 19 (here)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LR</td>
+<td>4e-3</td>
+<td>up to <strong>1e-2</strong></td>
+<td>1e-2</td>
+</tr>
+<tr>
+<td>Epochs</td>
+<td>5</td>
+<td>8</td>
+<td><strong>25</strong></td>
+</tr>
+<tr>
+<td>Optimizer</td>
+<td><code>Adam</code> (default <code>eps=1e-8</code>)</td>
+<td><code>Adam</code>, <strong><code>eps=1e-5</code></strong></td>
+<td><strong><code>AdamW</code></strong>, <code>eps=1e-5</code></td>
+</tr>
+<tr>
+<td>Precision</td>
+<td>fp32</td>
+<td><strong><code>MixedPrecision()</code></strong> (fp16)</td>
+<td>fp16</td>
+</tr>
+<tr>
+<td>Batch size</td>
+<td>128</td>
+<td><strong>512</strong></td>
+<td>512</td>
+</tr>
+<tr>
+<td>Model width</td>
+<td>(32,64,128,128)</td>
+<td>(16,32,64,128) &mdash; small on purpose, speed demo</td>
+<td><strong>(32,64,128,256)</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Read the table as cause and effect, left to right:</p>
+<ul>
+<li><strong><code>init_ddpm</code> + <code>eps=1e-5</code> unlock the higher LR.</strong> With fp16, the Adam denominator &radic;v̂ can be &asymp; 0 early in training; the default <code>eps=1e-8</code> then allows enormous steps. <code>1e-5</code> caps them. That safety net (from 17) is why 1e-2 doesn't explode.</li>
+<li><strong>MixedPrecision + worker-side noisify unlock bs=512 and cheap epochs</strong> &mdash; which is what makes <em>25</em> epochs affordable at all.</li>
+<li><strong>19's own additions:</strong> <code>AdamW</code> (weight decay applied directly to weights instead of leaking through Adam's adaptive statistics &mdash; the standard modern choice) and the <strong>bigger model</strong>, justified because FID (later) can prove the capacity is used. 15 couldn't train this config; 17 could but had nothing to measure it with; 19 does both.</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="%F0%9F%8E%AE-Interactive:-one-training-step,-dissected">🎮 Interactive: one training step, dissected<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-one-training-step,-dissected">¶</a></h3><p>Before you hit <code>fit</code>, make sure the five moves of every single optimizer step are crystal clear &mdash; DDPM training is just <strong>supervised regression where the target is the noise itself</strong>:</p>
 <p><strong>What to try</strong></p>
 <ul>
@@ -9967,18 +10241,20 @@ To classifier                  To diffusion model
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm_training_step_v3.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm3_training_step.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># The ⚡ button simulates optimizer steps so you can watch the loss curve fall.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm_training_step_v3.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"840px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm3_training_step.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"840px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
 </div><div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/ddpm_training_step_v3.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:840px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/ddpm3_training_step.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:840px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -10428,6 +10704,17 @@ Phase 2: Anneal  &mdash; LR decays DOWN from max_lr to ~0
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-same-torch.save,-different-meaning">🔍 15 &rarr; 17 &rarr; 19: same <code>torch.save</code>, different meaning<a class="anchor-link" href="#%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-same-torch.save,-different-meaning">¶</a></h3><p>Mechanically identical in all three notebooks &mdash; but <em>what</em> gets saved changes: 15 saves a 5-epoch proof of concept, 17 an 8-epoch speed demo, and 19 a <strong>25-epoch model worth keeping</strong> (<code>fashion_ddpm3_25.pkl</code>), because for the first time there's a metric (FID, below) certifying it's actually good. Saving the <em>whole model</em> (not just <code>state_dict</code>) is the course's convenience choice &mdash; fine here, but for production prefer <code>state_dict</code> to avoid pickle/version coupling.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="Sampling-(Image-Generation)">Sampling (Image Generation)<a class="anchor-link" href="#Sampling-(Image-Generation)">¶</a></h2><p>Now comes the exciting part - generating new images! The sampling process runs the diffusion in reverse: starting from pure noise and gradually removing it.</p>
 </div>
@@ -10567,6 +10854,47 @@ At every step, the noise prediction ε̂ implies a guess of the clean image: rea
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-the-same-update-rule,-better-packaged">🔍 15 &rarr; 17 &rarr; 19: the same update rule, better packaged<a class="anchor-link" href="#%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-the-same-update-rule,-better-packaged">¶</a></h3><table>
+<thead>
+<tr>
+<th></th>
+<th>NB 15</th>
+<th>NB 17</th>
+<th>NB 19 (here)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Where <code>sample</code> lives</td>
+<td>a <strong>method on <code>DDPMCB</code></strong> &mdash; sampling requires the training callback object</td>
+<td>standalone <code>@torch.no_grad()</code> function taking <code>(model, sz, alpha, alphabar, sigma, n_steps)</code> explicitly</td>
+<td>standalone, closing over the chosen schedule <code>sc</code></td>
+</tr>
+<tr>
+<td>x̂₀ safety</td>
+<td>&mdash;</td>
+<td><strong><code>.clamp(-1,1)</code></strong> on x̂₀ (early predictions can be wild)</td>
+<td>no clamp &mdash; the better-trained model keeps x̂₀ in range on its own</td>
+</tr>
+<tr>
+<td>Extensibility</td>
+<td>poor &mdash; algebra buried in callback</td>
+<td>good</td>
+<td>proven: <code>sample_skip</code> / <code>sample2</code> below are 10-line edits</td>
+</tr>
+</tbody>
+</table>
+<p>The algebra &mdash; predict ε̂ &rarr; estimate x̂₀ &rarr; mix the t−1 mean &rarr; add σ·z &mdash; is <em>identical</em> in all three notebooks. What 17 fixed is <strong>coupling</strong>: in 15 you couldn't generate images without reconstructing the training-time callback. 19 inherits the clean version, which is exactly what makes the skip-sampling experiments at the end of this notebook nearly free to write.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <h3 id="%F0%9F%8E%AE-Interactive:-the-Reverse-Sampling-Lab-%E2%80%94-the-actual-update-rule,-running-live">🎮 Interactive: the Reverse Sampling Lab &mdash; the <em>actual</em> update rule, running live<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-Reverse-Sampling-Lab-%E2%80%94-the-actual-update-rule,-running-live">¶</a></h3><p>This page executes the <strong>same algebra as <code>sample()</code></strong> on a toy image (a fixed target plays the role of a perfectly-trained model; the <em>model error</em> slider makes it realistically imperfect):</p>
 <p><strong>What to try</strong></p>
 <ul>
@@ -10586,18 +10914,20 @@ At every step, the noise prediction ε̂ implies a guess of the clean image: rea
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/reverse_sampling_lab.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm3_sampling_lab.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
 <span class="c1"># NOTE: this really computes the DDPM update per pixel -- it is not a canned animation.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/reverse_sampling_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm3_sampling_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
 </div><div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/reverse_sampling_lab.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/ddpm3_sampling_lab.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -10802,7 +11132,49 @@ Image -&gt; [Conv layers] -&gt; [Features]
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-FID-Lab-%E2%80%94-watch-the-metric-think">🎮 Interactive: the FID Lab &mdash; watch the metric think<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-FID-Lab-%E2%80%94-watch-the-metric-think">¶</a></h3><p>FID never compares pixels. It compares <strong>two Gaussians fitted to feature clouds</strong>. This lab makes the features 2-D so the whole computation is visible:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Walk the chips: <strong>① images &rarr; feature clouds &rarr; ② fit μ and Σ to each &rarr; ③ the Fréchet formula &rarr; ④ interpreting the score</strong> &mdash; each highlights the matching notebook code (<code>del(cmodel[8])</code>, <code>ImageEval(...)</code>, <code>ie.fid(s)</code>).</li>
+<li><strong>Drag the knobs</strong>: <em>shift μ</em> moves the orange (generated) cloud away from the teal (real) one and grows the mean term; <em>spread</em> and <em>rotate Σ</em> deform its shape and grow the covariance term &mdash; watch the two terms of FID = ‖μ₁−μ₂‖² + Tr(Σ₁+Σ₂−2(Σ₁Σ₂)^½) update live.</li>
+<li>Press <strong>▶ Train!</strong> to anneal the generated cloud onto the real one and watch FID fall toward 0 &mdash; exactly what your 25 epochs of training did in the classifier's feature space.</li>
+<li>Chip ④ explains why <code>ie.fid(xb*2)</code> on <em>real</em> images still isn't 0.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm3_fid_lab.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># The 2-term readout shows WHERE a bad FID comes from: wrong mean, or wrong spread.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm3_fid_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"640px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddpm3_fid_lab.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:640px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10908,6 +11280,21 @@ Image -&gt; [Conv layers] -&gt; [Features]
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-from-%22looks-OK-to-me%22-to-a-number">🔍 15 &rarr; 17 &rarr; 19: from "looks OK to me" to a number<a class="anchor-link" href="#%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-from-%22looks-OK-to-me%22-to-a-number">¶</a></h3><ul>
+<li><strong>NB 15 &amp; 17:</strong> evaluation = <code>show_images(...)</code> + eyeballing. Fine for "does it work at all", but you cannot compare two checkpoints, detect low diversity (a model that generates the same great-looking sneaker forever <em>looks</em> fine in a 4&times;4 grid), or justify a bigger model.</li>
+<li><strong>NB 19:</strong> loads the classifier trained back in the data-augmentation notebook, chops off its head (<code>del(cmodel[8]); del(cmodel[7])</code>), and uses <code>miniai.fid.ImageEval</code> to compare <strong>feature distributions</strong> &mdash; mean <em>and</em> covariance &mdash; of real vs generated images.</li>
+</ul>
+<p>Why this matters for everything above: the bigger UNet (32,64,128,<strong>256</strong>), the 25 epochs, and the <code>betamax=0.01</code> schedule choice are all <em>investments</em>. FID is the instrument that shows they paid off (FID &asymp; 8) &mdash; and that lets the skip-sampling section below trade quality for speed <strong>with a price tag</strong> instead of a shrug.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="Skip-Sampling:-Making-Generation-Faster">Skip Sampling: Making Generation Faster<a class="anchor-link" href="#Skip-Sampling:-Making-Generation-Faster">¶</a></h2><p>Running 1000 steps for each image is slow. Can we skip some steps?</p>
 <p>The key insight: Not all steps are equally important. Early steps (high t) involve lots of noise, so the model's predictions are less accurate. Later steps (low t) are more precise. We can skip some steps, especially early ones, without too much quality loss.</p>
@@ -10931,7 +11318,7 @@ Image -&gt; [Conv layers] -&gt; [Features]
 <span class="sd">    - Every 3rd step (t % 3 == 0)</span>
 <span class="sd">    - Always for the last 50 steps (t &lt; 50)</span>
 <span class="sd">    </span>
-<span class="sd">    This reduces the number of model calls from 1000 to ~383.</span>
+<span class="sd">    This reduces the number of model calls from 1000 to 367.</span>
 <span class="sd">    </span>
 <span class="sd">    Args:</span>
 <span class="sd">        model: Trained DDPM model</span>
@@ -10985,7 +11372,7 @@ Image -&gt; [Conv layers] -&gt; [Features]
 Call model:  ✓    ✗    ✗    ✓    ✗   ...  ✓    ✓    ✓    ✓  ...  ✓   ✓   ✓
             every 3rd              always for t &lt; 50
 
-Model calls: ~333 (every 3rd for t&ge;50) + 50 (all for t&lt;50) = ~383
+Model calls: 334 (every 3rd: t=0,3,&hellip;,999) + 50 (all t&lt;50) − 17 (counted twice) = **367**
 vs original: 1000
 
 Speed improvement: ~2.6x faster!
@@ -11000,13 +11387,13 @@ Speed improvement: ~2.6x faster!
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h3 id="%F0%9F%8E%AE-Interactive:-skip-sampling-strategies-%E2%80%94-where-can-we-afford-NOT-to-call-the-model?">🎮 Interactive: skip-sampling strategies &mdash; where can we afford NOT to call the model?<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-skip-sampling-strategies-%E2%80%94-where-can-we-afford-NOT-to-call-the-model?">¶</a></h3><p>The expensive part of sampling is the <strong>UNet forward pass</strong>, not the update algebra. This lab draws the full 1000-step timeline for three strategies &mdash; a <strong>purple tick means the model is actually called</strong> at that t:</p>
+<h3 id="%F0%9F%8E%AE-Interactive:-the-skip-sampling-race-%E2%80%94-same-noise,-fewer-calls,-watch-what-it-costs">🎮 Interactive: the skip-sampling race &mdash; same noise, fewer calls, watch what it costs<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-skip-sampling-race-%E2%80%94-same-noise,-fewer-calls,-watch-what-it-costs">¶</a></h3><p>The expensive part of sampling is the <strong>UNet forward pass</strong>; the update algebra is free. This lab races all three strategies <strong>on the same starting noise with the same randomness</strong> &mdash; a purple tick means the model is actually called at that t (the axis runs the way the loop does: t = 999 left &rarr; 0 right).</p>
 <p><strong>What to try</strong></p>
 <ul>
-<li>Click the strategy chips: <strong>① full &rarr; ② every k-th + last N &rarr; ③ the logarithmic <code>(t+101) % ((t+101)//100)</code> rule</strong> &mdash; each one highlights the matching line of code and updates the model-call count.</li>
-<li><strong>Hover any strip</strong> to see, for a specific t, whether the model is called or the previous ε̂ is reused.</li>
-<li>Drag <strong>k</strong> and <strong>last N</strong> for strategy ②, and the <strong>density</strong> knob for strategy ③ (that's the "100" in the formula).</li>
-<li>Press <strong>🔍 zoom</strong> to inspect t ∈ [0, 100] &mdash; every strategy keeps calls dense there, because that's where fine detail is decided.</li>
+<li>Press <strong>▶ Race all three</strong>: each strip's thumbnail is that strategy's live x_t, its odometer counts real calls, and its ε̂ meter flips between <b>fresh ✓</b> and <b>stale &times;n</b>. The <strong>red trace is the honest price of coasting</strong>: how wrong the ε̂ actually in use is, right now &mdash; flat at the model's error floor for full sampling, a sawtooth for the skippers (rising while coasting, snapping back on every call, with taller teeth as t &rarr; 0).</li>
+<li>Read the <strong>bands</strong>: strip ② shades the teal "always call (t &lt; N)" endgame; strip ③ labels the <strong>÷10 &hellip; ÷1 divisor brackets</strong> that the cryptic <code>(t+101) % ((t+101)//100)</code> formula creates &mdash; and the <strong>calls-per-50-steps histogram</strong> under each strip shows ③'s density staircase rising exactly where details are decided.</li>
+<li><strong>Hover any strip</strong> for a crosshair that compares all three at that t ("✓ call" vs "✗ reuse, ε̂ from t=&hellip;"); <strong>click</strong> to scrub the whole race to that timestep.</li>
+<li>Check the <strong>🏁 finish line</strong>: three final images from identical randomness with each racer's call count and <strong>avg ε̂ error</strong> &mdash; note the ordering matches the real FIDs (8 &rarr; 10 &rarr; 12). Then run the killer experiment: <strong>drag last N to 0</strong> and watch the red trace explode exactly in the endgame, where details are decided &mdash; that's the entire reason <code>sample_skip</code> protects t &lt; 50, and why <code>sample2</code>'s ÷1 band exists.</li>
 </ul>
 </div>
 </div>
@@ -11020,18 +11407,21 @@ Speed improvement: ~2.6x faster!
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
-<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/skip_sampling_strategies.html</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddpm3_skip_sampling.html</span>
 <span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
-<span class="c1"># Covers BOTH sample_skip (below) and the smarter sample2 further down.</span>
+<span class="c1"># Races full vs sample_skip (below) vs sample2 (further down) on the SAME</span>
+<span class="c1"># starting noise -- live thumbnails, call odometers, and a finish-line compare.</span>
 <span class="c1"># ============================================================================</span>
-<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/skip_sampling_strategies.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddpm3_skip_sampling.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 </div>
 </div>
 </div><div class="ce-interactive ce-fullbleed">
-<iframe src="interactive_viz/skip_sampling_strategies.html" loading="lazy" allowfullscreen style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+<iframe src="interactive_viz/ddpm3_skip_sampling.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -11139,7 +11529,7 @@ Speed improvement: ~2.6x faster!
 <td>~2 min</td>
 </tr>
 <tr>
-<td>Skip sampling (~383 steps)</td>
+<td>Skip sampling (367 steps)</td>
 <td>~10</td>
 <td>~50 sec</td>
 </tr>
@@ -11352,19 +11742,60 @@ Total samples: ~100 + 50 + 33 + ... &asymp; 280
 </tr>
 <tr>
 <td>Skip (every 3rd + last 50)</td>
-<td>~383</td>
+<td>367</td>
 <td>~50 sec</td>
 <td>~10</td>
 </tr>
 <tr>
 <td>Logarithmic skip</td>
-<td>~280</td>
+<td>296</td>
 <td>~40 sec</td>
 <td>~12</td>
 </tr>
 </tbody>
 </table>
 <p>The logarithmic approach is fastest but has slightly worse FID. The choice depends on your quality vs speed requirements.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-sampling-speed-was-not-even-a-question-before">🔍 15 &rarr; 17 &rarr; 19: sampling speed was not even a question before<a class="anchor-link" href="#%F0%9F%94%8D-15-%E2%86%92-17-%E2%86%92-19:-sampling-speed-was-not-even-a-question-before">¶</a></h3><table>
+<thead>
+<tr>
+<th></th>
+<th>NB 15</th>
+<th>NB 17</th>
+<th>NB 19 (here)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sampling code</td>
+<td>method <strong>inside</strong> <code>DDPMCB</code> &mdash; needs the training callback to exist</td>
+<td>standalone <code>sample(model, sz, α, ᾱ, σ, n_steps)</code></td>
+<td>17's standalone version <strong>+ <code>sample_skip</code> + <code>sample2</code></strong></td>
+</tr>
+<tr>
+<td>Model calls per image batch</td>
+<td>1000, always</td>
+<td>1000, always</td>
+<td><strong>1000 / 367 / 296 &mdash; your choice</strong></td>
+</tr>
+<tr>
+<td>Can you <em>measure</em> the quality cost of going faster?</td>
+<td>no</td>
+<td>no</td>
+<td><strong>yes &mdash; FID prices each strategy</strong></td>
+</tr>
+</tbody>
+</table>
+<p>This is the payoff of two notebooks of refactoring: because 17 made sampling a plain function of <code>(model, schedule)</code>, 19 could clone it twice, change one <code>if</code>-condition, and get a <strong>3&times; speedup dial</strong> &mdash; then use FID to show exactly what each setting costs (~8 &rarr; ~10 &rarr; ~12). In notebook 15's callback design, this experiment would have meant surgery on the training machinery. <em>(The 🎮 Evolution Lab near the top of the notebook has the full side-by-side code for all seven building blocks.)</em></p>
 </div>
 </div>
 </div>
@@ -11403,6 +11834,33 @@ Total samples: ~100 + 50 + 33 + ... &asymp; 280
 <li><strong>Speed vs quality tradeoff</strong>: Skip sampling can be 2-3x faster with modest quality loss</li>
 <li><strong>FID is a good metric</strong>: But remember it's not perfect - always look at samples too!</li>
 </ol>
+<h3 id="The-15-%E2%86%92-17-%E2%86%92-19-thread-(this-notebook's-real-subject)">The 15 &rarr; 17 &rarr; 19 thread (this notebook's real subject)<a class="anchor-link" href="#The-15-%E2%86%92-17-%E2%86%92-19-thread-(this-notebook's-real-subject)">¶</a></h3><table>
+<thead>
+<tr>
+<th>Pass</th>
+<th>Motto</th>
+<th>What it contributed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NB 15</td>
+<td><em>make it run</em></td>
+<td>first working DDPM &mdash; everything inside one training callback</td>
+</tr>
+<tr>
+<td>NB 17</td>
+<td><em>make it fast</em></td>
+<td>pure <code>noisify</code>, <code>UNet</code> wrapper, <code>init_ddpm</code>, worker-side collate, MixedPrecision, standalone <code>sample</code></td>
+</tr>
+<tr>
+<td>NB 19</td>
+<td><em>make it good</em></td>
+<td>tuned schedule (betamax=0.01), bigger model, 25-epoch AdamW training, <strong>FID</strong>, skip sampling</td>
+</tr>
+</tbody>
+</table>
+<p>Each 🔍 box in this notebook compares one building block across the three passes; the 🎮 Evolution Lab near the top shows the side-by-side code.</p>
 </div>
 </div>
 </div>

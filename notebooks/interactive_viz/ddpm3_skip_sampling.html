@@ -1,0 +1,463 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Skip-Sampling Race — DDPM v3</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:9px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 3px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:140px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .zoomb{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+  .zoomb.on{background:var(--in);color:#fff;border-color:var(--in);}
+  input[type=range]{width:88px;accent-color:var(--ac);}
+  .sv{font-family:monospace;font-weight:700;color:var(--ac);min-width:28px;display:inline-block;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .strip{margin-bottom:8px;border:2px solid var(--line);border-radius:10px;padding:5px 8px;cursor:crosshair;transition:border-color .15s, box-shadow .15s;background:#fff;}
+  .strip.on{border-color:var(--ac);box-shadow:0 3px 14px rgba(123,92,214,.22);}
+  .strip .hd{display:flex;justify-content:space-between;align-items:baseline;font-size:11.6px;margin-bottom:3px;gap:8px;}
+  .strip .hd b{color:var(--ink);}
+  .strip.on .hd b{color:var(--ac);}
+  .strip .cnt{font-family:monospace;font-weight:700;color:var(--ac);white-space:nowrap;}
+  .srow{display:flex;gap:8px;align-items:stretch;}
+  .srow canvas.tk{flex:1;height:66px;display:block;border-radius:6px;background:#fdfeff;min-width:120px;}
+  .side{display:flex;gap:7px;align-items:center;flex:0 0 auto;}
+  .side canvas.pv{width:62px;height:62px;border-radius:7px;background:#0d1526;image-rendering:pixelated;border:1px solid var(--line);}
+  .side .st{font-size:10.2px;line-height:1.45;color:var(--soft);font-family:monospace;min-width:88px;}
+  .side .st b{color:var(--ac);}
+  .side .st .fresh{color:var(--out);font-weight:700;}
+  .side .st .stale{color:var(--neg);font-weight:700;}
+  .hoverbar{text-align:center;font-family:monospace;font-size:11.5px;color:var(--soft);min-height:17px;margin:1px 0 6px;}
+  .hoverbar b{color:var(--in);}
+  .hoverbar .y{color:var(--out);font-weight:700;}
+  .hoverbar .n{color:var(--neg);font-weight:700;}
+  .inforow{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;align-items:stretch;}
+  .leftcol{flex:1 1 400px;min-width:300px;display:flex;flex-direction:column;gap:8px;}
+  .story{border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.4px;line-height:1.55;background:#fff;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  .story code{background:#eef2fb;border-radius:4px;padding:0 4px;font-size:11.4px;}
+  .results{display:flex;gap:8px;justify-content:space-around;align-items:stretch;}
+  .res{flex:1;text-align:center;border:2px solid var(--line);border-radius:10px;padding:6px 4px 5px;transition:all .15s;}
+  .res.on{border-color:var(--ac);background:#faf8ff;}
+  .res canvas{width:66px;height:66px;border-radius:7px;background:#0d1526;image-rendering:pixelated;}
+  .res .nm{font-size:10.3px;font-weight:700;color:var(--soft);}
+  .res.on .nm{color:var(--ac);}
+  .res .num{font-family:monospace;font-size:10.3px;color:var(--ink);line-height:1.4;}
+  table{border-collapse:collapse;font-size:11.4px;width:100%;}
+  th,td{border:1px solid var(--line);padding:3px 7px;text-align:center;}
+  th{background:#f4f7fd;color:var(--soft);}
+  tr.on td{background:#f4efff;font-weight:700;color:var(--ac);}
+  td.mono{font-family:monospace;}
+  .code{flex:1 1 430px;min-width:300px;background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.3px;line-height:1.62;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.42);border-radius:4px;padding:1px 3px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;line-height:1.5;}
+  .legend .p{color:var(--ac);font-weight:700;}.legend .o{color:var(--in);font-weight:700;}.legend .t{color:var(--out);font-weight:700;}
+  .note{font-size:10px;color:var(--soft);margin-top:3px;line-height:1.4;}
+</style></head><body>
+<h1>The skip-sampling race — same start, same noise, fewer UNet calls</h1>
+<p class="sub">All three strategies below denoise <b>the same starting noise with the same randomness</b> — the only difference is <em>when they bother calling the UNet</em>
+(<b style="color:var(--ac)">purple tick = a real model call</b>; blank = the previous ε̂ is reused for free).
+Time runs the way the loop does: <b>t = 999 on the left → 0 on the right</b>. Press <b>▶ Race</b> and watch three things at once:
+the thumbnails sharpen, the call odometers diverge, and the <b style="color:var(--neg)">red trace</b> shows the real price of coasting — how wrong the reused ε̂ has become.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① full — every step</button>
+  <button class="chip" data-s="1">② every k-th + last N</button>
+  <button class="chip" data-s="2">③ logarithmic (t+101) rule</button>
+</div>
+<div class="selrow">
+  <button class="play" id="play">▶ Race all three</button>
+  <button class="stepb" id="step50">⏭ +50 steps</button>
+  <button class="reset" id="reset">↺ Restart</button>
+  <button class="zoomb" id="zoom">🔍 zoom: the last 100 steps</button>
+  <span class="div"></span>
+  k <input id="kk" type="range" min="2" max="6" step="1" value="3"><span class="sv" id="kv">3</span>
+  last N <input id="nn" type="range" min="0" max="100" step="10" value="50"><span class="sv" id="nv">50</span>
+  density <input id="dd" type="range" min="50" max="200" step="10" value="100"><span class="sv" id="dv">100</span>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.5" max="4" step="0.5" value="1"><span class="sv" id="spv">1×</span>
+</div>
+
+<div class="wrap"><div class="card">
+  <div class="strip on" id="s0">
+    <div class="hd"><b>① full sampling — <span style="font-family:monospace">sample()</span>: call at every t</b><span class="cnt" id="c0">1000 calls</span></div>
+    <div class="srow"><canvas class="tk" id="tk0"></canvas>
+      <div class="side"><canvas class="pv" id="pv0" width="28" height="28"></canvas>
+        <div class="st" id="st0"></div></div></div>
+  </div>
+  <div class="strip" id="s1">
+    <div class="hd"><b>② <span style="font-family:monospace">sample_skip</span> — t % k == 0 <span style="font-weight:400">or</span> t &lt; N</b><span class="cnt" id="c1"></span></div>
+    <div class="srow"><canvas class="tk" id="tk1"></canvas>
+      <div class="side"><canvas class="pv" id="pv1" width="28" height="28"></canvas>
+        <div class="st" id="st1"></div></div></div>
+  </div>
+  <div class="strip" id="s2">
+    <div class="hd"><b>③ <span style="font-family:monospace">sample2</span> — (t+D+1) % ((t+D+1)//D) == 0</b><span class="cnt" id="c2"></span></div>
+    <div class="srow"><canvas class="tk" id="tk2"></canvas>
+      <div class="side"><canvas class="pv" id="pv2" width="28" height="28"></canvas>
+        <div class="st" id="st2"></div></div></div>
+  </div>
+  <div class="hoverbar" id="hov">hover any strip: a crosshair compares all three strategies at that timestep… (click to scrub the race there)</div>
+
+  <div class="inforow">
+    <div class="leftcol">
+      <div class="story" id="story"></div>
+      <div class="card" style="padding:7px 9px;">
+        <div style="font-size:11px;font-weight:700;color:var(--soft);margin-bottom:4px;">🏁 Finish line — same start, same z, different call budgets:</div>
+        <div class="results">
+          <div class="res on" id="r0"><canvas id="f0" width="28" height="28"></canvas><div class="nm">full</div><div class="num" id="fn0"></div></div>
+          <div class="res" id="r1"><canvas id="f1" width="28" height="28"></canvas><div class="nm">every k-th + N</div><div class="num" id="fn1"></div></div>
+          <div class="res" id="r2"><canvas id="f2" width="28" height="28"></canvas><div class="nm">logarithmic</div><div class="num" id="fn2"></div></div>
+        </div>
+        <div class="note">Toy demo: a fixed target plays a <em>near-perfect</em> model — so the three finals look almost identical (the protected endgame repairs the toy). What differs is the <b style="color:var(--neg)">red trace: how wrong the ε̂ actually in use was, step by step</b>. A real UNet can't repair that for free — it pays in quality, which is exactly the FID column below (8 → 10 → 12, same ordering as “avg ε̂ err”).</div>
+      </div>
+      <div class="card" style="padding:7px 9px;">
+        <table>
+          <tr><th>notebook measurement</th><th>calls</th><th>time</th><th>FID</th></tr>
+          <tr id="tr0" class="on"><td>full sampling</td><td class="mono">1000</td><td class="mono">~2 min</td><td class="mono">~8</td></tr>
+          <tr id="tr1"><td>skip (k=3, N=50)</td><td class="mono">367</td><td class="mono">~50 s</td><td class="mono">~10</td></tr>
+          <tr id="tr2"><td>logarithmic (D=100)</td><td class="mono">296</td><td class="mono">~40 s</td><td class="mono">~12</td></tr>
+        </table>
+        <div class="note">512 images, one GPU, from the <code>%%time</code> and <code>ie.fid(s)</code> cells around this one.</div>
+      </div>
+    </div>
+    <div class="code" id="code"></div>
+  </div>
+  <div class="legend"><span class="p">▮ purple tick</span> = UNet forward pass (the only expensive thing) · bars under the ticks = <b>calls per 50 steps</b> ·
+  shaded bands = the rule's structure (<span class="t">teal “always” zone</span> for ②, <b>÷10 … ÷1 brackets</b> for ③) ·
+  <b style="color:var(--neg)">red trace = live ε̂ error</b>: flat for ①, sawtooth while coasting — it resets on every call · <span class="o">│ orange</span> = race position · thumbnails = each racer's actual x_t.</div>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const N=1000, PIX=784, W28=28;
+let stage=0,k=3,lastN=50,dens=100,zoomed=false,speed=1,playing=false;
+let raceI=0;               // sampling steps completed (0..1000); current t about to be processed = 999-raceI
+let hoverT=-1;
+
+// ================= schedule (linear, betamax=0.01 — the notebook's choice) =================
+const beta=new Float64Array(N),alpha=new Float64Array(N),abar=new Float64Array(N),sig=new Float64Array(N);
+{let c=1;for(let t=0;t<N;t++){beta[t]=1e-4+(0.01-1e-4)*t/(N-1);alpha[t]=1-beta[t];c*=alpha[t];abar[t]=c;sig[t]=Math.sqrt(beta[t]);}}
+
+// ================= call masks =================
+function masks(){
+  const m=[new Uint8Array(N),new Uint8Array(N),new Uint8Array(N)];
+  for(let t=0;t<N;t++){
+    m[0][t]=1;
+    m[1][t]=(t%k===0||t<lastN)?1:0;
+    const d=Math.floor((t+dens+1)/dens); m[2][t]=((t+dens+1)%d===0)?1:0;
+  }
+  return m;
+}
+let MASK=masks(), COUNTS=MASK.map(a=>a.reduce((x,b)=>x+b,0));
+
+// ================= toy oracle simulation =================
+function mkRnd(s){return function(){s|=0;s=(s+0x6D2B79F5)|0;let t=Math.imul(s^(s>>>15),1|s);
+  t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+function gaussField(seed,out){const r=mkRnd(seed);
+  for(let i=0;i<PIX;i+=2){const u=Math.max(r(),1e-9),v=r(),m=Math.sqrt(-2*Math.log(u));
+    out[i]=m*Math.cos(2*Math.PI*v); if(i+1<PIX)out[i+1]=m*Math.sin(2*Math.PI*v);} return out;}
+// target sneaker in [-0.5, 0.5]
+const X0=new Float32Array(PIX);
+{const put=(x,y,w,h,v)=>{for(let r=y;r<y+h;r++)for(let c=x;c<x+w;c++)if(r>=0&&r<28&&c>=0&&c<28)X0[r*28+c]=v;};
+ put(0,0,28,28,-0.5);
+ put(3,15,20,7,0.42); put(19,10,5,7,0.42);      // body + ankle
+ put(2,20,23,3,0.5);  put(1,21,25,2,0.28);      // sole
+ put(5,16,14,1,-0.15);put(6,18,11,1,-0.15);     // laces
+ put(20,11,3,4,0.18);}
+const Z=new Float32Array(PIX), ERR=new Float32Array(PIX);   // shared per-step fields
+const ERRAMT=0.10;
+
+function newRacer(){return {x:gaussField(777,new Float32Array(PIX)),eh:new Float32Array(PIX),
+  gap:new Float32Array(N),lastGap:0,age:0,calls:0,warm:false};}
+let R=[newRacer(),newRacer(),newRacer()];
+
+function stepAll(i){        // process sampling step i (t = 999-i) for all racers
+  const t=N-1-i;
+  gaussField(0x9e37^t*2654435761,Z); gaussField(0x51f1^t*40503,ERR);
+  const sa=Math.sqrt(abar[t]), sb=Math.sqrt(1-abar[t]);
+  const ab1=t>0?abar[t-1]:1, bbar=1-abar[t], bbar1=1-ab1;
+  const c1=Math.sqrt(ab1)*beta[t]/bbar, c2=Math.sqrt(alpha[t])*bbar1/bbar, sg=t>0?sig[t]:0;
+  for(let j=0;j<3;j++){
+    const r=R[j], call=MASK[j][t]===1;
+    if(call||!r.warm){   // (warm start: every racer's very first ε̂ is real, uncounted unless the rule says call)
+      for(let q=0;q<PIX;q++)r.eh[q]=(r.x[q]-sa*X0[q])/sb+ERRAMT*ERR[q];
+      r.warm=true; if(call){r.calls++;r.age=0;} else r.age++;
+    } else r.age++;
+    // the honest cost of skipping: how far is the ε̂ we're USING from the true ε of the CURRENT x?
+    let g=0;for(let q=0;q<PIX;q++)g+=Math.abs(r.eh[q]-(r.x[q]-sa*X0[q])/sb);
+    r.lastGap=r.gap[t]=g/PIX;
+    for(let q=0;q<PIX;q++){
+      let x0h=(r.x[q]-sb*r.eh[q])/sa; if(x0h>1)x0h=1; if(x0h<-1)x0h=-1;
+      r.x[q]=c1*x0h+c2*r.x[q]+sg*Z[q];
+    }
+  }
+}
+function resetRace(){R=[newRacer(),newRacer(),newRacer()];raceI=0;}
+function runTo(target){while(raceI<target){stepAll(raceI);raceI++;}}
+
+// finals (computed eagerly whenever knobs change)
+let FIN=[null,null,null],AVGGAP=[0,0,0];
+function computeFinals(){
+  const save={R,raceI};
+  R=[newRacer(),newRacer(),newRacer()];raceI=0;runTo(N);
+  FIN=R.map(r=>Float32Array.from(r.x));
+  const finCalls=R.map(r=>r.calls);
+  AVGGAP=R.map(r=>{let s=0;for(let t=0;t<N;t++)s+=r.gap[t];return s/N;});
+  R=save.R;raceI=save.raceI;
+  [0,1,2].forEach(j=>{drawImg($('f'+j),FIN[j]);
+    $('fn'+j).innerHTML=finCalls[j]+' calls<br>avg ε̂ err '+AVGGAP[j].toFixed(3);});
+}
+
+// ================= drawing =================
+function drawImg(cnv,arr){
+  const g=cnv.getContext('2d'),im=g.createImageData(28,28);
+  for(let q=0;q<PIX;q++){const v=Math.max(0,Math.min(1,(arr[q]+0.62)/1.24)),g8=Math.round(v*255);
+    im.data[q*4]=g8;im.data[q*4+1]=g8;im.data[q*4+2]=g8;im.data[q*4+3]=255;}
+  g.putImageData(im,0,0);
+}
+const tks=[0,1,2].map(i=>$('tk'+i));
+function xOfT(t,W){const hiT=zoomed?99:999; if(t>hiT)return -10; return (hiT-t)/hiT*W;}
+function tOfX(fx){const hiT=zoomed?99:999; return Math.round(hiT*(1-fx));}
+
+function divBands(){ // consecutive runs of equal divisor for strategy ③
+  const b=[];let d0=Math.floor((0+dens+1)/dens),start=0;
+  for(let t=1;t<N;t++){const d=Math.floor((t+dens+1)/dens);
+    if(d!==d0){b.push({lo:start,hi:t-1,d:d0});d0=d;start=t;}}
+  b.push({lo:start,hi:N-1,d:d0});return b;
+}
+
+function drawStrips(){
+  const curT=N-1-raceI;  // next t to be processed (999 at start, -1 when done)
+  tks.forEach((cnv,i)=>{
+    const Wc=cnv.clientWidth*2,H=132;cnv.width=Wc;cnv.height=H;
+    const g=cnv.getContext('2d');g.clearRect(0,0,Wc,H);
+    const tickTop=17,tickBot=86,histTop=94,histBot=H-4;
+    // --- rule-structure bands ---
+    if(i===1&&lastN>0){ // "always call" teal zone: t < N  (right side)
+      const x=xOfT(Math.min(lastN-1,zoomed?99:999),Wc);
+      g.fillStyle='rgba(22,163,163,0.10)';g.fillRect(x,tickTop-3,Wc-x,tickBot-tickTop+6);
+      g.fillStyle='#0f7d7d';g.font='700 17px "Segoe UI"';
+      const lab='always (t<'+lastN+')';
+      if(Wc-x>g.measureText(lab).width+8)g.fillText(lab,x+5,tickTop+13);
+    }
+    if(i===2){ // divisor brackets ÷10 … ÷1
+      divBands().forEach((b,bi)=>{
+        const x1=xOfT(Math.min(b.hi,zoomed?99:999),Wc),x2=xOfT(Math.max(b.lo,0),Wc);
+        if(x2<=0)return;
+        g.fillStyle=bi%2?'rgba(123,92,214,0.055)':'rgba(123,92,214,0.11)';
+        g.fillRect(Math.max(0,x1),tickTop-3,x2-Math.max(0,x1),tickBot-tickTop+6);
+        g.fillStyle='#8a7ab5';g.font='700 16px "Segoe UI"';
+        const lab='÷'+b.d, tw=g.measureText(lab).width;
+        if(x2-Math.max(0,x1)>tw+10)g.fillText(lab,(Math.max(0,x1)+x2)/2-tw/2,tickTop+12);
+      });
+    }
+    // --- call ticks ---
+    const hiT=zoomed?99:999;
+    g.fillStyle='#7b5cd6';
+    for(let t=hiT;t>=0;t--){
+      if(!MASK[i][t])continue;
+      const x=xOfT(t,Wc);
+      g.globalAlpha=(t>=curT)?0.32:1;      // not-yet-processed steps are faint; processed are vivid
+      g.fillRect(x,tickTop+16,Math.max(1.4,Wc/(hiT+1)*0.7),tickBot-tickTop-16);
+    }
+    g.globalAlpha=1;
+    // --- the honest cost: red trace of |ε̂ used − true ε(x_now)| over processed steps ---
+    {const hiT2=hiT, y0=tickBot-2, yScale=(tickBot-tickTop-20)/0.35;
+     g.strokeStyle='#d64545';g.lineWidth=2.2;g.beginPath();let started=false;
+     for(let t=hiT2;t>curT&&t>=0;t--){
+       const gv=R[i].gap[t]; if(gv===0&&t>N-1-raceI)continue;
+       const x=xOfT(t,Wc), y=Math.max(tickTop+4, y0-Math.min(gv,0.35)*yScale);
+       if(!started){g.moveTo(x,y);started=true;}else g.lineTo(x,y);
+     }
+     if(started)g.stroke();
+     if(i===0&&raceI>0){const cap='ε̂ error (how wrong is the noise estimate in use)';
+       g.font='700 15px "Segoe UI"';const tw=g.measureText(cap).width;
+       g.lineWidth=4;g.strokeStyle='rgba(255,255,255,0.9)';g.strokeText(cap,(Wc-tw)/2,14);
+       g.fillStyle='#d64545';g.fillText(cap,(Wc-tw)/2,14);}}
+    // --- density histogram: calls per 50 steps ---
+    const B=zoomed?10:20, per=zoomed?10:50;
+    g.strokeStyle='#e3e9f4';g.beginPath();g.moveTo(0,histBot+0.5);g.lineTo(Wc,histBot+0.5);g.stroke();
+    for(let b=0;b<B;b++){
+      let c=0;const tHi=hiT-b*per, tLo=tHi-per+1;
+      for(let t=Math.max(0,tLo);t<=tHi;t++)if(MASK[i][t])c++;
+      const h=(c/per)*(histBot-histTop);
+      const x=b*(Wc/B);
+      g.fillStyle='rgba(123,92,214,0.45)';g.fillRect(x+2,histBot-h,Wc/B-4,h);
+    }
+    if(i===0){g.fillStyle='#8a97b0';g.font='15px "Segoe UI"';g.fillText('calls per '+per+' steps →',4,histTop+12);}
+    // --- axis labels ---
+    g.fillStyle='#5a6b86';g.font='700 17px monospace';
+    g.fillText('t='+hiT,4,13);
+    const rl='t=0';g.fillText(rl,Wc-g.measureText(rl).width-4,13);
+    // --- playhead ---
+    if(curT>=0&&curT<=hiT){const x=xOfT(curT,Wc);
+      g.strokeStyle='#f6921e';g.lineWidth=3.5;g.beginPath();g.moveTo(x,4);g.lineTo(x,histBot);g.stroke();}
+    if(raceI>=N){g.fillStyle='#0f7d7d';g.font='700 17px "Segoe UI"';
+      const dl='🏁 done';g.fillText(dl,Wc-g.measureText(dl).width-6,tickBot-4);}
+    // --- hover crosshair on ALL strips ---
+    if(hoverT>=0&&hoverT<=hiT){const x=xOfT(hoverT,Wc);
+      g.strokeStyle='#25324a';g.lineWidth=1.6;g.setLineDash([5,4]);
+      g.beginPath();g.moveTo(x,4);g.lineTo(x,histBot);g.stroke();g.setLineDash([]);}
+  });
+  // headers, previews, per-racer stats
+  [0,1,2].forEach(j=>{
+    $('c'+j).textContent=COUNTS[j]+' calls'+(j?' ('+(N/COUNTS[j]).toFixed(1)+'× fewer)':'');
+    drawImg($('pv'+j),R[j].x);
+    const a=R[j].age, gv=R[j].lastGap;
+    $('st'+j).innerHTML='t = <b>'+(raceI>=N?0:N-1-raceI)+'</b><br>calls: <b>'+R[j].calls+'</b>/'+raceI+
+      '<br>ε̂: '+(a===0?'<span class="fresh">fresh ✓</span>':'<span class="stale">stale ×'+a+'</span>')+
+      (raceI>0?'<br>err <b style="color:'+(gv<0.095?'#16a3a3':'#d64545')+'">'+gv.toFixed(2)+'</b>':'');
+  });
+}
+
+// ================= stories & code =================
+const stories=[
+ `<b>① Full sampling — the baseline.</b> 1000 steps, 1000 UNet calls, and its histogram bars are all identical: 50 calls in every 50-step bucket. Watch its <b style="color:var(--neg)">red ε̂-error trace</b>: perfectly flat at ≈0.08 — that's the model's own error floor, the best anyone can do. This is the ~2-minute, FID≈8 reference; the insight that makes skipping possible at all is that <b>the update algebra is free — only the purple ticks cost anything.</b>`,
+ `<b>② sample_skip — a blunt but effective rule.</b> Two clauses, visible right on the strip: call on every <b>k-th</b> step (evenly-spaced ticks), <em>plus</em> the solid <b>teal zone: always call for t &lt; N</b>. Between calls the racer coasts on a <b>stale ε̂</b> — watch its counter tick ×1, ×2 and the <b style="color:var(--neg)">red trace saw upward, then snap back to the floor at every call</b>. Notice the teeth get <em>taller as t falls</em>: stale estimates hurt more near the end — which is exactly what the teal zone is for. <b>Try it: drag last N to 0</b> and watch the red trace explode in the endgame; a real network pays for that in smeared details.`,
+ `<b>③ sample2 — the same idea as one formula.</b> <code>(t+101) % ((t+101)//100)</code> looks cryptic until you read the <b>÷ bands</b> on the strip: the divisor <code>(t+101)//100</code> is just “which 100-block is t in, plus one”. In the ÷1 band (t&lt;99) it calls <b>every step</b>; ÷2 → every 2nd; … ÷10 → every 10th. The histogram shows the <b>staircase of call density rising toward t=0</b>, and the red trace shows the payoff: sawtooth only at high t (where it's cheap to be wrong), <b>flat at the floor through the entire endgame</b> — no special-case code at all. The <b>density</b> knob is the “100”: raise it for more calls everywhere.`
+];
+const codes=[
+`<span class="cm"># ① the baseline from earlier in this notebook</span>
+@torch.no_grad()
+def sample(model, sz):
+    x_t = torch.randn(sz)
+    for t in reversed(range(n_steps)):      <span class="cm"># 999 → 0, left → right</span>
+        {A}noise = model((x_t, t_batch)).sample{B}   <span class="cm"># ← 1000 of these</span>
+        x_t = ddpm_update(x_t, noise, t)    <span class="cm"># ← free</span>`,
+`<span class="cm"># ② two clauses: a metronome + a protected endgame</span>
+@torch.no_grad()
+def sample_skip(model, sz):
+    x_t = torch.randn(sz)
+    for t in reversed(range(n_steps)):
+        {A}if t % <span class="num">3</span> == <span class="num">0</span> or t &lt; <span class="num">50</span>:{B}                <span class="cm"># ← the whole trick</span>
+            noise = model((x_t, t_batch)).sample
+        <span class="cm"># else: keep the stale noise from the last call — free</span>
+        x_t = ddpm_update(x_t, noise, t)`,
+`<span class="cm"># ③ density that rises as t falls — one formula</span>
+@torch.no_grad()
+def sample2(model, sz):
+    x_t = torch.randn(sz)
+    {A}sample_at = {t for t in range(n_steps)
+                 if (t+<span class="num">101</span>) % ((t+<span class="num">101</span>)//<span class="num">100</span>) == <span class="num">0</span>}{B}
+    <span class="cm"># (t+101)//100 = 1 for t&lt;99  → call EVERY step   (÷1 band)</span>
+    <span class="cm">#              = 10 for t≥899 → every 10th step  (÷10 band)</span>
+    for t in reversed(range(n_steps)):
+        if t in sample_at: noise = model((x_t, t_batch)).sample
+        x_t = ddpm_update(x_t, noise, t)`
+];
+function setStage(s){
+  stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  [0,1,2].forEach(i=>{$('s'+i).classList.toggle('on',i===s);
+    $('tr'+i).classList.toggle('on',i===s);$('r'+i).classList.toggle('on',i===s);});
+  $('story').innerHTML=stories[s];
+  $('code').innerHTML=codes[s].replace('{A}','<span class="hl">').replace('{B}','</span>');
+  drawStrips();
+}
+
+// ================= knobs =================
+let simTimer=null;
+function knobsChanged(){
+  MASK=masks();COUNTS=MASK.map(a=>a.reduce((x,b)=>x+b,0));
+  drawStrips();                              // ticks, bands, histogram, counters: instant
+  clearTimeout(simTimer);
+  simTimer=setTimeout(()=>{                  // heavy part (two full re-sims): debounced
+    const cur=raceI; resetRace(); runTo(cur);
+    computeFinals();
+    $('tr1').cells[1].textContent=(k===3&&lastN===50)?'367':COUNTS[1];
+    $('tr1').cells[2].textContent=(k===3&&lastN===50)?'~50 s':'—';
+    $('tr1').cells[3].textContent=(k===3&&lastN===50)?'~10':'—';
+    $('tr2').cells[1].textContent=(dens===100)?'296':COUNTS[2];
+    $('tr2').cells[2].textContent=(dens===100)?'~40 s':'—';
+    $('tr2').cells[3].textContent=(dens===100)?'~12':'—';
+    drawStrips();
+  },140);
+}
+$('kk').oninput=e=>{k=+e.target.value;$('kv').textContent=k;knobsChanged();};
+$('nn').oninput=e=>{lastN=+e.target.value;$('nv').textContent=lastN;knobsChanged();};
+$('dd').oninput=e=>{dens=+e.target.value;$('dv').textContent=dens;knobsChanged();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('zoom').onclick=function(){zoomed=!zoomed;this.classList.toggle('on',zoomed);
+  this.textContent=zoomed?'🔎 show all 1000 steps':'🔍 zoom: the last 100 steps';drawStrips();};
+
+// ================= race controls =================
+const playBtn=$('play');
+function stopPlay(){playing=false;playBtn.textContent=raceI>=N?'▶ Race again':'▶ Race all three';}
+playBtn.onclick=()=>{
+  if(playing){stopPlay();return;}
+  if(raceI>=N)resetRace();
+  playing=true;playBtn.textContent='⏸ Pause';
+  requestAnimationFrame(raceLoop);
+};
+let lastTs=null;
+function raceLoop(ts){
+  if(!playing)return;
+  const n=Math.max(1,Math.round(3.2*speed));
+  for(let q=0;q<n&&raceI<N;q++){stepAll(raceI);raceI++;}
+  drawStrips();
+  if(raceI>=N){stopPlay();drawStrips();return;}
+  requestAnimationFrame(raceLoop);
+}
+$('step50').onclick=()=>{stopPlay();const tgt=Math.min(N,raceI+50);runTo(tgt);drawStrips();};
+$('reset').onclick=()=>{stopPlay();resetRace();playBtn.textContent='▶ Race all three';drawStrips();};
+
+// ================= hover crosshair + click-to-scrub =================
+function ageAt(mask,t){for(let a=0;t+a<N;a++)if(mask[t+a])return a;return 0;}
+[0,1,2].forEach(i=>{
+  const cnv=tks[i];
+  cnv.addEventListener('mousemove',e=>{
+    const r=cnv.getBoundingClientRect();
+    const fx=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+    hoverT=tOfX(fx);
+    const names=['full','skip','log'];
+    $('hov').innerHTML='<b>t = '+hoverT+'</b> · '+[0,1,2].map(j=>{
+      const on=MASK[j][hoverT];
+      return names[j]+': '+(on?'<span class="y">✓ call</span>':'<span class="n">✗ reuse (ε̂ from t='+(hoverT+ageAt(MASK[j],hoverT))+')</span>');
+    }).join(' · ');
+    drawStrips();
+  });
+  cnv.addEventListener('mouseleave',()=>{hoverT=-1;
+    $('hov').innerHTML='hover any strip: a crosshair compares all three strategies at that timestep… (click to scrub the race there)';
+    drawStrips();});
+  cnv.addEventListener('click',e=>{
+    stopPlay();
+    const r=cnv.getBoundingClientRect();
+    const fx=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+    const t=tOfX(fx), tgt=N-1-t+1;      // process THROUGH timestep t
+    resetRace(); runTo(Math.max(0,Math.min(N,tgt)));
+    setStage(i); drawStrips();
+  });
+  $('s'+i).addEventListener('click',e=>{if(e.target.tagName!=='CANVAS')setStage(i);});
+});
+
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>setStage(+c.dataset.s));
+
+// ================= boot =================
+computeFinals();
+setStage(0);
+drawStrips();
+addEventListener('resize',drawStrips);
+</script>
+<style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>
