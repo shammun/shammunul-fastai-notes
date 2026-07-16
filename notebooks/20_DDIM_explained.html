@@ -2,8 +2,8 @@
 
 <html lang="en">
 <head><meta charset="utf-8"/>
+<link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
 <title>20_DDIM_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
@@ -7525,6 +7525,8 @@ a.anchor-link {
   </a>
 </div>
 <main>
+
+<main>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7554,6 +7556,61 @@ DDIM (Denoising Diffusion Implicit Models):
 - Works well with 50-200 steps
 - When deterministic: same starting noise &rarr; same image
 </code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+<h2 id="%F0%9F%9B%A0%EF%B8%8F-Interactive-visualizations-%E2%80%94-one-time-setup">🛠️ Interactive visualizations &mdash; one-time setup<a class="anchor-link" href="#%F0%9F%9B%A0%EF%B8%8F-Interactive-visualizations-%E2%80%94-one-time-setup">¶</a></h2><p>The cells marked <strong>🎮 Interactive</strong> below embed standalone HTML/JS visualizations
+(stored in the <code>interactive_viz/</code> folder / published on GitHub Pages) at <strong>full width</strong>,
+auto-fitted to their content height (no empty space below). Run the next cell once,
+then run any 🎮 cell. Every visualization follows the same grammar: <strong>numbered chips replay
+their part of the story</strong>, a <em>live card</em> narrates the current instant with real schedule numbers,
+a <em>"How to read it"</em> line decodes the visual encoding, and the matching code lines light up in sync.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE VISUALIZATIONS -- setup (run this cell ONCE).</span>
+<span class="c1"># Each "🎮 Interactive" cell below loads a standalone HTML file from the</span>
+<span class="c1"># published copy on GitHub Pages, in an isolated &lt;iframe&gt; (its CSS/JS can't leak</span>
+<span class="c1"># into the notebook). It is shown FULL WIDTH and auto-fits its content height.</span>
+<span class="c1"># No local files needed -- the visualizations are read from GitHub.</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+
+<span class="k">def</span> <span class="nf">show_viz</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"600px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Embed an interactive visualization full width; it auto-fits its height.</span>
+<span class="sd">    `path` may be a bare 'interactive_viz/&lt;file&gt;.html' (resolved to the GitHub</span>
+<span class="sd">    Pages copy) or a full https URL."""</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="s2">"https://shammun.github.io/shammunul-fastai-notes/notebooks/"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"http"</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">path</span>
+    <span class="k">return</span> <span class="n">HTML</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'&lt;iframe src="</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">" loading="lazy" allowfullscreen '</span>
+        <span class="sa">f</span><span class="s1">'style="width:100%;height:</span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s1">;border:1px solid #dde5f2;border-radius:12px;'</span>
+        <span class="sa">f</span><span class="s1">'box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"&gt;&lt;/iframe&gt;'</span>
+        <span class="s1">'&lt;script&gt;addEventListener("message",function(e){'</span>
+        <span class="s1">'if(e.data&amp;&amp;e.data.type==="ce-frame-height"&amp;&amp;e.data.height&gt;50){'</span>
+        <span class="s1">'var fs=document.querySelectorAll("iframe");for(var i=0;i&lt;fs.length;i++){'</span>
+        <span class="s1">'if(fs[i].contentWindow===e.source){fs[i].style.height=e.data.height+"px";break;}}}});&lt;/script&gt;'</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
 </div>
 </div>
 </div>
@@ -7688,6 +7745,47 @@ Derivation:
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-forward-process-%E2%80%94-two-faucets,-one-formula">🎮 Interactive: the forward process &mdash; two faucets, one formula<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-forward-process-%E2%80%94-two-faucets,-one-formula">¶</a></h3><p>Before going further, build intuition for the formula above. Two "faucets" pour the clean image x₀ and a
+fixed noise field ε into the mix xₜ &mdash; and the <strong>faucet widths <em>are</em> the coefficients</strong> &radic;ᾱₜ and &radic;(1−ᾱₜ),
+recomputed live from this notebook's real schedule (β: 0.0001&rarr;0.01) as you drag <strong>t</strong>. A purple marker rides
+the coefficient chart, and a dashed line marks the exact <strong>crossover timestep where ᾱ = 0.5</strong> (equal mix).</p>
+<p><strong>Things to try:</strong> press each numbered chip &mdash; they <em>replay</em> their segment (① Meet the pieces &rarr; ④ Wipe-out);
+watch the live SNR readout in dB flip sign at the crossover; drag t slowly through 0&rarr;40 and confirm you can't
+even see the noise yet.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddim_forward_diffusion.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Faucet widths = mixing coefficients; live marker on the schedule chart; chips replay.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddim_forward_diffusion.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"860px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddim_forward_diffusion.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:860px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="DDPM-Reverse-Process-(Review)">DDPM Reverse Process (Review)<a class="anchor-link" href="#DDPM-Reverse-Process-(Review)">¶</a></h2><p>DDPM uses a <strong>stochastic</strong> (random) reverse process derived from Bayesian inference.</p>
 <h3 id="The-DDPM-Update-Rule">The DDPM Update Rule<a class="anchor-link" href="#The-DDPM-Update-Rule">¶</a></h3><pre><code>┌─────────────────────────────────────────────────────────────────────────────┐
@@ -7733,20 +7831,6 @@ If you skip steps, the noise doesn't accumulate correctly.
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: DDIM vs DDPM &mdash; deterministic vs stochastic sampling</h3>
-  <p class="ce-interactive-hint">Both start from the same Gaussian noise and use the same trained model. DDPM injects fresh noise at every step (stochastic); DDIM does not (deterministic). <strong>From the same starting noise, DDIM always reaches the same image. DDPM reaches a different one every run.</strong> Click <strong>Run both</strong> to compare trajectories.</p>
-  <canvas id="dvd-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action: manipulation;"></canvas>
-  <div class="ms-controls">
-    <button id="dvd-run" class="ms-btn">Run both</button>
-    <button id="dvd-reset" class="ms-btn ms-secondary">New starting noise</button>
-    <span class="ms-val" id="dvd-status">Ready</span>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Why DDIM matters in practice:</strong> determinism means you can <em>navigate the latent space</em>. Pick a noise seed, generate an image; tweak the seed slightly, get a similar image. With DDPM's stochastic sampling, every run gives a different result even from the same seed.
-  </p>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7754,7 +7838,6 @@ If you skip steps, the noise doesn't accumulate correctly.
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-
 <h2 id="DDIM-Reverse-Process:-The-Key-Innovation">DDIM Reverse Process: The Key Innovation<a class="anchor-link" href="#DDIM-Reverse-Process:-The-Key-Innovation">¶</a></h2><p>DDIM (Denoising Diffusion Implicit Models) introduces a <strong>non-Markovian</strong> generalization of the diffusion process. The key insight is that we can define a different reverse process that:</p>
 <ol>
 <li>Still matches the same forward process (same training objective!)</li>
@@ -7765,7 +7848,7 @@ If you skip steps, the noise doesn't accumulate correctly.
 │                        DDIM UPDATE FORMULA                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│     xₜ₋₁ = &radic;(ᾱₜ₋₁) · x̂₀ + &radic;(1 - ᾱₜ₋₁ - σₜ<sup>2</sup>) · ε_θ(xₜ,t) + σₜ · z         │
+│     xₜ₋₁ = &radic;(ᾱₜ₋₁) · x̂₀ + &radic;(1 - ᾱₜ₋₁ - σₜ²) · ε_θ(xₜ,t) + σₜ · z         │
 │             ──────────     ─────────────────────────────     ─────          │
 │             "direction      "direction pointing to xₜ"     stochastic      │
 │             to x₀"                                          noise          │
@@ -7779,7 +7862,7 @@ If you skip steps, the noise doesn't accumulate correctly.
 └─────────────────────────────────────────────────────────────────────────────┘
 </code></pre>
 <h3 id="Understanding-Each-Term">Understanding Each Term<a class="anchor-link" href="#Understanding-Each-Term">¶</a></h3><p>Let's break down what each term in the DDIM formula does:</p>
-<pre><code>xₜ₋₁ = &radic;(ᾱₜ₋₁) · x̂₀  +  &radic;(1 - ᾱₜ₋₁ - σₜ<sup>2</sup>) · ε_θ  +  σₜ · z
+<pre><code>xₜ₋₁ = &radic;(ᾱₜ₋₁) · x̂₀  +  &radic;(1 - ᾱₜ₋₁ - σₜ²) · ε_θ  +  σₜ · z
        ───────────────   ───────────────────────    ────────
             Term 1              Term 2               Term 3
 
@@ -7793,7 +7876,7 @@ Term 1: &radic;(ᾱₜ₋₁) · x̂₀
 │ - Together: scale x̂₀ to the right signal level for t-1          │
 └──────────────────────────────────────────────────────────────────┘
 
-Term 2: &radic;(1 - ᾱₜ₋₁ - σₜ<sup>2</sup>) · ε_θ
+Term 2: &radic;(1 - ᾱₜ₋₁ - σₜ²) · ε_θ
 ┌──────────────────────────────────────────────────────────────────┐
 │ This term preserves the "noise direction" from the current step  │
 │                                                                  │
@@ -7920,7 +8003,7 @@ The formula correctly handles any jump size.
 │                                                                             │
 │  DDIM Update:                                                               │
 │  ───────────                                                                │
-│    xₜ₋₁ = &radic;(ᾱₜ₋₁) · x̂₀ + &radic;(1-ᾱₜ₋₁-σₜ<sup>2</sup>) · ε_θ + σₜ · z                     │
+│    xₜ₋₁ = &radic;(ᾱₜ₋₁) · x̂₀ + &radic;(1-ᾱₜ₋₁-σₜ²) · ε_θ + σₜ · z                     │
 │            ──────────    ────────────────────    ─────                      │
 │            toward x₀     predicted noise         random                     │
 │                          direction               noise                      │
@@ -8053,7 +8136,7 @@ DDIM Sampling (Deterministic when η=0):
 │  η = 1 (EQUIVALENT TO DDPM)                                                │
 │  ──────────────────────────                                                 │
 │                                                                             │
-│  xₜ₋₁ = &radic;(ᾱₜ₋₁) · x̂₀ + &radic;(1-ᾱₜ₋₁-σₜ<sup>2</sup>) · ε_θ + σₜ · z                       │
+│  xₜ₋₁ = &radic;(ᾱₜ₋₁) · x̂₀ + &radic;(1-ᾱₜ₋₁-σₜ²) · ε_θ + σₜ · z                       │
 │                                                    ▲                        │
 │                                                    │                        │
 │                                              Full DDPM noise               │
@@ -8098,6 +8181,48 @@ Starting from the SAME initial noise tensor!
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-DDPM-vs-DDIM-%E2%80%94-same-start,-two-ways-home">🎮 Interactive: DDPM vs DDIM &mdash; same start, two ways home<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-DDPM-vs-DDIM-%E2%80%94-same-start,-two-ways-home">¶</a></h3><p>One shared arena instead of two panels &mdash; because the punchline is that <strong>both walkers leave the <em>same</em>
+pinned x_T</strong> with the <em>same</em> model. The orange DDPM walker staggers home (watch the flashing fresh-<code>z</code>
+kicks and its climbing z-draw counter); the teal DDIM walker glides on one smooth curve. Chip ④ freezes
+mid-flight and dissects one step of each into arrows &mdash; the σ·z arrow simply doesn't exist for DDIM.
+Chip ⑤ sends a purple runner hopping bead-to-bead along the DDIM curve while a red ✗ shows a DDPM
+hop landing off-path.</p>
+<p><strong>Things to try:</strong> replay ② and ③ back-to-back and compare the trails; read the live race card's
+"fresh z draws" line &mdash; 999 vs 0 is the whole story; on ⑤, note DDIM finishes with 10 hops.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddim_ddpm_vs_ddim_paths.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># ONE shared arena: pinned x_T, live walkers, z-kick flashes, hop runner, step dissection.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddim_ddpm_vs_ddim_paths.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"940px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddim_ddpm_vs_ddim_paths.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:940px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -8439,7 +8564,7 @@ Starting from the SAME initial noise tensor!
 </thead>
 <tbody>
 <tr>
-<td>αₜ = 1 &minus; βₜ</td>
+<td>αₜ = 1 − βₜ</td>
 <td>Per-step signal retention</td>
 <td>How much signal survives one step</td>
 </tr>
@@ -8902,16 +9027,16 @@ x_{t-1}  =        (large weight) · x̂₀ + (small weight) · x_t + noise
 <div class="highlight"><pre><span></span><span class="n">x_0_hat</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_t</span> <span class="o">-</span> <span class="n">betabar_t</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">noise</span><span class="p">)</span> <span class="o">/</span> <span class="n">alphabar</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>
 </pre></div>
 <p><strong>The math:</strong></p>
-<pre><code>         x_t  &minus;  &radic;(1 &minus; ᾱ_t) · ε_θ
+<pre><code>         x_t  −  &radic;(1 − ᾱ_t) · ε_θ
 x̂₀  =  ─────────────────────────────
                   &radic;(ᾱ_t)
 </code></pre>
 <p>This rearranges the forward diffusion formula. During the forward process, noise was added via:</p>
-<pre><code>x_t = &radic;(ᾱ_t) · x₀ + &radic;(1 &minus; ᾱ_t) · ε
+<pre><code>x_t = &radic;(ᾱ_t) · x₀ + &radic;(1 − ᾱ_t) · ε
 </code></pre>
 <p>So to recover x₀, we solve for it:</p>
-<pre><code>x_t &minus; &radic;(1 &minus; ᾱ_t) · ε = &radic;(ᾱ_t) · x₀
-x₀ = (x_t &minus; &radic;(1 &minus; ᾱ_t) · ε) / &radic;(ᾱ_t)
+<pre><code>x_t − &radic;(1 − ᾱ_t) · ε = &radic;(ᾱ_t) · x₀
+x₀ = (x_t − &radic;(1 − ᾱ_t) · ε) / &radic;(ᾱ_t)
 </code></pre>
 <p>Since we don't know the true noise ε, we substitute the model's prediction ε_θ to get an <strong>estimate</strong> x̂₀.</p>
 <p><strong>Variable mapping:</strong></p>
@@ -8926,7 +9051,7 @@ x₀ = (x_t &minus; &radic;(1 &minus; ᾱ_t) · ε) / &radic;(ᾱ_t)
 <tbody>
 <tr>
 <td><code>betabar_t.sqrt()</code></td>
-<td>&radic;(1 &minus; ᾱ_t)</td>
+<td>&radic;(1 − ᾱ_t)</td>
 <td>Cumulative noise level</td>
 </tr>
 <tr>
@@ -8947,29 +9072,29 @@ x₀ = (x_t &minus; &radic;(1 &minus; ᾱ_t) · ε) / &radic;(ᾱ_t)
 </tbody>
 </table>
 <hr/>
-<h3 id="Step-2:-Compute-x_%7Bt%E2%88%921%7D-(the-DDPM-posterior-mean-+-stochastic-noise)">Step 2: Compute x_{t&minus;1} (the DDPM posterior mean + stochastic noise)<a class="anchor-link" href="#Step-2:-Compute-x_%7Bt%E2%88%921%7D-(the-DDPM-posterior-mean-+-stochastic-noise)">¶</a></h3><p><strong>Hand-written (Notebook 19):</strong></p>
+<h3 id="Step-2:-Compute-x_%7Bt%E2%88%921%7D-(the-DDPM-posterior-mean-+-stochastic-noise)">Step 2: Compute x_{t−1} (the DDPM posterior mean + stochastic noise)<a class="anchor-link" href="#Step-2:-Compute-x_%7Bt%E2%88%921%7D-(the-DDPM-posterior-mean-+-stochastic-noise)">¶</a></h3><p><strong>Hand-written (Notebook 19):</strong></p>
 <div class="highlight"><pre><span></span><span class="n">x_t</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_0_hat</span> <span class="o">*</span> <span class="n">alphabar_t1</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">alpha</span><span class="p">[</span><span class="n">t</span><span class="p">])</span> <span class="o">/</span> <span class="n">betabar_t</span> <span class="o">+</span>
        <span class="n">x_t</span>     <span class="o">*</span> <span class="n">alpha</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span>     <span class="o">*</span> <span class="n">betabar_t1</span>   <span class="o">/</span> <span class="n">betabar_t</span> <span class="o">+</span>
        <span class="n">sigma</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">z</span><span class="p">)</span>
 </pre></div>
 <p><strong>The math:</strong></p>
-<pre><code>                &radic;(ᾱ_{t-1}) · (1 &minus; α_t)              &radic;(α_t) · (1 &minus; ᾱ_{t-1})
+<pre><code>                &radic;(ᾱ_{t-1}) · (1 − α_t)              &radic;(α_t) · (1 − ᾱ_{t-1})
 x_{t-1}  =    ──────────────────────────  · x̂₀  +  ──────────────────────────  · x_t  +  σ_t · z
-                      1 &minus; ᾱ_t                               1 &minus; ᾱ_t
+                      1 − ᾱ_t                               1 − ᾱ_t
 </code></pre>
 <p>This is the <strong>DDPM posterior mean formula</strong> &mdash; derived from Bayes' theorem applied to the forward process &mdash; plus a stochastic noise term. Let's break down each of the three terms:</p>
 <h4 id="Term-1:-Direction-toward-predicted-clean-image">Term 1: Direction toward predicted clean image<a class="anchor-link" href="#Term-1:-Direction-toward-predicted-clean-image">¶</a></h4><div class="highlight"><pre><span></span><span class="n">x_0_hat</span> <span class="o">*</span> <span class="n">alphabar_t1</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">alpha</span><span class="p">[</span><span class="n">t</span><span class="p">])</span> <span class="o">/</span> <span class="n">betabar_t</span>
 </pre></div>
-<pre><code>  &radic;(ᾱ_{t-1}) · (1 &minus; α_t)
+<pre><code>  &radic;(ᾱ_{t-1}) · (1 − α_t)
   ──────────────────────────  · x̂₀
-         1 &minus; ᾱ_t
+         1 − ᾱ_t
 </code></pre>
-<p>This pushes x_{t-1} <strong>toward the predicted clean image</strong> x̂₀, scaled to the appropriate signal level for timestep t-1. The coefficient <code>&radic;(ᾱ_{t-1}) · (1&minus;α_t) / (1&minus;ᾱ_t)</code> determines how much weight the clean image estimate gets.</p>
+<p>This pushes x_{t-1} <strong>toward the predicted clean image</strong> x̂₀, scaled to the appropriate signal level for timestep t-1. The coefficient <code>&radic;(ᾱ_{t-1}) · (1−α_t) / (1−ᾱ_t)</code> determines how much weight the clean image estimate gets.</p>
 <h4 id="Term-2:-Consistency-with-current-noisy-image">Term 2: Consistency with current noisy image<a class="anchor-link" href="#Term-2:-Consistency-with-current-noisy-image">¶</a></h4><div class="highlight"><pre><span></span><span class="n">x_t</span> <span class="o">*</span> <span class="n">alpha</span><span class="p">[</span><span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">betabar_t1</span> <span class="o">/</span> <span class="n">betabar_t</span>
 </pre></div>
-<pre><code>  &radic;(α_t) · (1 &minus; ᾱ_{t-1})
+<pre><code>  &radic;(α_t) · (1 − ᾱ_{t-1})
   ──────────────────────────  · x_t
-          1 &minus; ᾱ_t
+          1 − ᾱ_t
 </code></pre>
 <p>This keeps x_{t-1} <strong>partially anchored to the current noisy image</strong> x_t. Without this term, we'd be jumping all the way to the clean image prediction, which is noisy and unreliable &mdash; especially at high timesteps.</p>
 <p><strong>Together, Terms 1 and 2 form a weighted average</strong> between x̂₀ and x_t. Their coefficients sum to the correct value to produce the posterior mean of q(x_{t-1} | x_t, x₀).</p>
@@ -9000,12 +9125,12 @@ x_{t-1}  =    ──────────────────────
 </tr>
 <tr>
 <td><code>betabar_t</code></td>
-<td>1 &minus; ᾱ_t</td>
+<td>1 − ᾱ_t</td>
 <td>Cumulative noise proportion at step t</td>
 </tr>
 <tr>
 <td><code>betabar_t1</code></td>
-<td>1 &minus; ᾱ_{t-1}</td>
+<td>1 − ᾱ_{t-1}</td>
 <td>Cumulative noise proportion at step t-1</td>
 </tr>
 <tr>
@@ -9133,20 +9258,20 @@ x_{t-1}  =    ──────────────────────
   ᾱ_t       = alphabar[t]         (cumulative signal)
   ᾱ_{t-1}   = alphabar[t-1]       (cumulative signal at previous step)
   α_t       = alpha[t]            (single-step signal retention)
-  β̄_t       = 1 &minus; ᾱ_t             (cumulative noise = betabar_t)
-  β̄_{t-1}   = 1 &minus; ᾱ_{t-1}         (cumulative noise at previous step = betabar_t1)
+  β̄_t       = 1 − ᾱ_t             (cumulative noise = betabar_t)
+  β̄_{t-1}   = 1 − ᾱ_{t-1}         (cumulative noise at previous step = betabar_t1)
   σ_t       = sigma[t] = &radic;(β_t)  (per-step noise std)
   z         ~ N(0, I)             (fresh noise, zero at t=0)
 
 Step 1 &mdash; Estimate clean image:
 
-             x_t  &minus;  &radic;(β̄_t) · ε_θ
+             x_t  −  &radic;(β̄_t) · ε_θ
   x̂₀   =   ────────────────────────
                    &radic;(ᾱ_t)
 
 Step 2 &mdash; Compute x_{t-1}:
 
-                &radic;(ᾱ_{t-1}) · (1 &minus; α_t)           &radic;(α_t) · β̄_{t-1}
+                &radic;(ᾱ_{t-1}) · (1 − α_t)           &radic;(α_t) · β̄_{t-1}
   x_{t-1}  =  ─────────────────────────── · x̂₀ + ──────────────────── · x_t  +  σ_t · z
                         β̄_t                             β̄_t
 </code></pre>
@@ -9166,7 +9291,7 @@ Step 2 &mdash; Compute x_{t-1}:
 </tr>
 <tr>
 <td>What is the first internal step?</td>
-<td>Estimate x̂₀ = (x_t &minus; &radic;(1&minus;ᾱ_t)·ε_θ) / &radic;(ᾱ_t)</td>
+<td>Estimate x̂₀ = (x_t − &radic;(1−ᾱ_t)·ε_θ) / &radic;(ᾱ_t)</td>
 </tr>
 <tr>
 <td>What is the second internal step?</td>
@@ -9189,6 +9314,47 @@ Step 2 &mdash; Compute x_{t-1}:
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-anatomy-of-one-sched.step()-%E2%80%94-watch-the-tensor-travel">🎮 Interactive: anatomy of one <code>sched.step()</code> &mdash; watch the tensor travel<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-anatomy-of-one-sched.step()-%E2%80%94-watch-the-tensor-travel">¶</a></h3><p>The deep-dive above, physicalized: the <strong>orange card is the actual tensor</strong> (a real 16&times;16 image mixed at your
+chosen t), traveling through the step's five gates &mdash; U-Net, un-mix, re-mix, the σ·z dice, output. Every
+thumbnail is computed live from the real schedule; the ε̂ card even carries a simulated model error that grows
+with t, so you can <em>see</em> why the x̂₀ breadcrumb is a blurry rough draft early on. Toggle <strong>DDPM vs DDIM η=0</strong>:
+the dice gate greys out to "bypassed (σ = 0)" &mdash; the only gate where the two samplers differ.</p>
+<p><strong>Things to try:</strong> set t = 950, replay chip ③, and look at the x̂₀ breadcrumb; then t = 200 and compare;
+switch to DDIM mode and replay chip ⑤ &mdash; the card passes the fork untouched.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddim_scheduler_step_anatomy.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Traveling-tensor journey through the 5 gates; DDPM/DDIM mode toggle; real pixels at your t.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddim_scheduler_step_anatomy.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"920px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddim_scheduler_step_anatomy.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:920px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9550,6 +9716,47 @@ Step 2 &mdash; Compute x_{t-1}:
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-full-sampling-loop,-999-%E2%86%92-0">🎮 Interactive: the full sampling loop, 999 &rarr; 0<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-full-sampling-loop,-999-%E2%86%92-0">¶</a></h3><p>The loop you just ran, with its true cost on the dashboard. The top strip is a <strong>scrubber &mdash; click or drag
+anywhere</strong> and the sample image, the executing code line, the phase bands, and the <strong>U-Net call odometer</strong>
+(with a wall-clock estimate at this notebook's measured rate) all stay locked together. Milestone thumbnails
+below light up as breadcrumbs when you pass them.</p>
+<p><strong>Things to try:</strong> scrub 999&rarr;900 and ask what those 99 model calls visibly bought you; replay chip ②
+(<em>Layout emerges</em>) &mdash; composition is decided long before detail; check the odometer at t = 0: 999 calls
+&asymp; 8½ minutes, the number DDIM is about to attack.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddim_sampling_loop.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Draggable timeline scrubber; image + code line + phase + call odometer stay in sync.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddim_sampling_loop.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"900px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddim_sampling_loop.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:900px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p>The images should look like Fashion MNIST items (shirts, pants, shoes, etc.).</p>
 </div>
 </div>
@@ -9731,7 +9938,47 @@ DDIM: Can use any number (e.g., 333 &rarr; uses 999, 996, 993, ..., 3, 0)
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-set_timesteps(n)-%E2%80%94-the-speed-/-quality-dial">🎮 Interactive: <code>set_timesteps(n)</code> &mdash; the speed / quality dial<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-set_timesteps(n)-%E2%80%94-the-speed-/-quality-dial">¶</a></h3><p>Click a preset (1000 / 333 / 200 / 100 / 50 / 25): the <strong>visited timesteps sweep across the ruler</strong> one by
+one (every lit tick = one U-Net call you pay for), hop arcs show the stride, and a marker glides along the
+FID curve <strong>plotted from the actual measurements this notebook produces below</strong>. Cost and quality bars
+compare each preset against the 1000-step baseline. Play ▶ tours all six presets automatically.</p>
+<p><strong>Things to try:</strong> watch the tick sweep at 333 vs 25; find the shaded sweet-spot band (100&ndash;200 steps &mdash;
+the notebook's own recommendation); read the verdict line in the live card at each preset.</p>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddim_timestep_skipping.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Animated tick sweep + hop arcs; FID marker on measured data; cost/quality bars vs baseline.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddim_timestep_skipping.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"940px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddim_timestep_skipping.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:940px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -10083,6 +10330,47 @@ $$\hat{\mathbf{x}}_0 = \frac{\mathbf{x}_t - \sqrt{\bar{\beta}_t} \;\; \boldsymbo
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-the-%CE%B7-(eta)-dial">🎮 Interactive: the η (eta) dial<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-the-%CE%B7-(eta)-dial">¶</a></h3><p>Three sampling runs share the <strong>same pinned starting noise x_T</strong> and the same model &mdash; only their per-step
+random z differs, and η is the volume knob on that z. <strong>Drag η and the three paths morph live</strong>: chip ②
+tweens η &rarr; 0 and the paths visibly <em>merge into one deterministic curve</em> (a "MERGED" badge appears); chip ③
+tweens η &rarr; 1 and they spread apart. The right panel shows σₜ across the whole schedule for several η values,
+plus a stacked "noise budget" bar proving the total variance never changes &mdash; η only re-slices it.</p>
+<p><strong>Things to try:</strong> at η = 0 press 🎲 <em>new z draws</em> &mdash; nothing changes (that's determinism); at η = 1 press it
+again; watch the three output thumbnails go from identical to different-but-all-valid.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddim_eta_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Pinned same-seed runs merge at η=0, spread at η=1; live σ curves + noise-budget bar.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddim_eta_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"940px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddim_eta_explorer.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:940px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h3 id="DDIM-with-333-Steps">DDIM with 333 Steps<a class="anchor-link" href="#DDIM-with-333-Steps">¶</a></h3>
 </div>
@@ -10159,22 +10447,6 @@ $$\hat{\mathbf{x}}_0 = \frac{\mathbf{x}_t - \sqrt{\bar{\beta}_t} \;\; \boldsymbo
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: How few steps can DDIM get away with?</h3>
-  <p class="ce-interactive-hint">DDIM lets you sample with N &lt; T steps by skipping intermediate timesteps. Quality drops gracefully as N shrinks. <strong>This is the entire reason Stable Diffusion is usable</strong>: training at T = 1000 but sampling at N = 20&ndash;50 makes generation 20&ndash;50&times; faster with little visible quality loss.</p>
-  <div class="ddim-widget">
-    <canvas id="ddim-canvas" width="640" height="280"
-            style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action: manipulation;"></canvas>
-    <div class="ms-controls">
-      <label>Sampling steps N: <span id="ddim-N-val" class="ms-val">50</span></label>
-      <input id="ddim-N" type="range" min="2" max="200" step="1" value="50">
-      <button id="ddim-run" class="ms-btn">Sample</button>
-    </div>
-    <div class="ms-controls" style="font-size: 0.86em; color: var(--ce-text-muted, #697386);">
-      <span id="ddim-info"></span>
-    </div>
-  </div>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -10182,7 +10454,6 @@ $$\hat{\mathbf{x}}_0 = \frac{\mathbf{x}_t - \sqrt{\bar{\beta}_t} \;\; \boldsymbo
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-
 <h3 id="DDIM-with-Fewer-Steps">DDIM with Fewer Steps<a class="anchor-link" href="#DDIM-with-Fewer-Steps">¶</a></h3><p>Let's see how quality changes as we reduce the number of steps.</p>
 </div>
 </div>
@@ -10296,7 +10567,7 @@ x_995 &rarr; x_990 &rarr; x_985 &rarr; ... &rarr; x_5 &rarr; x_0
 </code></pre>
 <p>DDIM's formula uses the <code>alphabar</code> values at both the current timestep AND the target timestep. This allows it to "jump" directly from t=999 to t=994, without visiting 998, 997, 996, 995.</p>
 <hr/>
-<h2 id="The-Math:-How-DDIM-Jumps-Between-Non-Adjacent-Timesteps">The Math: How DDIM Jumps Between Non-Adjacent Timesteps<a class="anchor-link" href="#The-Math:-How-DDIM-Jumps-Between-Non-Adjacent-Timesteps">¶</a></h2><h3 id="The-DDIM-Update-Formula">The DDIM Update Formula<a class="anchor-link" href="#The-DDIM-Update-Formula">¶</a></h3><pre><code>x_{t-1} = &radic;(ᾱ_{t-1}) * x̂_0 + &radic;(1 - ᾱ_{t-1} - σ<sup>2</sup>) * ε_θ(x_t, t) + σ * z
+<h2 id="The-Math:-How-DDIM-Jumps-Between-Non-Adjacent-Timesteps">The Math: How DDIM Jumps Between Non-Adjacent Timesteps<a class="anchor-link" href="#The-Math:-How-DDIM-Jumps-Between-Non-Adjacent-Timesteps">¶</a></h2><h3 id="The-DDIM-Update-Formula">The DDIM Update Formula<a class="anchor-link" href="#The-DDIM-Update-Formula">¶</a></h3><pre><code>x_{t-1} = &radic;(ᾱ_{t-1}) * x̂_0 + &radic;(1 - ᾱ_{t-1} - σ²) * ε_θ(x_t, t) + σ * z
 </code></pre>
 <p>Where:</p>
 <ul>
@@ -10796,7 +11067,7 @@ x_995 &rarr; x_990 &rarr; x_985 &rarr; ... &rarr; x_5 &rarr; x_0
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h3 id="The-DDIM-Update-Formula">The DDIM Update Formula<a class="anchor-link" href="#The-DDIM-Update-Formula">¶</a></h3><p>The DDIM paper introduces a generalized update rule:</p>
-<pre><code>x_{t-1} = &radic;(ᾱ_{t-1}) * x̂_0 + &radic;(1 - ᾱ_{t-1} - σ<sup>2</sup>) * ε_θ(x_t, t) + σ * z
+<pre><code>x_{t-1} = &radic;(ᾱ_{t-1}) * x̂_0 + &radic;(1 - ᾱ_{t-1} - σ²) * ε_θ(x_t, t) + σ * z
 </code></pre>
 <p>Where:</p>
 <ul>
@@ -10877,7 +11148,7 @@ x_995 &rarr; x_990 &rarr; x_985 &rarr; ... &rarr; x_5 &rarr; x_0
     Remove noise        Scale back up
 
 Step 2: Move toward x_{t-1}
-   x_{t-1} = &radic;ᾱ_{t-1} * x̂_0 + &radic;(β̄_{t-1} - σ<sup>2</sup>) * ε
+   x_{t-1} = &radic;ᾱ_{t-1} * x̂_0 + &radic;(β̄_{t-1} - σ²) * ε
              ↑                 ↑
         Scale x_0          Add back some noise
 
@@ -10892,6 +11163,47 @@ When eta=1: Full σ, same as DDPM &rarr; stochastic
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-ddim_step,-line-by-line-%E2%80%94-with-live-numbers">🎮 Interactive: <code>ddim_step</code>, line by line &mdash; with live numbers<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-ddim_step,-line-by-line-%E2%80%94-with-live-numbers">¶</a></h3><p>The exact function defined above, walkable. <strong>Click any code line</strong> to jump to its explanation, and the
+live panel plugs <em>real schedule values</em> into every symbol at your chosen <code>t</code>, <code>skips</code>, and <code>η</code>. New in this
+version: the <strong>variance-budget square</strong> &mdash; three rectangles (signal ᾱₜ′, recycled direction β̄ₜ′−σ², fresh σ²)
+that always tile the unit square exactly, with an arrow diagram whose lengths are the three coefficients.</p>
+<p><strong>Things to try:</strong> crank <code>skips</code> 1 &rarr; 200 and watch <code>vari</code> grow (step-size-aware variance is why skipping is
+legal); slide η to 0 and watch the purple rectangle vanish; note the "error amplifier" 1/&radic;ᾱₜ readout at
+t = 950 (~20&times;) &mdash; why one giant jump to x₀ would be reckless.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddim_step_walkthrough.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Clickable code ↔ stages, live schedule numbers, variance-budget square + arrow diagram.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddim_step_walkthrough.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"960px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddim_step_walkthrough.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:960px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -10920,7 +11232,7 @@ When eta=1: Full σ, same as DDPM &rarr; stochastic
 <p>These lines calculate <strong>$\sigma_t$</strong> (sigma) - the coefficient for the <strong>random noise term</strong> (Term 3) in the DDIM formula.</p>
 <pre><code>┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│  vari = (bbar_t1/bbar_t) * (1 - abar_t/abar_t1)   ← This is σ<sup>2</sup> │
+│  vari = (bbar_t1/bbar_t) * (1 - abar_t/abar_t1)   ← This is σ² │
 │  sig = vari.sqrt() * eta                           ← This is σ  │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -10951,7 +11263,7 @@ $$\sigma_t = \eta \cdot \sqrt{\text{vari}}$$<p>Where:</p>
 │                    DDIM FORMULA BREAKDOWN                        │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  x_{t-1} = &radic;ᾱ_{t-1} * x̂_0 + &radic;(1-ᾱ_{t-1}-σ<sup>2</sup>) * ε + σ * z       │
+│  x_{t-1} = &radic;ᾱ_{t-1} * x̂_0 + &radic;(1-ᾱ_{t-1}-σ²) * ε + σ * z       │
 │            ─────────────   ─────────────────────   ─────        │
 │                 │                    │                │         │
 │                 │                    │                │         │
@@ -10963,13 +11275,13 @@ $$\sigma_t = \eta \cdot \sqrt{\text{vari}}$$<p>Where:</p>
 │                                    │                │           │
 │                              ┌─────┴─────┐    ┌────┴────┐      │
 │                              │           │    │         │      │
-│                              │  Uses σ<sup>2</sup>  │    │ Uses σ  │      │
+│                              │  Uses σ²  │    │ Uses σ  │      │
 │                              │           │    │         │      │
 │                              └───────────┘    └─────────┘      │
 │                                                                 │
 │  The lines you asked about calculate σ (sig):                  │
 │                                                                 │
-│    vari = (bbar_t1/bbar_t) * (1 - abar_t/abar_t1)  ← σ<sup>2</sup>       │
+│    vari = (bbar_t1/bbar_t) * (1 - abar_t/abar_t1)  ← σ²       │
 │    sig = vari.sqrt() * eta                          ← σ        │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -10992,7 +11304,7 @@ $$\sigma_t = \eta \cdot \sqrt{\text{vari}}$$<p>Where:</p>
 │  η = 1 (Stochastic, same as DDPM):                             │
 │  ─────────────────────────────────                              │
 │    σ = &radic;vari (full variance)                                   │
-│    x_{t-1} = &radic;ᾱ_{t-1} * x̂_0 + &radic;(1-ᾱ_{t-1}-σ<sup>2</sup>) * ε + σ * z    │
+│    x_{t-1} = &radic;ᾱ_{t-1} * x̂_0 + &radic;(1-ᾱ_{t-1}-σ²) * ε + σ * z    │
 │                                                        ↑        │
 │                                              Random noise added │
 │    Same starting noise &rarr; Different final images (stochastic)    │
@@ -11021,8 +11333,8 @@ $$\sigma_t^2 = \frac{\beta_t (1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t}$$<p>T
 <span class="c1"># 1. In the "direction pointing to x_t" term (Term 2)</span>
 <span class="n">x_t</span> <span class="o">=</span> <span class="n">abar_t1</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">x_0_hat</span> <span class="o">+</span> <span class="p">(</span><span class="n">bbar_t1</span> <span class="o">-</span> <span class="n">sig</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sqrt</span><span class="p">()</span> <span class="o">*</span> <span class="n">noise</span>
 <span class="c1">#                                 ↑</span>
-<span class="c1">#                           Uses sig<sup>2</sup> here</span>
-<span class="c1">#                           &radic;(1 - ᾱ_{t-1} - σ<sup>2</sup>)</span>
+<span class="c1">#                           Uses sig² here</span>
+<span class="c1">#                           &radic;(1 - ᾱ_{t-1} - σ²)</span>
 
 <span class="c1"># 2. In the random noise term (Term 3)</span>
 <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -11037,13 +11349,13 @@ $$\sigma_t^2 = \frac{\beta_t (1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t}$$<p>T
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  FORMULA:                                                       │
-│  x_{t-1} = &radic;ᾱ_{t-1} * x̂_0 + &radic;(1-ᾱ_{t-1}-σ<sup>2</sup>) * ε + σ * z       │
+│  x_{t-1} = &radic;ᾱ_{t-1} * x̂_0 + &radic;(1-ᾱ_{t-1}-σ²) * ε + σ * z       │
 │                                                                 │
 │  CODE:                                                          │
 │  ─────                                                          │
 │                                                                 │
 │  # Variance calculation (your question)                         │
-│  vari = (bbar_t1 / bbar_t) * (1 - abar_t / abar_t1)  &rarr; σ<sup>2</sup>      │
+│  vari = (bbar_t1 / bbar_t) * (1 - abar_t / abar_t1)  &rarr; σ²      │
 │  sig = vari.sqrt() * eta                              &rarr; σ       │
 │                                                                 │
 │  # Predicted x_0                                                │
@@ -11054,7 +11366,7 @@ $$\sigma_t^2 = \frac{\beta_t (1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t}$$<p>T
 │  # Main update (Terms 1 + 2)                                    │
 │  x_t = abar_t1.sqrt() * x_0_hat + (bbar_t1 - sig**2).sqrt() * noise
 │        ↑                          ↑                              │
-│        &radic;ᾱ_{t-1} * x̂_0             &radic;(1-ᾱ_{t-1}-σ<sup>2</sup>) * ε          │
+│        &radic;ᾱ_{t-1} * x̂_0             &radic;(1-ᾱ_{t-1}-σ²) * ε          │
 │                                                                 │
 │  # Random noise (Term 3)                                        │
 │  x_t += sig * torch.randn(...)                                 │
@@ -11122,15 +11434,15 @@ $$\sigma_t^2 = \frac{\beta_t (1 - \bar{\alpha}_{t-1})}{1 - \bar{\alpha}_t}$$<p>T
 │                                                                 │
 │  This posterior variance is:                                    │
 │                                                                 │
-│    σ<sup>2</sup> = β_t * (1-ᾱ_{t-1}) / (1-ᾱ_t)                           │
+│    σ² = β_t * (1-ᾱ_{t-1}) / (1-ᾱ_t)                           │
 │                                                                 │
 │  Which is equivalent to:                                        │
 │                                                                 │
-│    σ<sup>2</sup> = (bbar_t1/bbar_t) * (1 - abar_t/abar_t1)                │
+│    σ² = (bbar_t1/bbar_t) * (1 - abar_t/abar_t1)                │
 │                                                                 │
 │  DDIM's insight: Multiply by η to control the randomness!       │
 │                                                                 │
-│    σ_final = η * &radic;(σ<sup>2</sup>)                                         │
+│    σ_final = η * &radic;(σ²)                                         │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 </code></pre>
@@ -11530,6 +11842,49 @@ With skips=100:
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive-(3D):-latent-space-%E2%80%94-the-walk,-the-glide,-and-the-hops">🎮 Interactive (3D): latent space &mdash; the walk, the glide, and the hops<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-(3D):-latent-space-%E2%80%94-the-walk,-the-glide,-and-the-hops">¶</a></h3><p>A three.js scene of what <code>sample(ddim_step, ..., skips=10)</code> is doing: sampling transports a point from the
+translucent <strong>noise sphere</strong> (x_T ~ N(0,I)) down to the wavy <strong>data manifold</strong> where the shirts live. Press
+play: the orange DDPM walker staggers down with a flashing <em>fresh z</em> arrow at every kick, the teal DDIM
+walker glides on one smooth curve, and both trails grow progressively. The purple beads (every 100th step,
+labeled with t) are <strong>clickable &mdash; inspect any bead's t and ᾱₜ</strong>. Skip mode sends a purple runner hopping
+bead-to-bead while a dashed red stub shows a DDPM hop landing off-path.</p>
+<p><strong>Things to try:</strong> drag to rotate / scroll to zoom; replay chips ② and ③ and compare the trails; switch to
+<em>Skip hops</em> and count the model calls in the live card: 10 vs 999.</p>
+<p><em>Note: loads three.js from cdnjs, so this cell needs internet access.</em></p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddim_latent_3d.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># NOTE: needs internet (three.js via cdnjs). Sphere&rarr;manifold journey; click the beads.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddim_latent_3d.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"920px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddim_latent_3d.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:920px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -11939,6 +12294,48 @@ Triangular: More samples from middle timesteps (mode=0.5)
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-uniform-vs-triangular-timestep-sampling">🎮 Interactive: uniform vs triangular timestep sampling<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-uniform-vs-triangular-timestep-sampling">¶</a></h3><p>The histogram comparison above, live &mdash; and honest about statistics: press <strong>🎲 Draw 100</strong> and watch each
+training example <em>fall</em> into its bin; with few samples both histograms are lumpy, and only with thousands do
+they converge to the dashed <strong>exact expected shapes</strong> (flat line vs tent &mdash; both charts share one y-axis, so
+the 2&times; peak is directly visible). A race bar tracks each strategy's share of samples landing in the
+information-rich middle third (theory: 33.3% vs 55.6%), and chip ④ pulses through the three "why" cards.</p>
+<p><strong>Things to try:</strong> draw ~100 and try to tell the histograms apart, then draw 5000 more; verify the tent peaks
+at ~2&times; the uniform level; remember this is a <em>training-time</em> trick, independent of (and stackable with)
+DDIM's <em>sampling-time</em> speedup.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/ddim_triangular_noise.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Falling-sample animation; exact expected-shape overlays; shared y-axis; middle-third race.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/ddim_triangular_noise.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"960px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/ddim_triangular_noise.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:960px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="Summary">Summary<a class="anchor-link" href="#Summary">¶</a></h2><h3 id="DDIM-Key-Concepts">DDIM Key Concepts<a class="anchor-link" href="#DDIM-Key-Concepts">¶</a></h3><ol>
 <li><p><strong>Same Model, Different Sampler</strong>: DDIM uses the same trained model as DDPM but with a different sampling algorithm</p>
@@ -11962,9 +12359,9 @@ Triangular: More samples from middle timesteps (mode=0.5)
 </ol>
 <h3 id="The-DDIM-Formula">The DDIM Formula<a class="anchor-link" href="#The-DDIM-Formula">¶</a></h3><pre><code>1. Predict x_0: x̂_0 = (x_t - &radic;(1-ᾱ_t) * ε) / &radic;(ᾱ_t)
 
-2. Compute variance: σ<sup>2</sup> = η<sup>2</sup> * (β̄_{t-1}/β̄_t) * (1 - ᾱ_t/ᾱ_{t-1})
+2. Compute variance: σ² = η² * (β̄_{t-1}/β̄_t) * (1 - ᾱ_t/ᾱ_{t-1})
 
-3. Update: x_{t-1} = &radic;(ᾱ_{t-1}) * x̂_0 + &radic;(β̄_{t-1} - σ<sup>2</sup>) * ε + σ * z
+3. Update: x_{t-1} = &radic;(ᾱ_{t-1}) * x̂_0 + &radic;(β̄_{t-1} - σ²) * ε + σ * z
 </code></pre>
 <h3 id="Training-Improvement">Training Improvement<a class="anchor-link" href="#Training-Improvement">¶</a></h3><ul>
 <li><strong>Triangular sampling</strong>: Sample more middle timesteps during training</li>
@@ -11997,286 +12394,15 @@ Triangular: More samples from middle timesteps (mode=0.5)
 </div>
 </div>
 </div>
-<style>
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--ce-purple, #6c5ce7); height: 6px; touch-action: manipulation; }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 70px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactive .ms-btn.ms-secondary { background: transparent; color: var(--ce-purple, #6c5ce7); border: 1px solid var(--ce-purple, #6c5ce7); box-shadow: none; }
-.ddim-widget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 18px; }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-var T = 1000;
-var beta = new Float32Array(T + 1);
-var alphabar = new Float32Array(T + 1);
-(function buildSchedule() {
-  var ab = 1;
-  for (var t = 0; t <= T; t++) {
-    beta[t] = 1e-4 + (0.02 - 1e-4) * (t / T);
-    if (t === 0) alphabar[0] = 1;
-    else { ab *= (1 - beta[t]); alphabar[t] = ab; }
-  }
-})();
-
-function gauss() {
-  var u1 = Math.random(), u2 = Math.random();
-  return Math.sqrt(-2 * Math.log(u1 || 1e-9)) * Math.cos(2 * Math.PI * u2);
-}
-
-// Shared toy data and noise
-var N_PTS = 100;
-var dataPts = [], noisePts = [];
-(function init() {
-  for (var i = 0; i < N_PTS; i++) {
-    var u = i / (N_PTS - 1);
-    var theta = u * 5;
-    var r = 5 + u * 50;
-    dataPts.push([Math.cos(theta) * r, Math.sin(theta) * r]);
-    noisePts.push([gauss() * 60, gauss() * 50]);
-  }
-})();
-
-// Pretend epsilon_theta is perfect: use the true noise direction
-function predNoise(curPts, t) {
-  var ab = alphabar[t]; var sqAb = Math.sqrt(ab); var sqOm = Math.sqrt(1 - ab) || 1e-6;
-  return curPts.map(function(p, i) {
-    return [(p[0] - sqAb * dataPts[i][0]) / sqOm, (p[1] - sqAb * dataPts[i][1]) / sqOm];
-  });
-}
-
-// ============================================================================
-// Interactive 1: DDIM vs DDPM trajectories
-// ============================================================================
-(function ddimVsDdpm() {
-  var canvas = document.getElementById('dvd-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-  var STEP = 25;
-
-  var ddimPts, ddpmPts, ddimPath, ddpmPath;
-  var t;
-  var running = false;
-  var rafId = null;
-
-  function reset() {
-    ddimPts = noisePts.map(function(n) { return [n[0], n[1]]; });
-    ddpmPts = noisePts.map(function(n) { return [n[0], n[1]]; });
-    ddimPath = ddimPts.map(function(p) { return [[p[0], p[1]]]; });
-    ddpmPath = ddpmPts.map(function(p) { return [[p[0], p[1]]]; });
-    t = T;
-    running = false;
-    cancelAnimationFrame(rafId);
-    document.getElementById('dvd-run').textContent = 'Run both';
-    document.getElementById('dvd-status').textContent = 'Ready';
-    draw();
-  }
-
-  function step() {
-    if (t <= 0) return false;
-    var t_next = Math.max(0, t - STEP);
-    var ab_t = alphabar[t], ab_next = alphabar[t_next];
-    var sqAbT = Math.sqrt(ab_t), sqOmT = Math.sqrt(1 - ab_t) || 1e-6;
-    var sqAbNext = Math.sqrt(ab_next), sqOmNext = Math.sqrt(1 - ab_next);
-
-    // DDIM step (deterministic): x0_hat = (x_t - sqrt(1-ab_t) eps) / sqrt(ab_t)
-    // x_next = sqrt(ab_next) * x0_hat + sqrt(1-ab_next) * eps
-    var ddimEps = predNoise(ddimPts, t);
-    ddimPts = ddimPts.map(function(p, i) {
-      var x0 = (p[0] - sqOmT * ddimEps[i][0]) / sqAbT;
-      var y0 = (p[1] - sqOmT * ddimEps[i][1]) / sqAbT;
-      var nx = sqAbNext * x0 + sqOmNext * ddimEps[i][0];
-      var ny = sqAbNext * y0 + sqOmNext * ddimEps[i][1];
-      ddimPath[i].push([nx, ny]);
-      return [nx, ny];
-    });
-
-    // DDPM step (stochastic)
-    var ddpmEps = predNoise(ddpmPts, t);
-    var beta_t = beta[t], alpha_t = 1 - beta_t;
-    var sigma = Math.sqrt(beta_t);
-    ddpmPts = ddpmPts.map(function(p, i) {
-      var x = (p[0] - beta_t / Math.sqrt(1 - ab_t) * ddpmEps[i][0]) / Math.sqrt(alpha_t);
-      var y = (p[1] - beta_t / Math.sqrt(1 - ab_t) * ddpmEps[i][1]) / Math.sqrt(alpha_t);
-      if (t_next > 0) {
-        x += sigma * gauss() * 18;
-        y += sigma * gauss() * 14;
-      }
-      ddpmPath[i].push([x, y]);
-      return [x, y];
-    });
-
-    t = t_next;
-    return true;
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, W, H);
-    var cx = W / 2, cy = H / 2;
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
-    // DDPM trajectories (red, thinner)
-    ctx.strokeStyle = 'rgba(220, 38, 38, 0.18)'; ctx.lineWidth = 0.8;
-    ddpmPath.forEach(function(path) {
-      ctx.beginPath();
-      for (var k = 0; k < path.length; k++) {
-        var x = cx + path[k][0], y = cy + path[k][1];
-        if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    });
-    // DDIM trajectories (blue, thinner)
-    ctx.strokeStyle = 'rgba(15, 185, 177, 0.32)'; ctx.lineWidth = 0.8;
-    ddimPath.forEach(function(path) {
-      ctx.beginPath();
-      for (var k = 0; k < path.length; k++) {
-        var x = cx + path[k][0], y = cy + path[k][1];
-        if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-    });
-    // Final dots
-    ctx.fillStyle = 'rgba(220, 38, 38, 0.7)';
-    ddpmPts.forEach(function(p) {
-      ctx.beginPath(); ctx.arc(cx + p[0], cy + p[1], 2.4, 0, Math.PI * 2); ctx.fill();
-    });
-    ctx.fillStyle = 'rgba(15, 185, 177, 0.85)';
-    ddimPts.forEach(function(p) {
-      ctx.beginPath(); ctx.arc(cx + p[0], cy + p[1], 2.4, 0, Math.PI * 2); ctx.fill();
-    });
-    // Legend
-    ctx.fillStyle = '#dc2626'; ctx.fillRect(14, 14, 14, 4);
-    ctx.fillStyle = '#374151'; ctx.font = '12px sans-serif';
-    ctx.fillText('DDPM (stochastic)', 32, 18);
-    ctx.fillStyle = '#0fb9b1'; ctx.fillRect(14, 30, 14, 4);
-    ctx.fillStyle = '#374151'; ctx.fillText('DDIM (deterministic)', 32, 34);
-    document.getElementById('dvd-status').textContent = 't = ' + t;
-  }
-
-  function tick() {
-    if (!running) return;
-    if (step()) draw();
-    if (t > 0) rafId = requestAnimationFrame(tick);
-    else { running = false; document.getElementById('dvd-run').textContent = 'Done'; }
-  }
-
-  document.getElementById('dvd-run').addEventListener('click', function() {
-    if (running) { running = false; this.textContent = 'Run both'; return; }
-    if (t <= 0) reset();
-    running = true;
-    this.textContent = 'Pause';
-    tick();
-  });
-  document.getElementById('dvd-reset').addEventListener('click', function() {
-    // resample noise
-    for (var i = 0; i < N_PTS; i++) {
-      noisePts[i] = [gauss() * 60, gauss() * 50];
-    }
-    reset();
-  });
-
-  reset();
-})();
-
-// ============================================================================
-// Interactive 2: DDIM step count
-// ============================================================================
-(function ddimSteps() {
-  var canvas = document.getElementById('ddim-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-  var Npts = 120;
-  var fixedNoise = [];
-  for (var i = 0; i < Npts; i++) fixedNoise.push([gauss() * 60, gauss() * 50]);
-  // Use spiral as target
-  var target = [];
-  for (var i = 0; i < Npts; i++) {
-    var u = i / (Npts - 1);
-    var theta = u * 5;
-    var r = 5 + u * 50;
-    target.push([Math.cos(theta) * r, Math.sin(theta) * r]);
-  }
-
-  function predTrue(curPts, t) {
-    var ab = alphabar[t]; var sqAb = Math.sqrt(ab); var sqOm = Math.sqrt(1 - ab) || 1e-6;
-    return curPts.map(function(p, i) {
-      return [(p[0] - sqAb * target[i][0]) / sqOm, (p[1] - sqAb * target[i][1]) / sqOm];
-    });
-  }
-
-  function sampleDDIM(N) {
-    var pts = fixedNoise.map(function(n) { return [n[0], n[1]]; });
-    // Use N timesteps spaced through [0, T]
-    var ts = [];
-    for (var k = 0; k <= N; k++) ts.push(Math.round((1 - k / N) * T));
-    for (var k = 0; k < N; k++) {
-      var t = ts[k], tn = ts[k + 1];
-      var ab_t = alphabar[t], ab_n = alphabar[tn];
-      var sqAbT = Math.sqrt(ab_t), sqOmT = Math.sqrt(1 - ab_t) || 1e-6;
-      var sqAbN = Math.sqrt(ab_n), sqOmN = Math.sqrt(1 - ab_n);
-      var eps = predTrue(pts, t);
-      pts = pts.map(function(p, i) {
-        var x0 = (p[0] - sqOmT * eps[i][0]) / sqAbT;
-        var y0 = (p[1] - sqOmT * eps[i][1]) / sqAbT;
-        return [sqAbN * x0 + sqOmN * eps[i][0], sqAbN * y0 + sqOmN * eps[i][1]];
-      });
-    }
-    return pts;
-  }
-
-  function mse(a, b) {
-    var s = 0;
-    for (var i = 0; i < a.length; i++) {
-      s += (a[i][0] - b[i][0]) * (a[i][0] - b[i][0]) + (a[i][1] - b[i][1]) * (a[i][1] - b[i][1]);
-    }
-    return s / a.length;
-  }
-
-  function draw(N) {
-    var out = sampleDDIM(N);
-    ctx.clearRect(0, 0, W, H);
-    var cx = W / 2, cy = H / 2;
-    // Target outline
-    ctx.strokeStyle = 'rgba(15, 185, 177, 0.45)'; ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (var i = 0; i < target.length; i++) {
-      var x = cx + target[i][0], y = cy + target[i][1];
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-    // Sampled output
-    ctx.fillStyle = 'rgba(79, 70, 229, 0.7)';
-    out.forEach(function(p) {
-      ctx.beginPath(); ctx.arc(cx + p[0], cy + p[1], 2.5, 0, Math.PI * 2); ctx.fill();
-    });
-    ctx.fillStyle = '#0f766e'; ctx.fillRect(14, 14, 14, 4);
-    ctx.fillStyle = '#374151'; ctx.font = '12px sans-serif';
-    ctx.fillText('target', 32, 18);
-    ctx.fillStyle = '#4f46e5'; ctx.fillRect(14, 30, 14, 4);
-    ctx.fillStyle = '#374151'; ctx.fillText('sampled at N=' + N + ' steps', 32, 34);
-
-    var err = mse(out, target);
-    document.getElementById('ddim-info').innerHTML =
-      'Steps: <strong>' + N + '</strong> &nbsp; (vs T=' + T + ' for full DDPM) &mdash; MSE to target: ' + err.toFixed(2) + '. Speedup: <strong>' + (T / N).toFixed(0) + '&times;</strong>';
-  }
-
-  var N = 50;
-  document.getElementById('ddim-N').addEventListener('input', function(e) {
-    N = parseInt(e.target.value);
-    document.getElementById('ddim-N-val').textContent = N;
-  });
-  document.getElementById('ddim-run').addEventListener('click', function() { draw(N); });
-  draw(N);
-})();
-
+<script id="ce-fullbleed-resize">
+(function(){
+  function fit(f){ try{var d=f.contentDocument; if(d&&d.body){var h=Math.ceil(Math.max(d.body.scrollHeight,d.body.offsetHeight)); if(h>50){f.style.height=(h+8)+"px";return true;}}}catch(e){} return false; }
+  function all(){ document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(fit); }
+  addEventListener("message",function(e){ if(!e.data||e.data.type!=="ce-frame-height"||!(e.data.height>50))return;
+    var ifr=document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)");
+    for(var i=0;i<ifr.length;i++){ if(ifr[i].contentWindow===e.source){ ifr[i].style.height=(e.data.height+8)+"px"; break; } } });
+  document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(function(f){ f.addEventListener("load",function(){fit(f);setTimeout(function(){fit(f);},400);setTimeout(function(){fit(f);},1200);}); });
+  addEventListener("resize",all); setInterval(all,1500); all();
 })();
 </script>
 </main>

@@ -1,0 +1,368 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The eta Explorer — Deterministic to DDPM</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+</style></head><body>
+<div class="wrap">
+
+<h1>The &eta; (eta) dial: one number from deterministic to DDPM</h1>
+<p class="sub">In <code>diff_sample(model, sz, sched, eta=&hellip;)</code>, &eta; simply scales the fresh-noise level
+&sigma;<sub>t</sub>. Three runs below share the <b>same pinned starting noise x_T</b> and the <b>same model</b> —
+the only difference is the random z each one draws. <b>Drag &eta;</b> and watch the three paths morph live:
+at &eta; = 0 they <b>collapse into one deterministic curve</b>; at &eta; = 1 you&rsquo;re back to full DDPM randomness.
+The chips replay the key moments.</p>
+
+<div class="stagebar">
+  <button class="chip" data-s="0">&#9312; Same pinned start</button>
+  <button class="chip" data-s="1">&#9313; &eta;&rarr;0: the merge</button>
+  <button class="chip" data-s="2">&#9314; &eta;&rarr;1: the spread</button>
+  <button class="chip" data-s="3">&#9315; The noise budget</button>
+</div>
+<div class="selrow">
+  <button class="play" id="play">&#9654; Run the 3 samplers</button>
+  <button class="reset" id="reset">&#8634; Reset</button>
+  <span class="div"></span>
+  <span>&eta;</span><input type="range" id="eta" min="0" max="1" value="0.7" step="0.01" style="width:150px">
+  <span class="val" id="etav" style="min-width:64px">&eta; = 0.70</span>
+  <span class="div"></span>
+  <button class="stepb" id="reroll">&#127922; new z draws</button>
+  <span class="div"></span>
+  <span>speed</span><input type="range" id="speed" min="1" max="4" step="1" value="2"><span class="val" id="spv">1&times;</span>
+</div>
+
+<div class="hero card"><canvas id="cv" class="cv"></canvas></div>
+<div class="legend"><b>How to read it:</b> &#128274; = the shared starting noise (identical tensor for all three) &middot;
+<span class="dot" style="background:#7b5cd6"></span><span class="dot" style="background:#f6921e"></span><span class="dot" style="background:#16a3a3"></span>
+three runs = same model, different random z per step &middot; path spread &prop; &eta; &middot; the right panel shows
+&sigma;<sub>t</sub> over the whole schedule and where your &eta; sits &middot; the three output thumbnails show what each
+run actually delivers at t = 0.</div>
+
+<div class="grid" id="grid">
+  <div class="card"><div class="h2">What&rsquo;s happening</div><div class="story" id="story"></div>
+  <div class="kbox" id="kbox"></div></div>
+  <div class="stack">
+    <div class="card"><div class="h2">Live: &sigma; and the noise budget at t = <span id="tl">500</span></div><div class="live" id="live"></div>
+      <canvas id="bud" style="width:100%;height:64px;display:block;margin-top:6px"></canvas></div>
+    <div class="card"><div class="h2">Where &eta; enters the code</div><pre class="code" id="code"></pre></div>
+  </div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+
+
+/* sigma for DDIM with skips (uses the notebook's ddim_step form, skips=10) */
+const SKIP=10;
+function sigAt(t,eta){const t1=Math.max(0,t-SKIP);
+  const bb=1-ABAR[t], bb1=1-ABAR[t1];
+  const v=(bb1/bb)*(1-ABAR[t]/ABAR[t1]);
+  return Math.sqrt(Math.max(0,v))*eta;}
+const SIGMAX=sigAt(999,1);
+
+/* arena paths: shared backbone + per-run jitter scaled by eta and sigma-schedule */
+function bez(t,P){const q=1-t;
+  return [q*q*q*P[0][0]+3*q*q*t*P[1][0]+3*q*t*t*P[2][0]+t*t*t*P[3][0],
+          q*q*q*P[0][1]+3*q*q*t*P[1][1]+3*q*t*t*P[2][1]+t*t*t*P[3][1]];}
+const CTRL=[[0.84,0.18],[0.60,0.10],[0.24,0.44],[0.17,0.78]];
+const RUNS=3, RCOL=['#7b5cd6','#f6921e','#16a3a3'], RNAME=['run A','run B','run C'];
+let JIT=[];
+function reroll(){JIT=[];for(let r=0;r<RUNS;r++){const a=[];__s=1000+r*7919+Math.floor(Math.random()*1e6);
+  for(let i=0;i<=140;i++)a.push([gauss(),gauss()]);JIT.push(a);}}
+reroll();
+function tOf(u){return Math.round(999*(1-u));}
+function runPoint(r,u,eta,W,H){
+  const p=bez(u,CTRL);
+  const i=Math.min(139,Math.floor(u*140)), f=u*140-i;
+  const amp=sigAt(tOf(u),1)/SIGMAX*0.075*eta*(1-u*0.25);
+  const j0=JIT[r][i], j1=JIT[r][i+1];
+  return [(p[0]+lerp(j0[0],j1[0],f)*amp)*W,(p[1]+lerp(j0[1],j1[1],f)*amp*0.85)*H];}
+
+const STORIES=[
+ '<b>&#9312; Same pinned start.</b> All three runs are handed the <em>identical</em> tensor x_T (the &#128274; dot) and use the <em>identical</em> trained U-Net. The only thing that can make them differ is the fresh z drawn inside each step — and &eta; is the volume knob on that z. Right now &eta; = <span class="ev"></span>: the three colored paths already deviate by their own private randomness.',
+ '<b>&#9313; &eta; &rarr; 0: the merge.</b> Watch the three paths get pulled together as &eta; shrinks — at &eta; = 0, &sigma;<sub>t</sub> = 0 for every t, the z term is multiplied by zero, and <b>the three runs become one pixel-identical curve</b> (the &ldquo;merged&rdquo; badge lights up). Deterministic sampling: same x_T in, same image out, every time. This is DDIM.',
+ '<b>&#9314; &eta; &rarr; 1: the spread.</b> Cranking &eta; back up re-opens the noise tap: each run&rsquo;s private z pushes it onto its own trajectory, and the three final thumbnails become <em>different</em> — yet all are valid samples. At &eta; = 1 with no skipping, the math reduces exactly to DDPM.',
+ '<b>&#9315; The noise budget.</b> Every step re-mixes to noise level t&minus;1, and that noise level is a fixed total. &eta; only decides <em>how the total splits</em>: the stacked bar shows the deterministic direction share &radic;(&beta;&#772;&#8321;&minus;&sigma;&sup2;)&middot;&epsilon;&#770; vs the fresh-random share &sigma;&middot;z. Slide &eta; and watch the split re-balance while the total stays constant — randomness is <em>reallocated</em>, never added.'
+];
+const KBOX=[
+ 'Drag \u03B7 while the runs are mid-flight \u2014 the paths morph live because \u03C3 enters every step.',
+ 'Deterministic \u21D2 reproducible \u21D2 skippable: chip \u2464 of the paths viz and the whole skipping viz depend on this.',
+ 'Hit \uD83C\uDFB2 new z draws at \u03B7 = 1 a few times: different scribbles every time. Now set \u03B7 = 0 and reroll \u2014 nothing changes!',
+ 'The budget explains why \u03B7 doesn\u2019t change the noise LEVEL of x_{t-1} \u2014 only how much of it is fresh vs recycled \u03B5\u0302.'
+];
+const CODE=[
+ ['def ddim_step(x_t, noise, abar_t, abar_t1,',''],
+ ['              beta_bar_t, beta_bar_t1, eta):',''],
+ ['    vari = (beta_bar_t1/beta_bar_t)*',''],
+ ['           (1 - abar_t/abar_t1)',''],
+ ['    sig = vari.sqrt() * eta          # \u2190 \u03B7 here!','hl'],
+ ['    x0_hat = ((x_t - beta_bar_t.sqrt()*noise)',''],
+ ['              / abar_t.sqrt())',''],
+ ['    x_t1 = abar_t1.sqrt()*x0_hat \\',''],
+ ['         + (beta_bar_t1 - sig**2).sqrt()*noise \\','h2'],
+ ['         + sig * torch.randn(x_t.shape)','h3'],
+ ['    return x_t1',''],
+];
+
+const cv=$('cv'); let W=0,H=360;
+let eta=0.7, u=1, playing=false, stopAt=1, speed=1, lastT=null, stage=0;
+let etaTween=null;
+const SPD=[0.5,1,2,4];
+const off=document.createElement('canvas');off.width=off.height=16;
+const OUTV=[];{__s=5150;for(let r=0;r<RUNS;r++){const a=new Float64Array(256);for(let i=0;i<256;i++)a[i]=gauss();OUTV.push(a);}}
+
+function draw(now){
+  const x=cv.getContext('2d');x.clearRect(0,0,W,H);
+  /* data region */
+  const dp=[CTRL[3][0]*W,CTRL[3][1]*H];
+  const g=x.createRadialGradient(dp[0],dp[1],4,dp[0],dp[1],80);
+  g.addColorStop(0,'rgba(22,163,163,.15)');g.addColorStop(1,'rgba(22,163,163,0)');
+  x.fillStyle=g;x.beginPath();x.arc(dp[0],dp[1],80,0,7);x.fill();
+  x.fillStyle='#128888';x.font='700 11px "Segoe UI"';x.textAlign='center';
+  x.fillText('real images live here',dp[0],dp[1]+58);
+
+  /* pinned start */
+  const sp=[CTRL[0][0]*W,CTRL[0][1]*H];
+  x.fillStyle='#25324a';x.beginPath();x.arc(sp[0],sp[1],6.5,0,7);x.fill();
+  x.strokeStyle='#fff';x.lineWidth=2;x.stroke();
+  x.font='700 12px "Segoe UI"';x.textAlign='right';
+  x.fillStyle='#25324a';x.fillText('\uD83D\uDD12 same x_T for all three',sp[0]-12,sp[1]-10);
+
+  const merged=eta<0.02;
+  /* trails + walkers */
+  for(let r=0;r<RUNS;r++){
+    x.strokeStyle=RCOL[r];x.lineWidth=merged?3.2:2;x.globalAlpha=merged?(r===0?1:0):0.9;
+    x.beginPath();
+    for(let i=0;i<=110;i++){const uu=u*i/110;const q=runPoint(r,uu,eta,W,H);
+      i?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1]);}
+    x.stroke();x.globalAlpha=1;
+    if(merged&&r>0)continue;
+    const q=runPoint(r,u,eta,W,H);
+    x.fillStyle=RCOL[r];x.beginPath();x.arc(q[0],q[1],6.5,0,7);x.fill();
+    x.strokeStyle='#fff';x.lineWidth=2;x.stroke();
+    if(!merged){x.fillStyle=RCOL[r];x.font='700 10px Consolas,monospace';x.textAlign='left';
+      x.fillText(RNAME[r],q[0]+9,q[1]+3+((r-1)*11));}
+  }
+  /* merged badge */
+  if(merged){
+    const q=runPoint(0,u,0,W,H);
+    x.fillStyle='#7b5cd6';x.font='700 12.5px "Segoe UI"';x.textAlign='left';
+    x.fillText('MERGED \u2014 one deterministic path (\u03B7 = 0)',q[0]+12,q[1]-8);
+  }
+  /* t label along path */
+  x.fillStyle='#5a6b86';x.font='700 11px Consolas,monospace';x.textAlign='center';
+  const ql=bez(u,CTRL);
+  x.fillText('t = '+tOf(u),ql[0]*W,ql[1]*H-24);
+
+  /* --- sigma-vs-t chart, right side --- */
+  const gx=W*0.66,gy=26,gw=W*0.30,gh=H*0.44;
+  x.strokeStyle='#dde5f2';x.strokeRect(gx,gy,gw,gh);
+  x.fillStyle='#5a6b86';x.font='700 10.5px "Segoe UI"';x.textAlign='center';
+  x.fillText('\u03C3\u209C across the schedule, by \u03B7',gx+gw/2,gy-8);
+  x.fillStyle='#8a94a8';x.font='9.5px Consolas,monospace';
+  x.textAlign='left';x.fillText('t=999',gx,gy+gh+11);x.textAlign='right';x.fillText('t=0',gx+gw,gy+gh+11);
+  const ETAS=[[1,'#c9d3e6'],[0.7,'#aeb9d6'],[0.3,'#8f9cc0']];
+  for(const [ev,col] of ETAS){
+    x.strokeStyle=col;x.lineWidth=1.3;x.beginPath();
+    for(let i=0;i<=60;i++){const t=999-Math.round(999*i/60);
+      const px=gx+gw*i/60, py=gy+gh*(1-sigAt(t,ev)/(SIGMAX*1.05));
+      i?x.lineTo(px,py):x.moveTo(px,py);}
+    x.stroke();
+    x.fillStyle=col;x.font='700 9px Consolas,monospace';x.textAlign='left';
+    x.fillText('\u03B7='+ev,gx+gw+3,gy+gh*(1-sigAt(650,ev)/(SIGMAX*1.05)));
+  }
+  /* current eta curve highlighted */
+  x.strokeStyle='#7b5cd6';x.lineWidth=2.4;x.beginPath();
+  for(let i=0;i<=60;i++){const t=999-Math.round(999*i/60);
+    const px=gx+gw*i/60, py=gy+gh*(1-sigAt(t,eta)/(SIGMAX*1.05));
+    i?x.lineTo(px,py):x.moveTo(px,py);}
+  x.stroke();
+  /* marker at current t */
+  const tCur=tOf(u), mpx=gx+gw*(999-tCur)/999, mpy=gy+gh*(1-sigAt(tCur,eta)/(SIGMAX*1.05));
+  x.fillStyle='#7b5cd6';x.beginPath();x.arc(mpx,mpy,5,0,7);x.fill();
+  x.strokeStyle='#fff';x.lineWidth=1.8;x.stroke();
+
+  /* --- output thumbnails --- */
+  const ty=H-84, ts=52;
+  x.fillStyle='#5a6b86';x.font='700 10.5px "Segoe UI"';x.textAlign='center';
+  x.fillText('what each run delivers at t = 0:',gx+gw/2,ty-10);
+  for(let r=0;r<RUNS;r++){
+    const cxp=gx+gw*(0.17+0.33*r);
+    const fld=new Float64Array(256);
+    for(let i=0;i<256;i++)fld[i]=X0[i]+OUTV[r][i]*0.30*eta;
+    x.imageSmoothingEnabled=false;drawField(off,fld);
+    x.drawImage(off,cxp-ts/2,ty,ts,ts);
+    x.strokeStyle=RCOL[r];x.lineWidth=2;x.strokeRect(cxp-ts/2,ty,ts,ts);
+  }
+  x.fillStyle=eta<0.02?'#7b5cd6':'#5a6b86';x.font='700 10px "Segoe UI"';
+  x.fillText(eta<0.02?'identical \u2014 reproducible!':'all different \u2014 all valid samples',gx+gw/2,ty+ts+13);
+  x.textAlign='left';
+}
+
+/* budget bar canvas */
+function drawBudget(){
+  const c=$('bud'),d=Math.min(devicePixelRatio||1,2);
+  const w=c.parentElement.clientWidth-24;c.width=w*d;c.height=64*d;
+  const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);x.clearRect(0,0,w,64);
+  const t=tOf(u), t1=Math.max(0,t-SKIP);
+  const bb1=1-ABAR[t1], sig=sigAt(t,eta), dir2=Math.max(0,bb1-sig*sig), sg2=ABAR[t1];
+  const tot=sg2+dir2+sig*sig;
+  const y=18,h=24;
+  let x0=0;
+  for(const [v,col,lab] of [[sg2,'#f6921e','signal \u03B1\u0304\u2081'],[dir2,'#5a6b86','direction (recycled \u03B5\u0302)'],[sig*sig,'#7b5cd6','fresh \u03C3\u00B2z']]){
+    const bw=w*v/tot;
+    x.fillStyle=col;x.fillRect(x0,y,Math.max(bw,0),h);
+    if(bw>52){x.fillStyle='#fff';x.font='700 9.5px "Segoe UI"';x.textAlign='center';
+      x.fillText(lab,x0+bw/2,y+h/2+3);}
+    x0+=bw;}
+  x.fillStyle='#5a6b86';x.font='700 10px "Segoe UI"';x.textAlign='left';
+  x.fillText('the total variance of x_{t\u2212'+SKIP+'} is FIXED \u2014 \u03B7 only re-slices it',0,12);
+  x.textAlign='right';x.fillText('\u03C3\u00B2 share: '+(sig*sig/tot*100).toFixed(1)+'%',w,58);
+  x.textAlign='left';
+}
+
+let lastStage=-1;
+function setStage(s,force){if(s===lastStage&&!force)return;lastStage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('story').innerHTML=STORIES[s].replace('<span class="ev"></span>',eta.toFixed(2));
+  $('kbox').innerHTML=KBOX[s];
+  const el=$('code');el.innerHTML='';
+  CODE.forEach(([txt,cls])=>{const d=document.createElement('div');
+    let h=(cls==='hl')||(s===3&&(cls==='h2'||cls==='h3'))||(s===2&&cls==='h3');
+    d.className='cl'+(h?' hl':'');d.textContent=txt||'\u00A0';el.appendChild(d);});
+  postH();}
+function sync(now){
+  const t=tOf(u), sig=sigAt(t,eta);
+  $('tl').textContent=t;
+  $('live').innerHTML=
+   '&sigma;<sub>t</sub> = &radic;vari &middot; &eta; = <span class="big">'+(eta>0?(sig/Math.max(eta,1e-9)).toFixed(4):sigAt(t,1).toFixed(4))+'</span>'+
+   ' &times; <span class="big" style="color:var(--ac)">'+eta.toFixed(2)+'</span>'+
+   ' = <span class="big" style="color:var(--ac)">'+sig.toFixed(4)+'</span><br>'+
+   '<span style="color:var(--soft)">'+(eta<0.02?'&#10003; \u03C3 = 0 at every t \u2014 fully deterministic (DDIM)':
+     eta<0.5?'small fresh-noise injections \u2014 mostly deterministic':
+     eta<0.95?'substantial randomness per step':'\u03B7 = 1 \u2248 DDPM-level randomness')+'</span>';
+  drawBudget();draw(now);}
+
+function stopPlay(){playing=false;$('play').innerHTML='&#9654; Run the 3 samplers';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}
+  if(u>=0.995)u=0;playing=true;stopAt=1;$('play').innerHTML='&#10074;&#10074; Pause';};
+$('reset').onclick=()=>{stopPlay();etaTween=null;u=1;eta=0.7;$('eta').value=0.7;$('etav').textContent='\u03B7 = 0.70';setStage(0,true);};
+$('eta').oninput=e=>{etaTween=null;eta=+e.target.value;$('etav').textContent='\u03B7 = '+eta.toFixed(2);
+  if(lastStage===0)$('story').innerHTML=STORIES[0].replace('<span class="ev"></span>',eta.toFixed(2));};
+$('reroll').onclick=()=>{reroll();};
+$('speed').oninput=e=>{speed=SPD[+e.target.value-1];$('spv').textContent=speed+'\u00D7';};
+speed=SPD[1];
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+  stopPlay();const s=+c.dataset.s;setStage(s,true);
+  if(s===0){u=0;playing=true;stopAt=0.35;}
+  if(s===1){etaTween={to:0};u=0;playing=true;stopAt=1;}
+  if(s===2){etaTween={to:1};u=0;playing=true;stopAt=1;}
+  if(s===3){etaTween={to:0.5};}
+  if(playing)$('play').innerHTML='&#10074;&#10074; Pause';});
+
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT)*0.001;lastT=ts;
+  if(etaTween){eta=lerp(eta,etaTween.to,Math.min(1,dt*2.2));
+    if(Math.abs(eta-etaTween.to)<0.005){eta=etaTween.to;etaTween=null;}
+    $('eta').value=eta;$('etav').textContent='\u03B7 = '+eta.toFixed(2);}
+  if(playing){u=Math.min(stopAt,u+dt*0.20*speed);if(u>=stopAt)stopPlay();}
+  sync(ts);}
+function fit(){[W,H]=fitCv(cv,360);}
+fit();addEventListener('resize',fit);
+setStage(0,true);requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>

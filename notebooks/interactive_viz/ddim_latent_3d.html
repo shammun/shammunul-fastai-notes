@@ -1,0 +1,417 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Latent Space — The Walk vs the Glide</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+</style></head><body>
+<div class="wrap">
+
+<h1>3D latent space: the walk, the glide, and the hops</h1>
+<p class="sub">A 32&times;32 image is a point in 1024-D space — squashed here to 3D. Sampling is a journey from the
+<b>noise sphere</b> (where x_T ~ N(0,I) lives) down to the thin <b>data manifold</b> (where real images live).
+Watch the <b style="color:var(--in)">orange DDPM walker</b> stagger down with a fresh random kick every step, while the
+<b style="color:var(--out)">teal DDIM walker</b> glides on one smooth curve — whose <b style="color:var(--ac)">purple
+beads</b> a skipping run can hop between. Drag to rotate &middot; scroll to zoom &middot; <b>click a bead</b> to inspect it.</p>
+
+<div class="stagebar">
+  <button class="chip" data-s="0">&#9312; The arena</button>
+  <button class="chip" data-s="1">&#9313; The walk (DDPM)</button>
+  <button class="chip" data-s="2">&#9314; The glide (DDIM)</button>
+  <button class="chip" data-s="3">&#9315; Big hops (skip)</button>
+</div>
+<div class="selrow">
+  <button class="play" id="play">&#9654; Play both</button>
+  <button class="reset" id="reset">&#8634; Reset</button>
+  <span class="div"></span>
+  <button class="mode on" id="mBoth">Both</button>
+  <button class="mode" id="mDDPM">DDPM only</button>
+  <button class="mode" id="mDDIM">DDIM only</button>
+  <button class="mode" id="mSkip">Skip hops</button>
+  <span class="div"></span>
+  <span>speed</span><input type="range" id="speed" min="1" max="4" step="1" value="2"><span class="val" id="spv">1&times;</span>
+</div>
+
+<div class="hero card"><canvas id="c3d" style="display:block;width:100%;height:430px;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:grab;touch-action:none"></canvas></div>
+<div class="legend"><b>How to read the scene:</b> translucent sphere = all possible starting noises &middot;
+wavy floor = the <b>data manifold</b> (real images are a paper-thin sheet in giant space; the shirts sit on it) &middot;
+<span class="dot" style="background:var(--in)"></span>orange trail = DDPM (jitter = fresh z; flashing arrow = the kick being injected)
+&middot; <span class="dot" style="background:var(--out)"></span>teal trail = DDIM &eta;=0 &middot;
+<span class="dot" style="background:var(--ac)"></span>beads = timesteps a skipping run visits (every 100th shown for clarity; the notebook uses skips=10) — <b>click one!</b></div>
+
+<div class="grid" id="grid">
+  <div class="card"><div class="h2">What&rsquo;s happening</div><div class="story" id="story"></div>
+  <div class="kbox" id="kbox"></div></div>
+  <div class="stack">
+    <div class="card"><div class="h2">Live race</div><div class="live" id="live"></div></div>
+    <div class="card"><div class="h2">Bead inspector <span style="font-weight:400;color:var(--soft)">(click a purple bead)</span></div>
+      <div class="live" id="inspect">Nothing inspected yet — click a purple bead on the teal curve.</div></div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+
+
+if(typeof THREE==='undefined'){
+  document.querySelector('.hero').innerHTML='<div style="padding:30px;text-align:center;color:var(--soft)">3D library could not load (no internet in this environment). Open this page online to see the interactive scene.</div>';
+  throw new Error('no three');
+}
+const STORIES=[
+ '<b>&#9312; The arena.</b> Top: the fuzzy sphere is where sampling <em>starts</em> — any draw of x_T ~ N(0, I) is a point in/around it (the black pin is ours). Bottom: the wavy sheet is the <b>data manifold</b> — the astonishingly thin subset of 1024-D space where pixel arrays look like actual clothes. Sampling = transporting a point from sphere to sheet. Drag to look around, then press &#9313;.',
+ '<b>&#9313; The walk (DDPM).</b> Press play and watch the orange walker: every step it takes a small deterministic move toward the manifold, then gets kicked in a <b>random direction by fresh z</b> (the flashing orange arrow). The kicks mostly cancel over ~1000 steps, but they force the steps to stay tiny — skip ahead and the next kick lands you nowhere useful.',
+ '<b>&#9314; The glide (DDIM &eta;=0).</b> Same start, same model, &sigma;=0: no kicks. The teal walker follows a <b>single smooth deterministic curve</b> — run it twice, get the identical trajectory. Because the curve is fixed, any point on it is predictable from x_T alone&hellip; which sets up the trick in &#9315;.',
+ '<b>&#9315; Big hops.</b> The purple runner visits only the beads — every 100th timestep here (the notebook uses every 10th) — and still lands on the same curve, arriving at the same neighborhood of the manifold with <b>10 model calls instead of 1000</b>. The dashed red stub near the orange path shows why DDPM can&rsquo;t do this: hop a random walk and you land off-path.'
+];
+const KBOX=[
+ 'The manifold being thin is WHY generation is hard: almost every random point is garbage noise.',
+ 'Count the kicks in the live card \u2014 each one is a torch.randn call inside sched.step.',
+ 'Deterministic also enables inversion: run the curve backwards to find the x_T of a real photo.',
+ 'Click the beads to see each one\u2019s t and \u03B1\u0304\u209C from the real schedule.'
+];
+
+/* ---------- scene ---------- */
+const cv=$('c3d');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(40,2.3,0.1,100);
+camera.position.set(0,1.6,15.5);camera.lookAt(0,0.4,0);
+scene.add(new THREE.AmbientLight(0xffffff,0.95));
+const dl=new THREE.DirectionalLight(0xffffff,0.4);dl.position.set(5,10,7);scene.add(dl);
+const group=new THREE.Group();scene.add(group);
+
+const ORANGE=0xf6921e, TEAL=0x16a3a3, PURPLE=0x7b5cd6;
+
+/* crisp label sprites */
+function makeLabel(lines,{size=22,color='#25324a',mono=false}={}){
+  const c=document.createElement('canvas'),x=c.getContext('2d');
+  const font='700 '+size+'px '+(mono?'Consolas,monospace':'"Segoe UI",sans-serif');
+  x.font=font;
+  const w=Math.max(...lines.map(t=>x.measureText(t).width))+20,h=lines.length*(size+8)+12;
+  c.width=w*2;c.height=h*2;x.scale(2,2);x.font=font;x.textAlign='center';x.textBaseline='middle';x.fillStyle=color;
+  lines.forEach((t,i)=>x.fillText(t,w/2,10+(size+8)*i+size/2));
+  const tx=new THREE.CanvasTexture(c);tx.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,depthTest:false,transparent:true}));
+  sp.scale.set(w*0.0125,h*0.0125,1);sp.renderOrder=5;return sp;}
+
+/* noise sphere */
+const SC=new THREE.Vector3(0,2.6,0);
+const sph=new THREE.Mesh(new THREE.SphereGeometry(2.6,32,24),
+  new THREE.MeshLambertMaterial({color:0x9aa8c8,transparent:true,opacity:0.13,depthWrite:false}));
+sph.position.copy(SC);group.add(sph);
+const sphW=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.SphereGeometry(2.6,12,8)),
+  new THREE.LineBasicMaterial({color:0xa9b6d2,transparent:true,opacity:0.25}));
+sphW.position.copy(SC);group.add(sphW);
+const sphLab=makeLabel(['noise sphere','x_T ~ N(0, I)'],{size:20,color:'#5a6b86'});
+sphLab.position.set(SC.x,SC.y+3.3,0);group.add(sphLab);
+
+/* wavy manifold */
+const man=new THREE.Mesh(new THREE.PlaneGeometry(9,6,26,18),
+  new THREE.MeshLambertMaterial({color:TEAL,transparent:true,opacity:0.20,side:THREE.DoubleSide}));
+{const pos=man.geometry.attributes.position;
+ for(let i=0;i<pos.count;i++){const x0=pos.getX(i),y0=pos.getY(i);
+   pos.setZ(i,0.35*Math.sin(x0*1.2)*Math.cos(y0*1.4));}
+ pos.needsUpdate=true;man.geometry.computeVertexNormals();}
+man.rotation.x=-Math.PI/2;man.position.set(0,-3.1,0);group.add(man);
+const manLab=makeLabel(['data manifold — real images live on this thin sheet'],{size:19,color:'#128888'});
+manLab.position.set(0,-4.15,0);group.add(manLab);
+
+/* shirt thumbnails on the manifold */
+const shirtTex=(()=>{const c=document.createElement('canvas');c.width=c.height=16;drawField(c,X0);
+  const t=new THREE.CanvasTexture(c);t.magFilter=THREE.NearestFilter;return t;})();
+[[-2.4,0.5],[0.6,-1.1],[2.6,0.9]].forEach(([px,pz])=>{
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(0.85,0.85),
+    new THREE.MeshBasicMaterial({map:shirtTex,transparent:true,opacity:0.92,side:THREE.DoubleSide}));
+  const y=-3.1+0.35*Math.sin(px*1.2)*Math.cos(pz*1.4)+0.03;
+  m.position.set(px,y+0.001,pz);m.rotation.x=-Math.PI/2;group.add(m);});
+
+/* backbone curve sphere -> manifold */
+const START=new THREE.Vector3(1.15,4.55,0.55); /* on sphere */
+const ENDP=new THREE.Vector3(-1.6,-2.9,0.35);
+const curve=new THREE.CatmullRomCurve3([START,
+  new THREE.Vector3(2.3,2.0,-0.6),new THREE.Vector3(0.6,-0.4,0.9),
+  new THREE.Vector3(-1.9,-1.7,-0.3),ENDP]);
+function tOf(u){return Math.round(999*(1-u));}
+
+/* start pin */
+const pin=new THREE.Mesh(new THREE.SphereGeometry(0.14,16,12),new THREE.MeshLambertMaterial({color:0x25324a}));
+pin.position.copy(START);group.add(pin);
+const pinLab=makeLabel(['\uD83D\uDD12 x_T  (t = 999) — both start here'],{size:19,color:'#25324a'});
+pinLab.position.set(START.x+0.2,START.y+0.75,START.z);group.add(pinLab);
+
+/* DDPM jitter offsets */
+const NS=340, JIT=[];
+{__s=246810;for(let i=0;i<=NS;i++)JIT.push([gauss(),gauss(),gauss()]);}
+const _tmp=new THREE.Vector3();
+function ddpmPoint(u,out){
+  curve.getPoint(u,out);
+  const i=Math.min(NS-1,Math.floor(u*NS)),f=u*NS-i;
+  const amp=SQB[tOf(u)]*0.34*(1-u*0.42);
+  out.x+=lerp(JIT[i][0],JIT[i+1][0],f)*amp;
+  out.y+=lerp(JIT[i][1],JIT[i+1][1],f)*amp*0.7;
+  out.z+=lerp(JIT[i][2],JIT[i+1][2],f)*amp;
+  return out;}
+
+/* progressive trails */
+function makeTrail(color,width,n){
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(n*3),3));
+  g.setDrawRange(0,0);
+  const l=new THREE.Line(g,new THREE.LineBasicMaterial({color,linewidth:width}));
+  group.add(l);return l;}
+const TRN=300;
+const trailO=makeTrail(ORANGE,2,TRN+1), trailT=makeTrail(TEAL,2,TRN+1);
+{const po=trailO.geometry.attributes.position, pt=trailT.geometry.attributes.position, v=new THREE.Vector3();
+ for(let i=0;i<=TRN;i++){const u=i/TRN;
+   ddpmPoint(u,v);po.setXYZ(i,v.x,v.y,v.z);
+   curve.getPoint(u,v);pt.setXYZ(i,v.x,v.y,v.z);}
+ po.needsUpdate=pt.needsUpdate=true;}
+
+/* walkers */
+const wO=new THREE.Mesh(new THREE.SphereGeometry(0.17,16,12),new THREE.MeshLambertMaterial({color:ORANGE}));
+const wT=new THREE.Mesh(new THREE.SphereGeometry(0.17,16,12),new THREE.MeshLambertMaterial({color:TEAL}));
+group.add(wO);group.add(wT);
+const labO=makeLabel(['DDPM t=999'],{size:18,color:'#c07417',mono:true});
+const labT=makeLabel(['DDIM t=999'],{size:18,color:'#128888',mono:true});
+group.add(labO);group.add(labT);
+/* z-kick arrow on DDPM */
+const kick=new THREE.ArrowHelper(new THREE.Vector3(1,0,0),new THREE.Vector3(),0.9,ORANGE,0.28,0.14);
+kick.visible=false;group.add(kick);
+const kickLab=makeLabel(['fresh z!'],{size:17,color:'#f6921e'});kickLab.visible=false;group.add(kickLab);
+
+/* skip beads (every 100th t) + click inspection */
+const beads=[];
+for(let k=0;k<=10;k++){
+  const u=k/10, pos=curve.getPoint(u);
+  const b=new THREE.Mesh(new THREE.SphereGeometry(0.13,14,10),
+    new THREE.MeshLambertMaterial({color:PURPLE,transparent:true,opacity:0.9}));
+  b.position.copy(pos);b.userData={t:tOf(u),u};group.add(b);beads.push(b);
+  if(k%2===0){const bl=makeLabel(['t='+tOf(u)],{size:14,color:'#7b5cd6',mono:true});
+    bl.position.set(pos.x,pos.y-0.42,pos.z);group.add(bl);}}
+/* skip runner */
+const runner=new THREE.Mesh(new THREE.SphereGeometry(0.2,16,12),new THREE.MeshLambertMaterial({color:PURPLE}));
+runner.visible=false;group.add(runner);
+/* failed DDPM hop stub */
+const badG=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);
+const bad=new THREE.Line(badG,new THREE.LineDashedMaterial({color:0xd64545,dashSize:0.14,gapSize:0.1}));
+bad.visible=false;group.add(bad);
+const badLab=makeLabel(['\u2717 DDPM hop lands off-path'],{size:16,color:'#d64545'});
+badLab.visible=false;group.add(badLab);
+
+{const bb=new THREE.Box3().setFromObject(group);group.position.x=-(bb.min.x+bb.max.x)/2;}
+group.rotation.y=-0.28;group.rotation.x=0.10;
+
+/* ---------- interaction ---------- */
+let drag=false,moved=0,px0=0,py0=0;
+cv.addEventListener('pointerdown',e=>{drag=true;moved=0;px0=e.clientX;py0=e.clientY;cv.style.cursor='grabbing';});
+addEventListener('pointerup',()=>{drag=false;cv.style.cursor='grab';});
+addEventListener('pointermove',e=>{if(!drag)return;
+  moved+=Math.abs(e.clientX-px0)+Math.abs(e.clientY-py0);
+  group.rotation.y+=(e.clientX-px0)*0.008;
+  group.rotation.x=clamp(group.rotation.x+(e.clientY-py0)*0.006,-0.65,0.75);
+  px0=e.clientX;py0=e.clientY;});
+cv.addEventListener('wheel',e=>{e.preventDefault();
+  camera.position.z=clamp(camera.position.z+e.deltaY*0.012,8,24);},{passive:false});
+const ray=new THREE.Raycaster(),mou=new THREE.Vector2();
+cv.addEventListener('click',e=>{
+  if(moved>6)return;
+  const r=cv.getBoundingClientRect();
+  mou.x=((e.clientX-r.left)/r.width)*2-1;mou.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(mou,camera);
+  const hit=ray.intersectObjects(beads)[0];
+  if(hit){const {t}=hit.object.userData;
+    beads.forEach(b=>b.material.emissive&&b.material.emissive.setHex(0));
+    hit.object.material.emissive=new THREE.Color(0x2c1e66);
+    $('inspect').innerHTML='bead at <span class="big" style="color:var(--ac)">t = '+t+'</span> \u2014 '+
+     '\u03B1\u0304<sub>t</sub> = <span class="big">'+ABAR[Math.max(0,t)].toFixed(4)+'</span>, '+
+     'signal '+Math.round(SQA[Math.max(0,t)]*100)+'% / noise '+Math.round(SQB[Math.max(0,t)]*100)+'% \u2014 '+
+     'a skipping sampler lands EXACTLY here because the teal curve is deterministic.';
+    postH();}});
+
+/* ---------- state & sync ---------- */
+let p=0, playing=false, stopAt=1, speed=1, lastT=null, mode='both', stage=0, lastStage=-1, lastKick=-1;
+const SPD=[0.5,1,2,4];
+const V=new THREE.Vector3();
+function applyMode(){
+  ['mBoth','mDDPM','mDDIM','mSkip'].forEach(id=>$(id).classList.remove('on'));
+  $({both:'mBoth',ddpm:'mDDPM',ddim:'mDDIM',skip:'mSkip'}[mode]).classList.add('on');
+  const so=mode!=='ddim', st=mode!=='ddpm';
+  trailO.visible=wO.visible=labO.visible=so;
+  trailT.visible=wT.visible=labT.visible=st&&mode!=='skip'||mode==='skip';
+  wT.visible=labT.visible=(st&&mode!=='skip');
+  runner.visible=mode==='skip';
+  beads.forEach(b=>b.visible=(mode==='skip'||stage===3));
+  if(mode!=='skip'){bad.visible=badLab.visible=false;}
+}
+function sync(now){
+  const u=Math.min(1,p), t=tOf(u);
+  /* trails draw range */
+  trailO.geometry.setDrawRange(0,Math.max(1,Math.floor(u*TRN)+1));
+  trailT.geometry.setDrawRange(0,Math.max(1,Math.floor(u*TRN)+1));
+  /* walkers */
+  ddpmPoint(u,V);wO.position.copy(V);labO.position.set(V.x,V.y+0.45,V.z);
+  curve.getPoint(u,V);wT.position.copy(V);labT.position.set(V.x,V.y-0.45,V.z);
+  /* update rider labels every 50 t */
+  if(Math.floor(t/50)!==sync._lt){sync._lt=Math.floor(t/50);
+    labO.material.map=makeLabel(['DDPM t='+t],{size:18,color:'#c07417',mono:true}).material.map;
+    labT.material.map=makeLabel(['DDIM t='+t],{size:18,color:'#128888',mono:true}).material.map;}
+  /* z kicks */
+  const kn=Math.floor((999-t)/25);
+  if(kn!==lastKick&&playing&&(mode==='both'||mode==='ddpm')){lastKick=kn;
+    ddpmPoint(u,V);
+    const d=new THREE.Vector3(gauss(),gauss(),gauss()).normalize();
+    kick.position.copy(V);kick.setDirection(d);kick.setLength(0.8,0.26,0.13);
+    kick.visible=true;kickLab.position.copy(V).addScaledVector(d,1.05);kickLab.visible=true;
+    kick.userData.t0=now;}
+  if(kick.visible&&now-(kick.userData.t0||0)>420){kick.visible=kickLab.visible=false;}
+  /* skip runner */
+  if(mode==='skip'){
+    const seg=Math.min(9.999,u*10),k=Math.floor(seg),f=sm(seg-k);
+    const a=curve.getPoint(k/10),b2=curve.getPoint((k+1)/10);
+    runner.position.lerpVectors(a,b2,f);runner.position.y+=Math.sin(f*Math.PI)*0.55;
+    beads.forEach((bd,i)=>bd.material.opacity=i<=k+1?1:0.35);
+    /* failed ddpm hop stub mid-flight */
+    if(f>0.3&&f<0.85&&trailO.visible){
+      ddpmPoint(k/10,V);
+      const tgt=V.clone().lerp(b2,f).add(new THREE.Vector3(Math.sin(k*3+f*7)*0.9,0.5,Math.cos(k*2)*0.7));
+      bad.geometry.setFromPoints([V.clone(),tgt]);bad.computeLineDistances();
+      bad.visible=true;badLab.position.copy(tgt).add(new THREE.Vector3(0,0.3,0));badLab.visible=true;
+    } else {bad.visible=badLab.visible=false;}
+  }
+  /* live card */
+  const calls= mode==='skip'?Math.min(10,Math.ceil(u*10)):999-t;
+  $('live').innerHTML=
+   '<span style="color:#c07417">&#9679; DDPM</span> t=<span class="big">'+t+'</span> \u00B7 steps <span class="big">'+(999-t)+'</span> \u00B7 fresh z <span class="big" style="color:#c07417">'+(999-t)+'</span><br>'+
+   '<span style="color:#128888">&#9679; DDIM</span> t=<span class="big">'+t+'</span> \u00B7 model calls <span class="big" style="color:'+(mode==='skip'?'#7b5cd6':'#128888')+'">'+calls+'</span> \u00B7 fresh z <span class="big">0</span>'+
+   (u>=1?'<br><b style="color:var(--ac)">&#127937; arrived on the manifold'+(mode==='skip'?' \u2014 10 calls vs 999!':'')+'</b>':'');
+  renderer.render(scene,camera);
+}
+function setStage(s){if(s===lastStage)return;lastStage=s;stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('story').innerHTML=STORIES[s];$('kbox').innerHTML=KBOX[s];
+  beads.forEach(b=>b.visible=(mode==='skip'||s===3));
+  postH();}
+
+function stopPlay(){playing=false;$('play').innerHTML='&#9654; Play both';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}
+  if(p>=0.995)p=0;playing=true;stopAt=1;$('play').innerHTML='&#10074;&#10074; Pause';};
+$('reset').onclick=()=>{stopPlay();p=0;lastStage=-1;setStage(0);};
+$('speed').oninput=e=>{speed=SPD[+e.target.value-1];$('spv').textContent=speed+'\u00D7';};
+speed=SPD[1];
+$('mBoth').onclick=()=>{mode='both';applyMode();};
+$('mDDPM').onclick=()=>{mode='ddpm';applyMode();};
+$('mDDIM').onclick=()=>{mode='ddim';applyMode();};
+$('mSkip').onclick=()=>{mode='skip';applyMode();};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+  stopPlay();const s=+c.dataset.s;lastStage=-1;setStage(s);
+  if(s===0){p=0;}
+  if(s===1){mode='both';applyMode();p=0;playing=true;stopAt=1;}
+  if(s===2){mode='ddim';applyMode();p=0;playing=true;stopAt=1;}
+  if(s===3){mode='skip';applyMode();p=0;playing=true;stopAt=1;}
+  if(playing)$('play').innerHTML='&#10074;&#10074; Pause';});
+
+function fit(){const w=Math.min(cv.parentElement.clientWidth-4,1032);
+  renderer.setSize(w,430,false);camera.aspect=w/430;camera.updateProjectionMatrix();}
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT)*0.001;lastT=ts;
+  if(playing){p=Math.min(stopAt,p+dt*(mode==='skip'?0.22:0.14)*speed);if(p>=stopAt)stopPlay();}
+  sync(ts);}
+fit();addEventListener('resize',fit);
+applyMode();setStage(0);requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>

@@ -1,0 +1,372 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anatomy of sched.step() — Watch the Tensor Travel</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+</style></head><body>
+<div class="wrap">
+
+<h1>Anatomy of one <span class="mono">sched.step()</span> — watch the tensor travel</h1>
+<p class="sub">The notebook calls <code>res = sched.step(noise, t, x_t)</code> and reads <code>res.prev_sample</code>.
+This scene opens that black box: the <b style="color:var(--in)">orange card is the actual tensor</b> — a real
+16&times;16 image mixed at your chosen <b>t</b> — physically traveling through the step&rsquo;s five gates.
+Every thumbnail is <b>computed live</b> from the notebook&rsquo;s real schedule. Toggle
+<b style="color:var(--out)">DDPM</b> / <b style="color:var(--ac)">DDIM &eta;=0</b> to see the only gate where they differ.</p>
+
+<div class="stagebar">
+  <button class="chip" data-s="0">&#9312; Input x<sub>t</sub></button>
+  <button class="chip" data-s="1">&#9313; U-Net predicts &epsilon;&#770;</button>
+  <button class="chip" data-s="2">&#9314; Un-mix &rarr; x&#770;&#8320;</button>
+  <button class="chip" data-s="3">&#9315; Re-mix for t&minus;1</button>
+  <button class="chip" data-s="4">&#9316; The &sigma;z fork</button>
+  <button class="chip" data-s="5">&#9317; prev_sample</button>
+</div>
+<div class="selrow">
+  <button class="play" id="play">&#9654; Play the step</button>
+  <button class="stepb" id="back">&#9198; gate</button>
+  <button class="stepb" id="fwd">gate &#9197;</button>
+  <button class="reset" id="reset">&#8634; Reset</button>
+  <span class="div"></span>
+  <button class="mode on" id="mDDPM">DDPM (&sigma;&gt;0)</button>
+  <button class="mode" id="mDDIM">DDIM &eta;=0 (&sigma;=0)</button>
+  <span class="div"></span>
+  <span>t</span><input type="range" id="t" min="60" max="980" value="700" step="20"><span class="val" id="tv">t = 700</span>
+  <span class="div"></span>
+  <span>speed</span><input type="range" id="speed" min="1" max="4" step="1" value="2"><span class="val" id="spv">1&times;</span>
+</div>
+
+<div class="hero card"><canvas id="cv" class="cv"></canvas></div>
+<div class="legend"><b>How to read it:</b> the <b style="color:var(--in)">orange card</b> = the tensor right now &middot;
+faint cards = states it already produced (they stay as breadcrumbs) &middot; vertical panels = the five internal
+gates of <code>sched.step()</code> &middot; the <span class="dot" style="background:var(--in)"></span>dice gate only fires
+in DDPM mode — in DDIM &eta;=0 it&rsquo;s bypassed (grey) &middot; thumbnails are real pixels at your chosen t.</div>
+
+<div class="grid" id="grid">
+  <div class="card"><div class="h2">What&rsquo;s happening</div><div class="story" id="story"></div>
+  <div class="kbox" id="kbox"></div></div>
+  <div class="stack">
+    <div class="card"><div class="h2">Live values at t = <span id="tLab">700</span></div><div class="live" id="live"></div></div>
+    <div class="card"><div class="h2">Inside <span class="mono">sched.step()</span> (simplified)</div><pre class="code" id="code"></pre></div>
+  </div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+
+
+/* ---------- real tensor math at chosen t ---------- */
+let T=700, MODE='ddpm';
+const ERR=new Float64Array(256); {__s=91919; for(let i=0;i<256;i++)ERR[i]=gauss();}
+const Z2=new Float64Array(256); {__s=31337; for(let i=0;i<256;i++)Z2[i]=gauss();}
+function tensors(){
+  const t=T, a=SQA[t], b=SQB[t];
+  const xt=new Float64Array(256), eh=new Float64Array(256), x0h=new Float64Array(256), xp=new Float64Array(256);
+  /* model imperfection grows with noise level -> x0_hat blurry early */
+  const imperf=0.35*SQB[t];
+  for(let i=0;i<256;i++){
+    xt[i]=a*X0[i]+b*EPS[i];
+    eh[i]=EPS[i]+imperf*ERR[i];
+    x0h[i]=(xt[i]-b*eh[i])/a;
+  }
+  const tp=Math.max(0,t-1), ap=SQA[tp], bp=SQB[tp];
+  const beta=BETA[t];
+  const sig=MODE==='ddpm'?Math.sqrt(Math.max(0,(1-ABAR[tp])/(1-ABAR[t])*beta)):0;
+  const dir=Math.sqrt(Math.max(0,(1-ABAR[tp])-sig*sig));
+  for(let i=0;i<256;i++) xp[i]=ap*x0h[i]+dir*eh[i]+sig*Z2[i];
+  return {xt,eh,x0h,xp,sig,dir,ap,tp,imperf};
+}
+let TN=tensors();
+
+const STORIES=[
+ '<b>&#9312; The input.</b> <code>x_t</code> arrives — at t = <span class="tt"></span> it is the clean shirt mixed with noise by the forward formula (coefficients shown live on the right). The scheduler also receives <b>t itself</b>: the model must know <em>how noisy</em> its input is to denoise it correctly.',
+ '<b>&#9313; U-Net gate.</b> The only <em>learned</em> part of the whole step. The network looks at x_t (conditioned on t) and outputs &epsilon;&#770; — its best guess of <em>which exact noise field</em> was mixed in. A real model isn&rsquo;t perfect: our &epsilon;&#770; card deliberately carries a small error that grows with t, and you&rsquo;ll see the consequence at the next gate.',
+ '<b>&#9314; Un-mix.</b> Pure algebra — solve the forward formula for x&#8320;: <code>x&#770;&#8320; = (x_t &minus; &radic;&beta;&#772;_t&middot;&epsilon;&#770;)/&radic;&alpha;&#772;_t</code>. Look at the x&#770;&#8320; breadcrumb: at high t it&rsquo;s a <b>blurry, wobbly shirt</b> — dividing by a tiny &radic;&alpha;&#772; amplifies every imperfection in &epsilon;&#770;. This is why sampling can&rsquo;t just jump to x&#8320; in one step: the early guess is only a rough draft.',
+ '<b>&#9315; Re-mix.</b> Instead of trusting the rough draft, re-noise it <em>slightly less</em>: <code>&radic;&alpha;&#772;_{t-1}&middot;x&#770;&#8320; + dir&middot;&epsilon;&#770;</code>. Crucially this <b>reuses the same &epsilon;&#770;</b> — no new randomness in this gate. The result is an image at noise level t&minus;1: one small, safe step toward clean.',
+ '<b>&#9316; The fork — the ONLY difference between DDPM and DDIM.</b> <b style="color:var(--in)">DDPM mode:</b> the dice gate fires and adds &sigma;_t&middot;z with brand-new random z (watch the card jiggle) — this is why every DDPM run differs. <b style="color:var(--ac)">DDIM &eta;=0:</b> &sigma; = 0, the gate is bypassed (grey), the card passes untouched — fully deterministic. Toggle the mode buttons and replay this chip!',
+ '<b>&#9317; Output.</b> The card exits as <code>res.prev_sample</code> = x_{t&minus;1}: same shirt, slightly less noise. The dashed return arc is the outer loop: this whole journey repeats ~1000&times; (DDPM) — or far fewer with DDIM skipping — until t = 0.'
+];
+const KBOX=[
+ 'Drag the t slider even mid-journey — every thumbnail recomputes from the real schedule.',
+ 'The U-Net is called once per step. 1000 steps = 1000 forward passes: THE cost of diffusion sampling.',
+ 'Try t = 950 vs t = 200 and compare the x\u0302\u2080 breadcrumb: rough draft vs nearly perfect.',
+ 'Re-mix + un-mix cancel exactly if \u03B5\u0302 were perfect \u2014 progress comes from the model being <em>less wrong</em> at lower t.',
+ 'This gate is chip &#9315; of the DDPM-vs-DDIM comparison viz \u2014 here you see it at pixel level.',
+ 'prev_sample feeds straight back in as the next x_t. Loop until t = 0.'
+];
+function codeFor(){
+ return [
+ ['def step(self, noise, t, x_t):','' ],
+ ['    # gate 2: un-mix','cm2'],
+ ['    x0_hat = (x_t - \u221A\u03B2\u0304_t*noise) / \u221A\u03B1\u0304_t','h2'],
+ ['    # gate 3: re-mix at t-1 (reuses noise!)','cm3'],
+ ['    dir = \u221A(\u03B2\u0304_{t-1} - \u03C3\u00B2) * noise','h3'],
+ ['    prev = \u221A\u03B1\u0304_{t-1}*x0_hat + dir','h3'],
+ ['    # gate 4: the fork','cm4'],
+ MODE==='ddpm'
+   ?['    prev += \u03C3_t * randn_like(x_t)  # DDPM','h4']
+   :['    # \u03C3 = 0  \u2192 line skipped   # DDIM \u03B7=0','h4'],
+ ['    return prev   # gate 5','h5'],
+ ['','' ],
+ ['# gate 1 happens OUTSIDE, in the loop:','cm1'],
+ ['noise = model(x_t, t)   # \u03B5\u0302','h1']];
+}
+
+/* ---------- scene ---------- */
+const cv=$('cv'); let W=0,H=340;
+let p=0, playing=false, stopAt=1e9, speed=1, lastT=null, jig=0;
+const SPD=[0.5,1,2,4];
+const GN=5; /* gates */
+function gateX(k){return W*(0.16+k*0.168);}
+function wayX(w){return w===0?W*0.065:gateX(w-1)+W*0.084;}
+const GATES=['U-Net\n\u03B5\u03B8(x_t, t)','un-mix \u00F7\n\u2192 x\u0302\u2080','re-mix \u00D7\nfor t\u22121','+ \u03C3\u00B7z\n\uD83C\uDFB2','output\nprev_sample'];
+
+const off=document.createElement('canvas');off.width=off.height=16;
+function thumb(x,f,cx,cy,s,scale){x.imageSmoothingEnabled=false;drawField(off,f,scale);x.drawImage(off,cx-s/2,cy-s/2,s,s);}
+
+function draw(now){
+  const x=cv.getContext('2d');x.clearRect(0,0,W,H);
+  const midY=H*0.52, w=Math.min(GN,Math.floor(p)), f=p-w;
+  /* rail */
+  x.strokeStyle='#dde5f2';x.lineWidth=2;
+  x.beginPath();x.moveTo(W*0.04,midY);x.lineTo(W*0.97,midY);x.stroke();
+  /* return loop arc */
+  x.strokeStyle='#b9a5ec';x.setLineDash([5,6]);x.lineWidth=1.6;
+  x.beginPath();x.moveTo(W*0.955,midY+34);
+  x.bezierCurveTo(W*0.96,H-14,W*0.06,H-14,W*0.058,midY+34);x.stroke();
+  x.setLineDash([]);
+  const midXf=W*0.5;
+  x.fillStyle='#7b5cd6';x.font='700 10.5px "Segoe UI"';x.textAlign='center';
+  x.fillText('loop: prev_sample becomes next x_t  \u00D7 ~1000',midXf,H-16);
+  /* arrowhead on return arc */
+  x.beginPath();x.moveTo(W*0.058,midY+36);x.lineTo(W*0.052,midY+48);x.lineTo(W*0.068,midY+46);x.closePath();x.fill();
+
+  /* gates */
+  for(let k=0;k<GN;k++){
+    const gx=gateX(k), off4=(k===3&&MODE==='ddim');
+    const gw=54, gh=110;
+    x.fillStyle=off4?'#f2f4f9':(k===0?'#fdeedd':k===4?'#e4f5f5':'#eef1fa');
+    x.strokeStyle=off4?'#ccd4e4':(k===0?'#e8b073':k===4?'#79c7c7':'#aebfe0');
+    x.lineWidth=k===3&&!off4?2.5:1.6;
+    if(k===3&&!off4)x.strokeStyle='#f6921e';
+    x.beginPath();x.roundRect(gx-gw/2,midY-gh/2,gw,gh,9);x.fill();x.stroke();
+    x.fillStyle=off4?'#a7b2c6':'#3d4c68';x.font='700 10.5px "Segoe UI"';x.textAlign='center';
+    GATES[k].split('\n').forEach((L,li)=>x.fillText(L,gx,midY-gh/2-20+li*12));
+    if(off4){x.fillStyle='#a7b2c6';x.font='700 11px "Segoe UI"';
+      x.fillText('bypassed',gx,midY+3);x.fillText('(\u03C3 = 0)',gx,midY+16);}
+    if(k===3&&!off4){ /* dice */
+      const fire=(p>3&&p<4);
+      x.font=(fire?'22px':'17px')+' "Segoe UI"';
+      x.fillText('\uD83C\uDFB2',gx,midY+6);
+      if(fire){x.fillStyle='#f6921e';x.font='700 10px Consolas,monospace';
+        x.fillText('z ~ N(0,I)',gx,midY+26);}}
+    /* glow when card inside */
+    if(Math.abs(p-(k+0.5))<0.32&&!(off4)){
+      x.strokeStyle='rgba(123,92,214,.8)';x.lineWidth=2.5;
+      x.beginPath();x.roundRect(gx-gw/2-3,midY-gh/2-3,gw+6,gh+6,11);x.stroke();}
+  }
+
+  /* breadcrumbs of produced tensors */
+  const crumbs=[
+    {at:1.5,x:wayX(1),y:midY-96,f:TN.eh,s:44,lab:'\u03B5\u0302 (predicted noise)',scale:0.5,col:'#c07417'},
+    {at:2.5,x:wayX(2),y:midY-96,f:TN.x0h,s:44,lab:'x\u0302\u2080 (rough draft!)',scale:1,col:'#7b5cd6'},
+  ];
+  for(const c of crumbs){ if(p>c.at){
+    x.globalAlpha=0.92;thumb(x,c.f,c.x,c.y,c.s,c.scale);x.globalAlpha=1;
+    x.strokeStyle=c.col;x.lineWidth=1.5;x.strokeRect(c.x-c.s/2,c.y-c.s/2,c.s,c.s);
+    x.fillStyle=c.col;x.font='700 10px "Segoe UI"';x.textAlign='center';
+    x.fillText(c.lab,c.x,c.y-c.s/2-6);
+    /* dashed drop line to where it was made */
+    x.strokeStyle=c.col;x.setLineDash([3,4]);x.globalAlpha=0.5;
+    x.beginPath();x.moveTo(c.x,c.y+c.s/2);x.lineTo(gateX(Math.floor(c.at)-1)+2,midY-56);x.stroke();
+    x.setLineDash([]);x.globalAlpha=1;}}
+
+  /* traveling card */
+  const x0=wayX(w), x1=wayX(Math.min(GN,w+1));
+  let cx=lerp(x0,x1,sm(f)), cy=midY;
+  /* jiggle after sigma gate in ddpm */
+  if(MODE==='ddpm'&&p>3.55&&p<4.35){cy+=Math.sin(now*0.05)*3.5*(1-(p-3.55)/0.8);}
+  const field = p<2.7?TN.xt:TN.xp;
+  const stateLab = p<1.05?'x_t':(p<2.7?'x_t (+ \u03B5\u0302 in hand)':'x_{t\u22121}');
+  const s=62;
+  x.save();
+  x.shadowColor='rgba(123,92,214,.35)';x.shadowBlur=12;
+  x.fillStyle='#fff';x.fillRect(cx-s/2-3,cy-s/2-3,s+6,s+6);
+  x.restore();
+  thumb(x,field,cx,cy,s, p<1.5?1:1);
+  x.strokeStyle=p<2.7?'#f6921e':'#16a3a3';x.lineWidth=2.5;
+  x.strokeRect(cx-s/2-3,cy-s/2-3,s+6,s+6);
+  x.fillStyle=p<2.7?'#c07417':'#128888';x.font='700 11.5px Consolas,monospace';x.textAlign='center';
+  x.fillText(stateLab,cx,cy+s/2+16);
+  x.fillStyle='#5a6b86';x.font='10px Consolas,monospace';
+  x.fillText('t = '+(p<2.7?T:TN.tp),cx,cy+s/2+29);
+  /* eps-hat card rides along after gate 1 until consumed at gate 3 */
+  if(p>1.05&&p<2.75){
+    const ex=cx+44, ey=cy-52, es=34;
+    thumb(x,TN.eh,ex,ey,es,0.5);
+    x.strokeStyle='#c07417';x.lineWidth=1.5;x.strokeRect(ex-es/2,ey-es/2,es,es);
+    x.fillStyle='#c07417';x.font='700 9.5px Consolas,monospace';x.fillText('\u03B5\u0302',ex,ey-es/2-4);}
+  /* input t tag */
+  x.fillStyle='#5a6b86';x.font='700 11px Consolas,monospace';x.textAlign='left';
+  x.fillText('in: x_t ['+ (MODE==='ddpm'?'DDPM':'DDIM \u03B7=0') +']  t='+T,10,20);
+  x.textAlign='left';
+}
+
+/* ---------- sync ---------- */
+let lastStage=-1;
+function stageOf(){return Math.min(5,Math.floor(p+0.001));}
+function sync(now){
+  const s=stageOf();
+  if(s!==lastStage){lastStage=s;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+    $('story').innerHTML=STORIES[s].replace('<span class="tt"></span>',String(T));
+    $('kbox').innerHTML=KBOX[s];
+    renderCode(s); postH();}
+  const sig=TN.sig, dir=TN.dir;
+  $('tLab').textContent=T;
+  $('live').innerHTML=
+   '\u03B1\u0304<sub>t</sub> = <span class="big">'+ABAR[T].toFixed(4)+'</span> &middot; '+
+   '\u221A\u03B1\u0304 = <span class="big" style="color:#c07417">'+SQA[T].toFixed(3)+'</span>, '+
+   '\u221A\u03B2\u0304 = <span class="big" style="color:#5a6b86">'+SQB[T].toFixed(3)+'</span><br>'+
+   'model error in \u03B5\u0302 (simulated): <span class="big">'+(TN.imperf*100).toFixed(0)+'%</span> \u2014 why x\u0302\u2080 is rough at high t<br>'+
+   '&sigma;<sub>t</sub> = <span class="big" style="color:'+(sig>0?'#c07417':'#16a3a3')+'">'+sig.toFixed(4)+'</span>'+
+   (MODE==='ddpm'?' (DDPM: fresh z gets injected)':' (DDIM \u03B7=0: fork bypassed)')+'<br>'+
+   'x<sub>t\u22121</sub> = <span class="big">'+TN.ap.toFixed(3)+'</span>\u00B7x\u0302\u2080 + <span class="big">'+dir.toFixed(3)+'</span>\u00B7\u03B5\u0302'+
+   (sig>0?' + <span class="big" style="color:#c07417">'+sig.toFixed(3)+'</span>\u00B7z':'');
+  draw(now);
+}
+function renderCode(s){
+  const el=$('code');el.innerHTML='';
+  codeFor().forEach(([txt,cls])=>{const d=document.createElement('div');
+    let h=false, cm=cls&&cls.startsWith('cm');
+    if(cls==='h1')h=s===1; if(cls==='h2')h=s===2; if(cls==='h3')h=s===3;
+    if(cls==='h4')h=s===4; if(cls==='h5')h=s===5;
+    d.className='cl'+(cm?' cm':'')+(h?' hl':'');
+    d.textContent=txt||'\u00A0'; el.appendChild(d);});
+}
+
+/* controls */
+function stopPlay(){playing=false;$('play').innerHTML='&#9654; Play the step';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}
+  if(p>=GN-0.01)p=0; playing=true;stopAt=GN;$('play').innerHTML='&#10074;&#10074; Pause';};
+$('fwd').onclick=()=>{stopPlay();p=clamp(Math.floor(p+1e-4)+1,0,GN);};
+$('back').onclick=()=>{stopPlay();p=clamp(Math.ceil(p-1e-4)-1,0,GN);};
+$('reset').onclick=()=>{stopPlay();p=0;lastStage=-1;};
+$('speed').oninput=e=>{speed=SPD[+e.target.value-1];$('spv').textContent=speed+'\u00D7';};
+speed=SPD[1];
+$('t').oninput=e=>{T=+e.target.value;$('tv').textContent='t = '+T;TN=tensors();};
+$('mDDPM').onclick=()=>{MODE='ddpm';TN=tensors();$('mDDPM').classList.add('on');$('mDDIM').classList.remove('on');lastStage=-1;};
+$('mDDIM').onclick=()=>{MODE='ddim';TN=tensors();$('mDDIM').classList.add('on');$('mDDPM').classList.remove('on');lastStage=-1;};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+  stopPlay();const s=+c.dataset.s;
+  p=Math.max(0,s-0.0); if(s>0)p=s-1+0.55; else p=0;
+  lastStage=-1;
+  playing=true;stopAt=s+0.55>GN?GN:s+0.55;
+  if(s===0){p=0;stopAt=0.45;}
+  $('play').innerHTML='&#10074;&#10074; Pause';});
+addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){stopPlay();p=clamp(p+0.5,0,GN);}
+  if(e.key==='ArrowLeft'){stopPlay();p=clamp(p-0.5,0,GN);}});
+
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT)*0.001;lastT=ts;
+  if(playing){p=Math.min(stopAt,p+dt*0.55*speed);if(p>=stopAt)stopPlay();}
+  sync(ts);}
+function fit(){[W,H]=fitCv(cv,340);}
+fit();addEventListener('resize',fit);
+lastStage=-1;requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>

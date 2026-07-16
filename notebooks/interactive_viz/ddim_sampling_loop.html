@@ -1,0 +1,309 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Full Sampling Loop — 999 to 0</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+</style></head><body>
+<div class="wrap">
+
+<h1>The full sampling loop: 999 &rarr; 0, one U-Net call at a time</h1>
+<p class="sub">This is the notebook&rsquo;s loop over <code>sched.timesteps</code>. <b>Click anywhere on the timeline
+to jump</b> (it&rsquo;s a scrubber), or press play — and watch four things stay locked together: the image being
+denoised, the loop line being executed, the <b>model-call odometer</b> (the real cost!), and which
+<b>perceptual phase</b> you&rsquo;re in. Milestones you pass stay lit below as breadcrumbs.</p>
+
+<div class="stagebar">
+  <button class="chip" data-s="0">&#9312; Pure noise</button>
+  <button class="chip" data-s="1">&#9313; Layout emerges</button>
+  <button class="chip" data-s="2">&#9314; Structure locks</button>
+  <button class="chip" data-s="3">&#9315; Detail polish</button>
+</div>
+<div class="selrow">
+  <button class="play" id="play">&#9654; Play 999&rarr;0</button>
+  <button class="reset" id="reset">&#8634; Reset</button>
+  <span class="div"></span>
+  <span>speed</span><input type="range" id="speed" min="1" max="4" step="1" value="2"><span class="val" id="spv">1&times;</span>
+</div>
+
+<div class="hero card"><canvas id="cv" class="cv"></canvas></div>
+<div class="legend"><b>How to read it:</b> the top strip is the <b>timeline</b> (click it!) — colored bands are the
+perceptual phases, the purple needle is the current t &middot; the big image is the <b>current sample</b>, computed
+from the real schedule &middot; the odometer counts <b>U-Net calls so far</b> — the true price of sampling &middot;
+milestone thumbnails light up as you pass them.</div>
+
+<div class="pills" id="pills"></div>
+
+<div class="grid" id="grid">
+  <div class="card"><div class="h2">What&rsquo;s happening</div><div class="story" id="story"></div>
+  <div class="kbox" id="kbox"></div></div>
+  <div class="stack">
+    <div class="card"><div class="h2">Cost meter (the reason DDIM exists)</div><div class="live" id="live"></div></div>
+    <div class="card"><div class="h2">The loop (line being executed lights up)</div><pre class="code" id="code"></pre></div>
+  </div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+
+
+/* phases: [tHigh, tLow, label, color] */
+const PH=[[999,800,'pure noise \u2192 first hints','#8d9bb5'],
+          [800,480,'global layout emerges','#f6921e'],
+          [480,180,'structure locks in','#7b5cd6'],
+          [180,0,'detail polish','#16a3a3']];
+function phaseOf(t){for(let i=0;i<4;i++)if(t<=PH[i][0]&&t>PH[i][1]-1)return i;return 3;}
+const STORIES=[
+ '<b>&#9312; t &asymp; 999&ndash;800 — pure noise, first hints.</b> The sample is statistically just Gaussian noise; &radic;&alpha;&#772; is only ~0.03&ndash;0.15, so the signal share of every pixel is tiny. Yet the model is already making its <em>biggest</em> decisions here: the faint average it nudges toward determines what the image will eventually be. Blink and you&rsquo;d miss it — visually almost nothing changes for 200 model calls.',
+ '<b>&#9313; t &asymp; 800&ndash;480 — global layout emerges.</b> The crossover zone of the schedule (&alpha;&#772; passes 0.5 around t&asymp;364&hellip;600 range on the &radic; scale): the silhouette of the garment appears out of the static. Composition, position, and rough shape are being decided <em>now</em> — long before any detail exists.',
+ '<b>&#9314; t &asymp; 480&ndash;180 — structure locks in.</b> Signal now dominates. Edges sharpen, the sleeve/torso boundaries stabilize. If you compare two nearby timestamps the <em>layout</em> no longer moves — only local contrast improves. (This is why aggressive DDIM skipping hurts least in this zone.)',
+ '<b>&#9315; t &asymp; 180&ndash;0 — detail polish.</b> The last mile: tiny residual noise is scrubbed off, textures and crisp edges appear. Also where the notebook&rsquo;s FID table shows quality is won or lost when you skip too hard (25 steps &rarr; FID 17). At t = 0 the loop returns the finished sample.'
+];
+const KBOX=[
+ 'Scrub slowly across 999\u2192900: can you honestly see a difference? Now check the odometer \u2014 you paid 99 U-Net calls for it.',
+ 'Try clicking t = 700 then t = 550: watch the silhouette firm up between clicks.',
+ 'Skipping intuition: in this zone neighbouring steps are nearly redundant \u2014 prime skipping territory.',
+ 'At batch 2048 the notebook measured ~8\u20139 minutes for all 1000 steps \u2014 the odometer\u2019s time estimate uses that rate.'
+];
+const CODE=[
+ ['x_t = torch.randn(sz)             # start: pure noise','cm'],
+ ['for t in progress_bar(sched.timesteps):   # 999 \u2192 0','L0'],
+ ['    with torch.no_grad():',''],
+ ['        noise = model(x_t, t)     # \u2460 predict \u03B5\u0302','L1'],
+ ['    x_t = sched.step(noise, t, x_t).prev_sample  # \u2461 denoise a bit','L2'],
+ ['    preds.append(x_t.cpu())       # \u2462 keep a snapshot','L3'],
+];
+const MILES=[999,800,600,400,200,0];
+
+const cv=$('cv'); let W=0,H=330;
+let t=999, playing=false, stopAt=-1, speed=1, lastT=null, codePhase=0;
+const SPD=[0.5,1,2,4];
+const off=document.createElement('canvas');off.width=off.height=16;
+/* detail polish: mild denoised sharpening as t->0 */
+function sampleAt(ti){
+  const o=mixAt(ti);
+  const pol=clamp((180-ti)/180,0,1);
+  if(pol>0)for(let i=0;i<256;i++)o[i]=lerp(o[i],X0[i],pol*0.55);
+  return o;
+}
+const TLY=18, TLH=40;
+function tlX(ti){return W*0.03+(W*0.94)*(999-ti)/999;}
+
+function draw(now){
+  const x=cv.getContext('2d');x.clearRect(0,0,W,H);
+  /* timeline */
+  for(const [a,b,lab,col] of PH){
+    x.fillStyle=col;x.globalAlpha=0.24;
+    x.fillRect(tlX(a),TLY,tlX(b)-tlX(a),TLH);x.globalAlpha=1;
+    x.fillStyle=col;x.font='700 10px "Segoe UI"';x.textAlign='center';
+    x.fillText(lab,(tlX(a)+tlX(b))/2,TLY-5);
+  }
+  x.strokeStyle='#c6d1e4';x.strokeRect(tlX(999),TLY,tlX(0)-tlX(999),TLH);
+  x.fillStyle='#8a94a8';x.font='10px Consolas,monospace';
+  x.textAlign='left';x.fillText('t=999',tlX(999),TLY+TLH+13);
+  x.textAlign='right';x.fillText('t=0',tlX(0),TLY+TLH+13);
+  x.textAlign='center';x.fillText('\u2190 the loop moves this way \u2190  (click anywhere to jump)',W/2,TLY+TLH+13);
+  /* milestone ticks */
+  for(const m of MILES){x.strokeStyle='#95a3bd';x.beginPath();
+    x.moveTo(tlX(m),TLY+TLH);x.lineTo(tlX(m),TLY+TLH+4);x.stroke();}
+  /* needle */
+  const nx=tlX(t);
+  x.strokeStyle='#7b5cd6';x.lineWidth=2.5;
+  x.beginPath();x.moveTo(nx,TLY-3);x.lineTo(nx,TLY+TLH+3);x.stroke();
+  x.fillStyle='#7b5cd6';x.beginPath();x.moveTo(nx,TLY+TLH+4);x.lineTo(nx-5,TLY+TLH+12);x.lineTo(nx+5,TLY+TLH+12);x.closePath();x.fill();
+  x.font='700 11px Consolas,monospace';x.fillText('t = '+Math.round(t),nx, TLY+TLH+24);
+
+  /* current image */
+  const s=Math.min(150,H*0.48), cx=W*0.30, cy=H*0.66;
+  x.imageSmoothingEnabled=false;
+  drawField(off,sampleAt(Math.round(t)));
+  x.save();x.shadowColor='rgba(123,92,214,.3)';x.shadowBlur=14;
+  x.fillStyle='#fff';x.fillRect(cx-s/2-4,cy-s/2-4,s+8,s+8);x.restore();
+  x.drawImage(off,cx-s/2,cy-s/2,s,s);
+  const ph=phaseOf(t);
+  x.strokeStyle=PH[ph][3];x.lineWidth=3;x.strokeRect(cx-s/2-4,cy-s/2-4,s+8,s+8);
+  x.fillStyle=PH[ph][3];x.font='700 11.5px "Segoe UI"';
+  x.fillText('phase: '+PH[ph][2],cx,cy+s/2+20);
+  x.fillStyle='#5a6b86';x.font='700 12px Consolas,monospace';
+  x.fillText('x_t  \u00B7  t = '+Math.round(t),cx,cy-s/2-12);
+
+  /* odometer */
+  const calls=999-Math.round(t);
+  const ox=W*0.70, oy=H*0.52;
+  x.fillStyle='#25324a';x.font='700 13px "Segoe UI"';x.textAlign='center';
+  x.fillText('U-Net calls so far',ox,oy-34);
+  x.font='800 34px Consolas,monospace';
+  x.fillStyle='#7b5cd6';x.fillText(String(calls).padStart(3,'0'),ox,oy);
+  x.font='700 11.5px "Segoe UI"';x.fillStyle='#5a6b86';
+  const sec=calls*0.51;
+  x.fillText('\u2248 '+Math.floor(sec/60)+'m '+String(Math.round(sec%60)).padStart(2,'0')+'s of GPU time (batch 2048)',ox,oy+20);
+  /* progress ring */
+  x.strokeStyle='#e6ebf5';x.lineWidth=7;x.beginPath();x.arc(ox,oy+66,26,0,7);x.stroke();
+  x.strokeStyle='#7b5cd6';x.beginPath();x.arc(ox,oy+66,26,-Math.PI/2,-Math.PI/2+Math.PI*2*calls/999);x.stroke();
+  x.fillStyle='#5a6b86';x.font='700 10.5px "Segoe UI"';
+  x.fillText(Math.round(calls/9.99)+'%',ox,oy+70);
+  x.textAlign='left';
+}
+
+/* pills (milestones) */
+const pillsEl=$('pills'), pillEls=[], pcv=[];
+MILES.forEach((m,i)=>{const d=document.createElement('div');d.className='pill';
+  const c=document.createElement('canvas');c.width=c.height=16;c.style.cssText='width:44px;height:44px;image-rendering:pixelated;border-radius:6px;display:block;margin:0 auto 2px;';
+  drawField(c,sampleAt(m));
+  d.appendChild(c);
+  const lab=document.createElement('div');lab.className='s';lab.textContent='t='+m;d.appendChild(lab);
+  d.onclick=()=>{stopPlay();glide={from:t,to:m,u:0};};
+  pillsEl.appendChild(d);pillEls.push(d);pcv.push(c);});
+
+let lastStage=-1, glide=null;
+function sync(now){
+  const ti=Math.round(t), s=phaseOf(ti);
+  if(s!==lastStage){lastStage=s;
+    document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+    $('story').innerHTML=STORIES[s];$('kbox').innerHTML=KBOX[s];postH();}
+  /* code line cycling while playing */
+  const lines=['L1','L2','L3'];
+  const active= playing? lines[Math.floor(now*0.004)%3] : 'L0';
+  const el=$('code');el.innerHTML='';
+  CODE.forEach(([txt,cls])=>{const d=document.createElement('div');
+    d.className='cl'+(cls==='cm'?' cm':'')+((cls===active||(cls==='L0'))&&cls!=='cm'&&(cls===active)?' hl':'');
+    d.textContent=txt||'\u00A0';el.appendChild(d);});
+  const calls=999-ti, sec=calls*0.51, full=999*0.51;
+  $('live').innerHTML=
+   'model calls: <span class="big" style="color:var(--ac)">'+calls+'</span> / 999 &middot; '+
+   'wall clock \u2248 <span class="big">'+Math.floor(sec/60)+':'+String(Math.round(sec%60)).padStart(2,'0')+'</span>'+
+   ' of <span class="big">'+Math.floor(full/60)+':'+String(Math.round(full%60)).padStart(2,'0')+'</span><br>'+
+   '<span style="color:var(--soft)">Every step = one full U-Net forward pass. This linear cost is exactly what DDIM\u2019s <code>set_timesteps(n)</code> attacks (next viz): same journey, ~10\u201340\u00D7 fewer calls.</span>';
+  pillEls.forEach((el2,i)=>{el2.classList.toggle('on',MILES[i]>=ti-40&&MILES[i]<=ti+40);
+    el2.style.opacity=MILES[i]>ti+40?0.45:1;});
+  draw(now);
+}
+
+/* timeline click/drag */
+function tFromEvent(e){const r=cv.getBoundingClientRect();
+  const px=(e.clientX-r.left);
+  return clamp(999-(px/r.width-0.03)/0.94*999,0,999);}
+let dragging=false;
+cv.addEventListener('pointerdown',e=>{const r=cv.getBoundingClientRect();
+  const py=e.clientY-r.top;
+  if(py<TLY+TLH+26){dragging=true;stopPlay();t=tFromEvent(e);}});
+addEventListener('pointermove',e=>{if(dragging)t=tFromEvent(e);});
+addEventListener('pointerup',()=>dragging=false);
+
+function stopPlay(){playing=false;$('play').innerHTML='&#9654; Play 999\u21920';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}
+  if(t<=1)t=999;playing=true;stopAt=0;$('play').innerHTML='&#10074;&#10074; Pause';};
+$('reset').onclick=()=>{stopPlay();glide=null;t=999;lastStage=-1;};
+$('speed').oninput=e=>{speed=SPD[+e.target.value-1];$('spv').textContent=speed+'\u00D7';};
+speed=SPD[1];
+const R=[[999,800],[800,480],[480,180],[180,0]];
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+  stopPlay();const s=+c.dataset.s;t=R[s][0];lastStage=-1;
+  playing=true;stopAt=R[s][1];$('play').innerHTML='&#10074;&#10074; Pause';});
+addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'){stopPlay();t=clamp(t-25,0,999);}
+  if(e.key==='ArrowLeft'){stopPlay();t=clamp(t+25,0,999);}});
+
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT)*0.001;lastT=ts;
+  if(playing){t=Math.max(stopAt,t-dt*150*speed);if(t<=stopAt)stopPlay();}
+  else if(glide){glide.u=Math.min(1,glide.u+dt*1.8);t=lerp(glide.from,glide.to,sm(glide.u));if(glide.u>=1)glide=null;}
+  sync(ts);}
+function fit(){[W,H]=fitCv(cv,330);}
+fit();addEventListener('resize',fit);
+lastStage=-1;requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>

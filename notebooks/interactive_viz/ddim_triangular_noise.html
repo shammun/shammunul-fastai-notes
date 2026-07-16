@@ -1,0 +1,318 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triangular Timestep Sampling</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+</style></head><body>
+<div class="wrap">
+
+<h1>Triangular timestep sampling: train where it matters</h1>
+<p class="sub">During <b>training</b>, every image gets a random timestep t before being noised. Uniform sampling
+spends equal effort on trivially-easy (t&asymp;0) and hopelessly-hard (t&asymp;999) cases. The notebook&rsquo;s
+<code>noisify()</code> instead draws t from a <b>triangular distribution peaking mid-schedule</b> — exactly where
+the denoising signal is richest. Draw samples and watch the two histograms fill; the dashed lines are the
+<b>exact expected shapes</b>, and both charts share one y-axis so heights are directly comparable.</p>
+
+<div class="stagebar">
+  <button class="chip" data-s="0">&#9312; Draw a few</button>
+  <button class="chip" data-s="1">&#9313; Draw thousands</button>
+  <button class="chip" data-s="2">&#9314; Compare the shapes</button>
+  <button class="chip" data-s="3">&#9315; Why the middle?</button>
+</div>
+<div class="selrow">
+  <button class="play" id="d100">&#127922; Draw 100 (animated)</button>
+  <button class="stepb" id="d1000">Draw 1000 (instant)</button>
+  <button class="reset" id="reset">&#8634; Reset</button>
+  <span class="div"></span>
+  <span class="val" id="cnt" style="min-width:120px">0 samples so far</span>
+  <span class="div"></span>
+  <span>speed</span><input type="range" id="speed" min="1" max="4" step="1" value="2"><span class="val" id="spv">1&times;</span>
+</div>
+
+<div class="hero card"><canvas id="cv" class="cv"></canvas></div>
+<div class="legend"><b>How to read it:</b> each falling square = one training example being assigned a timestep &middot;
+left = <code>randint(0,1000)</code> (uniform) &middot; right = the notebook&rsquo;s triangular draw &middot; dashed = the
+mathematically expected histogram for the current sample count &middot; the shaded middle third is the
+&ldquo;rich signal&rdquo; zone — the race bar tracks how much of each budget lands there.</div>
+
+<div class="grid" id="grid">
+  <div class="card"><div class="h2">What&rsquo;s happening</div><div class="story" id="story"></div>
+  <div class="kbox" id="kbox"></div></div>
+  <div class="stack">
+    <div class="card"><div class="h2">The race: share of samples in the middle third (t = 333&ndash;666)</div>
+      <canvas id="race" style="width:100%;height:74px;display:block"></canvas></div>
+    <div class="card"><div class="h2">The notebook&rsquo;s code</div><pre class="code" id="code"></pre></div>
+  </div>
+</div>
+<div class="grid nar">
+  <div class="card"><div class="h2">Why the middle matters — the three regimes</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px" id="whyRow">
+      <div class="kbox why" id="why0" style="margin-top:0;background:#fff;border-color:var(--line);color:#33415c"><b>t &asymp; 0 — too easy.</b> Input is nearly clean; predicting the tiny noise is trivial and the gradient teaches almost nothing.</div>
+      <div class="kbox why" id="why1" style="margin-top:0"><b>t &asymp; 500 — the sweet spot. &#11088;</b> Signal and noise are balanced: the model must truly understand garment structure to separate them. Richest gradients live here.</div>
+      <div class="kbox why" id="why2" style="margin-top:0;background:#fff;border-color:var(--line);color:#33415c"><b>t &asymp; 999 — near-impossible.</b> Input is ~pure noise; the target is essentially unguessable, so the loss is dominated by irreducible randomness.</div>
+    </div></div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+
+
+const BINS=40, ymaxPad=1.25;
+let uni=new Array(BINS).fill(0), tri=new Array(BINS).fill(0), nU=0, nT=0;
+let midU=0, midT=0; /* exact counts on raw values */
+let falling=[]; /* {side,bin,y,vy,land} */
+let pending=0; /* animated queue remaining */
+let speed=1, lastT=null;
+
+/* inverse-CDF triangular(0, .5, 1) — matches np.random.triangular(0,0.5,1) */
+function triSample(){const u=Math.random();
+  return u<0.5?Math.sqrt(u*0.5):1-Math.sqrt((1-u)*0.5);}
+function addSample(side,animated){
+  const v=side==='u'?Math.random():triSample();
+  const t=Math.min(999,Math.floor(v*1000));
+  const b=Math.min(BINS-1,Math.floor(v*BINS));
+  if(t>=333&&t<667){side==='u'?midU++:midT++;}
+  if(side==='u'){nU++;}else{nT++;}
+  if(animated)falling.push({side,bin:b,y:-14,vy:120+Math.random()*80});
+  else (side==='u'?uni:tri)[b]++;
+}
+function drawBoth(anim){addSample('u',anim);addSample('t',anim);}
+
+const STORIES=[
+ '<b>&#9312; Draw a few.</b> Press &#127922; and watch each training example fall into its bin — left gets a uniform t, right gets a triangular t. With only ~100 draws both histograms are lumpy: randomness dominates and the shapes are barely distinguishable. Don&rsquo;t trust small samples!',
+ '<b>&#9313; Draw thousands.</b> As the count grows, each histogram converges to its dashed <em>expected</em> shape (law of large numbers): a flat line for uniform, a tent for triangular. Same total budget of training examples — radically different allocation.',
+ '<b>&#9314; Compare the shapes.</b> The charts share one y-axis, so compare directly: the tent&rsquo;s peak bins get about <b>2&times;</b> the samples of any uniform bin, paid for by starving the extremes near t = 0 and t = 999. Check the race bar: uniform puts ~33% in the middle third; triangular ~<b>56%</b> (the exact math: P(&#8531;&lt;u&lt;&#8532;) = 5/9).',
+ '<b>&#9315; Why the middle?</b> The three cards below light up in turn. Easy cases (left) waste gradient steps; impossible cases (right) drown them in irreducible noise; the middle (center, &#11088;) is where the model actually <em>learns</em>. Triangular sampling is a training-time trick — completely independent of DDIM&rsquo;s sampling-time speedup, and the notebook uses both.'
+];
+const KBOX=[
+ 'Both columns consume the SAME number of training examples \u2014 this is re-allocation, not extra data.',
+ 'Click \u2461 a few times \u2014 10k+ samples make the tent unmistakable.',
+ 'Peak density of triangular(0, \u00BD, 1) is exactly 2 \u2014 that\u2019s the 2\u00D7 you see at the peak.',
+ 'One line of numpy buys a better curriculum: np.random.triangular(0, 0.5, 1).'
+];
+const CODE=[
+ ['def noisify(x0, abar):',''],
+ ['    device = x0.device',''],
+ ['    # UNIFORM (plain DDPM training):','cm'],
+ ['    # t = torch.randint(0, 1000, (n,))','u'],
+ ['    # TRIANGULAR (this notebook):','cm'],
+ ['    t = torch.from_numpy(','t2'],
+ ['        np.random.triangular(0, 0.5, 1, n)','t2'],
+ ['        * 1000).long()','t2'],
+ ['    ...  # mix x0 with noise at level t',''],
+];
+
+const cv=$('cv'); let W=0,H=300;
+const MIDCOL='rgba(123,92,214,.10)';
+function geom(){const gw=W*0.44, gh=H-84;
+  return [{x:W*0.04,y:44,w:gw,h:gh,lab:'UNIFORM \u2014 t = randint(0, 1000)',col:'#5a6b86'},
+          {x:W*0.52,y:44,w:gw,h:gh,lab:'TRIANGULAR \u2014 the notebook\u2019s noisify()',col:'#7b5cd6'}];}
+function expected(side,i,n){ /* expected count in bin i after n draws */
+  if(side===0)return n/BINS;
+  const u=(i+0.5)/BINS, f=u<0.5?4*u:4*(1-u);
+  return n*f/BINS;}
+function yMax(){ /* shared scale */
+  const n=Math.max(nU,nT,1);
+  return Math.max(2*n/BINS*ymaxPad, Math.max(...uni,...tri,1)*1.1);}
+
+function draw(now){
+  const x=cv.getContext('2d');x.clearRect(0,0,W,H);
+  const G=geom(), ym=yMax();
+  G.forEach((g,side)=>{
+    /* middle-third shading */
+    x.fillStyle=MIDCOL;
+    x.fillRect(g.x+g.w/3,g.y,g.w/3,g.h);
+    x.strokeStyle='#dde5f2';x.strokeRect(g.x,g.y,g.w,g.h);
+    x.fillStyle=g.col;x.font='700 11px "Segoe UI"';x.textAlign='center';
+    x.fillText(g.lab,g.x+g.w/2,g.y-9);
+    x.fillStyle='#8a94a8';x.font='9.5px Consolas,monospace';
+    x.textAlign='left';x.fillText('t=0',g.x,g.y+g.h+12);
+    x.textAlign='center';x.fillText('500',g.x+g.w/2,g.y+g.h+12);
+    x.textAlign='right';x.fillText('999',g.x+g.w,g.y+g.h+12);
+    x.textAlign='center';x.fillStyle='#7b5cd6';x.font='700 9px "Segoe UI"';
+    x.fillText('middle third',g.x+g.w/2,g.y+g.h-4);
+    /* bars */
+    const arr=side===0?uni:tri, bw=g.w/BINS;
+    for(let i=0;i<BINS;i++){const h2=g.h*arr[i]/ym;
+      x.fillStyle=side===0?'#8fa0bd':'#9b83e0';
+      x.fillRect(g.x+i*bw+0.5,g.y+g.h-h2,bw-1,h2);}
+    /* expected dashed shape */
+    const n=side===0?nU:nT;
+    if(n>0){x.strokeStyle=side===0?'#25324a':'#4a3aa8';x.setLineDash([5,4]);x.lineWidth=1.6;
+      x.beginPath();
+      for(let i=0;i<=BINS;i++){const e=expected(side,Math.min(i,BINS-1),n);
+        const px=g.x+i*bw, py=g.y+g.h-g.h*e/ym;
+        i?x.lineTo(px,py):x.moveTo(px,py);}
+      x.stroke();x.setLineDash([]);
+      x.fillStyle=side===0?'#25324a':'#4a3aa8';x.font='700 9px "Segoe UI"';x.textAlign='left';
+      x.fillText('expected',g.x+3,g.y+g.h-g.h*expected(side,side===0?2:Math.floor(BINS/2),n)/ym-4);}
+  });
+  /* falling squares */
+  for(const f of falling){
+    const g=G[f.side==='u'?0:1], bw=g.w/BINS;
+    x.fillStyle=f.side==='u'?'#5a6b86':'#7b5cd6';
+    x.fillRect(g.x+f.bin*bw+1,f.y,Math.max(3,bw-2),Math.max(3,bw-2));
+  }
+  x.textAlign='left';
+}
+function drawRace(){
+  const c=$('race'),d=Math.min(devicePixelRatio||1,2);
+  const w=c.parentElement.clientWidth-24;c.width=w*d;c.height=74*d;
+  const x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);x.clearRect(0,0,w,74);
+  function bar(y,frac,col,lab){
+    x.fillStyle='#eef1fa';x.fillRect(70,y,w-130,14);
+    x.fillStyle=col;x.fillRect(70,y,(w-130)*clamp(frac,0,1),14);
+    x.fillStyle='#5a6b86';x.font='700 10px "Segoe UI"';x.textAlign='right';x.fillText(lab,64,y+11);
+    x.fillStyle='#25324a';x.font='700 10.5px Consolas,monospace';x.textAlign='left';
+    x.fillText(nU?Math.round(frac*100)+'%':'\u2014',w-52,y+11);}
+  bar(12,nU?midU/nU:0,'#8fa0bd','uniform');
+  bar(40,nT?midT/nT:0,'#9b83e0','triangular');
+  x.fillStyle='#8a94a8';x.font='9.5px "Segoe UI"';x.textAlign='left';
+  x.fillText('theory: 33.3% vs 55.6%',70,68);
+}
+
+let lastStage=0;
+function setStage(s){lastStage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('story').innerHTML=STORIES[s];$('kbox').innerHTML=KBOX[s];
+  const el=$('code');el.innerHTML='';
+  CODE.forEach(([txt,cls])=>{const d=document.createElement('div');
+    d.className='cl'+(cls==='cm'?' cm':'')+((cls==='t2')||(cls==='u'&&s<=1)?' hl':'');
+    d.textContent=txt||'\u00A0';el.appendChild(d);});
+  if(s===3)whyPulse=0.001;
+  postH();}
+let whyPulse=0;
+
+function updCnt(){$('cnt').textContent=nT+' samples per side';}
+$('d100').onclick=()=>{pending+=100;};
+$('d1000').onclick=()=>{for(let i=0;i<1000;i++)drawBoth(false);updCnt();};
+$('reset').onclick=()=>{uni.fill(0);tri.fill(0);nU=nT=midU=midT=0;falling=[];pending=0;updCnt();setStage(0);};
+$('speed').oninput=e=>{speed=[0.5,1,2,4][+e.target.value-1];$('spv').textContent=speed+'\u00D7';};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+  const s=+c.dataset.s;setStage(s);
+  if(s===0&&nT<100)pending+=100;
+  if(s===1){for(let i=0;i<4000;i++)drawBoth(false);updCnt();}
+});
+
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT)*0.001;lastT=ts;
+  /* spawn from queue */
+  const rate=Math.max(1,Math.round(60*speed*dt* (pending>40?3:1)));
+  for(let i=0;i<rate&&pending>0;i++){drawBoth(true);pending--;}
+  if(pending===0&&falling.length===0)updCnt();
+  /* advance falling */
+  const G=geom();
+  falling=falling.filter(f=>{
+    const g=G[f.side==='u'?0:1], arr=f.side==='u'?uni:tri, ym=yMax();
+    const landY=g.y+g.h-g.h*arr[f.bin]/ym-4;
+    f.y+=f.vy*dt*speed*2.2; 
+    if(f.y>=landY){arr[f.bin]++;return false;}
+    return true;});
+  if(falling.length||pending)updCnt();
+  /* why-card pulse for stage 3 */
+  if(whyPulse>0){whyPulse+=dt;
+    const k=Math.min(2,Math.floor(whyPulse/1.1));
+    for(let i=0;i<3;i++){const el=$('why'+i);
+      el.style.boxShadow=i===k?'0 0 0 3px rgba(123,92,214,.45)':'none';}
+    if(whyPulse>3.6){whyPulse=0;for(let i=0;i<3;i++)$('why'+i).style.boxShadow='none';}}
+  draw(ts);drawRace();
+}
+function fit(){[W,H]=fitCv(cv,300);}
+fit();addEventListener('resize',fit);
+setStage(0);updCnt();requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>
