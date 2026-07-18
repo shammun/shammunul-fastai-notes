@@ -1,0 +1,564 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sched.step() Deep Dive — the Black Box, Opened</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+
+.tabbar{display:flex;gap:0;justify-content:center;margin:2px auto 12px;max-width:1060px;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;}
+.tab{flex:1;font-family:inherit;font-weight:700;font-size:13px;padding:10px 6px;border:none;background:#fff;color:var(--soft);cursor:pointer;border-right:1.5px solid var(--line);transition:all .15s;}
+.tab:last-child{border-right:none;} .tab:hover{color:var(--ac);} .tab.on{background:var(--ac);color:#fff;}
+.tab .sm{display:block;font-weight:400;font-size:10px;opacity:.8;}
+.panel{display:none;min-height:540px;} .panel.on{display:block;}
+.fx{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:17.5px;line-height:2.1;text-align:center;}
+.fr{display:inline-block;vertical-align:middle;text-align:center;line-height:1.25;}
+.fr .nu{border-bottom:1.7px solid #25324a;padding:0 5px;display:block;}
+.fr .de{padding:0 5px;display:block;}
+.fx .tk{padding:2px 5px;border-radius:7px;display:inline-block;vertical-align:middle;transition:all .18s;cursor:pointer;border:2px solid transparent;}
+.fx .tk:hover{border-color:var(--line);}
+.fx .tk.hi{background:var(--acbg);border-color:var(--ac);transform:scale(1.06);}
+pre.pcode{font-family:"SF Mono",Consolas,monospace;font-size:11.8px;line-height:1.7;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:9px 12px;overflow-x:auto;margin:0;}
+.pcode .ln2{display:block;padding:1px 6px;border-radius:6px;border-left:3px solid transparent;cursor:pointer;transition:all .13s;white-space:pre;}
+.pcode .ln2:hover{background:#eef1fa;}
+.pcode .ln2.hi{background:var(--acbg);border-left-color:var(--ac);}
+.pcode .ln2.cosm{background:#fff7ec;}
+.pcode .ln2.cosm.hi{background:#fdeedd;border-left-color:#f6921e;}
+.pcode .cm{color:#8a94a8;}
+.deriv2 .dl{padding:6px 12px;border-left:3px solid transparent;border-radius:7px;transition:all .15s;margin-bottom:2px;}
+.deriv2 .dl.hl{background:var(--acbg);border-left-color:var(--ac);}
+.deriv2 .cm{font-family:"Segoe UI";font-size:10.5px;color:#8a94a8;display:block;}
+.mtable{width:100%;border-collapse:collapse;font-size:12px;}
+.mtable th,.mtable td{border:1px solid var(--line);padding:6px 9px;text-align:left;}
+.mtable th{background:#f4f7fd;color:var(--soft);font-size:10.5px;letter-spacing:.05em;}
+.mtable td.co{font-family:Consolas,monospace;font-size:11.5px;}
+.mtable td.lv{font-family:Consolas,monospace;font-weight:700;color:var(--ac);text-align:right;}
+.mtable tr.mrow{cursor:pointer;} .mtable tr.mrow:hover td{background:#f7f5ff;}
+.mtable tr.mrow.hi td{background:var(--acbg);}
+.imsum{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;}
+.imsum .cell{text-align:center;}
+.imsum canvas{width:62px;height:62px;image-rendering:pixelated;border-radius:7px;display:block;margin:0 auto 3px;border:2px solid var(--line);}
+.imsum .lb{font-family:Consolas,monospace;font-size:10px;color:var(--soft);line-height:1.3;}
+.drawer{border:2px solid var(--line);border-radius:12px;background:#fff;padding:10px 12px;display:flex;gap:12px;align-items:center;cursor:pointer;transition:all .18s;margin-bottom:8px;}
+.drawer:hover{border-color:#cdbcf2;}
+.drawer.hi{border-color:var(--ac);background:var(--acbg);box-shadow:0 4px 14px rgba(123,92,214,.18);}
+.drawer canvas{width:84px;height:84px;image-rendering:pixelated;border-radius:8px;border:2px solid var(--line);flex:none;}
+.drawer .dt{font-size:12.2px;line-height:1.5;color:#33415c;}
+.drawer .dt code{font-weight:700;}
+.why{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.why .wc{border:2px solid var(--line);border-radius:11px;background:#fff;padding:9px 11px;font-size:11.8px;line-height:1.5;color:#33415c;}
+.why .wc b{color:var(--ink);display:block;margin-bottom:3px;}
+.qbig{text-align:center;font-size:18px;font-weight:800;color:var(--ink);margin:4px 0 6px;}
+@media(max-width:860px){.why{grid-template-columns:1fr;}}
+
+</style></head><body>
+<div class="wrap">
+
+<h1>sched.step( ) — the black box, opened</h1>
+<p class="sub">Notebook 19 wrote the reverse step by hand; Notebook 20 calls
+<code>sched.step(noise,&nbsp;t,&nbsp;x_t)</code>. The professor&rsquo;s claim: <b>they are the same two lines</b>.
+Four tabs: open the box and watch the inputs meet those two lines, walk each line with its math and
+live values, inspect the <code>res</code> dataclass drawer by drawer, and diff the two sampling loops —
+where one N20 line lights up <b>seven</b> N19 lines at once. The equivalence is also verified numerically below.</p>
+
+<div class="tabbar">
+  <button class="tab on" data-t="0">&#9312; The wrapper, unwrapped<span class="sm">open the box</span></button>
+  <button class="tab" data-t="1">&#9313; The two lines<span class="sm">math + live values</span></button>
+  <button class="tab" data-t="2">&#9314; res, the output<span class="sm">two drawers</span></button>
+  <button class="tab" data-t="3">&#9315; The two loops<span class="sm">1 line = 7 lines</span></button>
+</div>
+
+<!-- ============ TAB 0 ============ -->
+<div class="panel on" id="p0">
+<div class="stagebar">
+  <button class="chip c0" data-s="0">&#9312; The inputs flow in</button>
+  <button class="chip c0" data-s="1">&#9313; Line 1: predict x&#770;&#8320;</button>
+  <button class="chip c0" data-s="2">&#9314; Line 2: the posterior step</button>
+  <button class="chip c0" data-s="3">&#9315; res pops out</button>
+</div>
+<div class="card">
+  <pre class="pcode" style="text-align:center;font-size:13px">res = sched.step(noise, t, x_t)</pre>
+  <canvas id="box" class="cv" style="background:#fff;margin-top:8px"></canvas>
+</div>
+<div class="grid" style="margin-top:10px">
+  <div class="card"><div class="h2">What&rsquo;s happening</div><div class="story" id="note0"></div></div>
+  <div class="card"><div class="h2">&#9989; The equivalence, verified on one pixel &nbsp;<span style="font-weight:400;color:var(--soft)">t =</span> <input type="range" id="t0" min="2" max="999" value="700" style="width:130px;vertical-align:middle"> <span class="val" id="t0v">700</span></div>
+  <div class="live" id="proof0"></div></div>
+</div>
+<div class="kbox">&#9878;&#65039; <b>One honest footnote:</b> diffusers&rsquo; <code>DDPMScheduler</code> defaults its noise
+variance to the posterior &beta;&#771;<sub>t</sub> (<code>variance_type=&quot;fixed_small&quot;</code>);
+Notebook 19 uses &sigma;<sub>t</sub> = &radic;&beta;<sub>t</sub> (the <code>&quot;fixed_large&quot;</code> option).
+Both are standard DDPM choices, within ~1% over most of the schedule — the deterministic part of the step,
+verified above, is identical to machine precision.</div>
+</div>
+
+<!-- ============ TAB 1 ============ -->
+<div class="panel" id="p1">
+<div class="selrow"><span>t</span><input type="range" id="t1" min="2" max="999" value="600"><span class="val" id="t1v">600</span><span class="div"></span><span class="live">one slider — every number on this tab updates</span></div>
+<div class="card" style="margin-top:8px">
+  <div class="h2" style="color:#c07417">LINE 1 — estimate the clean image</div>
+  <pre class="pcode"><span style="color:#c07417;font-weight:700">x_0_hat</span> = (x_t - betabar_t.sqrt() * noise) / alphabar[t].sqrt()</pre>
+  <div class="stagebar" style="margin-top:8px">
+    <button class="chip c1a" data-s="0">&#9312; the forward formula</button>
+    <button class="chip c1a" data-s="1">&#9313; solve for x&#8320;</button>
+    <button class="chip c1a" data-s="2">&#9314; substitute &epsilon;<sub>&theta;</sub></button>
+  </div>
+  <div class="deriv2 fx" id="d1" style="font-size:16px"></div>
+  <div class="grid" style="margin-top:8px">
+    <div class="imsum" id="strip1"></div>
+    <table class="mtable" id="map1">
+      <tr><th>NOTEBOOK 19 CODE</th><th>MATH</th><th>MEANING</th><th>VALUE AT t</th></tr>
+    </table>
+  </div>
+</div>
+<div class="card" style="margin-top:10px">
+  <div class="h2" style="color:#128888">LINE 2 — the posterior step (click each term)</div>
+  <pre class="pcode">x_t = (<span style="color:#c07417">x_0_hat * alphabar_t1.sqrt() * (1-alpha[t]) / betabar_t</span> +
+       <span style="color:#128888">x_t * alpha[t].sqrt() * betabar_t1 / betabar_t</span> +
+       <span style="color:#7b5cd6">sigma[t] * z</span>)</pre>
+  <div class="fx" id="f2" style="margin-top:8px"></div>
+  <div class="story" id="tnote2" style="margin-top:6px"></div>
+  <table class="mtable" id="map2" style="margin-top:8px">
+    <tr><th>NOTEBOOK 19 CODE</th><th>MATH</th><th>MEANING</th><th>VALUE AT t</th></tr>
+  </table>
+</div>
+</div>
+
+<!-- ============ TAB 2 ============ -->
+<div class="panel" id="p2">
+<div class="qbig"><code>sched.step()</code> doesn&rsquo;t return a tensor — it returns a dataclass with two drawers</div>
+<div class="selrow"><span>t</span><input type="range" id="t2" min="60" max="990" value="850"><span class="val" id="t2v">850</span></div>
+<div class="grid" style="margin-top:8px">
+  <div class="stack">
+    <div class="card" style="border-color:#cdbcf2">
+      <div class="h2" style="color:var(--ac)">DDPMSchedulerOutput</div>
+      <div class="drawer" id="dr0">
+        <canvas width="16" height="16" id="dv0"></canvas>
+        <div class="dt"><code>.prev_sample</code> &nbsp;&rarr;&nbsp; x<sub>t&minus;1</sub><br>
+        The result of <b>Line 2</b> — the updated, slightly-less-noisy image. &ldquo;prev&rdquo; = the <em>previous
+        timestep</em> in the 999 &rarr; 0 countdown, i.e. one step closer to clean.</div>
+      </div>
+      <div class="drawer" id="dr1">
+        <canvas width="16" height="16" id="dv1"></canvas>
+        <div class="dt"><code>.pred_original_sample</code> &nbsp;&rarr;&nbsp; x&#770;&#8320;<br>
+        The intermediate <b>Line 1</b> estimate, exposed for free. Drag t high and watch it get
+        <b>blurry</b> — the visible reason the loop takes cautious steps instead of jumping here.</div>
+      </div>
+      <div class="live" id="shp"></div>
+    </div>
+  </div>
+  <div class="stack">
+    <div class="card"><div class="h2">Which internal line filled the drawer you clicked?</div>
+    <pre class="pcode" id="srccode"><span class="ln2" data-g="l1">x_0_hat = (x_t - betabar_t.sqrt()*noise) / alphabar[t].sqrt()   <span class="cm"># Line 1</span></span><span class="ln2" data-g="l2">x_t = (x_0_hat*... + x_t*... + sigma[t]*z)                      <span class="cm"># Line 2</span></span></pre>
+    <div class="story" id="note2">Click a drawer on the left.</div></div>
+    <div class="kbox">&#128204; <b><code>.shape</code> never changes:</b> denoising edits pixel <em>values</em>, not
+    dimensions — noise in, image out, both <code>[32, 1, 32, 32]</code> (batch, channels, height, width).</div>
+  </div>
+</div>
+</div>
+
+<!-- ============ TAB 3 ============ -->
+<div class="panel" id="p3">
+<div class="qbig">Same machinery, two dialects — click any line</div>
+<div class="grid">
+  <div class="card"><div class="h2">Notebook 19 — hand-written</div><pre class="pcode" id="c19"></pre></div>
+  <div class="card"><div class="h2">Notebook 20 — HuggingFace</div><pre class="pcode" id="c20"></pre></div>
+</div>
+<div class="kbox" id="pairnote">&#9757;&#65039; Click <code>x_t = sched.step(...)</code> on the right and count how many
+left-hand lines light up. <span style="color:#c07417">Amber lines</span> = cosmetic differences only.</div>
+<div class="card" style="margin-top:10px">
+  <div class="h2">The equivalence table (rows re-trigger the highlights)</div>
+  <table class="mtable" id="eqt">
+    <tr><th>WHAT HAPPENS</th><th>NOTEBOOK 19</th><th>NOTEBOOK 20</th></tr>
+    <tr class="mrow" data-g="init"><td>Start from noise</td><td class="co">x_t = torch.randn(sz).to(ps)</td><td class="co">x_t = torch.randn(sz).cuda()</td></tr>
+    <tr class="mrow" data-g="loop"><td>Loop over timesteps</td><td class="co">for t in reversed(range(n_steps))</td><td class="co">for t in sched.timesteps</td></tr>
+    <tr class="mrow" data-g="model"><td>Predict noise</td><td class="co">model((x_t, t_batch))</td><td class="co">model(x_t, t).sample</td></tr>
+    <tr class="mrow" data-g="step"><td>Compute x<sub>t&minus;1</sub></td><td class="co">7 lines: z, schedule vars, Line 1, Line 2</td><td class="co">sched.step(noise, t, x_t)</td></tr>
+    <tr class="mrow" data-g="append"><td>Collect result</td><td class="co">preds.append(x_t...)</td><td class="co">preds.append(x_t...)</td></tr>
+  </table>
+</div>
+<div class="why" style="margin-top:10px">
+  <div class="wc"><b>&#128230; Schedules precomputed</b> <code>DDPMScheduler(beta_end=0.01)</code> builds &alpha;, &alpha;&#772;, &sigma; once at construction — the same job <code>lin_abar()</code> did in Notebook 19.</div>
+  <div class="wc"><b>&#127922; z handled inside</b> The fresh noise is drawn inside <code>.step()</code>, and zeroed at t = 0 — the <code>if t &gt; 0 else zeros</code> logic, absorbed.</div>
+  <div class="wc"><b>&#128260; Swap samplers in one line</b> Because the loop only says <code>sched.step</code>, replacing <code>DDPMScheduler</code> with <code>DDIMScheduler</code> changes the algorithm without touching the loop.</div>
+</div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+/* canvas math label: parts=[{t:'plain '},{m:'x',sub:'t-1',hat:true},...] centered at (cx,cy) */
+function mparts(x,parts,cx,cy,size,color){
+  x.save();x.textBaseline='alphabetic';
+  const F=s=>'700 '+Math.round(s)+'px "Segoe UI",sans-serif';
+  let tot=0;
+  for(const p of parts){
+    if(p.t!==undefined){x.font=F(size);tot+=x.measureText(p.t).width;}
+    else{x.font=F(size);tot+=x.measureText(p.m).width;
+      if(p.sub){x.font=F(size*0.66);tot+=x.measureText(p.sub).width+1;}}}
+  let px=cx-tot/2;
+  x.fillStyle=color;x.textAlign='left';
+  for(const p of parts){
+    if(p.t!==undefined){x.font=F(size);x.fillText(p.t,px,cy);px+=x.measureText(p.t).width;continue;}
+    x.font=F(size);const wm=x.measureText(p.m).width;
+    x.fillText(p.m,px,cy);
+    if(p.hat){x.font=F(size*0.95);
+      const wh=x.measureText('\u02C6').width;
+      x.fillText('\u02C6',px+wm/2-wh/2,cy-size*0.58);}
+    px+=wm;
+    if(p.sub){x.font=F(size*0.66);x.fillText(p.sub,px+1,cy+size*0.20);px+=x.measureText(p.sub).width+1;}}
+  x.restore();
+}
+
+
+function alphaT(t){return 1-BETA[t];}
+function fr2(nu,de){return '<span class="fr"><span class="nu">'+nu+'</span><span class="de">'+de+'</span></span>';}
+const AB='&alpha;&#772;';
+let TAB=0,lastT=null;
+const panels=[...document.querySelectorAll('.panel')];
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  TAB=+b.dataset.t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
+  panels.forEach((p,i)=>p.classList.toggle('on',i===TAB));
+  postH();setTimeout(postH,60);
+  if(TAB===0)fitBox();
+});
+
+/* shared tensors */
+const ERRS=new Float64Array(256);{__s=5150;for(let i=0;i<256;i++)ERRS[i]=gauss();}
+const ZP=new Float64Array(256);{__s=808;for(let i=0;i<256;i++)ZP[i]=gauss();}
+function tensAt(t){t=Math.round(t);
+  const a=SQA[t],b=SQB[t],imper=0.25*b;
+  const xt=new Float64Array(256),eh=new Float64Array(256),x0h=new Float64Array(256);
+  for(let i=0;i<256;i++){xt[i]=a*X0[i]+b*EPS[i];eh[i]=EPS[i]+imper*ERRS[i];x0h[i]=(xt[i]-b*eh[i])/a;}
+  return {xt,eh,x0h};}
+
+/* ============ TAB 0 : the box ============ */
+let p0=0,playing0=false,stop0=1,T0=700;
+const N0=[
+ '<b>&#9312; Inputs.</b> Three things flow in — exactly the three arguments: <b style="color:#5a6b86">noise</b> (the U-Net&rsquo;s &epsilon;<sub>&theta;</sub> prediction, made <em>outside</em> the box), the integer <b>t</b>, and the current tensor <b style="color:#128888">x_t</b>. The scheduler itself carries the precomputed schedule (&alpha;, &alpha;&#772;, &sigma;) from construction time.',
+ '<b>&#9313; Line 1.</b> Inside, the box first runs Notebook 19&rsquo;s first line: <code>x_0_hat = (x_t &minus; betabar_t.sqrt()&middot;noise) / alphabar[t].sqrt()</code> — the forward formula solved backwards. This intermediate is not discarded: it becomes the <code>.pred_original_sample</code> field.',
+ '<b>&#9314; Line 2.</b> Then the second line: the posterior blend of x&#770;&#8320; and x<sub>t</sub>, plus &sigma;&middot;z — with z drawn <em>inside</em> the box and zeroed at t = 0. This result becomes <code>.prev_sample</code>. Nothing else happens in here; the box is exactly these two lines plus bookkeeping.',
+ '<b>&#9315; Output.</b> Both tensors are packaged into a <code>DDPMSchedulerOutput</code> dataclass and returned as <code>res</code>. Tab &#9314; opens its two drawers. The loop keeps <code>res.prev_sample</code> and repeats — same as Notebook 19 overwriting <code>x_t</code>.'
+];
+const bx=$('box');let BW=0,BH=270;
+function fitBox(){[BW,BH]=fitCv(bx,270);}
+const offB=document.createElement('canvas');offB.width=offB.height=16;
+function thumb(x,f,cx,cy,s,col){x.imageSmoothingEnabled=false;drawField(offB,f);
+  x.drawImage(offB,cx-s/2,cy-s/2,s,s);x.strokeStyle=col;x.lineWidth=2;x.strokeRect(cx-s/2,cy-s/2,s,s);}
+function boxDraw(now){
+  const x=bx.getContext('2d');x.clearRect(0,0,BW,BH);
+  const s=Math.min(3.999,p0), st=Math.floor(s), f=s-st;
+  const C=tensAt(T0);
+  const cx=BW*0.47, cy=BH*0.52, bw=Math.min(250,BW*0.30), bh=150;
+  /* inputs */
+  const ix=BW*0.11;
+  thumb(x,C.eh,ix,cy-78,44,'#5a6b86');
+  x.fillStyle='#5a6b86';x.font='700 10px Consolas,monospace';x.textAlign='center';
+  x.fillText('noise (\u03B5\u03B8)',ix,cy-46);
+  x.fillStyle='#25324a';x.font='700 11px Consolas,monospace';
+  x.fillText('t = '+T0,ix,cy+2);
+  thumb(x,C.xt,ix,cy+58,44,'#128888');
+  x.fillStyle='#128888';x.fillText('x_t',ix,cy+90);
+  /* input arrows (stage 0 animates dashes) */
+  const dash=(st===0)?(-now*0.02)%12:0;
+  x.strokeStyle='#9fb0c8';x.lineWidth=1.8;x.setLineDash([6,5]);x.lineDashOffset=dash;
+  for(const dy of [-78,0,58]){x.beginPath();x.moveTo(ix+30,cy+dy*0.9);
+    x.lineTo(cx-bw/2-8,cy+dy*0.35);x.stroke();}
+  x.setLineDash([]);
+  /* the box */
+  const lid=st>=1?sm(Math.min(1,(s-1)*1.6)):0;
+  x.fillStyle='#fbfaff';x.strokeStyle='#7b5cd6';x.lineWidth=2.5;
+  x.beginPath();x.roundRect(cx-bw/2,cy-bh/2,bw,bh,14);x.fill();x.stroke();
+  /* lid */
+  x.fillStyle=lid>0.02?'rgba(123,92,214,.10)':'#7b5cd6';
+  x.save();x.translate(0,-lid*46);x.globalAlpha=1-lid*0.45;
+  x.fillStyle='#7b5cd6';
+  x.beginPath();x.roundRect(cx-bw/2,cy-bh/2-26,bw,26,8);x.fill();
+  x.fillStyle='#fff';x.font='700 12px Consolas,monospace';
+  x.fillText('sched.step()',cx,cy-bh/2-8);x.restore();
+  /* interior lines */
+  function innerLine(y,label,col,on){
+    x.fillStyle=on?col:'#eef1fa';x.strokeStyle=on?col:'#dde5f2';
+    x.globalAlpha=on?0.14:1;x.beginPath();x.roundRect(cx-bw/2+12,y-15,bw-24,30,8);x.fill();x.globalAlpha=1;
+    x.lineWidth=1.6;x.beginPath();x.roundRect(cx-bw/2+12,y-15,bw-24,30,8);x.stroke();
+    x.fillStyle=on?col:'#8a94a8';x.font='700 10.5px Consolas,monospace';x.fillText(label,cx,y+4);}
+  if(lid>0.15){
+    innerLine(cy-24,'Line 1 \u2192 x_0_hat','#c07417',st===1);
+    innerLine(cy+24,'Line 2 \u2192 prev_sample','#128888',st===2);
+  } else {x.fillStyle='#8a94a8';x.font='10.5px "Segoe UI"';x.fillText('(a black box \u2014 press \u2460\u2013\u2463)',cx,cy+4);}
+  /* output */
+  const ox=BW*0.855, op=st>=3?sm(f):(st>3?1:0);
+  if(st>=2){x.strokeStyle='#9fb0c8';x.setLineDash([6,5]);x.lineDashOffset=(st===3)?(-now*0.02)%12:0;
+    x.beginPath();x.moveTo(cx+bw/2+8,cy);x.lineTo(ox-58,cy);x.stroke();x.setLineDash([]);}
+  if(op>0||st>3){
+    x.globalAlpha=Math.max(op,st>3?1:0);
+    x.strokeStyle='#7b5cd6';x.lineWidth=2;x.fillStyle='#fff';
+    x.beginPath();x.roundRect(ox-56,cy-72,112,144,12);x.fill();x.stroke();
+    x.fillStyle='#7b5cd6';x.font='700 10.5px Consolas,monospace';x.fillText('res',ox,cy-56);
+    const P=tensAt(Math.max(0,T0-60));
+    thumb(x,P.xt,ox,cy-22,40,'#128888');
+    x.fillStyle='#128888';x.font='700 8.5px Consolas,monospace';x.fillText('.prev_sample',ox,cy+6);
+    thumb(x,C.x0h,ox,cy+40,40,'#c07417');
+    x.fillStyle='#c07417';x.fillText('.pred_original_',ox,cy+66);
+    x.globalAlpha=1;}
+  x.textAlign='center';
+}
+function proof0(){
+  const t=T0,i=115,sPrev=Math.max(0,t-1);
+  const a=SQA[t],b=SQB[t],imper=0.25*b;
+  const xt=a*X0[i]+b*EPS[i], eh=EPS[i]+imper*ERRS[i], z=ZP[i], sig=Math.sqrt(BETA[t]);
+  /* N19 literal two lines */
+  const x0h=(xt-b*eh)/a;
+  const n19=x0h*SQA[sPrev]*(1-alphaT(t))/(1-ABAR[t]) + xt*Math.sqrt(alphaT(t))*(1-ABAR[sPrev])/(1-ABAR[t]) + sig*z;
+  /* sched.step internals (diffusers formulation: coefficients on x0hat and xt) */
+  const c0=SQA[sPrev]*BETA[t]/(1-ABAR[t]), ct=Math.sqrt(alphaT(t))*(1-ABAR[sPrev])/(1-ABAR[t]);
+  const hf=c0*x0h+ct*xt+sig*z;
+  $('proof0').innerHTML=
+   'N19&rsquo;s two literal lines: <span class="big">'+n19.toFixed(12)+'</span><br>'+
+   'sched.step&rsquo;s internal formula: <span class="big">'+hf.toFixed(12)+'</span><br>'+
+   'difference: <span class="big" style="color:var(--out)">'+Math.abs(n19-hf).toExponential(1)+'</span>'+
+   ' &nbsp;&middot;&nbsp; also exposed: x&#770;&#8320; = <span class="mono">'+x0h.toFixed(4)+'</span> &rarr; <code>.pred_original_sample</code>';
+}
+function set0(k){document.querySelectorAll('.c0').forEach(c=>c.classList.toggle('on',+c.dataset.s===k));
+  $('note0').innerHTML=N0[k];postH();}
+document.querySelectorAll('.c0').forEach(c=>c.onclick=()=>{
+  const k=+c.dataset.s;p0=k;playing0=true;stop0=k+1;set0(k);});
+$('t0').oninput=e=>{T0=Math.round(+e.target.value);$('t0v').textContent=T0;proof0();};
+
+/* ============ TAB 1 ============ */
+let T1=600,S1=2,sel2=0;
+const D1=[
+ ['x<sub>t</sub> = &radic;'+AB+'<sub>t</sub> &middot; x&#8320; + &radic;(1 &minus; '+AB+'<sub>t</sub>) &middot; &epsilon;','how the noise got in: the forward formula',0],
+ ['x&#8320; = '+fr2('x<sub>t</sub> &minus; &radic;(1 &minus; '+AB+'<sub>t</sub>) &middot; &epsilon;','&radic;'+AB+'<sub>t</sub>'),'move the noise term across, divide — solve for x&#8320;',1],
+ ['x&#770;&#8320; = '+fr2('x<sub>t</sub> &minus; &radic;(1 &minus; '+AB+'<sub>t</sub>) &middot; &epsilon;<sub>&theta;</sub>','&radic;'+AB+'<sub>t</sub>'),'we never know the true &epsilon; &mdash; substitute the model&rsquo;s prediction. The hat marks the estimate.',2],
+];
+function d1Draw(){const el=$('d1');el.innerHTML='';
+  D1.forEach(([tx,cm,st])=>{const d=document.createElement('div');
+    d.className='dl'+(st===S1?' hl':'');
+    d.innerHTML=tx+' <span class="cm">\u2190 '+cm+'</span>';el.appendChild(d);});}
+document.querySelectorAll('.c1a').forEach(c=>c.onclick=()=>{S1=+c.dataset.s;
+  document.querySelectorAll('.c1a').forEach(z=>z.classList.toggle('on',+z.dataset.s===S1));
+  d1Draw();postH();});
+const s1cells=[];
+;(function(){const defs=[['x_t'],['noise (\u03B5\u03B8)'],['x_0_hat'],['true x\u2080']];
+  defs.forEach((d,i)=>{const c=document.createElement('div');c.className='cell';
+    const cv=document.createElement('canvas');cv.width=cv.height=16;c.appendChild(cv);
+    const lb=document.createElement('div');lb.className='lb';lb.textContent=d[0];c.appendChild(lb);
+    $('strip1').appendChild(c);s1cells.push(cv);});})();
+const MAP1=[
+ ['betabar_t.sqrt()','&radic;(1 &minus; '+AB+'<sub>t</sub>)','Cumulative noise level',t=>SQB[t].toFixed(4)],
+ ['noise','&epsilon;<sub>&theta;</sub>(x<sub>t</sub>, t)','Model&rsquo;s predicted noise',t=>'a tensor'],
+ ['alphabar[t].sqrt()','&radic;'+AB+'<sub>t</sub>','Cumulative signal level',t=>SQA[t].toFixed(4)],
+ ['x_0_hat','x&#770;&#8320;','Estimated clean image',t=>'a tensor'],
+];
+const MAP2=[
+ ['alphabar_t1','&#'+'945;&#772;<sub>t&minus;1</sub>'.slice(0),'Cumulative signal at previous step',t=>ABAR[Math.max(0,t-1)].toFixed(4)],
+ ['alpha[t]','&alpha;<sub>t</sub>','Single-step signal retention',t=>alphaT(t).toFixed(5)],
+ ['betabar_t','1 &minus; '+AB+'<sub>t</sub>','Cumulative noise proportion at t',t=>(1-ABAR[t]).toFixed(4)],
+ ['betabar_t1','1 &minus; '+AB+'<sub>t&minus;1</sub>','Cumulative noise proportion at t&minus;1',t=>(1-ABAR[Math.max(0,t-1)]).toFixed(4)],
+ ['sigma[t]','&sigma;<sub>t</sub> = &radic;&beta;<sub>t</sub>','Per-step noise std',t=>Math.sqrt(BETA[t]).toFixed(4)],
+ ['z','z ~ N(0, I)','Fresh noise (zero at t = 0)',t=>'random draw'],
+];
+MAP2[0][1]=AB+'<sub>t&minus;1</sub>';
+function tables1(){
+  for(const [id,MAP] of [['map1',MAP1],['map2',MAP2]]){
+    const tb=$(id);[...tb.querySelectorAll('tr.mrow')].forEach(r=>r.remove());
+    MAP.forEach(m=>{const tr=document.createElement('tr');tr.className='mrow';
+      tr.innerHTML='<td class="co">'+m[0]+'</td><td class="fx" style="font-size:14px;line-height:1.5">'+m[1]+'</td><td>'+m[2]+'</td><td class="lv">'+m[3](T1)+'</td>';
+      tb.appendChild(tr);});}
+}
+const TN2=[
+ '<b style="color:#c07417">Term 1 — pull toward the predicted clean image.</b> x&#770;&#8320; scaled by &radic;'+'&alpha;&#772;<sub>t&minus;1</sub> to sit at t&minus;1&rsquo;s signal level; the fraction decides how hard to pull. At your t the whole coefficient is <span class="v"></span>.',
+ '<b style="color:#128888">Term 2 — stay anchored to x<sub>t</sub>.</b> The estimate is unreliable, so most of the new image is still the old one. Coefficient at your t: <span class="v"></span> — together with Term 1 this is a weighted average forming the posterior mean of q(x<sub>t&minus;1</sub> | x<sub>t</sub>, x&#8320;).',
+ '<b style="color:#7b5cd6">Term 3 — fresh randomness.</b> &sigma;<sub>t</sub>&middot;z makes DDPM stochastic: each run lands on a different valid image. Zeroed at t = 0 so the final output is clean. &sigma; at your t: <span class="v"></span>.'
+];
+function f2Draw(){
+  const t=T1,s=Math.max(0,t-1);
+  $('f2').innerHTML=
+   'x<sub>t&minus;1</sub> = <span class="tk'+(sel2===0?' hi':'')+'" data-k="0" style="color:#c07417">'+
+   fr2('&radic;'+AB+'<sub>t&minus;1</sub> &middot; (1 &minus; &alpha;<sub>t</sub>)','1 &minus; '+AB+'<sub>t</sub>')+' &middot; x&#770;&#8320;</span> + '+
+   '<span class="tk'+(sel2===1?' hi':'')+'" data-k="1" style="color:#128888">'+
+   fr2('&radic;&alpha;<sub>t</sub> &middot; (1 &minus; '+AB+'<sub>t&minus;1</sub>)','1 &minus; '+AB+'<sub>t</sub>')+' &middot; x<sub>t</sub></span> + '+
+   '<span class="tk'+(sel2===2?' hi':'')+'" data-k="2" style="color:#7b5cd6">&sigma;<sub>t</sub> &middot; z</span>';
+  document.querySelectorAll('#f2 .tk').forEach(tk=>tk.onclick=()=>{sel2=+tk.dataset.k;f2Draw();postH();});
+  const c0=SQA[s]*BETA[t]/(1-ABAR[t]), ct=Math.sqrt(alphaT(t))*(1-ABAR[s])/(1-ABAR[t]), sg=Math.sqrt(BETA[t]);
+  const v=[c0.toFixed(4),ct.toFixed(4),sg.toFixed(4)][sel2];
+  $('tnote2').innerHTML=TN2[sel2].replace('<span class="v"></span>','<b class="mono" style="color:var(--ac)">'+v+'</b>');
+}
+function tab1Draw(){
+  const C=tensAt(T1);
+  drawField(s1cells[0],C.xt);drawField(s1cells[1],C.eh);drawField(s1cells[2],C.x0h);drawField(s1cells[3],X0);
+  tables1();f2Draw();
+}
+$('t1').oninput=e=>{T1=Math.round(+e.target.value);$('t1v').textContent=T1;tab1Draw();};
+
+/* ============ TAB 2 ============ */
+let T2=850,selD=-1;
+function tab2Draw(){
+  const C=tensAt(T2),P=tensAt(Math.max(0,T2-60));
+  drawField($('dv0'),P.xt);
+  drawField($('dv1'),C.x0h);
+  $('shp').innerHTML='<code>res.prev_sample.shape</code> &rarr; <span class="big">torch.Size([32, 1, 32, 32])</span> — unchanged from the input.';
+}
+const DR=[
+ '<b><code>.prev_sample</code> came from Line 2</b> — the posterior blend plus &sigma;&middot;z. It is exactly the tensor Notebook 19&rsquo;s second line assigned back into <code>x_t</code>. The loop feeds it straight into the next iteration.',
+ '<b><code>.pred_original_sample</code> came from Line 1</b> — the x&#770;&#8320; estimate, computed on the way to Line 2 anyway, so the scheduler exposes it for free. Handy for previews and for classifier-free-guidance tricks — and at high t it is visibly rough.'
+];
+[0,1].forEach(i=>$('dr'+i).onclick=()=>{selD=i;
+  [0,1].forEach(j=>$('dr'+j).classList.toggle('hi',j===i));
+  document.querySelectorAll('#srccode .ln2').forEach(l=>l.classList.toggle('hi',l.dataset.g===(i===0?'l2':'l1')));
+  $('note2').innerHTML=DR[i];postH();});
+$('t2').oninput=e=>{T2=Math.round(+e.target.value);$('t2v').textContent=T2;tab2Draw();};
+
+/* ============ TAB 3 ============ */
+const L19=[
+ ['def','@torch.no_grad()\ndef sample(model, sz):'],
+ ['init','    x_t = torch.randn(sz).to(ps)'],
+ ['append0','    preds = []'],
+ ['loop','    for t in reversed(range(n_steps)):'],
+ ['model','        t_batch = torch.full((x_t.shape[0],), t, ...)'],
+ ['step','        z = (torch.randn(...) if t > 0 else zeros(...))'],
+ ['step','        alphabar_t1 = alphabar[t-1] if t > 0 else 1'],
+ ['step','        betabar_t  = 1 - alphabar[t]'],
+ ['step','        betabar_t1 = 1 - alphabar_t1'],
+ ['model','        noise = model((x_t, t_batch))'],
+ ['step','        x_0_hat = (x_t - betabar_t.sqrt()*noise) / alphabar[t].sqrt()'],
+ ['step','        x_t = (x_0_hat*alphabar_t1.sqrt()*(1-alpha[t])/betabar_t +'],
+ ['step','               x_t*alpha[t].sqrt()*betabar_t1/betabar_t + sigma[t]*z)'],
+ ['append','        preds.append(x_t.float().cpu())'],
+];
+const L20=[
+ ['init','x_t = torch.randn(sz).cuda()'],
+ ['append0','preds = []'],
+ ['loop','for t in progress_bar(sched.timesteps):'],
+ ['model','    noise = model(x_t, t).sample'],
+ ['step','    x_t = sched.step(noise, t, x_t).prev_sample'],
+ ['append','    preds.append(x_t.float().cpu())'],
+];
+const COSM=new Set(['loop','model']);
+const GN={init:'<b>Start from noise.</b> Identical draw; only the device call differs.',
+ loop:'<b>Cosmetic:</b> <code>reversed(range(n_steps))</code> and <code>sched.timesteps</code> are the same countdown 999 &rarr; 0 — the scheduler just stores it.',
+ model:'<b>Cosmetic:</b> tuple input vs separate args, and the HuggingFace UNet wraps its output in a dataclass (hence <code>.sample</code>). Same forward pass.',
+ step:'<b>The punchline: one line = seven.</b> <code>sched.step(...)</code> absorbs the z draw, the three schedule lookups, Line 1 (x&#770;&#8320;) and Line 2 (the update). Identical computation — verified numerically on tab &#9312;.',
+ append:'<b>Collect the trajectory.</b> Character-for-character the same.',
+ append0:'<b>Same bookkeeping.</b>',
+ def:'Notebook 20 inlines the loop, so there is no wrapper function — that&rsquo;s the whole difference here.'};
+function buildLoops(){
+  for(const [id,L] of [['c19',L19],['c20',L20]]){
+    const el=$(id);el.innerHTML='';
+    L.forEach(([g,tx])=>{const d=document.createElement('span');
+      d.className='ln2'+(COSM.has(g)?' cosm':'');d.dataset.g=g;d.textContent=tx;
+      el.appendChild(d);});}
+  document.querySelectorAll('#c19 .ln2,#c20 .ln2,#eqt .mrow').forEach(el=>el.onclick=()=>selG(el.dataset.g));
+}
+function selG(g){
+  document.querySelectorAll('#c19 .ln2,#c20 .ln2').forEach(l=>l.classList.toggle('hi',l.dataset.g===g));
+  document.querySelectorAll('#eqt .mrow').forEach(r=>r.classList.toggle('hi',r.dataset.g===g));
+  $('pairnote').innerHTML=(GN[g]||'')+(g==='step'?' <span style="color:var(--ac);font-weight:700">Count the lit lines on the left: seven.</span>':'');
+  postH();
+}
+/* ============ loop ============ */
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT)*0.001;lastT=ts;
+  if(TAB===0){if(playing0){p0=Math.min(stop0,p0+dt*0.9);if(p0>=stop0)playing0=false;}boxDraw(ts);}
+}
+addEventListener('resize',()=>{fitBox();});
+fitBox();set0(0);playing0=true;stop0=1;proof0();
+d1Draw();tab1Draw();
+tab2Draw();
+buildLoops();selG('step');
+requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>

@@ -1,0 +1,536 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDIM Reverse Process — The Key Innovation</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+
+.tabbar{display:flex;gap:0;justify-content:center;margin:2px auto 12px;max-width:1060px;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;}
+.tab{flex:1;font-family:inherit;font-weight:700;font-size:13px;padding:10px 6px;border:none;background:#fff;color:var(--soft);cursor:pointer;border-right:1.5px solid var(--line);transition:all .15s;}
+.tab:last-child{border-right:none;}
+.tab:hover{color:var(--ac);}
+.tab.on{background:var(--ac);color:#fff;}
+.tab .sm{display:block;font-weight:400;font-size:10px;opacity:.8;}
+.panel{display:none;min-height:540px;}
+.panel.on{display:block;}
+.fx{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:20px;line-height:2.0;text-align:center;}
+.fx .tm{padding:3px 7px;border-radius:8px;transition:all .18s;display:inline-block;cursor:pointer;border:2px solid transparent;}
+.fx .tm:hover{border-color:var(--line);}
+.fx .tm.hi{background:var(--acbg);border-color:var(--ac);transform:scale(1.1);}
+.fx .t1c{color:#c07417;} .fx .t2c{color:#5a6b86;} .fx .t3c{color:#7b5cd6;}
+.termnote{border:2px solid var(--line);border-radius:11px;padding:8px 11px;font-size:12.3px;line-height:1.55;background:#fff;color:#33415c;margin-top:8px;transition:all .15s;}
+.termnote b{color:var(--ink);}
+.imsum{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:6px;}
+.imsum .cell{text-align:center;transition:all .15s;border-radius:10px;padding:5px 6px;border:2px solid transparent;}
+.imsum .cell.hi{border-color:var(--ac);background:var(--acbg);}
+.imsum canvas{width:64px;height:64px;image-rendering:pixelated;border-radius:6px;display:block;margin:0 auto 3px;}
+.imsum .lb{font-family:Consolas,monospace;font-size:10px;color:var(--soft);line-height:1.35;}
+.imsum .op{font-size:22px;font-weight:700;color:#8a94a8;padding:0 2px;}
+.qbig{text-align:center;font-size:18px;font-weight:800;color:var(--ink);margin:4px 0 2px;}
+
+</style></head><body>
+<div class="wrap">
+
+<h1>DDIM&rsquo;s key innovation: one update rule, three superpowers</h1>
+<p class="sub">DDIM defines a <b>non-Markovian</b> reverse process that keeps the <em>same forward process and the
+same trained model</em>, yet gains three abilities: it can be made <b>deterministic</b> (&eta; = 0), its variance
+stays correct for <b>any</b> &eta;, and it can <b>skip timesteps</b> without breaking the math. Three tabs, one
+per superpower — every number computed live from the notebook&rsquo;s real schedule.</p>
+
+<div class="tabbar">
+  <button class="tab on" data-t="0">&#9312; The update rule<span class="sm">three terms, click each one</span></button>
+  <button class="tab" data-t="1">&#9313; The &sigma;&#8348; dial<span class="sm">&eta;=1 lands exactly on DDPM</span></button>
+  <button class="tab" data-t="2">&#9314; Why skipping works<span class="sm">only &alpha;&#772; at the endpoints matters</span></button>
+</div>
+
+<!-- ============ TAB 0 : THREE TERMS ============ -->
+<div class="panel on" id="p0">
+<div class="stagebar">
+  <button class="chip c0" data-s="0">&#9312; Term 1 — aim at x&#770;&#8320;</button>
+  <button class="chip c0" data-s="1">&#9313; Term 2 — keep the direction</button>
+  <button class="chip c0" data-s="2">&#9314; Term 3 — fresh noise</button>
+  <button class="chip c0" data-s="3">&#9315; All three together</button>
+</div>
+<div class="card">
+  <div class="fx" id="rule"></div>
+  <div class="selrow" style="margin:6px 0 0">
+    <span>t</span><input type="range" id="t0" min="60" max="980" value="600"><span class="val" id="t0v">600</span>
+    <span>skip</span><input type="range" id="sk0" min="1" max="200" value="10"><span class="val" id="sk0v">10</span>
+    <span>&eta;</span><input type="range" id="e0" min="0" max="1" step="0.05" value="0.6"><span class="val" id="e0v">0.60</span>
+  </div>
+</div>
+<div class="grid" style="margin-top:10px">
+  <div class="card">
+    <div class="h2">Geometric view — the terms are moves, executed head-to-tail</div>
+    <canvas id="geo" class="cv" style="background:#fff"></canvas>
+    <div class="legend" id="geonote"></div>
+  </div>
+  <div class="stack">
+    <div class="card">
+      <div class="h2">Pixel view — the terms are images that literally add up</div>
+      <div class="imsum" id="imsum"></div>
+      <div class="legend">Each tile is the actual term computed at your sliders; the sum <em>is</em> x<sub>t&minus;skip</sub>.</div>
+    </div>
+    <div class="card">
+      <div class="h2">The variance guarantee (doc: &ldquo;total variance is correct regardless of &eta;&rdquo;)</div>
+      <div class="live" id="varcheck"></div>
+    </div>
+  </div>
+</div>
+<div class="termnote" id="tnote"></div>
+<div class="kbox">&#129504; <b>Why &ldquo;non-Markovian&rdquo;?</b> A Markov step may look only at the previous state x<sub>t</sub>. DDIM&rsquo;s step consults <b>x&#770;&#8320;(x<sub>t</sub>)</b> — an estimate of the <em>original</em> image — so information flows from the far past into every step. That extra reference is what unlocks determinism and skipping, while the training objective (predict &epsilon;) stays untouched.</div>
+</div>
+
+<!-- ============ TAB 1 : SIGMA ============ -->
+<div class="panel" id="p1">
+<div class="stagebar">
+  <button class="chip c1" data-s="0">&#9312; Anatomy of &sigma;&#8348;</button>
+  <button class="chip c1" data-s="1">&#9313; Guarantee: &eta;=0 &rArr; zero everywhere</button>
+  <button class="chip c1" data-s="2">&#9314; Guarantee: &eta;=1 &rArr; exactly DDPM</button>
+</div>
+<div class="card">
+  <div class="fx" style="font-size:19px" id="sigfx"></div>
+  <div class="selrow" style="margin:4px 0 0">
+    <span>t</span><input type="range" id="t1" min="10" max="990" value="500"><span class="val" id="t1v">500</span>
+    <span>skip</span><input type="range" id="sk1" min="1" max="100" value="1"><span class="val" id="sk1v">1</span>
+    <span>&eta;</span><input type="range" id="e1" min="0" max="1" step="0.01" value="0.6"><span class="val" id="e1v">0.60</span>
+  </div>
+</div>
+<div class="grid" style="margin-top:10px">
+  <div class="card">
+    <div class="h2">&sigma;&#8348; across the whole schedule — dashed black = DDPM&rsquo;s own variance</div>
+    <canvas id="sigcv" class="cv" style="background:#fff"></canvas>
+    <div class="legend" id="signote"><b>How to read it:</b> each purple curve is &sigma;&#8348; at one &eta;; the <b>dashed black curve is DDPM&rsquo;s variance &radic;&beta;&#771;&#8348;</b>, computed independently from its own formula. Drag &eta; to 1 — your curve doesn&rsquo;t just get close, it <b>lands exactly on the dashed line</b> (skip = 1). That is the &ldquo;matches DDPM&rdquo; guarantee, verified numerically.</div>
+  </div>
+  <div class="stack">
+    <div class="card"><div class="h2">Live factors at your sliders</div><div class="live" id="siglive"></div></div>
+    <div class="card"><div class="h2">Max mismatch vs DDPM curve (skip = 1)</div><div class="live" id="match"></div></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ TAB 2 : SKIPPING ============ -->
+<div class="panel" id="p2">
+<div class="qbig">The formula only needs &alpha;&#772; at the two endpoints — so jump as far as you like</div>
+<div class="stagebar">
+  <button class="chip c2 on" data-h="1">hop = 1</button>
+  <button class="chip c2" data-h="10">hop = 10</button>
+  <button class="chip c2" data-h="50">hop = 50</button>
+  <button class="chip c2" data-h="100">hop = 100</button>
+  <span style="width:14px"></span>
+  <button class="chip" id="tryDDPM" style="border-color:#e8b0b0;color:#d64545">&#10007; try skipping DDPM</button>
+</div>
+<div class="card">
+  <canvas id="skipcv" class="cv" style="background:#fff"></canvas>
+  <div class="selrow" style="margin:6px 0 0"><button class="play" id="goSkip">&#9654; Animate the lanes</button>
+  <span class="live" id="skipline"></span></div>
+</div>
+<div class="card" style="margin-top:10px">
+  <div class="h2">The &alpha;&#772; lookup table — grey entries are never touched</div>
+  <canvas id="lut" class="cv" style="background:#fff"></canvas>
+  <div class="legend"><b>The doc&rsquo;s claim, made visible:</b> DDIM&rsquo;s update uses only the <b>cumulative</b> levels
+  &alpha;&#772;<sub>t</sub> and &alpha;&#772;<sub>s</sub> of the steps you actually visit (lit purple). Nothing about the grey
+  intermediate entries enters the computation — which is why any jump size is legal. DDPM&rsquo;s per-step variance
+  &beta;<sub>t</sub> is defined only for adjacent steps, so its chain cannot be cut.</div>
+</div>
+<div class="kbox">&#128279; <b>This is the theory behind <code>set_timesteps(n)</code></b> — the speed/quality dial
+you can measure in the other &#127918; cell: 333 visits &rarr; FID 4.2 vs the 1000-step baseline&rsquo;s 3.7.</div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+
+
+/* ================= helpers ================= */
+function sigOf(t,skip,eta){t=Math.round(t);skip=Math.round(skip);const s=Math.max(0,t-skip);
+  const f1=Math.sqrt((1-ABAR[s])/(1-ABAR[t]));
+  const f2=Math.sqrt(Math.max(0,1-ABAR[t]/ABAR[s]));
+  return {sig:eta*f1*f2,f1,f2,s};}
+function ddpmSig(t){t=Math.round(t);const s=Math.max(0,t-1);
+  const beta=1-ABAR[t]/ABAR[s];
+  return Math.sqrt(Math.max(0,(1-ABAR[s])/(1-ABAR[t])*beta));}
+
+/* ================= tabs ================= */
+let TAB=0;
+const panels=[...document.querySelectorAll('.panel')];
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  TAB=+b.dataset.t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
+  panels.forEach((p,i)=>p.classList.toggle('on',i===TAB));
+  postH();setTimeout(postH,60);
+  if(TAB===0)fit0(); if(TAB===1)fit1(); if(TAB===2){fit2();lutDraw();}
+});
+
+/* ================= TAB 0 ================= */
+let T0=600,SK0=10,E0=0.6,SEL=3,selPulse=0;
+const Z0=new Float64Array(256);{__s=8642;for(let i=0;i<256;i++)Z0[i]=gauss();}
+const ERR0=new Float64Array(256);{__s=1357;for(let i=0;i<256;i++)ERR0[i]=gauss();}
+function comp0(){
+  const t=Math.round(T0),{sig,s}=sigOf(t,SK0,E0);
+  const a=SQA[t],b=SQB[t];
+  const imper=0.25*SQB[t];
+  const xt=new Float64Array(256),eh=new Float64Array(256),x0h=new Float64Array(256);
+  for(let i=0;i<256;i++){xt[i]=a*X0[i]+b*EPS[i];eh[i]=EPS[i]+imper*ERR0[i];x0h[i]=(xt[i]-b*eh[i])/a;}
+  const c1=SQA[s], c2=Math.sqrt(Math.max(0,1-ABAR[s]-sig*sig)), c3=sig;
+  const T1i=new Float64Array(256),T2i=new Float64Array(256),T3i=new Float64Array(256),XP=new Float64Array(256);
+  for(let i=0;i<256;i++){T1i[i]=c1*x0h[i];T2i[i]=c2*eh[i];T3i[i]=c3*Z0[i];XP[i]=T1i[i]+T2i[i]+T3i[i];}
+  return {t,s,sig,c1,c2,c3,xt,eh,x0h,T1i,T2i,T3i,XP};
+}
+const RULE=(sel)=>
+ '<span style="color:#25324a">x<sub>t&minus;'+SK0+'</sub> =</span> '+
+ '<span class="tm t1c'+(sel===0||sel===3?' hi':'')+'" data-k="0">&radic;&alpha;&#772;<sub>t&minus;'+SK0+'</sub> &middot; x&#770;&#8320;</span>'+
+ '<span style="color:#8a94a8"> + </span>'+
+ '<span class="tm t2c'+(sel===1||sel===3?' hi':'')+'" data-k="1">&radic;(1 &minus; &alpha;&#772;<sub>t&minus;'+SK0+'</sub> &minus; &sigma;&#8348;&sup2;) &middot; &epsilon;<sub>&theta;</sub>(x<sub>t</sub>,t)</span>'+
+ '<span style="color:#8a94a8"> + </span>'+
+ '<span class="tm t3c'+(sel===2||sel===3?' hi':'')+'" data-k="2">&sigma;&#8348; &middot; z</span>';
+const TNOTES=[
+ '<b style="color:#c07417">Term 1 — &ldquo;aim toward x&#8320;&rdquo;.</b> Take the best current guess of the clean image, x&#770;&#8320;, and scale it by &radic;&alpha;&#772;<sub>t&minus;skip</sub> — exactly how much <em>signal</em> an image at the target noise level should contain. In the geometric view this is the long arrow pointed straight at the shirt. Alone it would overshoot: an image at t&minus;skip must still contain noise, which is Terms 2 + 3&rsquo;s job.',
+ '<b style="color:#5a6b86">Term 2 — &ldquo;keep the predictable noise direction&rdquo;.</b> Re-inject noise, but not random noise: reuse the model&rsquo;s own &epsilon;<sub>&theta;</sub>, the direction that points from clean back toward the current x<sub>t</sub>. Its coefficient &radic;(1&minus;&alpha;&#772;&minus;&sigma;&sup2;) is whatever is left of the noise budget after &sigma; takes its share — that subtraction is what keeps total variance exact. Slide &eta; and watch this tile dim as Term 3 brightens.',
+ '<b style="color:#7b5cd6">Term 3 — &ldquo;fresh randomness (optional)&rdquo;.</b> &sigma;&#8348;&middot;z with brand-new z ~ N(0,I). At &eta; = 0 this term is <em>exactly zero</em> — set the slider and watch the tile go blank and the geometric kick vanish: the step becomes deterministic. At &eta; = 1 it carries DDPM&rsquo;s full randomness.',
+ '<b>All three together.</b> Squared coefficients: &alpha;&#772;&#8242; + (1&minus;&alpha;&#772;&#8242;&minus;&sigma;&sup2;) + &sigma;&sup2; = 1 — the terms are a <em>partition of a fixed variance budget</em>, so x<sub>t&minus;skip</sub> sits at exactly the right noise level no matter what &eta; does. Drag all three sliders and watch the check on the right never leave 1.0000.'
+];
+$('rule').innerHTML=RULE(3);
+$('rule').addEventListener('click',e=>{const tm=e.target.closest('.tm');if(tm)sel0(+tm.dataset.k);});
+function sel0(k){SEL=k;selPulse=0;
+  document.querySelectorAll('.c0').forEach(c=>c.classList.toggle('on',+c.dataset.s===k));
+  $('rule').innerHTML=RULE(k);
+  $('tnote').innerHTML=TNOTES[k];
+  $('tnote').style.borderColor=['#e8b073','#aebfe0','#c9b8f0','#dde5f2'][k];
+  imDraw();postH();}
+document.querySelectorAll('.c0').forEach(c=>c.onclick=()=>sel0(+c.dataset.s));
+
+/* geometric canvas */
+const gc=$('geo');let GW=0,GH=230;
+function fit0(){[GW,GH]=fitCv(gc,230);geoDraw(0);}
+function geoDraw(now){
+  const C=comp0(),x=gc.getContext('2d');x.clearRect(0,0,GW,GH);
+  const sx=GW*0.14,sy=GH*0.30;                 /* x_t */
+  const tx0=GW*0.78,ty0=GH*0.80;               /* x0hat target */
+  x.imageSmoothingEnabled=false;
+  const off=geoDraw._o||(geoDraw._o=(()=>{const c=document.createElement('canvas');c.width=c.height=16;return c;})());
+  drawField(off,C.x0h);x.globalAlpha=0.9;x.drawImage(off,tx0-17,ty0-17,34,34);x.globalAlpha=1;
+  x.strokeStyle='#c07417';x.lineWidth=1.5;x.strokeRect(tx0-17,ty0-17,34,34);
+  x.fillStyle='#c07417';x.font='700 10.5px "Segoe UI"';x.textAlign='center';
+  x.fillText('x\u0302\u2080 (the aim point)',tx0,ty0+30);
+  x.fillStyle='#25324a';x.beginPath();x.arc(sx,sy,5.5,0,7);x.fill();
+  x.fillText('x\u209C',sx,sy-11);
+  function arrow(x0,y0,x1,y1,col,w,dash){x.strokeStyle=col;x.lineWidth=w;
+    if(dash)x.setLineDash([5,4]);
+    x.beginPath();x.moveTo(x0,y0);x.lineTo(x1,y1);x.stroke();x.setLineDash([]);
+    const a=Math.atan2(y1-y0,x1-x0);
+    x.fillStyle=col;x.beginPath();x.moveTo(x1,y1);
+    x.lineTo(x1-9*Math.cos(a-0.42),y1-9*Math.sin(a-0.42));
+    x.lineTo(x1-9*Math.cos(a+0.42),y1-9*Math.sin(a+0.42));x.closePath();x.fill();}
+  /* term1: toward x0hat, length prop c1 */
+  const L=Math.hypot(tx0-sx,ty0-sy);
+  const ux=(tx0-sx)/L, uy=(ty0-sy)/L;
+  const l1=L*0.62*C.c1/Math.max(0.05,SQA[C.s]); /* normalized so full c1 spans nicely */
+  const p1=[sx+ux*L*0.62*1.0*C.c1, sy+uy*L*0.62*1.0*C.c1];
+  const pl=k=>SEL===k||SEL===3?1:0.25;
+  x.globalAlpha=pl(0);arrow(sx,sy,p1[0],p1[1],'#f6921e',4);x.globalAlpha=1;
+  x.fillStyle='#c07417';x.font='700 10px Consolas,monospace';
+  if(pl(0)===1)x.fillText('T1 = '+C.c1.toFixed(3)+' \u00B7 x\u0302\u2080',(sx+p1[0])/2,(sy+p1[1])/2-10);
+  /* term2: perpendicular-ish (noise direction) */
+  const vx=-uy,vy=ux;
+  const p2=[p1[0]+vx*140*C.c2, p1[1]+vy*140*C.c2];
+  x.globalAlpha=pl(1);arrow(p1[0],p1[1],p2[0],p2[1],'#5a6b86',4);x.globalAlpha=1;
+  x.fillStyle='#5a6b86';
+  if(pl(1)===1)x.fillText('T2 = '+C.c2.toFixed(3)+' \u00B7 \u03B5\u03B8',(p1[0]+p2[0])/2+10,(p1[1]+p2[1])/2);
+  /* term3: wiggly random */
+  const ja=now*0.004;
+  const p3=[p2[0]+Math.cos(ja)*120*C.c3, p2[1]+Math.sin(ja*1.3)*120*C.c3];
+  if(C.c3>0.002){x.globalAlpha=pl(2);arrow(p2[0],p2[1],p3[0],p3[1],'#7b5cd6',4,true);x.globalAlpha=1;
+    x.fillStyle='#7b5cd6';
+    if(pl(2)===1)x.fillText('T3 = '+C.c3.toFixed(3)+' \u00B7 z  (spins: z is random)',(p2[0]+p3[0])/2,(p2[1]+p3[1])/2-10);}
+  else if(SEL===2||SEL===3){x.fillStyle='#7b5cd6';x.font='italic 700 11px "Segoe UI"';
+    x.fillText('\u03C3 = 0 \u2014 Term 3 does not exist (deterministic)',p2[0],p2[1]-16);}
+  /* landing point */
+  const pe=C.c3>0.002?p3:p2;
+  x.fillStyle='#25324a';x.beginPath();x.arc(pe[0],pe[1],5.5,0,7);x.fill();
+  x.font='700 11px "Segoe UI"';x.fillText('x\u209C\u208B'+SK0,pe[0],pe[1]-11);
+  $('geonote').innerHTML='<b>How to read it:</b> the step executes the three terms head-to-tail. '+
+   (E0<0.02?'With &eta; = 0 the purple kick is gone — from this x\u209C the landing point is <b>always the same</b>.':'The purple kick spins because z is a fresh draw — run the step twice, land somewhere different.');
+}
+/* image-sum row */
+const cells=[];const ops=['','+','+','='];
+['T1','T2','T3','sum'].forEach((k,i)=>{
+  if(i>0){const o=document.createElement('div');o.className='op';o.textContent=ops[i];$('imsum').appendChild(o);}
+  const d=document.createElement('div');d.className='cell';
+  const c=document.createElement('canvas');c.width=c.height=16;d.appendChild(c);
+  const lb=document.createElement('div');lb.className='lb';d.appendChild(lb);
+  $('imsum').appendChild(d);cells.push({d,c,lb});});
+function imDraw(){
+  const C=comp0();
+  drawField(cells[0].c,C.T1i);cells[0].lb.innerHTML='&radic;\u03B1\u0304\u2032\u00B7x\u0302\u2080<br>'+C.c1.toFixed(3);
+  drawField(cells[1].c,C.T2i,0.8);cells[1].lb.innerHTML='dir\u00B7\u03B5\u03B8<br>'+C.c2.toFixed(3);
+  drawField(cells[2].c,C.T3i,0.8);cells[2].lb.innerHTML='\u03C3\u00B7z<br>'+C.c3.toFixed(3);
+  drawField(cells[3].c,C.XP);cells[3].lb.innerHTML='x<sub>t\u2212'+SK0+'</sub><br>(the result)';
+  cells.forEach((cl,i)=>cl.d.classList.toggle('hi',SEL===3||SEL===i||(SEL<3&&i===3&&false)));
+  const tot=C.c1*C.c1+C.c2*C.c2+C.c3*C.c3;
+  $('varcheck').innerHTML=
+   '('+C.c1.toFixed(3)+')\u00B2 + ('+C.c2.toFixed(3)+')\u00B2 + ('+C.c3.toFixed(3)+')\u00B2 = '+
+   '<span class="big" style="color:var(--out)">'+tot.toFixed(4)+'</span>'+
+   '<br><span style="color:var(--soft)">= &alpha;\u0304\u2032 + (1\u2212&alpha;\u0304\u2032\u2212&sigma;\u00B2) + &sigma;\u00B2 &nbsp;\u2192&nbsp; always exactly 1: &eta; re-slices the budget, never changes it.</span>';
+}
+$('t0').oninput=e=>{T0=Math.round(+e.target.value);if(T0-SK0<1){SK0=T0-1;$('sk0').value=SK0;$('sk0v').textContent=SK0;}$('t0v').textContent=T0;$('rule').innerHTML=RULE(SEL);imDraw();};
+$('sk0').oninput=e=>{SK0=Math.min(Math.round(+e.target.value),T0-1);$('sk0').value=SK0;$('sk0v').textContent=SK0;$('rule').innerHTML=RULE(SEL);imDraw();};
+$('e0').oninput=e=>{E0=+e.target.value;$('e0v').textContent=E0.toFixed(2);imDraw();};
+
+/* ================= TAB 1 ================= */
+let T1v=500,SK1=1,E1=0.6,eTween=null;
+function sigFx(){
+  const {sig,f1,f2}=sigOf(T1v,SK1,E1);
+  $('sigfx').innerHTML=
+   '<span style="color:#25324a">&sigma;&#8348; =</span> '+
+   '<span class="tm" style="color:#128888">&eta;</span>'+
+   '<span style="color:#8a94a8"> &times; </span>'+
+   '<span class="tm t3c">&radic;[(1&minus;&alpha;&#772;<sub>t&minus;'+SK1+'</sub>)/(1&minus;&alpha;&#772;<sub>t</sub>)]</span>'+
+   '<span style="color:#8a94a8"> &times; </span>'+
+   '<span class="tm t3c">&radic;[1 &minus; &alpha;&#772;<sub>t</sub>/&alpha;&#772;<sub>t&minus;'+SK1+'</sub>]</span>'+
+   '<span style="color:#8a94a8"> &nbsp;=&nbsp; </span>'+
+   '<span style="color:#128888;font-weight:700">'+E1.toFixed(2)+'</span>'+
+   '<span style="color:#8a94a8"> &times; </span><span class="t3c">'+f1.toFixed(3)+'</span>'+
+   '<span style="color:#8a94a8"> &times; </span><span class="t3c">'+f2.toFixed(3)+'</span>'+
+   '<span style="color:#8a94a8"> = </span><b style="color:#7b5cd6">'+sig.toFixed(4)+'</b>';
+  $('siglive').innerHTML=
+   'factor 1 (noise-level ratio) = <span class="big">'+f1.toFixed(4)+'</span><br>'+
+   'factor 2 (how big the hop is) = <span class="big">'+f2.toFixed(4)+'</span> &nbsp;<span style="color:var(--soft)">grows with skip — try the slider</span><br>'+
+   '&sigma;&#8348; = <span class="big" style="color:var(--ac)">'+sig.toFixed(4)+'</span> &nbsp;&middot;&nbsp; DDPM at this t: <span class="big">'+ddpmSig(T1v).toFixed(4)+'</span>';
+  let mx=0;for(let t=10;t<995;t+=5){mx=Math.max(mx,Math.abs(sigOf(t,1,1).sig-ddpmSig(t)));}
+  $('match').innerHTML='max |&sigma;<sub>DDIM,&eta;=1</sub> &minus; &sigma;<sub>DDPM</sub>| over all t = <span class="big" style="color:var(--out)">'+mx.toExponential(2)+'</span><br><span style="color:var(--soft)">Numerically identical — &ldquo;when &eta; = 1 it reduces to exactly DDPM&rdquo; is a computed fact here, not a slogan.</span>';
+}
+const sc=$('sigcv');let SW=0,SH2=240;
+function fit1(){[SW,SH2]=fitCv(sc,240);sigDraw();}
+function sigDraw(){
+  const x=sc.getContext('2d');x.clearRect(0,0,SW,SH2);
+  const gx=44,gy=16,gw=SW-70,gh=SH2-52;
+  const ymax=ddpmSig(990)*1.12;
+  x.strokeStyle='#dde5f2';x.strokeRect(gx,gy,gw,gh);
+  x.fillStyle='#8a94a8';x.font='10px Consolas,monospace';x.textAlign='center';
+  x.fillText('t=0',gx,gy+gh+13);x.fillText('t=999',gx+gw,gy+gh+13);
+  x.save();x.translate(14,gy+gh/2);x.rotate(-Math.PI/2);x.font='700 10px "Segoe UI"';x.fillStyle='#5a6b86';x.fillText('\u03C3\u209C',0,0);x.restore();
+  for(const ev of [0.25,0.5,0.75]){
+    x.strokeStyle='#d9cdf5';x.lineWidth=1.2;x.beginPath();
+    for(let i=0;i<=80;i++){const t=Math.max(10,Math.round(999*i/80));
+      const px=gx+gw*t/999, py=gy+gh*(1-sigOf(t,SK1,ev).sig/ymax);
+      i?x.lineTo(px,py):x.moveTo(px,py);}x.stroke();}
+  /* DDPM dashed */
+  x.strokeStyle='#25324a';x.setLineDash([6,5]);x.lineWidth=2;x.beginPath();
+  for(let i=0;i<=80;i++){const t=Math.max(10,Math.round(999*i/80));
+    const px=gx+gw*t/999, py=gy+gh*(1-ddpmSig(t)/ymax);
+    i?x.lineTo(px,py):x.moveTo(px,py);}x.stroke();x.setLineDash([]);
+  x.fillStyle='#25324a';x.font='700 10px "Segoe UI"';x.textAlign='left';
+  x.fillText('DDPM \u221A\u03B2\u0303\u209C (dashed)',gx+8,gy+14);
+  /* current eta curve */
+  x.strokeStyle='#7b5cd6';x.lineWidth=2.6;x.beginPath();
+  for(let i=0;i<=80;i++){const t=Math.max(10,Math.round(999*i/80));
+    const px=gx+gw*t/999, py=gy+gh*(1-sigOf(t,SK1,E1).sig/ymax);
+    i?x.lineTo(px,py):x.moveTo(px,py);}x.stroke();
+  x.fillStyle='#7b5cd6';x.font='700 11px Consolas,monospace';x.textAlign='right';
+  x.fillText('\u03B7 = '+E1.toFixed(2)+(SK1>1?'  (skip '+SK1+')':''),gx+gw-6,gy+18);
+  /* marker */
+  const {sig}=sigOf(T1v,SK1,E1);
+  const mx2=gx+gw*T1v/999,my=gy+gh*(1-sig/ymax);
+  x.fillStyle='#7b5cd6';x.beginPath();x.arc(mx2,my,5.5,0,7);x.fill();
+  x.strokeStyle='#fff';x.lineWidth=2;x.stroke();
+}
+$('t1').oninput=e=>{T1v=Math.round(+e.target.value);$('t1v').textContent=T1v;sigFx();sigDraw();};
+$('sk1').oninput=e=>{SK1=Math.round(+e.target.value);$('sk1v').textContent=SK1;sigFx();sigDraw();};
+$('e1').oninput=e=>{eTween=null;E1=+e.target.value;$('e1v').textContent=E1.toFixed(2);sigFx();sigDraw();};
+document.querySelectorAll('.c1').forEach(c=>c.onclick=()=>{
+  document.querySelectorAll('.c1').forEach(x=>x.classList.toggle('on',x===c));
+  const s=+c.dataset.s;
+  if(s===1)eTween={to:0};
+  if(s===2){eTween={to:1};SK1=1;$('sk1').value=1;$('sk1v').textContent=1;}
+  if(s===0){eTween=null;}
+});
+
+/* ================= TAB 2 ================= */
+let HOP=1,skipU=-1,ddpmFail=-1;
+const kc=$('skipcv');let KW=0,KH=230;
+const lc=$('lut');let LW=0,LH=64;
+function fit2(){[KW,KH]=fitCv(kc,230);[LW,LH]=fitCv(lc,64);skipDraw(0);}
+function laneX(t){return KW*0.06+(KW*0.88)*(999-t)/999;}
+function skipDraw(now){
+  const x=kc.getContext('2d');x.clearRect(0,0,KW,KH);
+  const y1=KH*0.30,y2=KH*0.74;
+  const u=skipU<0?1:Math.min(1,skipU);
+  x.font='700 11.5px "Segoe UI"';x.textAlign='left';
+  x.fillStyle='#c07417';x.fillText('DDPM — must walk every step; a fresh z on EVERY arrow',KW*0.06,y1-30);
+  x.fillStyle='#128888';x.fillText('DDIM — hop = '+HOP+':  each arc needs only \u03B1\u0304 at its two endpoints',KW*0.06,y2-38);
+  /* DDPM lane: 14 representative arrows */
+  const NA=14;
+  for(let i=0;i<NA;i++){
+    if(i/NA>u)break;
+    const a=laneX(999-999*i/NA), b=laneX(999-999*(i+1)/NA);
+    x.strokeStyle='#f6921e';x.lineWidth=2;
+    x.beginPath();x.moveTo(a+3,y1);x.lineTo(b-3,y1);x.stroke();
+    x.fillStyle='#f6921e';x.beginPath();x.moveTo(b-3,y1);x.lineTo(b-9,y1-4);x.lineTo(b-9,y1+4);x.closePath();x.fill();
+    x.font='11px "Segoe UI"';x.textAlign='center';
+    x.fillText('\uD83C\uDFB2',(a+b)/2,y1-8);
+  }
+  x.fillStyle='#c07417';x.font='700 10px Consolas,monospace';x.textAlign='left';
+  x.fillText('999 arrows \u00B7 999 fresh z draws \u00B7 999 model calls',KW*0.06,y1+22);
+  /* failed DDPM hop */
+  if(ddpmFail>=0){const f=Math.min(1,ddpmFail);
+    const a=laneX(700),b=laneX(400);
+    const bx=lerp(a,b,f), by=y1-Math.sin(f*Math.PI)*34+f*26;
+    x.strokeStyle='#d64545';x.setLineDash([5,5]);x.lineWidth=2;
+    x.beginPath();x.moveTo(a,y1);
+    x.quadraticCurveTo((a+b)/2,y1-56,bx,by);x.stroke();x.setLineDash([]);
+    if(f>=1){x.fillStyle='#d64545';x.font='700 11.5px "Segoe UI"';x.textAlign='center';
+      x.fillText('\u2717 lands below the lane: \u03B2\u209C is defined per adjacent step \u2014 variance breaks',(a+b)/2,y1+42);}}
+  /* DDIM lane */
+  const visits=[];for(let t=999;t>=0;t-=HOP)visits.push(t);
+  const nV=Math.max(1,Math.floor(visits.length*u));
+  for(let i=0;i<Math.min(nV,visits.length)-0;i++){
+    const t=visits[i];
+    x.fillStyle='#7b5cd6';x.beginPath();x.arc(laneX(t),y2,HOP>=10?4:1.6,0,7);x.fill();
+    if(i>0&&HOP>=10){
+      const a=laneX(visits[i-1]),b=laneX(t);
+      x.strokeStyle='rgba(123,92,214,.55)';x.lineWidth=1.6;
+      x.beginPath();x.moveTo(a,y2);x.quadraticCurveTo((a+b)/2,y2-24-HOP*0.12,b,y2);x.stroke();}
+  }
+  if(HOP>=50&&nV>1){
+    const i=Math.min(nV-1,1);
+    const a=laneX(visits[0]),b=laneX(visits[1]);
+    x.fillStyle='#7b5cd6';x.font='700 10px Consolas,monospace';x.textAlign='center';
+    x.fillText('uses \u03B1\u0304'+String(visits[0]).padStart(3)+' and \u03B1\u0304'+String(visits[1]).padStart(3)+' \u2014 nothing else',(a+b)/2,y2-30-HOP*0.12);}
+  x.fillStyle='#128888';x.font='700 10px Consolas,monospace';x.textAlign='left';
+  x.fillText(visits.length+' visits \u00B7 0 fresh z (\u03B7=0) \u00B7 '+visits.length+' model calls \u2014 '+(999/(visits.length-1)).toFixed(0)+'\u00D7 fewer',KW*0.06,y2+30);
+  $('skipline').innerHTML='hop = <b>'+HOP+'</b> \u2192 <b style="color:var(--ac)">'+visits.length+'</b> model calls instead of 1000. The math is unchanged: the same update rule, just with &alpha;&#772;<sub>t</sub> and &alpha;&#772;<sub>t&minus;'+HOP+'</sub>.';
+}
+function lutDraw(){
+  const x=lc.getContext('2d');x.clearRect(0,0,LW,LH);
+  const gx=8,gw=LW-16,gy=14,gh=26;
+  for(let i=0;i<200;i++){
+    const t=Math.round(999*i/199);
+    const vis=(999-t)%HOP===0;
+    x.fillStyle=vis?'#7b5cd6':'#e2e8f4';
+    x.fillRect(gx+gw*i/200,gy,gw/200-0.4,gh);}
+  x.fillStyle='#8a94a8';x.font='10px Consolas,monospace';x.textAlign='left';
+  x.fillText('\u03B1\u0304\u2089\u2089\u2089',gx,gy+gh+13);x.textAlign='right';x.fillText('\u03B1\u0304\u2080',gx+gw,gy+gh+13);
+  x.textAlign='center';x.fillStyle='#5a6b86';x.font='700 10px "Segoe UI"';
+  const used=Math.ceil(1000/HOP);
+  x.fillText(used+' of 1000 entries used ('+(used/10).toFixed(1)+'%) \u2014 the grey ones never enter any computation',gx+gw/2,gy-4);
+}
+document.querySelectorAll('.c2').forEach(c=>c.onclick=()=>{
+  document.querySelectorAll('.c2').forEach(z=>z.classList.toggle('on',z===c));
+  HOP=+c.dataset.h;skipU=0;ddpmFail=-1;lutDraw();});
+$('tryDDPM').onclick=()=>{ddpmFail=0;};
+$('goSkip').onclick=()=>{skipU=0;ddpmFail=-1;};
+
+/* ================= loop ================= */
+let lastT=null;
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT)*0.001;lastT=ts;
+  if(TAB===0){geoDraw(ts);}
+  if(TAB===1){
+    if(eTween){E1=lerp(E1,eTween.to,Math.min(1,dt*2.4));
+      if(Math.abs(E1-eTween.to)<0.004){E1=eTween.to;eTween=null;}
+      $('e1').value=E1;$('e1v').textContent=E1.toFixed(2);sigFx();}
+    sigDraw();}
+  if(TAB===2){
+    if(skipU>=0&&skipU<1)skipU+=dt*0.55;
+    if(ddpmFail>=0&&ddpmFail<1)ddpmFail+=dt*0.8;
+    skipDraw(ts);}
+}
+function fitAll(){fit0();fit1();fit2();lutDraw();}
+addEventListener('resize',fitAll);
+fitAll();sel0(3);imDraw();sigFx();skipDraw(0);
+requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>

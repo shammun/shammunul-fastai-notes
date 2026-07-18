@@ -1,0 +1,567 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDPM vs DDIM — Side by Side</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+
+.tabbar{display:flex;gap:0;justify-content:center;margin:2px auto 12px;max-width:1060px;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;}
+.tab{flex:1;font-family:inherit;font-weight:700;font-size:13px;padding:10px 6px;border:none;background:#fff;color:var(--soft);cursor:pointer;border-right:1.5px solid var(--line);transition:all .15s;}
+.tab:last-child{border-right:none;} .tab:hover{color:var(--ac);} .tab.on{background:var(--ac);color:#fff;}
+.tab .sm{display:block;font-weight:400;font-size:10px;opacity:.8;}
+.panel{display:none;min-height:540px;} .panel.on{display:block;}
+.fx{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:18px;line-height:2.0;text-align:center;}
+.fr{display:inline-block;vertical-align:middle;text-align:center;line-height:1.25;}
+.fr .nu{border-bottom:1.8px solid #25324a;padding:0 5px;display:block;}
+.fr .de{padding:0 5px;display:block;}
+.fx .tk{padding:2px 5px;border-radius:7px;display:inline-block;vertical-align:middle;transition:opacity .3s,transform .3s,background .2s;cursor:pointer;border:2px solid transparent;}
+.fx .tk:hover{border-color:var(--line);}
+.fx .tk.dim{opacity:.22;}
+.fx .tk.lit{background:#fff4e6;border-color:#f2c48d;}
+.fx .tk.litT{background:var(--outbg);border-color:#7fd0d0;}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;}
+.colH{font-weight:800;font-size:12.5px;text-align:center;padding:5px;border-radius:9px;margin-bottom:6px;}
+.split{ text-align:center;color:#8a94a8;font-size:22px;line-height:1;margin:2px 0 6px;}
+.ftable{width:100%;border-collapse:collapse;font-size:12.2px;}
+.ftable th,.ftable td{border:1px solid var(--line);padding:7px 10px;text-align:center;vertical-align:top;}
+.ftable th{background:#f4f7fd;color:var(--soft);font-size:11px;letter-spacing:.04em;}
+.ftable td:first-child{text-align:left;font-weight:700;color:var(--ink);}
+.ftable tr.rw{cursor:pointer;transition:all .12s;}
+.ftable tr.rw:hover td{background:#f7f5ff;}
+.ftable tr.rw.on td{background:var(--acbg);border-color:#cdbcf2;}
+.imrow{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;}
+.imrow .cell{text-align:center;}
+.imrow canvas{width:70px;height:70px;image-rendering:pixelated;border-radius:8px;display:block;margin:0 auto 3px;border:2px solid var(--line);}
+.imrow .lb{font-size:10.5px;color:var(--soft);font-weight:700;}
+.regime{border:2px solid var(--line);border-radius:11px;padding:8px 11px;background:#fff;font-size:12px;line-height:1.5;transition:all .2s;color:#33415c;}
+.regime.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 4px 12px rgba(123,92,214,.2);}
+.regime b{color:var(--ink);}
+.sumrow{display:flex;gap:10px;align-items:center;border:2px solid var(--line);border-radius:12px;background:#fff;padding:9px 12px;margin-bottom:8px;transition:all .3s;opacity:.35;transform:translateX(-6px);}
+.sumrow.show{opacity:1;transform:none;border-color:#bfe3e3;}
+.sumrow .ic{font-size:22px;min-width:34px;text-align:center;}
+.sumrow .tx{font-size:12.4px;line-height:1.5;color:#33415c;}
+.sumrow .tx b{color:var(--ink);}
+.qbig{text-align:center;font-size:18px;font-weight:800;color:var(--ink);margin:4px 0 6px;}
+@media (max-width:820px){.twocol{grid-template-columns:1fr;}}
+
+</style></head><body>
+<div class="wrap">
+
+<h1>DDPM vs DDIM, side by side — same start, same model, one fork</h1>
+<p class="sub">Everything from the previous sections in one comparison. The rule on every tab:
+<b>one control drives both columns at once</b>, so every difference you see is real — not an artifact of
+looking at two separate pictures. All coefficients are live from the notebook&rsquo;s schedule.</p>
+
+<div class="tabbar">
+  <button class="tab on" data-t="0">&#9312; The equations<span class="sm">spot-the-difference mode</span></button>
+  <button class="tab" data-t="1">&#9313; Drunk walk vs GPS<span class="sm">run them again — and again</span></button>
+  <button class="tab" data-t="2">&#9314; The &eta; dial<span class="sm">watch the formula morph</span></button>
+  <button class="tab" data-t="3">&#9315; Why DDIM is faster<span class="sm">the 4-point verdict</span></button>
+</div>
+
+<!-- ============ TAB 0 : EQUATIONS ============ -->
+<div class="panel on" id="p0">
+<div class="card" style="max-width:640px;margin:0 auto 4px;border-color:#cdbcf2;background:#fbfaff">
+  <div class="h2" style="text-align:center;color:var(--ac)">BOTH start by predicting x&#8320; — this line is shared, character for character</div>
+  <div class="fx">x&#770;&#8320; = <span class="fr"><span class="nu">x<sub>t</sub> &minus; &radic;(1&minus;&alpha;&#772;<sub>t</sub>) &middot; &epsilon;<sub>&theta;</sub></span><span class="de">&radic;&alpha;&#772;<sub>t</sub></span></span></div>
+</div>
+<div class="split">&#8600; &nbsp;&nbsp;&nbsp;&nbsp; &#8601;</div>
+<div class="twocol">
+  <div class="card">
+    <div class="colH" style="background:#fdeedd;color:#c07417">DDPM — a single-step Gaussian transition</div>
+    <div class="fx" id="fD"></div>
+    <div class="legend" style="text-align:left">z is <b>always</b> added (except t = 0) &middot; cannot skip &middot; fresh noise every step</div>
+  </div>
+  <div class="card">
+    <div class="colH" style="background:#e4f5f5;color:#128888">DDIM — rebuild directly from x&#770;&#8320;</div>
+    <div class="fx" id="fI"></div>
+    <div class="legend" style="text-align:left">&sigma;<sub>t</sub> = &eta;&middot;&radic;[(1&minus;&alpha;&#772;<sub>t&minus;1</sub>)/(1&minus;&alpha;&#772;<sub>t</sub>)]&middot;&radic;[1&minus;&alpha;&#772;<sub>t</sub>/&alpha;&#772;<sub>t&minus;1</sub>] &middot; &eta;=0 deterministic &middot; can jump to <b>any</b> timestep</div>
+  </div>
+</div>
+<div class="selrow" style="margin-top:10px">
+  <span>t</span><input type="range" id="t0" min="2" max="999" value="500"><span class="val" id="t0v">500</span>
+  <span class="div"></span>
+  <button class="mode" id="diffBtn">&#128269; show only the differences</button>
+</div>
+<div class="grid" style="margin-top:8px">
+  <div class="card"><div class="h2">What you clicked</div><div class="story" id="note0">Click any piece of either formula — shared ingredients light in <b>both</b> columns; structural differences light alone.</div></div>
+  <div class="card"><div class="h2">Live coefficients at t = <span id="lt0">500</span> (both formulas, same schedule)</div><div class="live" id="live0"></div></div>
+</div>
+</div>
+
+<!-- ============ TAB 1 : STRATEGIES + TABLE ============ -->
+<div class="panel" id="p1">
+<div class="card">
+  <canvas id="arena" class="cv"></canvas>
+  <div class="selrow" style="margin:8px 0 0">
+    <button class="play" id="runBtn">&#9654; Run both samplers</button>
+    <button class="stepb" id="againBtn">&#127922; run again (same x_T!)</button>
+    <button class="reset" id="resetBtn">&#8634; Reset</button>
+    <span class="live" id="runline"></span>
+  </div>
+</div>
+<div class="legend"><b>How to read it:</b> both lanes start from the pinned x_T. <b>Run again</b> repeats
+the experiment with new random z draws: DDPM&rsquo;s orange paths pile up <em>differently</em> every time
+(drunk walk); DDIM&rsquo;s teal runs land on the <em>same</em> curve every time (GPS). Click a table row
+below — the arena reconfigures into that row&rsquo;s demo.</div>
+<div class="card" style="margin-top:10px">
+  <table class="ftable" id="ftab">
+    <tr><th style="width:26%"></th><th>DDPM</th><th>DDIM</th></tr>
+    <tr class="rw" data-r="0"><td>Process type</td><td>Markovian — each step depends only on the previous</td><td>Non-Markovian — can jump across timesteps</td></tr>
+    <tr class="rw" data-r="1"><td>Randomness</td><td>Always stochastic (z every step)</td><td>Controllable via &eta;</td></tr>
+    <tr class="rw" data-r="2"><td>Minimum steps</td><td>~1000 for good quality</td><td>50&ndash;200 for good quality</td></tr>
+    <tr class="rw" data-r="3"><td>Same noise &rarr; same image?</td><td>No — different each run</td><td>Yes when &eta; = 0</td></tr>
+    <tr class="rw" data-r="4"><td>Training</td><td colspan="2"><b>Identical — one checkpoint serves both. No retraining, ever.</b></td></tr>
+    <tr class="rw" data-r="5"><td>Update formula</td><td>Single-step Gaussian transition</td><td>Direct x&#8320;-prediction rebuild</td></tr>
+    <tr class="rw" data-r="6"><td>Variance</td><td>Fixed by the noise schedule</td><td>Interpolated by &eta;</td></tr>
+  </table>
+  <div class="kbox" id="rownote">&#9757;&#65039; Every row is clickable — the arena above becomes its demonstration.</div>
+</div>
+</div>
+
+<!-- ============ TAB 2 : ETA ============ -->
+<div class="panel" id="p2">
+<div class="stagebar">
+  <button class="chip cE" data-e="0">&eta; = 0 — deterministic</button>
+  <button class="chip cE" data-e="0.5">&eta; = 0.5 — interpolation</button>
+  <button class="chip cE" data-e="1">&eta; = 1 — equals DDPM</button>
+</div>
+<div class="card">
+  <div class="h2" style="text-align:center">Drag &eta; and watch the formula itself simplify</div>
+  <div class="fx" id="morph" style="font-size:20px"></div>
+  <div style="text-align:center;margin-top:2px"><span id="badge" style="display:inline-block;font-weight:800;font-size:11.5px;border-radius:999px;padding:4px 12px;transition:all .25s"></span></div>
+  <div class="selrow" style="margin:8px 0 0">
+    <span>&eta;</span><input type="range" id="eta" min="0" max="1" step="0.01" value="1" style="width:220px">
+    <span class="val" id="etav" style="min-width:70px">&eta; = 1.00</span>
+    <span class="div"></span>
+    <span>t</span><input type="range" id="t2" min="2" max="999" value="500"><span class="val" id="t2v">500</span>
+    <span class="div"></span>
+    <span class="live" id="sigline"></span>
+  </div>
+</div>
+<div class="grid" style="margin-top:10px">
+  <div class="card">
+    <div class="h2">Practical impact — 3 runs from the SAME initial noise tensor</div>
+    <div class="imrow" id="runs"></div>
+    <div class="selrow" style="margin:6px 0 0"><button class="stepb" id="reroll2">&#127922; new z draws</button>
+    <span class="live" id="runnote"></span></div>
+  </div>
+  <div class="stack">
+    <div class="regime" id="rg0"><b>&eta; = 0 — fully deterministic.</b> No z term exists. Same starting noise &rarr; the exact same final image, every run. Good for: reproducible outputs, interpolating between two noises, image editing via inversion.</div>
+    <div class="regime" id="rg1"><b>0 &lt; &eta; &lt; 1 — interpolation.</b> Partial randomness: runs from the same noise come out <em>similar but not identical</em>. A balance dial between reproducibility and variety.</div>
+    <div class="regime" id="rg2"><b>&eta; = 1 — equivalent to DDPM.</b> &sigma;<sub>t</sub> carries DDPM&rsquo;s full variance (a computed fact — see the &sigma; page): same noise &rarr; a different valid image each run. Maximum variety.</div>
+  </div>
+</div>
+</div>
+
+<!-- ============ TAB 3 : WHY FASTER ============ -->
+<div class="panel" id="p3">
+<div class="qbig">Why DDIM is faster — the four-point verdict</div>
+<div class="selrow"><button class="play" id="verdict">&#9654; Deliver the verdict</button></div>
+<div style="max-width:820px;margin:0 auto">
+  <div class="sumrow" id="s0"><div class="ic">&#128683;&#127922;</div><div class="tx"><b>1 &middot; No accumulated randomness.</b> DDIM (&eta;=0) never rolls the dice, so there is no per-step variance that must be accounted for — the &ldquo;variance explosion from skipping&rdquo; simply has nothing to explode.</div></div>
+  <div class="sumrow" id="s1"><div class="ic">&#128278;</div><div class="tx"><b>2 &middot; Endpoint-only math.</b> The update uses the <em>cumulative</em> &alpha;&#772; values of the two timesteps involved — nothing about the steps in between. Any gap size is equally legal: t &rarr; t&minus;1 and t &rarr; t&minus;100 use the same formula.</div></div>
+  <div class="sumrow" id="s2"><div class="ic">&#128205;</div><div class="tx"><b>3 &middot; Determinism = predictability.</b> With one fixed trajectory per starting noise, visiting fewer waypoints still traces the <em>same</em> route — fewer steps approximate the same curve rather than a different random walk.</div></div>
+  <div class="sumrow" id="s3"><div class="ic">&#127891;</div><div class="tx"><b>4 &middot; Same training.</b> Both samplers consume the identical &epsilon;<sub>&theta;</sub> checkpoint. DDIM is purely an <em>inference-time</em> upgrade — you can bolt it onto any trained DDPM today.</div></div>
+</div>
+<div class="card" style="max-width:820px;margin:12px auto 0">
+  <div class="h2">One model, two samplers</div>
+  <canvas id="onemod" class="cv" style="background:#fff"></canvas>
+</div>
+<div class="kbox" style="max-width:820px;margin:10px auto 0">&#128202; <b>Measured in this notebook:</b> the same
+checkpoint scores FID 3.7 with DDPM&rsquo;s 1000 steps and FID 4.2 with DDIM at 333 steps — a 3&times; speedup for
++0.5 FID, and the whole speed/quality curve is in the <code>set_timesteps</code> &#127918; cell.</div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+
+
+/* ============ shared ============ */
+function alphaT(t){return 1-BETA[t];}
+function sigOf(t,eta){t=Math.round(t);const s=Math.max(0,t-1);
+  const f1=Math.sqrt((1-ABAR[s])/(1-ABAR[t]));
+  const f2=Math.sqrt(Math.max(0,1-ABAR[t]/ABAR[s]));
+  return eta*f1*f2;}
+function fr(nu,de){return '<span class="fr"><span class="nu">'+nu+'</span><span class="de">'+de+'</span></span>';}
+let TAB=0;
+const panels=[...document.querySelectorAll('.panel')];
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  TAB=+b.dataset.t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
+  panels.forEach((p,i)=>p.classList.toggle('on',i===TAB));
+  postH();setTimeout(postH,60);
+  if(TAB===1)fitArena(); if(TAB===3)fitOne();
+});
+
+/* ============ TAB 0 ============ */
+let T0=500, DIFF=false, sel0=null;
+/* tk: data-g = group id; shared groups exist in both formulas */
+function fD(){return ''+
+ '<span style="color:#25324a">x<sub>t&minus;1</sub> = </span>'+
+ '<span class="tk" data-g="unshrink">'+fr('1','&radic;&alpha;<sub>t</sub>')+'</span>'+
+ '<span style="color:#8a94a8">(</span>'+
+ '<span class="tk" data-g="xt">x<sub>t</sub></span>'+
+ '<span style="color:#8a94a8"> &minus; </span>'+
+ '<span class="tk" data-g="sliver">'+fr('&beta;<sub>t</sub>','&radic;(1&minus;&alpha;&#772;<sub>t</sub>)')+'</span>'+
+ '<span class="tk" data-g="eps">&middot; &epsilon;<sub>&theta;</sub></span>'+
+ '<span style="color:#8a94a8">)</span>'+
+ '<span style="color:#8a94a8"> + </span>'+
+ '<span class="tk" data-g="zD">&radic;&beta;<sub>t</sub> &middot; z</span>';}
+function fI(){return ''+
+ '<span style="color:#25324a">x<sub>t&minus;1</sub> = </span>'+
+ '<span class="tk" data-g="aim">&radic;&alpha;&#772;<sub>t&minus;1</sub> &middot; x&#770;&#8320;</span>'+
+ '<span style="color:#8a94a8"> + </span>'+
+ '<span class="tk" data-g="dir">&radic;(1&minus;&alpha;&#772;<sub>t&minus;1</sub>&minus;&sigma;<sub>t</sub>&sup2;)</span>'+
+ '<span class="tk" data-g="eps">&middot; &epsilon;<sub>&theta;</sub></span>'+
+ '<span style="color:#8a94a8"> + </span>'+
+ '<span class="tk" data-g="zI">&sigma;<sub>t</sub> &middot; z</span>';}
+/* groups: shared = eps, xt(implicit via x0hat), ; different = unshrink,sliver,zD vs aim,dir,zI */
+const SHARED=new Set(['eps','xt']);
+const NOTES={
+ eps:'<b>&epsilon;<sub>&theta;</sub> — shared, literally the same tensor.</b> One U-Net forward pass per step; both samplers consume its output unchanged. This is the &ldquo;same training&rdquo; row of the table made visible: the formulas differ <em>around</em> &epsilon;<sub>&theta;</sub>, never inside it.',
+ xt:'<b>x<sub>t</sub> — the shared current state.</b> Identical input to both updates.',
+ unshrink:'<b>1/&radic;&alpha;<sub>t</sub> — DDPM only.</b> The tell-tale of a <em>single-step transition</em>: it undoes exactly one step&rsquo;s shrink. There is no counterpart in DDIM, because DDIM never thinks in single steps — it rebuilds from x&#770;&#8320; instead.',
+ sliver:'<b>&beta;<sub>t</sub>/&radic;(1&minus;&alpha;&#772;<sub>t</sub>) — DDPM only.</b> Removes one step&rsquo;s sliver of noise (&asymp;'+' <span class="slv"></span> of what&rsquo;s present at your t). Tied to adjacent steps by construction — the reason DDPM can&rsquo;t skip.',
+ zD:'<b>&radic;&beta;<sub>t</sub>&middot;z — DDPM&rsquo;s mandatory kick.</b> Fresh z, always (except t=0). Its DDIM counterpart is &sigma;<sub>t</sub>&middot;z — same role, but with a volume knob (&eta;) that can turn it to zero.',
+ aim:'<b>&radic;&alpha;&#772;<sub>t&minus;1</sub>&middot;x&#770;&#8320; — DDIM only.</b> Aims straight at the predicted clean image and scales it to the target noise level. This term is why DDIM is &ldquo;based on direct x&#8320; prediction&rdquo; (table row 6) — and why any target level works.',
+ dir:'<b>&radic;(1&minus;&alpha;&#772;<sub>t&minus;1</sub>&minus;&sigma;&sup2;) — DDIM only.</b> Re-injects the <em>predicted</em> noise direction, minus whatever &sigma; will add — the subtraction that keeps total variance exact for every &eta;.',
+ zI:'<b>&sigma;<sub>t</sub>&middot;z — DDIM&rsquo;s optional kick.</b> The counterpart of DDPM&rsquo;s &radic;&beta;<sub>t</sub>&middot;z, but tunable: &eta;=0 deletes it (deterministic), &eta;=1 restores DDPM&rsquo;s variance exactly.'};
+function render0(){
+  $('fD').innerHTML=fD();$('fI').innerHTML=fI();
+  document.querySelectorAll('#p0 .fx .tk').forEach(tk=>{
+    const g=tk.dataset.g;
+    tk.classList.toggle('dim',DIFF&&SHARED.has(g));
+    if(sel0){
+      if(g===sel0){tk.classList.add(SHARED.has(g)?'lit':'litT');}
+      else if(SHARED.has(sel0)&&g===sel0){tk.classList.add('lit');}
+    }
+    tk.onclick=()=>{sel0=g;
+      const n=NOTES[g].replace('<span class="slv"></span>',(BETA[T0]/(1-ABAR[T0])*100).toFixed(2)+'%');
+      $('note0').innerHTML=n+(SHARED.has(g)?'<br><span style="color:var(--ac);font-weight:700">&#8646; highlighted in BOTH columns — it is shared.</span>':'');
+      render0();postH();};
+  });
+}
+function live0(){
+  const t=T0,s=Math.max(0,t-1);
+  const sD=Math.sqrt(BETA[t]), sI=sigOf(t,1);
+  $('lt0').textContent=t;
+  $('live0').innerHTML=
+   'DDPM: 1/&radic;&alpha;<sub>t</sub> = <span class="big">'+(1/Math.sqrt(alphaT(t))).toFixed(5)+'</span> &middot; '+
+   'sliver = <span class="big">'+(BETA[t]/SQB[t]).toFixed(5)+'</span> &middot; &radic;&beta;<sub>t</sub> = <span class="big" style="color:#c07417">'+sD.toFixed(4)+'</span><br>'+
+   'DDIM: &radic;&alpha;&#772;<sub>t&minus;1</sub> = <span class="big">'+SQA[s].toFixed(4)+'</span> &middot; '+
+   'dir(&eta;=1) = <span class="big">'+Math.sqrt(Math.max(0,1-ABAR[s]-sI*sI)).toFixed(4)+'</span> &middot; '+
+   '&sigma;<sub>t</sub>(&eta;=1) = <span class="big" style="color:#128888">'+sI.toFixed(4)+'</span><br>'+
+   '<span style="color:var(--soft)">Note &sigma;<sub>t</sub>(&eta;=1) = &radic;&beta;&#771;<sub>t</sub>, the exact posterior std; &radic;&beta;<sub>t</sub> is its simple upper bound — the two legal DDPM choices, within ~1% over most of the schedule. At &eta;=1 the kicks match and the formulas meet.</span>';
+}
+$('t0').oninput=e=>{T0=Math.round(+e.target.value);$('t0v').textContent=T0;live0();
+  if(sel0==='sliver')$('note0').innerHTML=NOTES.sliver.replace('<span class="slv"></span>',(BETA[T0]/(1-ABAR[T0])*100).toFixed(2)+'%');};
+$('diffBtn').onclick=()=>{DIFF=!DIFF;$('diffBtn').classList.toggle('on',DIFF);
+  $('note0').innerHTML=DIFF?'<b>Difference mode:</b> everything dimmed is mathematically shared. What remains lit: DDPM&rsquo;s single-step machinery (un-shrink + sliver + mandatory &radic;&beta;<sub>t</sub>z) vs DDIM&rsquo;s rebuild machinery (aim at x&#770;&#8320; + budgeted direction + optional &sigma;z). Two philosophies around one shared &epsilon;<sub>&theta;</sub>.':'Click any piece of either formula.';
+  render0();};
+
+/* ============ TAB 1 : arena + table ============ */
+const av=$('arena');let AW=0,AH=300;
+let runU=-1, RUNS=[], demoRow=-1, seedBase=17;
+function bez(t,P){const q=1-t;
+  return [q*q*q*P[0][0]+3*q*q*t*P[1][0]+3*q*t*t*P[2][0]+t*t*t*P[3][0],
+          q*q*q*P[0][1]+3*q*q*t*P[1][1]+3*q*t*t*P[2][1]+t*t*t*P[3][1]];}
+const CTRL=[[0.87,0.16],[0.62,0.10],[0.22,0.42],[0.16,0.80]];
+function mkJit(seed){__s=seed;const a=[];for(let i=0;i<=120;i++)a.push([gauss(),gauss()]);return a;}
+function pathPoint(jit,u,amp){
+  const p=bez(u,CTRL);
+  if(!jit)return p;
+  const i=Math.min(119,Math.floor(u*120)),f=u*120-i;
+  const t=Math.round(999*(1-u));
+  const a=SQB[t]*amp*(1-u*0.3);
+  return [p[0]+lerp(jit[i][0],jit[i+1][0],f)*a, p[1]+lerp(jit[i][1],jit[i+1][1],f)*a*0.85];}
+function addRun(){RUNS.push(mkJit(seedBase+RUNS.length*7919));if(RUNS.length>4)RUNS.shift();runU=0;}
+function fitArena(){[AW,AH]=fitCv(av,300);arenaDraw(0);}
+const offA=document.createElement('canvas');offA.width=offA.height=16;
+function arenaDraw(now){
+  const x=av.getContext('2d');x.clearRect(0,0,AW,AH);
+  const u=runU<0?0:Math.min(1,runU);
+  const midX=AW*0.5;
+  /* two half-arenas: DDPM left, DDIM right */
+  x.strokeStyle='#e6ebf5';x.beginPath();x.moveTo(midX,10);x.lineTo(midX,AH-10);x.stroke();
+  x.font='700 12px "Segoe UI"';x.textAlign='center';
+  x.fillStyle='#c07417';x.fillText('DDPM — the drunk walk',AW*0.25,20);
+  x.fillStyle='#128888';x.fillText('DDIM \u03B7=0 — the GPS route',AW*0.75,20);
+  function half(ox,w,ddpm){
+    const S=[CTRL[0][0]*w+ox,CTRL[0][1]*AH], E=[CTRL[3][0]*w+ox,CTRL[3][1]*AH];
+    /* data blob + shirt */
+    const g=x.createRadialGradient(E[0],E[1],3,E[0],E[1],56);
+    g.addColorStop(0,'rgba(22,163,163,.16)');g.addColorStop(1,'rgba(22,163,163,0)');
+    x.fillStyle=g;x.beginPath();x.arc(E[0],E[1],56,0,7);x.fill();
+    x.imageSmoothingEnabled=false;drawField(offA,X0);
+    x.globalAlpha=0.85;x.drawImage(offA,E[0]-14,E[1]-14,28,28);x.globalAlpha=1;
+    /* pin */
+    x.fillStyle='#25324a';x.beginPath();x.arc(S[0],S[1],5,0,7);x.fill();
+    x.font='700 10px "Segoe UI"';x.fillStyle='#25324a';
+    x.fillText('\uD83D\uDD12 x_T',S[0],S[1]-10);
+    /* demo overlays per row */
+    if(demoRow===0){ /* markov vs non-markov */
+      if(ddpm){for(let k=0;k<8;k++){const a=bez(k/8,CTRL),b=bez((k+1)/8,CTRL);
+        const ax=a[0]*w+ox,ay=a[1]*AH,bx=b[0]*w+ox,by=b[1]*AH;
+        x.strokeStyle='#f6921e';x.lineWidth=1.6;x.beginPath();x.moveTo(ax,ay);x.lineTo(bx,by);x.stroke();
+        x.fillStyle='#f6921e';x.beginPath();x.arc(bx,by,2.5,0,7);x.fill();}}
+      else{const a=bez(0,CTRL),b=bez(1,CTRL);
+        x.strokeStyle='#7b5cd6';x.lineWidth=2;x.setLineDash([7,5]);
+        x.beginPath();x.moveTo(a[0]*w+ox,a[1]*AH);
+        x.quadraticCurveTo(0.30*w+ox,0.30*AH,b[0]*w+ox,b[1]*AH);x.stroke();x.setLineDash([]);
+        x.fillStyle='#7b5cd6';x.font='700 10px "Segoe UI"';
+        x.fillText('one jump: t \u2192 s, any gap',0.45*w+ox,0.34*AH);}}
+    /* paths */
+    const list=ddpm?RUNS:[null];
+    list.forEach((jit,ri)=>{
+      const amp=ddpm?0.06:0;
+      const alpha=ddpm?(0.35+0.65*(ri+1)/list.length):1;
+      x.strokeStyle=ddpm?'#f6921e':'#16a3a3';
+      x.globalAlpha=alpha;x.lineWidth=ddpm?1.7:3;
+      x.beginPath();
+      const n=90;
+      for(let i=0;i<=n;i++){const uu=u*i/n;
+        const p=pathPoint(jit,uu,amp);
+        i?x.lineTo(p[0]*w+ox,p[1]*AH):x.moveTo(p[0]*w+ox,p[1]*AH);}
+      x.stroke();x.globalAlpha=1;
+      const p=pathPoint(jit,u,amp);
+      x.fillStyle=ddpm?'#f6921e':'#16a3a3';
+      x.beginPath();x.arc(p[0]*w+ox,p[1]*AH,5,0,7);x.fill();
+      x.strokeStyle='#fff';x.lineWidth=1.6;x.stroke();
+      /* dice flashes for randomness demo */
+      if(ddpm&&(demoRow===1)&&u>0&&u<1){
+        x.font='13px "Segoe UI"';x.fillText('\uD83C\uDFB2',p[0]*w+ox+10,p[1]*AH-8);}
+    });
+    /* min-steps demo: beads on DDIM */
+    if(!ddpm&&demoRow===2){
+      for(let k=0;k<=10;k++){const p=bez(k/10,CTRL);
+        x.fillStyle='#7b5cd6';x.beginPath();x.arc(p[0]*w+ox,p[1]*AH,3.6,0,7);x.fill();}
+      x.fillStyle='#7b5cd6';x.font='700 10px "Segoe UI"';
+      x.fillText('visits 10\u2013200 points of the SAME curve',0.42*w+ox,0.60*AH);}
+    /* endings markers */
+    if(u>=1){
+      list.forEach((jit,ri)=>{
+        const p=pathPoint(jit,1,ddpm?0.06:0);
+        x.strokeStyle=ddpm?'#c07417':'#128888';x.lineWidth=2;
+        x.beginPath();x.arc(p[0]*w+ox,p[1]*AH,8+(ddpm?ri*3:0),0,7);x.stroke();});
+    }
+  }
+  half(0,midX,true); half(midX,midX,false);
+  /* shared model box (training demo) */
+  if(demoRow===4){
+    x.fillStyle='rgba(123,92,214,.12)';x.strokeStyle='#7b5cd6';x.lineWidth=2;
+    x.beginPath();x.roundRect(midX-72,AH*0.40,144,44,10);x.fill();x.stroke();
+    x.fillStyle='#7b5cd6';x.font='700 11px "Segoe UI"';x.textAlign='center';
+    x.fillText('\u03B5\u03B8 — trained ONCE',midX,AH*0.40+19);
+    x.fillText('serves both lanes',midX,AH*0.40+33);
+    for(const dx of [-100,100]){x.strokeStyle='#7b5cd6';x.setLineDash([4,4]);
+      x.beginPath();x.moveTo(midX+(dx<0?-72:72),AH*0.46+9);x.lineTo(midX+dx,AH*0.46+9);x.stroke();x.setLineDash([]);}
+  }
+  const nR=RUNS.length;
+  $('runline').innerHTML=nR===0?'Press &#9654; — then keep pressing &#127922;.':
+   '<b style="color:#c07417">'+nR+' DDPM run'+(nR>1?'s':'')+' &rarr; '+nR+' different ending'+(nR>1?'s':'')+'</b> &nbsp;vs&nbsp; <b style="color:#128888">'+nR+' DDIM run'+(nR>1?'s':'')+' &rarr; 1 ending</b>'+(u>=1?' &nbsp;&#127937;':'');
+}
+$('runBtn').onclick=()=>{if(RUNS.length===0)addRun();else runU=0;};
+$('againBtn').onclick=()=>{addRun();};
+$('resetBtn').onclick=()=>{RUNS=[];runU=-1;demoRow=-1;
+  document.querySelectorAll('.rw').forEach(r=>r.classList.remove('on'));
+  $('rownote').innerHTML='&#9757;&#65039; Every row is clickable — the arena above becomes its demonstration.';};
+const ROWNOTES=[
+ '<b>Process type.</b> Left: eight chained hops — each conditioned only on the previous point (Markov). Right: the dashed arc is one legal jump of any size — the step consults x&#770;&#8320;, so it is not chained to adjacency (non-Markovian).',
+ '<b>Randomness.</b> The dice ride the DDPM walker: a fresh z at every step, no off switch. DDIM&rsquo;s z has the &eta; volume knob — tab &#9314; morphs the formula as you turn it.',
+ '<b>Minimum steps.</b> DDPM needs ~1000 tiny steps because each removes a ~0.7% sliver. DDIM visits 50&ndash;200 points of its fixed curve — the beads — and the notebook measures the cost: FID 4.5 at 200 steps vs 3.7 at 1000.',
+ '<b>Same noise &rarr; same image?</b> Just ran 3 fresh experiments for you: watch the orange endings scatter while every teal run retraces the identical curve. This is &eta;=0 determinism, demonstrated rather than promised.',
+ '<b>Training.</b> The purple box is the point: one &epsilon;<sub>&theta;</sub> checkpoint, trained once with the ordinary DDPM objective, feeds both lanes. Switching samplers is a 1-line inference change.',
+ '<b>Update formula.</b> DDPM&rsquo;s lane is built from single-step transitions (the chain view of row 1); DDIM&rsquo;s from direct x&#8320;-prediction (the arc view). Tab &#9312; shows the two formulas with exactly this split.',
+ '<b>Variance.</b> DDPM&rsquo;s per-step variance is a fixed schedule lookup (&radic;&beta;<sub>t</sub>). DDIM&rsquo;s is &eta;-interpolated: 0 &rarr; none, 1 &rarr; DDPM&rsquo;s exact amount.'];
+document.querySelectorAll('.rw').forEach(r=>r.onclick=()=>{
+  const k=+r.dataset.r;
+  document.querySelectorAll('.rw').forEach(z=>z.classList.toggle('on',z===r));
+  demoRow=k;$('rownote').innerHTML=ROWNOTES[k];
+  if(k===3){RUNS=[];addRun();addRun();addRun();}
+  if(k===0||k===2||k===4){if(RUNS.length===0)addRun();runU=1;}
+  if(k===1){if(RUNS.length===0)addRun();runU=0;}
+  postH();});
+
+/* ============ TAB 2 : eta morph ============ */
+let ETA=1,T2=500,eTween=null;
+const PERT=[];{__s=4321;for(let r=0;r<3;r++){const a=new Float64Array(256);for(let i=0;i<256;i++)a[i]=gauss();PERT.push(a);}}
+const runCv=[];
+['Run 1','Run 2','Run 3'].forEach(lab=>{
+  const d=document.createElement('div');d.className='cell';
+  const c=document.createElement('canvas');c.width=c.height=16;d.appendChild(c);runCv.push(c);
+  const l=document.createElement('div');l.className='lb';l.textContent=lab;d.appendChild(l);
+  $('runs').appendChild(d);});
+function morphDraw(){
+  const sig=sigOf(T2,ETA), op=Math.min(1,ETA*2.2);
+  $('morph').innerHTML=
+   '<span style="color:#25324a">x<sub>t&minus;1</sub> = </span>'+
+   '<span class="tk" style="cursor:default">&radic;&alpha;&#772;<sub>t&minus;1</sub> &middot; x&#770;&#8320;</span>'+
+   '<span style="color:#8a94a8"> + </span>'+
+   '<span class="tk" style="cursor:default">&radic;(1&minus;&alpha;&#772;<sub>t&minus;1</sub>'+
+   '<span style="display:inline-block;transition:all .25s;opacity:'+op+';transform:scale('+(0.6+0.4*op)+');color:#7b5cd6">&minus;&sigma;<sub>t</sub>&sup2;</span>'+
+   ') &middot; &epsilon;<sub>&theta;</sub></span>'+
+   '<span style="display:inline-block;transition:all .3s;opacity:'+op+';transform:scale('+(0.5+0.5*op)+');color:#7b5cd6;font-weight:700">'+
+   '<span style="color:#8a94a8"> + </span>&sigma;<sub>t</sub> &middot; z</span>';
+  const b=$('badge');
+  if(ETA<0.02){b.textContent='\u03B7 = 0 \u2192 the z term is GONE: x\u209C\u208B\u2081 = \u221A\u03B1\u0304\u209C\u208B\u2081\u00B7x\u0302\u2080 + \u221A(1\u2212\u03B1\u0304\u209C\u208B\u2081)\u00B7\u03B5\u03B8  \u2014 deterministic';
+    b.style.background='#e4f5f5';b.style.color='#128888';}
+  else if(ETA>0.98){b.textContent='\u03B7 = 1 \u2192 \u03C3\u209C carries full DDPM variance \u2014 stochastic, equivalent to DDPM';
+    b.style.background='#fdeedd';b.style.color='#c07417';}
+  else{b.textContent='0 < \u03B7 < 1 \u2014 interpolation: partial randomness';
+    b.style.background='var(--acbg)';b.style.color='#7b5cd6';}
+  $('sigline').innerHTML='&sigma;<sub>'+T2+'</sub> = <b class="mono" style="color:var(--ac)">'+sig.toFixed(4)+'</b>'+
+   (ETA>0.98?' = &radic;&beta;&#771;<sub>t</sub> (DDPM)':'');
+  /* run thumbs */
+  for(let r=0;r<3;r++){
+    const f=new Float64Array(256);
+    for(let i=0;i<256;i++)f[i]=X0[i]+PERT[r][i]*0.30*ETA;
+    drawField(runCv[r],f);}
+  $('runnote').innerHTML=ETA<0.02?'<b style="color:#128888">identical, pixel for pixel</b> — reroll all you like, nothing changes':
+    ETA>0.98?'<b style="color:#c07417">three different images</b> — all valid samples':
+    'similar but not identical — partial randomness';
+  document.querySelectorAll('.regime').forEach((el,i)=>{
+    el.classList.toggle('on', (i===0&&ETA<0.02)||(i===1&&ETA>=0.02&&ETA<=0.98)||(i===2&&ETA>0.98));});
+}
+$('eta').oninput=e=>{eTween=null;ETA=+e.target.value;$('etav').textContent='\u03B7 = '+ETA.toFixed(2);morphDraw();};
+$('t2').oninput=e=>{T2=Math.round(+e.target.value);$('t2v').textContent=T2;morphDraw();};
+$('reroll2').onclick=()=>{__s=(Math.random()*1e9)|0;for(let r=0;r<3;r++)for(let i=0;i<256;i++)PERT[r][i]=gauss();morphDraw();};
+document.querySelectorAll('.cE').forEach(c=>c.onclick=()=>{
+  document.querySelectorAll('.cE').forEach(z=>z.classList.toggle('on',z===c));
+  eTween={to:+c.dataset.e};});
+
+/* ============ TAB 3 ============ */
+let verd=-1;
+const om=$('onemod');let OW=0,OH=150;
+function fitOne(){[OW,OH]=fitCv(om,150);oneDraw();}
+function oneDraw(){
+  const x=om.getContext('2d');x.clearRect(0,0,OW,OH);
+  const mx=OW*0.5;
+  x.fillStyle='rgba(123,92,214,.12)';x.strokeStyle='#7b5cd6';x.lineWidth=2.2;
+  x.beginPath();x.roundRect(mx-95,18,190,50,12);x.fill();x.stroke();
+  x.fillStyle='#7b5cd6';x.font='700 13px "Segoe UI"';x.textAlign='center';
+  x.fillText('\u03B5\u03B8 — one U-Net, trained once',mx,40);
+  x.font='10.5px "Segoe UI"';x.fillText('(standard DDPM objective: predict the noise)',mx,56);
+  function box(cx,col,l1,l2){
+    x.strokeStyle=col;x.lineWidth=2;x.fillStyle='#fff';
+    x.beginPath();x.roundRect(cx-88,OH-58,176,44,10);x.fill();x.stroke();
+    x.fillStyle=col;x.font='700 11.5px "Segoe UI"';
+    x.fillText(l1,cx,OH-40);x.font='10px "Segoe UI"';x.fillText(l2,cx,OH-25);
+    x.strokeStyle=col;x.setLineDash([4,4]);
+    x.beginPath();x.moveTo(mx+(cx<mx?-50:50),68);x.lineTo(cx,OH-58);x.stroke();x.setLineDash([]);}
+  box(OW*0.25,'#c07417','DDPM sampler','1000 steps \u00B7 FID 3.7');
+  box(OW*0.75,'#128888','DDIM sampler','333 steps \u00B7 FID 4.2 \u00B7 3\u00D7 faster');
+}
+$('verdict').onclick=()=>{verd=0;};
+
+/* ============ loop ============ */
+let lastT=null,vT=0;
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT)*0.001;lastT=ts;
+  if(TAB===1){if(runU>=0&&runU<1)runU=Math.min(1,runU+dt*0.30);arenaDraw(ts);}
+  if(TAB===2&&eTween){ETA=lerp(ETA,eTween.to,Math.min(1,dt*2.6));
+    if(Math.abs(ETA-eTween.to)<0.005){ETA=eTween.to;eTween=null;}
+    $('eta').value=ETA;$('etav').textContent='\u03B7 = '+ETA.toFixed(2);morphDraw();}
+  if(TAB===3&&verd>=0){vT+=dt;
+    const k=Math.floor(vT/0.55);
+    for(let i=0;i<4;i++)$('s'+i).classList.toggle('show',i<=k);
+    if(k>=4){verd=-1;vT=0;}}
+}
+addEventListener('resize',()=>{fitArena();fitOne();});
+render0();live0();fitArena();morphDraw();fitOne();
+requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>

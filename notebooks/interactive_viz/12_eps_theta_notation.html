@@ -1,0 +1,347 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ε_θ^(t)(x_t) — Function Application, Not Multiplication</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+
+.tabbar{display:flex;gap:0;justify-content:center;margin:2px auto 12px;max-width:1060px;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;}
+.tab{flex:1;font-family:inherit;font-weight:700;font-size:13px;padding:10px 6px;border:none;background:#fff;color:var(--soft);cursor:pointer;border-right:1.5px solid var(--line);transition:all .15s;}
+.tab:last-child{border-right:none;} .tab:hover{color:var(--ac);} .tab.on{background:var(--ac);color:#fff;}
+.tab .sm{display:block;font-weight:400;font-size:10px;opacity:.8;}
+.panel{display:none;min-height:540px;} .panel.on{display:block;}
+.fx{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:18px;line-height:2.1;text-align:center;}
+.fr{display:inline-block;vertical-align:middle;text-align:center;line-height:1.25;}
+.fr .nu{border-bottom:1.7px solid #25324a;padding:0 5px;display:block;}
+.fr .de{padding:0 5px;display:block;}
+.bigsym{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:52px;text-align:center;line-height:1.3;padding:8px 0 2px;}
+.bigsym .pp{cursor:pointer;padding:2px 3px;border-radius:9px;border-bottom:4px solid transparent;transition:all .18s;display:inline-block;}
+.bigsym .pp:hover{background:#f2f5fc;}
+.bigsym .pp.on{border-bottom-color:currentColor;background:#f7f5ff;}
+.pcards{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:9px;margin-top:8px;}
+.pcard{border:2px solid var(--line);border-radius:11px;background:#fff;padding:8px 10px;font-size:11.6px;line-height:1.5;color:#33415c;cursor:pointer;transition:all .18s;}
+.pcard b{display:block;margin-bottom:2px;font-size:12.5px;}
+.pcard.on{box-shadow:0 4px 14px rgba(0,0,0,.10);transform:translateY(-2px);}
+.sentence{font-size:15px;text-align:center;margin-top:10px;color:#8a94a8;line-height:1.7;}
+.sentence b{transition:all .25s;}
+pre.pcode{font-family:"SF Mono",Consolas,monospace;font-size:12.4px;line-height:1.85;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:9px 12px;overflow-x:auto;margin:0;}
+.pcode .cm{color:#8a94a8;} .pcode .bad{background:#fdecec;color:#c0392b;font-weight:700;border-radius:5px;padding:1px 3px;}
+.pcode .good{background:#e4f5f5;color:#128888;font-weight:700;border-radius:5px;padding:1px 3px;}
+.vswrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.vscard{border:2.5px solid;border-radius:13px;padding:10px 12px;background:#fff;}
+.vscard .vh{font-weight:800;font-size:13px;margin-bottom:6px;}
+.vscard canvas{width:96px;height:96px;image-rendering:pixelated;border-radius:9px;display:block;margin:8px auto 4px;border:2px solid var(--line);}
+.errbar{height:14px;border-radius:7px;background:#eef1fa;overflow:hidden;margin-top:5px;}
+.errbar div{height:100%;border-radius:7px;transition:width .3s;}
+.mtable{width:100%;border-collapse:collapse;font-size:12px;}
+.mtable th,.mtable td{border:1px solid var(--line);padding:6px 9px;text-align:left;}
+.mtable th{background:#f4f7fd;color:var(--soft);font-size:10.5px;letter-spacing:.05em;}
+.mtable td.co{font-family:Consolas,monospace;font-size:11.3px;}
+.mtable td.no{color:#c0392b;}
+.slot{display:inline-block;border:2px dashed #cdbcf2;border-radius:9px;padding:2px 8px;transition:all .25s;}
+.slot.filled{border-style:solid;border-color:#128888;background:#e4f5f5;}
+.slot .codechip{font-family:Consolas,monospace;font-weight:700;color:#128888;font-size:15px;}
+.qbig{text-align:center;font-size:18px;font-weight:800;color:var(--ink);margin:4px 0 6px;}
+@media(max-width:860px){.pcards{grid-template-columns:1fr 1fr;}.vswrap{grid-template-columns:1fr;}}
+
+</style></head><body>
+<div class="wrap">
+
+<h1>&epsilon;<sub>&theta;</sub><sup>(t)</sup>(x<sub>t</sub>) — four symbols, zero multiplications</h1>
+<p class="sub">The confusion this page dissolves: reading the parentheses in
+&epsilon;<sub>&theta;</sub><sup>(t)</sup>(x<sub>t</sub>) as &ldquo;&hellip;times x<sub>t</sub>&rdquo;.
+They are <b>function application</b> — x<sub>t</sub> is the <em>input</em>, exactly like the x in f(x).
+Three tabs: the symbol exploded piece by piece, the wrong reading <b>actually executed</b> (watch it
+destroy the image), and the two-step path from symbol to code.</p>
+
+<div class="tabbar">
+  <button class="tab on" data-t="0">&#9312; The symbol, dissected<span class="sm">click all four parts</span></button>
+  <button class="tab" data-t="1">&#9313; Wrong vs right, executed<span class="sm">run both readings</span></button>
+  <button class="tab" data-t="2">&#9314; From symbol to code<span class="sm">evaluate, then substitute</span></button>
+</div>
+
+<!-- ============ TAB 0 ============ -->
+<div class="panel on" id="p0">
+<div class="card">
+  <div class="bigsym" id="sym"></div>
+  <div class="sentence" id="sent"></div>
+  <div class="pcards">
+    <div class="pcard" data-p="0" style="border-color:#c07417"><b style="color:#c07417">&epsilon; — the function</b>The noise predictor itself: the trained U-Net. A machine that eats an image and spits out its noise estimate.</div>
+    <div class="pcard" data-p="1" style="border-color:#7b5cd6"><b style="color:#7b5cd6">&theta; — subscript: the weights</b>The learned parameters. &ldquo;This particular trained model&rdquo; — in code, the loaded checkpoint behind <code>model</code>.</div>
+    <div class="pcard" data-p="2" style="border-color:#5a6b86"><b style="color:#5a6b86">(t) — superscript: which timestep</b>Conditions the prediction on the noise level. In code it&rsquo;s simply the <b>second argument</b>: <code>model(x_t, <u>t</u>)</code>.</div>
+    <div class="pcard" data-p="3" style="border-color:#128888"><b style="color:#128888">(x<sub>t</sub>) — THE INPUT</b>Parentheses of <b>function application</b>, not multiplication. The noisy image goes <em>into</em> the machine — the <b>first argument</b>: <code>model(<u>x_t</u>, t)</code>.</div>
+  </div>
+</div>
+<div class="card" style="margin-top:10px">
+  <div class="h2">Same grammar you already know</div>
+  <table class="mtable">
+    <tr><th>NOTATION</th><th>MEANING</th><th style="width:34%">NOT</th></tr>
+    <tr><td class="fx" style="font-size:15px;text-align:left">f(x)</td><td>&ldquo;f of x&rdquo; — function f applied to x</td><td class="no">f times x</td></tr>
+    <tr><td class="fx" style="font-size:15px;text-align:left">sin(x)</td><td>&ldquo;sine of x&rdquo;</td><td class="no">sin times x</td></tr>
+    <tr><td class="fx" style="font-size:15px;text-align:left">f<sub>&theta;</sub>(x)</td><td>Neural net with parameters &theta;, applied to x</td><td class="no">f &middot; &theta; &middot; x</td></tr>
+    <tr><td class="fx" style="font-size:15px;text-align:left">&epsilon;<sub>&theta;</sub><sup>(t)</sup>(x<sub>t</sub>)</td><td>Noise predictor at timestep t, applied to x<sub>t</sub></td><td class="no">&epsilon; &middot; &theta; &middot; t &middot; x<sub>t</sub></td></tr>
+  </table>
+</div>
+</div>
+
+<!-- ============ TAB 1 ============ -->
+<div class="panel" id="p1">
+<div class="qbig">If it <em>were</em> multiplication, the math would break. So let&rsquo;s run it.</div>
+<div class="selrow" style="justify-content:center"><span>t</span><input type="range" id="t1" min="60" max="960" value="500"><span class="val" id="t1v">500</span></div>
+<div class="vswrap" style="margin-top:8px">
+  <div class="vscard" style="border-color:#d64545">
+    <div class="vh" style="color:#d64545">&#10060; WRONG reading — treat (x<sub>t</sub>) as a multiplication</div>
+    <pre class="pcode">x_0_hat = (x_t - bbar_t.sqrt() * noise <span class="bad">* x_t</span>) / abar_t.sqrt()</pre>
+    <canvas id="cvW" width="16" height="16"></canvas>
+    <div class="live" id="errW"></div>
+    <div class="errbar"><div id="barW" style="background:#d64545"></div></div>
+  </div>
+  <div class="vscard" style="border-color:#16a3a3">
+    <div class="vh" style="color:#128888">&#9989; CORRECT reading — noise already IS &epsilon;<sub>&theta;</sub><sup>(t)</sup>(x<sub>t</sub>)</div>
+    <pre class="pcode">x_0_hat = (x_t - bbar_t.sqrt() * <span class="good">noise</span>) / abar_t.sqrt()</pre>
+    <canvas id="cvR" width="16" height="16"></canvas>
+    <div class="live" id="errR"></div>
+    <div class="errbar"><div id="barR" style="background:#16a3a3"></div></div>
+  </div>
+</div>
+<div class="kbox">&#128300; <b>Why the wrong one shreds the image:</b> multiplying <code>noise</code> by
+<code>x_t</code> scales <em>every pixel by a random factor</em> before subtracting — the reconstruction
+divides by &radic;&alpha;&#772;<sub>t</sub> and amplifies the damage. The correct line subtracts the model&rsquo;s
+prediction once, as the formula says, and the shirt comes back. Drag t high and watch the gap explode.</div>
+</div>
+
+<!-- ============ TAB 2 ============ -->
+<div class="panel" id="p2">
+<div class="stagebar">
+  <button class="chip cS" data-s="0">&#9312; FIRST: evaluate the function</button>
+  <button class="chip cS" data-s="1">&#9313; THEN: substitute the result</button>
+</div>
+<div class="card">
+  <div class="h2" id="h2s"></div>
+  <pre class="pcode" id="codeS"></pre>
+  <div class="fx" id="formS" style="margin-top:10px"></div>
+  <div class="story" id="noteS" style="margin-top:8px"></div>
+</div>
+<div class="grid" style="margin-top:10px">
+  <div class="card"><div class="h2">The mapping</div>
+  <table class="mtable">
+    <tr><th>MATH</th><th>CODE</th><th>DESCRIPTION</th></tr>
+    <tr><td class="fx" style="font-size:14px;text-align:left">x<sub>t</sub></td><td class="co">x_t</td><td>Current noisy image</td></tr>
+    <tr><td class="fx" style="font-size:14px;text-align:left">&radic;(1 &minus; &alpha;&#772;<sub>t</sub>)</td><td class="co">bbar_t.sqrt()</td><td>Square root of betabar</td></tr>
+    <tr><td class="fx" style="font-size:14px;text-align:left">&epsilon;<sub>&theta;</sub><sup>(t)</sup>(x<sub>t</sub>)</td><td class="co">noise&nbsp; = model(x_t, t).sample</td><td>Model&rsquo;s noise prediction — <b>a finished tensor</b></td></tr>
+    <tr><td class="fx" style="font-size:14px;text-align:left">&radic;&alpha;&#772;<sub>t</sub></td><td class="co">abar_t.sqrt()</td><td>Square root of alphabar</td></tr>
+    <tr><td class="fx" style="font-size:14px;text-align:left">x&#770;&#8320;</td><td class="co">x_0_hat</td><td>Predicted clean image</td></tr>
+  </table></div>
+  <div class="card"><div class="h2">Summary</div>
+  <table class="mtable">
+    <tr><th>QUESTION</th><th>ANSWER</th></tr>
+    <tr><td>What does &epsilon;<sub>&theta;</sub><sup>(t)</sup>(x<sub>t</sub>) mean?</td><td>A function — the model — taking x<sub>t</sub> as input</td></tr>
+    <tr><td>Is (x<sub>t</sub>) multiplication?</td><td><b>No.</b> It&rsquo;s the function&rsquo;s input argument</td></tr>
+    <tr><td>What is <code>noise</code> in code?</td><td>The already-computed result of &epsilon;<sub>&theta;</sub><sup>(t)</sup>(x<sub>t</sub>)</td></tr>
+    <tr><td>Is the original code correct?</td><td><b>Yes:</b> <code>x_0_hat = (x_t - bbar_t.sqrt() * noise) / abar_t.sqrt()</code></td></tr>
+  </table></div>
+</div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+/* canvas math label: parts=[{t:'plain '},{m:'x',sub:'t-1',hat:true},...] centered at (cx,cy) */
+function mparts(x,parts,cx,cy,size,color){
+  x.save();x.textBaseline='alphabetic';
+  const F=s=>'700 '+Math.round(s)+'px "Segoe UI",sans-serif';
+  let tot=0;
+  for(const p of parts){
+    if(p.t!==undefined){x.font=F(size);tot+=x.measureText(p.t).width;}
+    else{x.font=F(size);tot+=x.measureText(p.m).width;
+      if(p.sub){x.font=F(size*0.66);tot+=x.measureText(p.sub).width+1;}}}
+  let px=cx-tot/2;
+  x.fillStyle=color;x.textAlign='left';
+  for(const p of parts){
+    if(p.t!==undefined){x.font=F(size);x.fillText(p.t,px,cy);px+=x.measureText(p.t).width;continue;}
+    x.font=F(size);const wm=x.measureText(p.m).width;
+    x.fillText(p.m,px,cy);
+    if(p.hat){x.font=F(size*0.95);
+      const wh=x.measureText('\u02C6').width;
+      x.fillText('\u02C6',px+wm/2-wh/2,cy-size*0.58);}
+    px+=wm;
+    if(p.sub){x.font=F(size*0.66);x.fillText(p.sub,px+1,cy+size*0.20);px+=x.measureText(p.sub).width+1;}}
+  x.restore();
+}
+
+
+function fr2(nu,de){return '<span class="fr"><span class="nu">'+nu+'</span><span class="de">'+de+'</span></span>';}
+const AB='&alpha;&#772;';
+let TAB=0,lastT=null;
+const panels=[...document.querySelectorAll('.panel')];
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  TAB=+b.dataset.t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
+  panels.forEach((p,i)=>p.classList.toggle('on',i===TAB));
+  postH();setTimeout(postH,60);
+});
+
+/* ============ TAB 0 ============ */
+const seen=new Set();
+const COLS=['#c07417','#7b5cd6','#5a6b86','#128888'];
+function sym(sel){
+  $('sym').innerHTML=
+   '<span class="pp'+(sel===0?' on':'')+'" data-p="0" style="color:#c07417">&epsilon;</span>'+
+   '<span class="pp'+(sel===1?' on':'')+'" data-p="1" style="color:#7b5cd6;font-size:34px;vertical-align:-10px">&theta;</span>'+
+   '<span class="pp'+(sel===2?' on':'')+'" data-p="2" style="color:#5a6b86;font-size:30px;vertical-align:20px">(t)</span>'+
+   '<span class="pp'+(sel===3?' on':'')+'" data-p="3" style="color:#128888">(x<sub>t</sub>)</span>';
+  document.querySelectorAll('#sym .pp').forEach(el=>el.onclick=()=>pick(+el.dataset.p));
+}
+const SBITS=['The <b style="color:#c07417">noise</b>','predicted by <b style="color:#7b5cd6">model &theta;</b>','at <b style="color:#5a6b86">timestep t</b>,','given <b style="color:#128888">input x<sub>t</sub></b>'];
+function sent(){
+  $('sent').innerHTML='&ldquo;'+SBITS.map((b,i)=>seen.has(i)?b:'<span style="opacity:.28">'+b.replace(/<[^>]+>/g,'')+'</span>').join(' ')+'&rdquo;'+
+   (seen.size===4?' <span style="color:#128888;font-weight:800">&nbsp;= &nbsp;<code>model(x_t, t).sample</code> &#10003;</span>':'<span style="font-size:11.5px;color:#8a94a8"><br>(click all four parts to assemble the sentence)</span>');
+}
+function pick(p){seen.add(p);sym(p);sent();
+  document.querySelectorAll('.pcard').forEach(c=>c.classList.toggle('on',+c.dataset.p===p));
+  postH();}
+document.querySelectorAll('.pcard').forEach(c=>c.onclick=()=>pick(+c.dataset.p));
+
+/* ============ TAB 1 ============ */
+let T1=500;
+const ERRE=new Float64Array(256);{__s=1717;for(let i=0;i<256;i++)ERRE[i]=gauss();}
+function run1(){
+  const t=T1,a=SQA[t],b=SQB[t],imper=0.25*b;
+  const xt=new Float64Array(256),eh=new Float64Array(256);
+  for(let i=0;i<256;i++){xt[i]=a*X0[i]+b*EPS[i];eh[i]=EPS[i]+imper*ERRE[i];}
+  const R=new Float64Array(256),W=new Float64Array(256);
+  let mR=0,mW=0;
+  for(let i=0;i<256;i++){
+    R[i]=(xt[i]-b*eh[i])/a;
+    W[i]=(xt[i]-b*eh[i]*xt[i])/a;
+    mR+=Math.abs(R[i]-X0[i]);mW+=Math.abs(W[i]-X0[i]);}
+  mR/=256;mW/=256;
+  drawField($('cvR'),R);drawField($('cvW'),W);
+  $('errR').innerHTML='mean |x&#770;&#8320; &minus; x&#8320;| = <span class="big" style="color:#128888">'+mR.toFixed(3)+'</span> — '+(mR<0.6?'a recognizable shirt':'rough at this high t, but structured — the model&rsquo;s honest estimate');
+  $('errW').innerHTML='mean |x&#770;&#8320; &minus; x&#8320;| = <span class="big" style="color:#d64545">'+mW.toFixed(3)+'</span> — '+(mW/Math.max(1e-9,mR)).toFixed(0)+'&times; worse';
+  const mx=Math.max(mW,0.001);
+  $('barW').style.width=Math.min(100,mW/mx*100)+'%';
+  $('barR').style.width=Math.min(100,mR/mx*100)+'%';
+}
+$('t1').oninput=e=>{T1=Math.round(+e.target.value);$('t1v').textContent=T1;run1();};
+
+/* ============ TAB 2 ============ */
+let S2=0;
+function step2(){
+  if(S2===0){
+    $('h2s').textContent='Step 1 — the function gets evaluated, once, before the formula';
+    $('codeS').innerHTML='noise = model(<span style="color:#128888;font-weight:700">x_t</span>, <span style="color:#5a6b86;font-weight:700">t</span>).sample\n'+
+     '<span class="cm">        \u2191 first argument = the input (x_t)      \u2191 second argument = the (t) superscript\n        .sample unwraps the UNet\u2019s output dataclass \u2192 a plain tensor</span>';
+    $('formS').innerHTML='<span style="color:#8a94a8">this line IS</span> &nbsp;&epsilon;<sub>&theta;</sub><sup>(t)</sup>(x<sub>t</sub>)&nbsp; <span style="color:#8a94a8">— evaluated, finished, stored in</span> <code>noise</code>';
+    $('noteS').innerHTML='By the time the formula runs, the function has <b>already been applied</b>. <code>noise</code> is not a symbol waiting to meet x<sub>t</sub> — it is the model&rsquo;s finished answer <em>for this particular x<sub>t</sub></em>.';
+  }else{
+    $('h2s').textContent='Step 2 — the RESULT is substituted into the formula\u2019s slot';
+    $('codeS').innerHTML='x_0_hat = (x_t - bbar_t.sqrt() * <span class="good">noise</span>) / abar_t.sqrt()';
+    $('formS').innerHTML='x&#770;&#8320; = '+fr2('x<sub>t</sub> &minus; &radic;(1 &minus; '+AB+'<sub>t</sub>) &middot; <span class="slot filled"><span class="codechip">noise</span></span>','&radic;'+AB+'<sub>t</sub>')+
+     '<span style="color:#8a94a8;font-size:13px">&nbsp;&nbsp;&larr; the &epsilon;<sub>&theta;</sub><sup>(t)</sup>(x<sub>t</sub>) slot, filled by the tensor from Step 1</span>';
+    $('noteS').innerHTML='No <code>* x_t</code> anywhere: the x<sub>t</sub> that the function needed was consumed in Step 1, as its <em>argument</em>. The formula&rsquo;s only other x<sub>t</sub> is the standalone one at the front of the numerator.';
+  }
+  document.querySelectorAll('.cS').forEach(c=>c.classList.toggle('on',+c.dataset.s===S2));
+  postH();
+}
+document.querySelectorAll('.cS').forEach(c=>c.onclick=()=>{S2=+c.dataset.s;step2();});
+
+function loop(ts){requestAnimationFrame(loop);lastT=ts;}
+sym(-1);sent();
+run1();
+step2();
+requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>

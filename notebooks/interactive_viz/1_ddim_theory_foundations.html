@@ -1,0 +1,609 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Theory Foundations: DDPM vs DDIM</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+
+.tabbar{display:flex;gap:0;justify-content:center;margin:2px auto 12px;max-width:1060px;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;}
+.tab{flex:1;font-family:inherit;font-weight:700;font-size:13px;padding:10px 6px;border:none;background:#fff;color:var(--soft);cursor:pointer;border-right:1.5px solid var(--line);transition:all .15s;}
+.tab:last-child{border-right:none;}
+.tab:hover{color:var(--ac);}
+.tab.on{background:var(--ac);color:#fff;}
+.tab .sm{display:block;font-weight:400;font-size:10px;opacity:.8;}
+.panel{display:none;min-height:560px;}
+.panel.on{display:block;}
+.fx{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:21px;line-height:1.9;text-align:center;}
+.fx .tk{padding:2px 5px;border-radius:7px;transition:all .18s;display:inline-block;}
+.fx .tk.hi{background:var(--acbg);outline:2px solid var(--ac);transform:scale(1.12);}
+.fx .sig{color:#c07417;} .fx .noi{color:#5a6b86;} .fx .sch{color:#7b5cd6;} .fx .samp{color:#128888;}
+.symrow{display:grid;grid-template-columns:74px 110px 1fr 96px;gap:6px;align-items:center;padding:5px 8px;border:1.5px solid var(--line);border-radius:9px;background:#fff;cursor:pointer;margin-bottom:5px;font-size:12px;transition:all .13s;}
+.symrow:hover{border-color:var(--ac);}
+.symrow.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.2);}
+.symrow .sy{font-family:"STIX Two Math",Georgia,serif;font-size:17px;font-weight:700;text-align:center;}
+.symrow .nm{font-weight:700;color:var(--ink);}
+.symrow .mn{color:var(--soft);line-height:1.35;}
+.symrow .lv{font-family:Consolas,monospace;font-size:11.5px;font-weight:700;color:var(--ac);text-align:right;}
+.ubrace{display:inline-block;text-align:center;vertical-align:top;}
+.ubrace .lbl{font-size:11px;font-weight:700;margin-top:2px;font-family:"Segoe UI";}
+.vstrip{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px 0 4px;}
+.vcell{text-align:center;border:2px solid var(--line);border-radius:11px;padding:7px 9px;background:#fff;min-width:106px;transition:all .15s;cursor:pointer;}
+.vcell:hover{border-color:var(--ac);}
+.vcell.on{border-color:var(--ac);box-shadow:0 4px 14px rgba(123,92,214,.3);}
+.vcell canvas{width:76px;height:76px;image-rendering:pixelated;border-radius:7px;display:block;margin:0 auto 4px;}
+.vcell .t1{font-family:Consolas,monospace;font-weight:700;font-size:12px;}
+.vcell .t2{font-size:10px;color:var(--soft);line-height:1.4;}
+.qbig{text-align:center;font-size:19px;font-weight:800;color:var(--ink);margin:6px 0 2px;}
+.qsub{text-align:center;font-size:12.5px;color:var(--soft);margin-bottom:10px;}
+table.cmp{width:100%;border-collapse:collapse;font-size:12px;}
+table.cmp th,table.cmp td{border:1px solid var(--line);padding:6px 9px;text-align:center;}
+table.cmp th{background:#f4f7fd;color:var(--soft);font-size:11px;letter-spacing:.04em;}
+table.cmp td:first-child{text-align:left;font-weight:700;color:var(--ink);}
+
+</style></head><body>
+<div class="wrap">
+
+<h1>Theory foundations: DDPM vs DDIM — the math, made touchable</h1>
+<p class="sub">Four tabs, one story: learn the <b>symbols</b> in context &rarr; see the shared <b>forward
+process</b> (and why one formula beats 1000 steps) &rarr; watch the <b>x&#770;&#8320; derivation</b> rearrange
+itself &rarr; arrive at <b>the fork</b> where DDPM and DDIM part ways. Every number on every tab is computed
+live from the notebook&rsquo;s real schedule (&beta;: 0.0001&rarr;0.01, N = 1000).</p>
+
+<div class="tabbar">
+  <button class="tab on" data-t="0">&#9312; The symbols<span class="sm">click a row &rarr; see it in the formulas</span></button>
+  <button class="tab" data-t="1">&#9313; Forward process<span class="sm">one jump vs 1000 steps</span></button>
+  <button class="tab" data-t="2">&#9314; Predicting x&#770;&#8320;<span class="sm">algebra that moves itself</span></button>
+  <button class="tab" data-t="3">&#9315; The fork<span class="sm">where DDPM &amp; DDIM split</span></button>
+</div>
+
+<!-- ============ TAB 0 : SYMBOLS ============ -->
+<div class="panel on" id="p0">
+<div class="grid" style="margin-top:0">
+  <div class="card">
+    <div class="h2">Click any symbol — it lights up in the formulas &rarr;</div>
+    <div id="symlist"></div>
+  </div>
+  <div class="stack">
+    <div class="card">
+      <div class="h2">The three formulas these symbols live in</div>
+      <div class="fx" id="f_fwd" style="font-size:19px"></div>
+      <div style="text-align:center;font-size:10.5px;color:var(--soft);margin:-4px 0 8px">forward: make x<sub>t</sub> from x&#8320; &nbsp;(tab &#9313;)</div>
+      <div class="fx" id="f_x0" style="font-size:19px"></div>
+      <div style="text-align:center;font-size:10.5px;color:var(--soft);margin:-4px 0 8px">reverse part 1: recover x&#770;&#8320; &nbsp;(tab &#9314;)</div>
+      <div class="fx" id="f_step" style="font-size:17px"></div>
+      <div style="text-align:center;font-size:10.5px;color:var(--soft);margin:-4px 0 0">reverse part 2: one DDIM step &nbsp;(tab &#9315;)</div>
+    </div>
+    <div class="card">
+      <div class="h2">Live value at t = <span id="t0v">500</span> &nbsp; <input type="range" id="t0" min="1" max="999" value="500" style="width:150px;vertical-align:middle"></div>
+      <div class="live" id="symlive">Click a symbol on the left.</div>
+    </div>
+  </div>
+</div>
+<div class="legend"><b>Color code (used on every tab):</b>
+<span class="dot" style="background:var(--in)"></span><b>images &amp; signal</b> &middot;
+<span class="dot" style="background:#5a6b86"></span><b>noise</b> &middot;
+<span class="dot" style="background:var(--ac)"></span><b>schedule scalars</b> (pure lookups, nothing learned) &middot;
+<span class="dot" style="background:var(--out)"></span><b>sampling-only knobs</b> (&sigma;, &eta;) — they never appear in the forward process.</div>
+</div>
+
+<!-- ============ TAB 1 : FORWARD ============ -->
+<div class="panel" id="p1">
+<div class="stagebar">
+  <button class="chip c1" data-s="0">&#9312; Anatomy of the formula</button>
+  <button class="chip c1" data-s="1">&#9313; The 5-stop journey</button>
+  <button class="chip c1" data-s="2">&#9314; The race: 1000 steps vs 1 jump</button>
+</div>
+<div class="card">
+  <div class="fx" id="anat" style="font-size:24px;margin:4px 0 0"></div>
+  <div style="display:flex;justify-content:center;gap:0;margin-top:-2px" id="braces"></div>
+  <div class="selrow" style="margin:8px 0 2px">
+    <span>t</span><input type="range" id="t1" min="0" max="999" value="350" style="width:260px">
+    <span class="val" id="t1v" style="min-width:56px">t = 350</span>
+    <span class="div"></span>
+    <span class="live" id="coefline"></span>
+  </div>
+</div>
+<div class="vstrip" id="strip"></div>
+<div class="legend" id="stripnote"><b>The doc&rsquo;s picture strip, with real pixels:</b> click a stop to move t there. Percentages are the true signal share &alpha;&#772;<sub>t</sub> from this schedule — note how it collapses between t = 250 and t = 750.</div>
+<div class="card" style="margin-top:10px">
+  <div class="h2">The key insight, raced: both lanes produce the same x<sub>t</sub> — one pays 1000&times; more</div>
+  <canvas id="race" class="cv" style="background:#fff"></canvas>
+  <div class="selrow" style="margin:8px 0 0">
+    <button class="play" id="goRace">&#9654; Run the race</button>
+    <span class="live" id="raceline">Sequential noising must visit every step; the closed form <code>x&#8348; = &radic;&alpha;&#772;&#8348;&middot;x&#8320; + &radic;(1&minus;&alpha;&#772;&#8348;)&middot;&epsilon;</code> jumps straight to any t.</span>
+  </div>
+</div>
+<div class="kbox">&#128161; <b>Why this matters twice:</b> training uses the jump to noise any image at a random t in one shot — and the <em>same equation run backwards</em> is the seed of DDIM&rsquo;s fast sampling (tab &#9314;).</div>
+</div>
+
+<!-- ============ TAB 2 : X0HAT ============ -->
+<div class="panel" id="p2">
+<div class="stagebar">
+  <button class="chip c2" data-s="0">&#9312; Start: the forward formula</button>
+  <button class="chip c2" data-s="1">&#9313; Move the noise term</button>
+  <button class="chip c2" data-s="2">&#9314; Divide by &radic;&alpha;&#772;&#8348;</button>
+  <button class="chip c2" data-s="3">&#9315; The honest step: &epsilon; &rarr; &epsilon;<sub>&theta;</sub></button>
+</div>
+<div class="card"><canvas id="alg" class="cv" style="background:#fff"></canvas>
+<div class="legend" id="algnote"></div></div>
+<div class="grid" style="margin-top:10px">
+  <div class="card">
+    <div class="h2">See it on real pixels &nbsp;&middot;&nbsp; t = <span id="t2v">700</span>
+      <input type="range" id="t2" min="60" max="980" value="700" style="width:150px;vertical-align:middle">
+      &nbsp;<button class="mode on" id="mPerf" style="padding:3px 10px;font-size:11px">perfect &epsilon;</button>
+      <button class="mode" id="mReal" style="padding:3px 10px;font-size:11px">realistic &epsilon;<sub>&theta;</sub></button></div>
+    <div class="vstrip" id="pixrow" style="margin-top:8px"></div>
+    <div class="legend" id="pixnote"></div>
+  </div>
+  <div class="card">
+    <div class="h2">One-pixel audit — the algebra as arithmetic</div>
+    <div class="live" id="audit"></div>
+    <div class="kbox" id="ampbox"></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ TAB 3 : FORK ============ -->
+<div class="panel" id="p3">
+<div class="qbig">We have x&#770;&#8320;. How do we get x<sub>t&minus;1</sub>?</div>
+<div class="qsub">This is the exact point where DDPM and DDIM part ways. Both re-mix the estimate back to noise level t&minus;1 — they differ in <b>one term</b>.</div>
+<div class="grid" style="grid-template-columns:1fr 1fr;margin-top:0">
+  <div class="card">
+    <div class="h2" style="color:#c07417">DDPM &mdash; re-mix, then add FRESH noise</div>
+    <canvas id="forkL" class="cv" style="background:#fff"></canvas>
+    <div class="fx" style="font-size:15.5px;text-align:left;line-height:1.9;margin-top:8px;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 14px">x<sub>t&minus;1</sub> = &radic;&alpha;&#772;<sub>t&minus;1</sub> &middot; x&#770;&#8320;<br><span style="padding-left:52px">+ &radic;(&beta;&#772;<sub>t&minus;1</sub> &minus; &sigma;&sup2;) &middot; &epsilon;<sub>&theta;</sub></span><br><span style="padding-left:52px;background:#fdeedd;border-radius:6px;padding-top:1px;padding-bottom:1px">+ &sigma;<sub>t</sub> &middot; z , &nbsp;z ~ N(0, I) &nbsp;<span style="font-size:11px;color:#c07417;font-family:'Segoe UI'">&larr; fresh!</span></span></div>
+  </div>
+  <div class="card">
+    <div class="h2" style="color:#128888">DDIM (&eta;=0) &mdash; re-mix, reuse &epsilon;&#95;&theta;, no noise</div>
+    <canvas id="forkR" class="cv" style="background:#fff"></canvas>
+    <div class="fx" style="font-size:15.5px;text-align:left;line-height:1.9;margin-top:8px;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 14px">x<sub>t&minus;1</sub> = &radic;&alpha;&#772;<sub>t&minus;1</sub> &middot; x&#770;&#8320;<br><span style="padding-left:52px">+ &radic;&beta;&#772;<sub>t&minus;1</sub> &middot; &epsilon;<sub>&theta;</sub> &nbsp;<span style="font-size:11px;color:var(--soft);font-family:'Segoe UI'">&larr; same &epsilon;<sub>&theta;</sub>, reused</span></span><br><span style="padding-left:52px;background:#e4f5f5;border-radius:6px;padding-top:1px;padding-bottom:1px;font-size:12px;color:#128888;font-family:'Segoe UI';font-weight:700">&sigma; = 0 &rarr; no random term at all</span></div>
+  </div>
+</div>
+<div class="selrow" style="margin-top:10px"><button class="play" id="goFork">&#9654; Animate one step of each</button></div>
+<div class="card" style="margin-top:10px">
+  <div class="h2">The consequences of that one term</div>
+  <table class="cmp">
+    <tr><th></th><th>DDPM</th><th>DDIM (&eta; = 0)</th></tr>
+    <tr><td>Fresh randomness per step</td><td>yes — &sigma;&middot;z every step</td><td>none (&sigma; = 0)</td></tr>
+    <tr><td>Same x_T &rarr; same image?</td><td>no — every run differs</td><td><b>yes — deterministic</b></td></tr>
+    <tr><td>Path through latent space</td><td>jittery random walk</td><td>one smooth fixed curve</td></tr>
+    <tr><td>Can you skip timesteps?</td><td>no — hops land off-path</td><td><b>yes — 10&ndash;40&times; fewer steps</b></td></tr>
+    <tr><td>The dial between them</td><td colspan="2">&eta; &isin; [0, 1] scales &sigma;: &eta; = 1 &asymp; DDPM, &eta; = 0 = DDIM</td></tr>
+  </table>
+  <div class="kbox">&#127919; <b>Where to go next:</b> the &#127918; cells explore each consequence — <em>DDPM vs DDIM paths</em> (the arena race), <em>sched.step anatomy</em> (this fork at pixel level), <em>set_timesteps</em> (the measured speed/quality dial), and the <em>&eta; explorer</em> (the dial between the two columns above).</div>
+</div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+/* canvas math label: parts=[{t:'plain '},{m:'x',sub:'t-1',hat:true},...] centered at (cx,cy) */
+function mparts(x,parts,cx,cy,size,color){
+  x.save();x.textBaseline='alphabetic';
+  const F=s=>'700 '+Math.round(s)+'px "Segoe UI",sans-serif';
+  let tot=0;
+  for(const p of parts){
+    if(p.t!==undefined){x.font=F(size);tot+=x.measureText(p.t).width;}
+    else{x.font=F(size);tot+=x.measureText(p.m).width;
+      if(p.sub){x.font=F(size*0.66);tot+=x.measureText(p.sub).width+1;}}}
+  let px=cx-tot/2;
+  x.fillStyle=color;x.textAlign='left';
+  for(const p of parts){
+    if(p.t!==undefined){x.font=F(size);x.fillText(p.t,px,cy);px+=x.measureText(p.t).width;continue;}
+    x.font=F(size);const wm=x.measureText(p.m).width;
+    x.fillText(p.m,px,cy);
+    if(p.hat){x.font=F(size*0.95);
+      const wh=x.measureText('\u02C6').width;
+      x.fillText('\u02C6',px+wm/2-wh/2,cy-size*0.58);}
+    px+=wm;
+    if(p.sub){x.font=F(size*0.66);x.fillText(p.sub,px+1,cy+size*0.20);px+=x.measureText(p.sub).width+1;}}
+  x.restore();
+}
+
+
+/* ================= tab machinery ================= */
+let TAB=0;
+const panels=[...document.querySelectorAll('.panel')];
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  TAB=+b.dataset.t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
+  panels.forEach((p,i)=>p.classList.toggle('on',i===TAB));
+  postH(); setTimeout(postH,60);
+  if(TAB===1){fitRace();stripDraw();}
+  if(TAB===2){fitAlg();}
+  if(TAB===3){fitFork();}
+});
+
+/* ================= TAB 0 : symbols ================= */
+/* tokens: every formula token carries data-sym keys */
+const F_FWD='<span class="tk" data-s="xt"><i class="sig">x</i><sub>t</sub></span><span class="tk">=</span><span class="tk" data-s="abar sqab"><span class="sch">&radic;&alpha;&#772;<sub>t</sub></span></span><span class="tk">&middot;</span><span class="tk" data-s="x0"><span class="sig">x&#8320;</span></span><span class="tk">+</span><span class="tk" data-s="bbar sqbb"><span class="sch">&radic;(1&minus;&alpha;&#772;<sub>t</sub>)</span></span><span class="tk">&middot;</span><span class="tk" data-s="eps"><span class="noi">&epsilon;</span></span>';
+const F_X0='<span class="tk" data-s="x0h"><span class="sig">x&#770;&#8320;</span></span><span class="tk">=</span><span class="tk">(</span><span class="tk" data-s="xt"><i class="sig">x</i><sub>t</sub></span><span class="tk">&minus;</span><span class="tk" data-s="bbar sqbb"><span class="sch">&radic;(1&minus;&alpha;&#772;<sub>t</sub>)</span></span><span class="tk">&middot;</span><span class="tk" data-s="epst"><span class="noi">&epsilon;<sub>&theta;</sub>(x<sub>t</sub>,t)</span></span><span class="tk">)</span><span class="tk">/</span><span class="tk" data-s="abar sqab"><span class="sch">&radic;&alpha;&#772;<sub>t</sub></span></span>';
+const F_STEP='<span class="tk" data-s="xt"><i class="sig">x</i><sub>t&minus;1</sub></span><span class="tk">=</span><span class="tk" data-s="abar"><span class="sch">&radic;&alpha;&#772;<sub>t&minus;1</sub></span></span><span class="tk" data-s="x0h"><span class="sig">x&#770;&#8320;</span></span><span class="tk">+</span><span class="tk" data-s="bbar sig2"><span class="sch">&radic;(&beta;&#772;<sub>t&minus;1</sub>&minus;&sigma;&sup2;)</span></span><span class="tk" data-s="epst"><span class="noi">&epsilon;<sub>&theta;</sub></span></span><span class="tk">+</span><span class="tk" data-s="sig2 eta"><span class="samp">&sigma;<sub>t</sub></span></span><span class="tk" data-s="eps"><span class="noi">z</span></span>';
+$('f_fwd').innerHTML=F_FWD; $('f_x0').innerHTML=F_X0; $('f_step').innerHTML=F_STEP;
+
+const SYMS=[
+ {k:'x0', sy:'<span class="sig">x&#8320;</span>', nm:'original image', mn:'the clean image we want to generate (or start training from)', lv:()=> 'a 32&times;32 image', grp:'in'},
+ {k:'xt', sy:'<span class="sig">x<sub>t</sub></span>', nm:'noisy image', mn:'the image at timestep t — more noise as t grows', lv:t=>'pixels &asymp; '+(SQA[t]).toFixed(2)+'&middot;x&#8320; + '+(SQB[t]).toFixed(2)+'&middot;&epsilon;', grp:'in'},
+ {k:'eps', sy:'<span class="noi">&epsilon;, z</span>', nm:'gaussian noise', mn:'random noise ~ N(0, I); z is a *fresh* draw inside a sampling step', lv:()=>'random each draw', grp:'noi'},
+ {k:'epst', sy:'<span class="noi">&epsilon;<sub>&theta;</sub></span>', nm:'model prediction', mn:'the neural network&rsquo;s guess of which noise was mixed in — the ONLY learned symbol here', lv:()=>'&asymp; &epsilon; (imperfectly)', grp:'noi'},
+ {k:'beta', sy:'<span class="sch">&beta;<sub>t</sub></span>', nm:'beta', mn:'noise variance added at step t (linear: 0.0001 &rarr; 0.01)', lv:t=>BETA[t].toFixed(5), grp:'sch'},
+ {k:'alpha', sy:'<span class="sch">&alpha;<sub>t</sub></span>', nm:'alpha', mn:'signal retention at step t: &alpha;<sub>t</sub> = 1 &minus; &beta;<sub>t</sub>', lv:t=>(1-BETA[t]).toFixed(5), grp:'sch'},
+ {k:'abar', sy:'<span class="sch">&alpha;&#772;<sub>t</sub></span>', nm:'alpha bar', mn:'cumulative signal: &alpha;&#8321;&times;&alpha;&#8322;&times;&hellip;&times;&alpha;<sub>t</sub> — the product that decays', lv:t=>ABAR[t].toFixed(4), grp:'sch'},
+ {k:'bbar', sy:'<span class="sch">&beta;&#772;<sub>t</sub></span>', nm:'beta bar', mn:'cumulative noise: 1 &minus; &alpha;&#772;<sub>t</sub>', lv:t=>(1-ABAR[t]).toFixed(4), grp:'sch'},
+ {k:'sqab', sy:'<span class="sch">&radic;&alpha;&#772;<sub>t</sub></span>', nm:'signal coefficient', mn:'how much of x&#8320; survives in x<sub>t</sub>', lv:t=>SQA[t].toFixed(4), grp:'sch'},
+ {k:'sqbb', sy:'<span class="sch">&radic;&beta;&#772;<sub>t</sub></span>', nm:'noise coefficient', mn:'how much of &epsilon; enters x<sub>t</sub>', lv:t=>SQB[t].toFixed(4), grp:'sch'},
+ {k:'sig2', sy:'<span class="samp">&sigma;<sub>t</sub></span>', nm:'sigma', mn:'fresh-noise level of a *sampling* step — never used in the forward process (tab &#9315;)', lv:t=>{const t1=Math.max(0,t-1);const v=((1-ABAR[t1])/(1-ABAR[t]))*(1-ABAR[t]/ABAR[t1]);return '&le; '+Math.sqrt(Math.max(0,v)).toFixed(4)+' (at &eta;=1)';}, grp:'samp'},
+ {k:'eta', sy:'<span class="samp">&eta;</span>', nm:'eta', mn:'DDIM&rsquo;s stochasticity dial (0 to 1): &sigma;<sub>t</sub> = &radic;vari &middot; &eta;. &eta;=0 &rArr; deterministic', lv:()=>'you choose: 0&hellip;1', grp:'samp'},
+];
+const symEl=$('symlist');
+let curSym=null, T0=500;
+SYMS.forEach(s=>{
+  const d=document.createElement('div');d.className='symrow';d.dataset.k=s.k;
+  d.innerHTML='<div class="sy">'+s.sy+'</div><div class="nm">'+s.nm+'</div><div class="mn">'+s.mn+'</div><div class="lv" id="lv_'+s.k+'"></div>';
+  d.onclick=()=>{curSym=s.k;
+    document.querySelectorAll('.symrow').forEach(r=>r.classList.toggle('on',r===d));
+    document.querySelectorAll('.fx .tk').forEach(tk=>{
+      const ks=(tk.dataset.s||'').split(' ');
+      tk.classList.toggle('hi',ks.includes(s.k));});
+    symLive();};
+  symEl.appendChild(d);
+});
+function symLive(){
+  const t=T0;
+  SYMS.forEach(s=>{$('lv_'+s.k).innerHTML=s.lv(t);});
+  if(!curSym){$('symlive').innerHTML='Click a symbol on the left.';return;}
+  const s=SYMS.find(x=>x.k===curSym);
+  const where=[];
+  if(F_FWD.includes('data-s="'+curSym)||F_FWD.includes(curSym+' ')||F_FWD.includes(' '+curSym+'"'))where.push('forward');
+  $('symlive').innerHTML='<b>'+s.sy+' &mdash; '+s.nm+'</b> at t = '+t+':&nbsp; <span class="big" style="color:var(--ac)">'+s.lv(t)+'</span><br><span style="color:var(--soft)">'+s.mn+'.'+(s.grp==='sch'?' Pure schedule lookup — computed once, before any training.':s.grp==='samp'?' Only exists during sampling.':'')+'</span>';
+}
+$('t0').oninput=e=>{T0=Math.round(+e.target.value);$('t0v').textContent=T0;symLive();};
+symLive();
+
+/* ================= TAB 1 : forward ================= */
+let T1=350;
+function anatDraw(){
+  $('anat').innerHTML='<span class="sig">x<sub>'+T1+'</sub></span> = '+
+   '<span class="ubrace"><span class="sig" style="border-bottom:3px solid #f6921e;padding:0 4px">'+SQA[T1].toFixed(3)+' &middot; x&#8320;</span><span class="lbl" style="color:#c07417">signal part &middot; &radic;&alpha;&#772; = '+SQA[T1].toFixed(3)+'</span></span>'+
+   ' + <span class="ubrace"><span class="noi" style="border-bottom:3px solid #5a6b86;padding:0 4px">'+SQB[T1].toFixed(3)+' &middot; &epsilon;</span><span class="lbl" style="color:#5a6b86">noise part &middot; &radic;(1&minus;&alpha;&#772;) = '+SQB[T1].toFixed(3)+'</span></span>';
+  $('coefline').innerHTML='&alpha;&#772;<sub>'+T1+'</sub> = <b class="mono" style="color:var(--ac)">'+ABAR[T1].toFixed(4)+'</b> &nbsp;&middot;&nbsp; signal share '+Math.round(ABAR[T1]*100)+'% / noise '+Math.round((1-ABAR[T1])*100)+'%';
+}
+const STOPS=[0,250,500,750,999], stripCv=[];
+const stripEl=$('strip');
+STOPS.forEach((m,i)=>{
+  const d=document.createElement('div');d.className='vcell';
+  const c=document.createElement('canvas');c.width=c.height=16;
+  d.appendChild(c);stripCv.push(c);
+  const t1=document.createElement('div');t1.className='t1';t1.textContent='t = '+m;d.appendChild(t1);
+  const t2=document.createElement('div');t2.className='t2';
+  t2.innerHTML='&alpha;&#772; = '+ABAR[m].toFixed(m>600?4:3)+'<br>'+Math.round(ABAR[m]*100)+'% signal &middot; '+Math.round((1-ABAR[m])*100)+'% noise';
+  d.appendChild(t2);
+  d.onclick=()=>{T1=m;$('t1').value=m;$('t1v').textContent='t = '+m;anatDraw();stripSel();};
+  stripEl.appendChild(d);
+});
+function stripDraw(){stripCv.forEach((c,i)=>drawField(c,mixAt(STOPS[i])));stripSel();}
+function stripSel(){[...stripEl.children].forEach((d,i)=>d.classList.toggle('on',Math.abs(STOPS[i]-T1)<126));}
+$('t1').oninput=e=>{T1=Math.round(+e.target.value);$('t1v').textContent='t = '+T1;anatDraw();stripSel();};
+anatDraw();
+
+/* race canvas */
+const rc=$('race'); let RW=0,RH=170;
+let raceU=-1, raceT0=0; /* -1 idle */
+const off1=document.createElement('canvas');off1.width=off1.height=16;
+function fitRace(){[RW,RH]=fitCv(rc,170);raceDraw(0);}
+function raceDraw(now){
+  const x=rc.getContext('2d');x.clearRect(0,0,RW,RH);
+  const L=RW*0.10, R=RW*0.82, y1=52, y2=126;
+  const tgt=750; /* race to t=750 */
+  x.font='700 11.5px "Segoe UI"';x.fillStyle='#c07417';x.textAlign='left';
+  x.fillText('lane 1 — sequential: x\u2080 \u2192 x\u2081 \u2192 x\u2082 \u2192 \u2026 add noise '+tgt+' times',L,y1-24);
+  x.fillStyle='#128888';
+  x.fillText('lane 2 — closed form: one evaluation of the formula',L,y2-24);
+  for(const y of [y1,y2]){x.strokeStyle='#dde5f2';x.lineWidth=6;x.lineCap='round';
+    x.beginPath();x.moveTo(L,y);x.lineTo(R,y);x.stroke();}
+  const u=raceU<0?0:Math.min(1,raceU);
+  const uSlow=Math.min(1,u);            /* lane1 progress */
+  const uFast=Math.min(1,u*8);          /* lane2 finishes 8x sooner */
+  /* lane1 crawl */
+  x.strokeStyle='#f6921e';x.lineWidth=6;x.beginPath();x.moveTo(L,y1);x.lineTo(lerp(L,R,uSlow),y1);x.stroke();
+  x.fillStyle='#f6921e';x.beginPath();x.arc(lerp(L,R,uSlow),y1,8,0,7);x.fill();
+  x.fillStyle='#c07417';x.font='700 11px Consolas,monospace';x.textAlign='center';
+  x.fillText('steps: '+Math.round(uSlow*tgt),lerp(L,R,uSlow),y1-14);
+  /* lane2 arc jump */
+  if(u>0){x.strokeStyle='#16a3a3';x.lineWidth=3;x.beginPath();
+    for(let i=0;i<=40;i++){const f=i/40*uFast;const px=lerp(L,R,f),py=y2-Math.sin(f*Math.PI)*34;
+      i?x.lineTo(px,py):x.moveTo(px,py);}x.stroke();}
+  const fx=lerp(L,R,uFast),fy=y2-Math.sin(uFast*Math.PI)*34;
+  x.fillStyle='#16a3a3';x.beginPath();x.arc(fx,fy,8,0,7);x.fill();
+  x.fillStyle='#128888';x.font='700 11px Consolas,monospace';
+  x.fillText('calls: '+(u>0?1:0),fx,fy-13);
+  /* destination thumbs */
+  x.imageSmoothingEnabled=false;
+  drawField(off1,mixAt(tgt));
+  for(const [y,done] of [[y1,uSlow>=1],[y2,uFast>=1]]){
+    x.globalAlpha=done?1:0.35;x.drawImage(off1,R+14,y-19,38,38);x.globalAlpha=1;
+    x.strokeStyle=done?'#7b5cd6':'#c6d1e4';x.lineWidth=2;x.strokeRect(R+14,y-19,38,38);
+    if(done){x.fillStyle='#7b5cd6';x.font='700 10px "Segoe UI"';x.fillText('x\u209C \u2713',R+33,y+31);}}
+  if(uFast>=1&&uSlow<1){x.fillStyle='#128888';x.font='700 11px "Segoe UI"';
+    x.fillText('done — waiting\u2026',fx,y2+22);}
+  if(uSlow>=1){x.fillStyle='#7b5cd6';x.font='700 12px "Segoe UI"';x.textAlign='center';
+    x.fillText('identical result — '+tgt+'\u00D7 the work',(L+R)/2,RH-6);}
+  x.textAlign='left';
+}
+$('goRace').onclick=()=>{raceU=0;raceT0=performance.now();};
+
+/* tab1 chips */
+document.querySelectorAll('.c1').forEach(c=>c.onclick=()=>{
+  document.querySelectorAll('.c1').forEach(x=>x.classList.toggle('on',x===c));
+  const s=+c.dataset.s;
+  if(s===0){T1=350;$('t1').value=350;$('t1v').textContent='t = 350';anatDraw();stripSel();}
+  if(s===1){ /* tour the stops */ tourI=0; tourNext(); }
+  if(s===2){$('goRace').click(); var rEl=$('race');if(rEl.scrollIntoView)rEl.scrollIntoView({behavior:'smooth',block:'center'});}
+});
+let tourI=-1,tourTm=null;
+function tourNext(){if(tourI<0||tourI>=STOPS.length){tourI=-1;return;}
+  T1=STOPS[tourI];$('t1').value=T1;$('t1v').textContent='t = '+T1;anatDraw();stripSel();
+  tourI++;tourTm=setTimeout(tourNext,1100);}
+
+/* ================= TAB 2 : animated algebra ================= */
+const ac=$('alg'); let AW=0,AH=190;
+let AS=0, ASfrom=0, ASu=1; /* stage, tween */
+function fitAlg(){[AW,AH]=fitCv(ac,190);algDraw();}
+/* token positions per stage (fractions of W; y offsets from centerline) */
+function tokLayout(s){
+  const cy=AH*0.46;
+  if(s===0)return{
+    xt:[0.16,cy], eqs:[0.245,cy], sa:[0.335,cy], dot1:[0.405,cy], x0:[0.45,cy],
+    pm:[0.525,cy,'+'], nc:[0.645,cy], dot2:[0.755,cy], ep:[0.80,cy], bar:null};
+  if(s===1)return{
+    xt:[0.13,cy], pm:[0.215,cy,'\u2212'], nc:[0.335,cy], dot2:[0.445,cy], ep:[0.49,cy],
+    eqs:[0.575,cy], sa:[0.665,cy], dot1:[0.735,cy], x0:[0.78,cy], bar:null};
+  /* s>=2 : fraction on the left, = x0 on the right */
+  return{
+    xt:[0.20,cy-26], pm:[0.285,cy-26,'\u2212'], nc:[0.405,cy-26], dot2:[0.515,cy-26], ep:[0.56,cy-26],
+    sa:[0.38,cy+30], dot1:null, x0:[0.80,cy], eqs:[0.70,cy],
+    bar:[0.13,0.63,cy+2]};
+}
+const ANOTES=[
+ '<b>&#9312; The forward formula.</b> This is the equation from tab &#9313; — it tells us how x<sub>t</sub> was <em>built</em>. To recover x&#8320; we just run the construction backwards. Press &#9313;.',
+ '<b>&#9313; Move the noise term.</b> Subtract &radic;(1&minus;&alpha;&#772;<sub>t</sub>)&middot;&epsilon; from both sides — watch the term travel across the equals sign and its <b style="color:var(--neg)">+ flip to &minus;</b>. What remains on the right is the pure signal part.',
+ '<b>&#9314; Divide by &radic;&alpha;&#772;<sub>t</sub>.</b> Both sides sink under the division bar. Algebraically we&rsquo;re done: x&#8320; in terms of x<sub>t</sub> and &epsilon;. But there&rsquo;s a catch&hellip; at sampling time <em>we don&rsquo;t know &epsilon;</em>.',
+ '<b>&#9315; The honest step.</b> Swap the true noise &epsilon; for the network&rsquo;s prediction <b>&epsilon;<sub>&theta;</sub>(x<sub>t</sub>, t)</b> — and x&#8320; becomes the <em>estimate</em> x&#770;&#8320;. This swap is the only approximation in the whole derivation, and dividing by a tiny &radic;&alpha;&#772; amplifies its error — see it on real pixels below.'
+];
+function algDraw(){
+  const x=ac.getContext('2d');x.clearRect(0,0,AW,AH);
+  const A=tokLayout(Math.min(ASfrom,2)), B=tokLayout(Math.min(AS,2)), u=sm(ASu);
+  const hat=AS>=3?Math.min(1,(AS-2.999)+(AS===3?ASu:1)):0;
+  function P(k){const a=A[k],b=B[k];
+    if(!a&&!b)return null; const aa=a||b, bb=b||a;
+    return [lerp(aa[0],bb[0],u)*AW, lerp(aa[1],bb[1],u)];}
+  x.textAlign='center';x.textBaseline='middle';
+  const F='px "STIX Two Math","Cambria Math",Georgia,serif';
+  function T(k,txt,col,size){const p=P(k);if(!p)return;
+    x.font='700 '+(size||22)+F;x.fillStyle=col;x.fillText(txt,p[0],p[1]);}
+  /* fraction bar */
+  const bA=A.bar,bB=B.bar;
+  if(bA||bB){const a=bA||[0.38,0.38,AH*0.46+2],b=bB||a;
+    const x0b=lerp(a[0],b[0],u)*AW,x1b=lerp(a[1],b[1],u)*AW,yb=lerp(a[2],b[2],u);
+    const al=bB?(bA?1:u):(1-u);
+    x.strokeStyle='rgba(37,50,74,'+al+')';x.lineWidth=2.4;
+    x.beginPath();x.moveTo(x0b,yb);x.lineTo(x1b,yb);x.stroke();}
+  T('xt','x\u209C','#c07417');
+  const pmA=(A.pm&&A.pm[2])||'+', pmB=(B.pm&&B.pm[2])||'+';
+  const p=P('pm');
+  if(p){x.font='700 24'+F;
+    const flip=pmA!==pmB;
+    x.fillStyle=flip&&u<1?'#d64545':'#25324a';
+    x.save();if(flip){x.translate(p[0],p[1]);x.scale(1,Math.cos(Math.min(1,u)*Math.PI));
+      x.fillText(u<0.5?pmA:pmB,0,0);x.restore();}
+    else{x.restore();x.fillStyle='#25324a';x.fillText(pmB,p[0],p[1]);}}
+  T('nc','\u221A(1\u2212\u03B1\u0304\u209C)','#7b5cd6',20);
+  if(P('dot2'))T('dot2','\u00B7','#25324a');
+  /* epsilon vs eps_theta */
+  {const q=P('ep');if(q){x.font='700 22'+F;
+    x.fillStyle='rgba(90,107,134,'+(1-hat)+')';if(hat<1)x.fillText('\u03B5',q[0],q[1]);
+    x.fillStyle='rgba(214,69,69,'+hat+')';if(hat>0){x.fillText('\u03B5\u03B8(x\u209C,t)',q[0]+8,q[1]);}}}
+  T('eqs','=','#25324a',24);
+  T('sa','\u221A\u03B1\u0304\u209C','#7b5cd6',20);
+  if(P('dot1'))T('dot1','\u00B7','#25324a');
+  {const q=P('x0');if(q){x.font='700 22'+F;
+    x.fillStyle='#c07417';x.fillText(hat>0.5?'x\u0302\u2080':'x\u2080',q[0],q[1]);
+    if(hat>0.5){x.font='italic 10.5px "Segoe UI"';x.fillStyle='#c07417';
+      x.fillText('(now an estimate)',q[0],q[1]+22);}}}
+  /* stage caption */
+  x.font='700 10.5px "Segoe UI"';x.fillStyle='#8a94a8';x.textAlign='left';
+  x.fillText('derivation step '+(Math.min(AS,3)+1)+' / 4',10,14);
+  x.textAlign='center';
+}
+function goStage(s){ASfrom=Math.min(AS,2);AS=s;ASu=0;
+  document.querySelectorAll('.c2').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('algnote').innerHTML=ANOTES[s];postH();}
+document.querySelectorAll('.c2').forEach(c=>c.onclick=()=>goStage(+c.dataset.s));
+
+/* pixel demo */
+let T2=700, PERF=true;
+const ERR2=new Float64Array(256);{__s=5566;for(let i=0;i<256;i++)ERR2[i]=gauss();}
+const pixCv=[];
+['x\u209C (input)','\u03B5 used','x\u0302\u2080 recovered','x\u2080 truth'].forEach((lab,i)=>{
+  const d=document.createElement('div');d.className='vcell';d.style.cursor='default';
+  const c=document.createElement('canvas');c.width=c.height=16;d.appendChild(c);pixCv.push(c);
+  const t1=document.createElement('div');t1.className='t1';t1.style.fontSize='11px';t1.innerHTML=lab;d.appendChild(t1);
+  $('pixrow').appendChild(d);
+});
+function pixDraw(){
+  const t=T2,a=SQA[t],b=SQB[t];
+  const imper=PERF?0:0.35*SQB[t];
+  const xt=new Float64Array(256),eh=new Float64Array(256),x0h=new Float64Array(256);
+  for(let i=0;i<256;i++){xt[i]=a*X0[i]+b*EPS[i];eh[i]=EPS[i]+imper*ERR2[i];x0h[i]=(xt[i]-b*eh[i])/a;}
+  drawField(pixCv[0],xt);drawField(pixCv[1],eh,0.5);drawField(pixCv[2],x0h);drawField(pixCv[3],X0);
+  $('pixnote').innerHTML=PERF?
+   '<b>Perfect &epsilon;:</b> the recovery is <em>exact</em> — x&#770;&#8320; = x&#8320; pixel-for-pixel, even at t = '+t+'. The algebra has no loss.':
+   '<b>Realistic &epsilon;<sub>&theta;</sub>:</b> a '+(0.35*SQB[t]*100).toFixed(0)+'% prediction error becomes a much bigger error in x&#770;&#8320;, because the formula divides by &radic;&alpha;&#772; = '+a.toFixed(3)+'. This is why sampling proceeds in many small steps instead of one giant jump.';
+  const i=115; /* audit pixel */
+  const amp=1/a;
+  $('audit').innerHTML=
+   'pixel #'+i+': &nbsp;x<sub>t</sub> = <span class="big">'+xt[i].toFixed(3)+'</span><br>'+
+   'x&#770;&#8320; = ('+xt[i].toFixed(3)+' &minus; '+b.toFixed(3)+' &times; '+eh[i].toFixed(3)+') / '+a.toFixed(3)+
+   ' = <span class="big" style="color:var(--in)">'+x0h[i].toFixed(3)+'</span><br>'+
+   'true x&#8320; = <span class="big">'+X0[i].toFixed(3)+'</span> &nbsp;&rarr;&nbsp; '+
+   (Math.abs(x0h[i]-X0[i])<1e-9?'<b style="color:var(--out)">exact match \u2713</b>':'<b style="color:var(--neg)">off by '+Math.abs(x0h[i]-X0[i]).toFixed(3)+'</b>');
+  $('ampbox').innerHTML='&#9888;&#65039; <b>The amplifier:</b> 1/&radic;&alpha;&#772;<sub>'+t+'</sub> = <b>'+(1/a).toFixed(1)+'&times;</b>. Every unit of &epsilon;<sub>&theta;</sub> error becomes '+(b/a).toFixed(1)+' units of x&#770;&#8320; error at this t.';
+}
+$('t2').oninput=e=>{T2=Math.round(+e.target.value);$('t2v').textContent=T2;pixDraw();};
+$('mPerf').onclick=()=>{PERF=true;$('mPerf').classList.add('on');$('mReal').classList.remove('on');pixDraw();};
+$('mReal').onclick=()=>{PERF=false;$('mReal').classList.add('on');$('mPerf').classList.remove('on');pixDraw();};
+pixDraw();
+
+/* ================= TAB 3 : fork ================= */
+const fl=$('forkL'), fr=$('forkR'); let FW=0,FH=150;
+let forkU=-1;
+function fitFork(){fitCv(fl,150);[FW,FH]=fitCv(fr,150);forkDraw();}
+function stepDiagram(x,W,H,u,ddpm){
+  x.clearRect(0,0,W,H);
+  const y=H*0.62, L=W*0.10, M=W*0.52, R=W*0.90;
+  x.font='700 11px "Segoe UI"';x.textAlign='center';
+  /* points */
+  x.fillStyle='#25324a';x.beginPath();x.arc(L,y,5.5,0,7);x.fill();
+  x.fillText('x\u209C',L,y+18);
+  const u1=sm(clamp(u*1.6,0,1)), u2=sm(clamp(u*1.6-0.6,0,1));
+  /* deterministic arrow */
+  function arrow(x0,y0,x1,y1,col,w){if(x1===x0&&y1===y0)return;
+    x.strokeStyle=col;x.lineWidth=w;x.beginPath();x.moveTo(x0,y0);x.lineTo(x1,y1);x.stroke();
+    const a=Math.atan2(y1-y0,x1-x0);
+    x.fillStyle=col;x.beginPath();x.moveTo(x1,y1);
+    x.lineTo(x1-8*Math.cos(a-0.45),y1-8*Math.sin(a-0.45));
+    x.lineTo(x1-8*Math.cos(a+0.45),y1-8*Math.sin(a+0.45));x.closePath();x.fill();}
+  const mx=lerp(L,M,u1);
+  arrow(L,y,mx,y,'#5a6b86',3);
+  x.fillStyle='#5a6b86';x.font='10px "Segoe UI"';
+  x.fillText('re-mix: \u221A\u03B1\u0304\u2032\u00B7x\u0302\u2080 + \u221A(\u03B2\u0304\u2032\u2212\u03C3\u00B2)\u00B7\u03B5\u03B8',(L+M)/2,y-12);
+  if(ddpm){
+    if(u2>0){const kx=lerp(M,R,u2), ky=y-Math.sin(u2*Math.PI*0.9)*26-u2*6;
+      arrow(M,y,kx,ky,'#f6921e',3);
+      x.fillStyle='#c07417';x.font='700 11px "Segoe UI"';
+      x.fillText('+ \u03C3\u00B7z  \uD83C\uDFB2 fresh!',lerp(M,R,0.5),y-38);
+      x.fillStyle='#25324a';x.beginPath();x.arc(kx,ky,5.5,0,7);x.fill();
+      if(u2>=1)x.fillText('x\u209C\u208B\u2081 (random!)',kx,ky-14);}
+  } else {
+    if(u2>0){const kx=lerp(M,R,u2);
+      arrow(M,y,kx,y,'#16a3a3',3);
+      x.fillStyle='#128888';x.font='700 11px "Segoe UI"';
+      x.fillText('\u03C3 = 0 \u2014 nothing to add',lerp(M,R,0.5),y-16);
+      x.fillStyle='#25324a';x.beginPath();x.arc(kx,y,5.5,0,7);x.fill();
+      if(u2>=1)x.fillText('x\u209C\u208B\u2081 (always the same)',kx,y+18);}
+  }
+}
+function forkDraw(){
+  const u=forkU<0?1:Math.min(1,forkU);
+  stepDiagram(fl.getContext('2d'),FW,FH,u,true);
+  stepDiagram(fr.getContext('2d'),FW,FH,u,false);
+}
+$('goFork').onclick=()=>{forkU=0;};
+
+/* ================= shared loop ================= */
+let lastT=null;
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT)*0.001;lastT=ts;
+  if(TAB===1){if(raceU>=0&&raceU<1.05){raceU+=dt*0.16;}raceDraw(ts);}
+  if(TAB===2){if(ASu<1)ASu=Math.min(1,ASu+dt*1.6);algDraw();}
+  if(TAB===3){if(forkU>=0&&forkU<1)forkU+=dt*0.5;forkDraw();}
+}
+function fitAll(){fitRace();fitAlg();fitFork();stripDraw();}
+addEventListener('resize',fitAll);
+fitAll();goStage(0);
+document.querySelector('.c1').classList.add('on');
+requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>

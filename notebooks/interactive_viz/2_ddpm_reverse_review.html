@@ -1,0 +1,552 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDPM Reverse Process — Review</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+
+.tabbar{display:flex;gap:0;justify-content:center;margin:2px auto 12px;max-width:1060px;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;}
+.tab{flex:1;font-family:inherit;font-weight:700;font-size:13px;padding:10px 6px;border:none;background:#fff;color:var(--soft);cursor:pointer;border-right:1.5px solid var(--line);transition:all .15s;}
+.tab:last-child{border-right:none;} .tab:hover{color:var(--ac);} .tab.on{background:var(--ac);color:#fff;}
+.tab .sm{display:block;font-weight:400;font-size:10px;opacity:.8;}
+.panel{display:none;min-height:540px;} .panel.on{display:block;}
+.fx{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:20px;line-height:2.1;text-align:center;}
+.fr{display:inline-block;vertical-align:middle;text-align:center;line-height:1.25;}
+.fr .nu{border-bottom:1.8px solid #25324a;padding:0 6px;display:block;}
+.fr .de{padding:0 6px;display:block;}
+.fx .tm{padding:3px 6px;border-radius:8px;transition:all .18s;display:inline-block;cursor:pointer;border:2px solid transparent;vertical-align:middle;}
+.fx .tm:hover{border-color:var(--line);}
+.fx .tm.hi{background:var(--acbg);border-color:var(--ac);transform:scale(1.08);}
+.fx .Ac{color:#c07417;} .fx .Bc{color:#5a6b86;} .fx .Cc{color:#7b5cd6;}
+.termnote{border:2px solid var(--line);border-radius:11px;padding:8px 11px;font-size:12.3px;line-height:1.55;background:#fff;color:#33415c;margin-top:8px;}
+.termnote b{color:var(--ink);}
+.imsum{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:6px;}
+.imsum .cell{text-align:center;border-radius:10px;padding:5px 6px;}
+.imsum canvas{width:60px;height:60px;image-rendering:pixelated;border-radius:6px;display:block;margin:0 auto 3px;}
+.imsum .lb{font-family:Consolas,monospace;font-size:10px;color:var(--soft);line-height:1.35;}
+.imsum .op{font-size:20px;font-weight:700;color:#8a94a8;padding:0 2px;}
+.deriv{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:15.5px;line-height:1.55;}
+.deriv .ln{padding:6px 10px;border-left:3px solid transparent;border-radius:6px;transition:all .15s;margin-bottom:2px;}
+.deriv .ln.hl{background:var(--acbg);border-left-color:var(--ac);}
+.deriv .ln.def{font-size:13px;color:#5a6b86;}
+.deriv .cm{font-family:"Segoe UI";font-size:10.5px;color:#8a94a8;display:block;margin-top:1px;}
+.deriv .fr{font-size:13.5px;}
+.deriv .fr .nu{border-bottom-width:1.4px;}
+.deriv .w0{color:#c07417;font-weight:700;} .deriv .wt{color:#5a6b86;font-weight:700;} .deriv .sz{color:#7b5cd6;font-weight:700;}
+.acards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;}
+.acard{border:2px solid var(--line);border-radius:12px;background:#fff;padding:9px 11px;transition:all .2s;}
+.acard.pulse{box-shadow:0 0 0 3px rgba(123,92,214,.45);border-color:var(--ac);}
+.acard .h3{font-weight:800;font-size:12.5px;margin-bottom:4px;color:var(--ink);}
+.acard .tx{font-size:11.8px;color:#33415c;line-height:1.5;}
+.acard canvas{width:100%;border-radius:8px;background:#f8fafe;display:block;margin:6px 0;}
+.qbig{text-align:center;font-size:18px;font-weight:800;color:var(--ink);margin:4px 0 6px;}
+@media (max-width:820px){.acards{grid-template-columns:1fr;}}
+
+</style></head><body>
+<div class="wrap">
+
+<h1>DDPM reverse process, reviewed — every symbol earns its place</h1>
+<p class="sub">DDPM&rsquo;s reverse step comes from <b>Bayesian inference</b>: the posterior
+q(x<sub>t&minus;1</sub> | x<sub>t</sub>, x&#8320;) of two Gaussians. Three tabs: the update rule
+<b>piece by piece</b> (with the number that explains why 1000 steps exist), the <b>x&#770;&#8320; form</b>
+— an interpolation, proven identical to the first form both by algebra and by arithmetic — and the
+<b>three assumptions</b> that chain DDPM to step-by-step sampling. All values live from the real schedule.</p>
+
+<div class="tabbar">
+  <button class="tab on" data-t="0">&#9312; The update rule<span class="sm">one sliver at a time</span></button>
+  <button class="tab" data-t="1">&#9313; The x&#770;&#8320; form<span class="sm">an interpolation — and the same formula</span></button>
+  <button class="tab" data-t="2">&#9314; Why all 1000 steps<span class="sm">three assumptions, three demos</span></button>
+</div>
+
+<!-- ============ TAB 0 ============ -->
+<div class="panel on" id="p0">
+<div class="stagebar">
+  <button class="chip c0" data-s="0">&#9312; 1/&radic;&alpha;&#8348; — the un-shrink</button>
+  <button class="chip c0" data-s="1">&#9313; remove ONE sliver</button>
+  <button class="chip c0" data-s="2">&#9314; &sigma;&#8348;&middot;z — the mandatory kick</button>
+  <button class="chip c0" data-s="3">&#9315; the t = 0 exception</button>
+</div>
+<div class="card">
+  <div class="fx" id="rule0"></div>
+  <div class="selrow" style="margin:4px 0 0">
+    <span>t</span><input type="range" id="t0" min="1" max="999" value="500"><span class="val" id="t0v">500</span>
+  </div>
+</div>
+<div class="grid" style="margin-top:10px">
+  <div class="card">
+    <div class="h2">The step on real pixels</div>
+    <div class="imsum" id="strip0"></div>
+    <div class="legend" id="strip0note"></div>
+  </div>
+  <div class="stack">
+    <div class="card"><div class="h2">Live values at t = <span id="lt0">500</span></div><div class="live" id="live0"></div></div>
+    <div class="card"><div class="h2">&sigma;&#8348; — two legal choices (don&rsquo;t let this confuse you)</div><div class="live" id="signote0"></div></div>
+  </div>
+</div>
+<div class="termnote" id="tnote0"></div>
+</div>
+
+<!-- ============ TAB 1 ============ -->
+<div class="panel" id="p1">
+<div class="stagebar">
+  <button class="chip c1" data-s="0">&#9312; It&rsquo;s an interpolation</button>
+  <button class="chip c1" data-s="1">&#9313; Derivation: substitute x&#770;&#8320;</button>
+  <button class="chip c1" data-s="2">&#9314; Derivation: expand &amp; collect</button>
+  <button class="chip c1" data-s="3">&#9315; &hellip;and it&rsquo;s form &#9312; again</button>
+</div>
+<div class="card">
+  <div class="fx" id="rule1" style="font-size:18px"></div>
+  <div class="selrow" style="margin:4px 0 0">
+    <span>t</span><input type="range" id="t1" min="2" max="999" value="600"><span class="val" id="t1v">600</span>
+  </div>
+</div>
+<div class="grid" style="margin-top:10px">
+  <div class="card">
+    <div class="h2">The balance — where the mean actually sits between x&#770;&#8320; and x<sub>t</sub></div>
+    <canvas id="lever" class="cv" style="background:#fff"></canvas>
+    <div class="legend"><b>How to read it:</b> the marker&rsquo;s position <em>is</em> the weight ratio
+    w<sub>t</sub>/(w&#8320;+w<sub>t</sub>). At high t the mean hugs x<sub>t</sub> — the model&rsquo;s x&#770;&#8320;
+    is barely trusted; as t &rarr; 0, trust shifts almost entirely to x&#770;&#8320;. Drag t and watch the lean.</div>
+  </div>
+  <div class="stack">
+    <div class="card"><div class="h2">Equivalence — the algebra</div><div class="deriv" id="deriv"></div></div>
+    <div class="card"><div class="h2">Equivalence — the arithmetic (one pixel, same &epsilon;&#770;, same z)</div><div class="live" id="eqcheck"></div></div>
+  </div>
+</div>
+<div class="kbox">&#127891; <b>Where do those weights come from?</b> Bayes&rsquo; rule:
+q(x<sub>t&minus;1</sub>|x<sub>t</sub>, x&#8320;) &prop; q(x<sub>t</sub>|x<sub>t&minus;1</sub>) &middot;
+q(x<sub>t&minus;1</sub>|x&#8320;). Both factors are Gaussians in x<sub>t&minus;1</sub>; multiplying them and
+completing the square yields a Gaussian whose mean has <em>exactly</em> the two weights above and whose
+variance is &beta;&#771;<sub>t</sub>. DDPM then replaces the unknown x&#8320; with x&#770;&#8320; — the same
+&ldquo;honest step&rdquo; from the theory-foundations page.</div>
+</div>
+
+<!-- ============ TAB 2 ============ -->
+<div class="panel" id="p2">
+<div class="qbig">Skip-proofing check: which of DDPM&rsquo;s three load-bearing assumptions breaks?</div>
+<div class="stagebar">
+  <button class="chip c2" data-s="0">&#9312; Small-step Gaussian</button>
+  <button class="chip c2" data-s="1">&#9313; Variance accounting</button>
+  <button class="chip c2" data-s="2">&#9314; Markov chain</button>
+  <button class="chip c2" data-s="3">&#9315; All three at once</button>
+</div>
+<div class="acards">
+  <div class="acard" id="ac0">
+    <div class="h3">1 &middot; Gaussian approximation</div>
+    <canvas id="gauss" height="120"></canvas>
+    <div class="tx">The reverse conditional is only <em>approximately</em> Gaussian — and the approximation is
+    good <b>precisely because each step is tiny</b>. Left: for a 1-step hop the true distribution (orange) and the
+    Gaussian DDPM assumes (dashed) coincide. Right: over a big hop the true conditional spreads and splits
+    (illustration) — a single Gaussian visibly cannot represent it.</div>
+  </div>
+  <div class="acard" id="ac1">
+    <div class="h3">2 &middot; Variance accumulation</div>
+    <canvas id="varm" height="120"></canvas>
+    <div class="tx">Fresh noise must be re-injected in the right amount at every step. A hop of k needs the
+    posterior variance <b>over the whole gap</b>; a DDPM step only ever supplies the 1-step amount
+    &beta;&#771;<sub>t</sub>. Drag the hop:
+    <input type="range" id="hop" min="1" max="100" value="10" style="width:120px;vertical-align:middle">
+    <span class="val" id="hopv">10</span> — the red shortfall is the broken variance the doc warns about.</div>
+  </div>
+  <div class="acard" id="ac2">
+    <div class="h3">3 &middot; Markov chain</div>
+    <canvas id="chain" height="120"></canvas>
+    <div class="tx">Each transition is conditioned <b>only on the previous state</b> — memoryless — and carries
+    <b>its own fresh z</b>. The chain is only defined between <em>adjacent</em> timesteps: there simply is no
+    DDPM transition kernel from t to t&minus;10. All three properties point the same way: <b>walk every step</b>.</div>
+  </div>
+</div>
+<div class="kbox">&#128273; <b>The escape hatch:</b> DDIM rebuilds the reverse process as <em>non-Markovian</em>
+(each step consults x&#770;&#8320;), with variance written directly in terms of the endpoint &alpha;&#772;&rsquo;s —
+so assumptions 2 and 3 are simply not needed, and determinism (&eta;=0) removes the per-step z entirely.
+That story is the companion page, <em>DDIM&rsquo;s key innovation</em>.</div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+
+
+/* ============ shared math ============ */
+function alphaT(t){return 1-BETA[t];}
+function postBeta(t){const s=Math.max(0,t-1);
+  return (1-ABAR[s])/(1-ABAR[t])*BETA[t];}   /* beta-tilde (posterior variance) */
+function variGap(t,k){const s=Math.max(0,t-k);
+  return (1-ABAR[s])/(1-ABAR[t])*(1-ABAR[t]/ABAR[s]);} /* required fresh variance over hop k */
+
+/* ============ tabs ============ */
+let TAB=0;
+const panels=[...document.querySelectorAll('.panel')];
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  TAB=+b.dataset.t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
+  panels.forEach((p,i)=>p.classList.toggle('on',i===TAB));
+  postH();setTimeout(postH,60);
+  if(TAB===1)fitLever(); if(TAB===2)fit2();
+});
+
+/* ============ TAB 0 ============ */
+let T0=500,S0=1;
+const Z=new Float64Array(256);{__s=9182;for(let i=0;i<256;i++)Z[i]=gauss();}
+const ERRA=new Float64Array(256);{__s=7345;for(let i=0;i<256;i++)ERRA[i]=gauss();}
+function fr(nu,de){return '<span class="fr"><span class="nu">'+nu+'</span><span class="de">'+de+'</span></span>';}
+function rule0(sel){
+  $('rule0').innerHTML=
+   '<span style="color:#25324a">x<sub>t&minus;1</sub> = </span>'+
+   '<span class="tm Ac'+(sel===0?' hi':'')+'" data-k="0">'+fr('1','&radic;&alpha;<sub>t</sub>')+'</span>'+
+   '<span style="color:#8a94a8">&nbsp;(&nbsp;</span>'+
+   '<span style="color:#25324a">x<sub>t</sub></span>'+
+   '<span style="color:#8a94a8"> &minus; </span>'+
+   '<span class="tm Bc'+(sel===1?' hi':'')+'" data-k="1">'+fr('&beta;<sub>t</sub>','&radic;(1 &minus; &alpha;&#772;<sub>t</sub>)')+'&nbsp;&middot; &epsilon;<sub>&theta;</sub>(x<sub>t</sub>,t)</span>'+
+   '<span style="color:#8a94a8">&nbsp;)&nbsp;</span>'+
+   '<span style="color:#8a94a8"> + </span>'+
+   '<span class="tm Cc'+(sel===2||sel===3?' hi':'')+'" data-k="2">&sigma;<sub>t</sub> &middot; z</span>';
+}
+const TN0=[
+ '<b style="color:#c07417">&#9312; 1/&radic;&alpha;<sub>t</sub> — the un-shrink.</b> The forward step multiplied the whole image by &radic;&alpha;<sub>t</sub> (a number just below 1) while pouring in a little noise. The reverse step must undo that shrink <em>once</em>: divide by &radic;&alpha;<sub>t</sub>. At your t this is a factor of <span class="v0"></span> — microscopic per step, but applied 1000 times it undoes the whole schedule.',
+ '<b style="color:#5a6b86">&#9313; The sliver.</b> The subtraction does <em>not</em> remove all the noise: the image at t contains &radic;(1&minus;&alpha;&#772;<sub>t</sub>) worth of noise, but the coefficient here is only &beta;<sub>t</sub>/&radic;(1&minus;&alpha;&#772;<sub>t</sub>). Ratio: <b>&beta;<sub>t</sub>/(1&minus;&alpha;&#772;<sub>t</sub>) = <span class="v1"></span></b> of the present noise — <em>that</em> is the arithmetic reason DDPM needs ~1000 iterations. One step, one sliver.',
+ '<b style="color:#7b5cd6">&#9314; &sigma;<sub>t</sub>&middot;z — the mandatory kick.</b> z is a <b>brand-new</b> Gaussian draw, independent of &epsilon;<sub>&theta;</sub> — DDPM&rsquo;s posterior is a <em>distribution</em>, and this term is its width. Omit it and you collapse the distribution to its mean: samples turn out over-smooth and the process no longer matches the schedule. (DDIM later makes this term <em>optional</em> — that dial is &eta;.)',
+ '<b>&#9315; The t = 0 exception.</b> The very last step outputs the final image — adding noise to your finished sample would be vandalism. So every implementation guards it: <code>x = mean + (sigma*z if t &gt; 0 else 0)</code>. This is the one place in the doc&rsquo;s &ldquo;z is MANDATORY&rdquo; rule where z is skipped.'
+];
+function tensors0(){
+  const t=T0,a=SQA[t],b=SQB[t];
+  const imper=0.25*SQB[t];
+  const xt=new Float64Array(256),eh=new Float64Array(256);
+  for(let i=0;i<256;i++){xt[i]=a*X0[i]+b*EPS[i];eh[i]=EPS[i]+imper*ERRA[i];}
+  const at=alphaT(t), B=BETA[t]/b, A=1/Math.sqrt(at);
+  const sig=Math.sqrt(BETA[t]);
+  const mid=new Float64Array(256),mu=new Float64Array(256),xp=new Float64Array(256);
+  for(let i=0;i<256;i++){mid[i]=xt[i]-B*eh[i];mu[i]=A*mid[i];xp[i]=mu[i]+(t>0?sig*Z[i]:0);}
+  return {t,xt,eh,mid,mu,xp,A,B,sig,at};
+}
+const s0cells=[];
+;(function(){
+  const defs=[['x\u209C',''],['\u2212 sliver','\u03B2\u209C/\u221A(1\u2212\u03B1\u0304)\u00B7\u03B5\u0302'],['\u00F7 \u221A\u03B1\u209C','= mean \u03BC'],['+ \u03C3\u00B7z','fresh!'],['x\u209C\u208B\u2081','']];
+  defs.forEach((d,i)=>{
+    if(i>0){const o=document.createElement('div');o.className='op';o.textContent='\u2192';$('strip0').appendChild(o);}
+    const c=document.createElement('div');c.className='cell';
+    const cv=document.createElement('canvas');cv.width=cv.height=16;c.appendChild(cv);
+    const lb=document.createElement('div');lb.className='lb';lb.innerHTML=d[0]+(d[1]?'<br>'+d[1]:'');c.appendChild(lb);
+    $('strip0').appendChild(c);s0cells.push(cv);});
+})();
+function draw0(){
+  const C=tensors0();
+  drawField(s0cells[0],C.xt);
+  drawField(s0cells[1],C.mid);
+  drawField(s0cells[2],C.mu);
+  drawField(s0cells[3],C.xp);
+  drawField(s0cells[4],C.xp);
+  $('strip0note').innerHTML='Look closely at tiles 1 vs 5: after a full step the image is almost unchanged — one sliver ('+(BETA[C.t]/(1-ABAR[C.t])*100).toFixed(2)+'% of the noise) was removed, then a slightly smaller kick was added back.';
+  $('lt0').textContent=C.t;
+  $('live0').innerHTML=
+   '&alpha;<sub>t</sub> = 1&minus;&beta;<sub>t</sub> = <span class="big">'+C.at.toFixed(5)+'</span> &nbsp; 1/&radic;&alpha;<sub>t</sub> = <span class="big" style="color:#c07417">'+C.A.toFixed(5)+'</span><br>'+
+   'sliver coefficient &beta;<sub>t</sub>/&radic;(1&minus;&alpha;&#772;) = <span class="big" style="color:#5a6b86">'+C.B.toFixed(5)+'</span><br>'+
+   'noise removed this step: <span class="big" style="color:var(--ac)">'+(BETA[C.t]/(1-ABAR[C.t])*100).toFixed(2)+'%</span> of what&rsquo;s present<br>'+
+   '&sigma;<sub>t</sub> = &radic;&beta;<sub>t</sub> = <span class="big" style="color:#7b5cd6">'+C.sig.toFixed(4)+'</span>'+(C.t===0?' (skipped: t = 0)':'');
+  const sB=Math.sqrt(BETA[C.t]), sBt=Math.sqrt(postBeta(C.t));
+  $('signote0').innerHTML=
+   'this doc: &sigma;<sub>t</sub> = &radic;&beta;<sub>t</sub> = <span class="big">'+sB.toFixed(4)+'</span><br>'+
+   'posterior choice: &sigma;<sub>t</sub> = &radic;&beta;&#771;<sub>t</sub> = <span class="big">'+sBt.toFixed(4)+'</span> <span style="color:var(--soft)">(used in the sched.step viz)</span><br>'+
+   '<span style="color:var(--soft)">Both are standard; they differ by &lt;'+(Math.abs(sB-sBt)/sB*100).toFixed(1)+'% at this t and give near-identical samples. &beta;&#771; is the exact Bayes posterior; &radic;&beta; is its simple upper bound.</span>';
+  const n=TN0[S0].replace('<span class="v0"></span>',C.A.toFixed(5)).replace('<span class="v1"></span>',(BETA[C.t]/(1-ABAR[C.t])*100).toFixed(2)+'%');
+  $('tnote0').innerHTML=n;
+}
+function sel0(k){S0=k;rule0(k);
+  document.querySelectorAll('.c0').forEach(c=>c.classList.toggle('on',+c.dataset.s===k));
+  draw0();postH();}
+document.querySelectorAll('.c0').forEach(c=>c.onclick=()=>sel0(+c.dataset.s));
+$('rule0').addEventListener('click',e=>{const tm=e.target.closest('.tm');if(tm)sel0(+tm.dataset.k);});
+$('t0').oninput=e=>{T0=Math.round(+e.target.value);$('t0v').textContent=T0;draw0();};
+
+/* ============ TAB 1 ============ */
+let T1=600,S1=0;
+function w01(t){const s=Math.max(0,t-1);
+  const w0=SQA[s]*BETA[t]/(1-ABAR[t]);
+  const wt=Math.sqrt(alphaT(t))*(1-ABAR[s])/(1-ABAR[t]);
+  return {w0,wt,s};}
+function rule1(){
+  const t=T1;
+  $('rule1').innerHTML=
+   '<span style="color:#25324a">x<sub>t&minus;1</sub> = </span>'+
+   '<span class="tm Ac">'+fr('&radic;&alpha;&#772;<sub>t&minus;1</sub> &middot; &beta;<sub>t</sub>','1 &minus; &alpha;&#772;<sub>t</sub>')+'</span>'+
+   '<span class="tm Ac" style="border:none">&middot; x&#770;&#8320;</span>'+
+   '<span style="color:#8a94a8"> + </span>'+
+   '<span class="tm Bc">'+fr('&radic;&alpha;<sub>t</sub> &middot; (1 &minus; &alpha;&#772;<sub>t&minus;1</sub>)','1 &minus; &alpha;&#772;<sub>t</sub>')+'</span>'+
+   '<span class="tm Bc" style="border:none">&middot; x<sub>t</sub></span>'+
+   '<span style="color:#8a94a8"> + </span><span class="tm Cc">&sigma;<sub>t</sub> &middot; z</span>';
+}
+const AB='&alpha;&#772;', EH='&epsilon;&#770;';
+function sq(x){return '&radic;'+x;}
+const DLINES=[
+ ['x<sub>t&minus;1</sub> = <span class="w0">w&#8320;</span>&middot;x&#770;&#8320; + <span class="wt">w<sub>t</sub></span>&middot;x<sub>t</sub> + <span class="sz">&sigma;&middot;z</span>',
+  'start: the x&#770;&#8320; form',0],
+ ['<span class="def-inline">where &nbsp;<span class="w0">w&#8320;</span> = '+fr(sq(AB+'<sub>t&minus;1</sub>')+' &middot; &beta;<sub>t</sub>','1 &minus; '+AB+'<sub>t</sub>')+' &nbsp;&nbsp; <span class="wt">w<sub>t</sub></span> = '+fr(sq('&alpha;<sub>t</sub>')+' &middot; (1 &minus; '+AB+'<sub>t&minus;1</sub>)','1 &minus; '+AB+'<sub>t</sub>')+'</span>',
+  'the two posterior weights (from the formula above)','def'],
+ ['x&#770;&#8320; = '+fr('x<sub>t</sub> &minus; '+sq('(1 &minus; '+AB+'<sub>t</sub>)')+' &middot; '+EH, sq(AB+'<sub>t</sub>')),
+  'substitute the definition of x&#770;&#8320;',1],
+ ['x<sub>t&minus;1</sub> = <span style="color:#8a94a8">[</span>'+fr('<span class="w0">w&#8320;</span>',sq(AB+'<sub>t</sub>'))+' + <span class="wt">w<sub>t</sub></span><span style="color:#8a94a8">]</span> &middot; x<sub>t</sub> &nbsp;&minus;&nbsp; '+fr('<span class="w0">w&#8320;</span> &middot; '+sq('(1 &minus; '+AB+'<sub>t</sub>)'), sq(AB+'<sub>t</sub>'))+' &middot; '+EH+' + <span class="sz">&sigma;&middot;z</span>',
+  'expand and collect the x<sub>t</sub> and '+EH+' coefficients',2],
+ ['&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = '+fr('1',sq('&alpha;<sub>t</sub>'))+' &middot; x<sub>t</sub> &nbsp;&minus;&nbsp; '+fr('&beta;<sub>t</sub>', sq('&alpha;<sub>t</sub>')+' &middot; '+sq('(1 &minus; '+AB+'<sub>t</sub>)'))+' &middot; '+EH+' + <span class="sz">&sigma;&middot;z</span>',
+  'simplify using '+AB+'<sub>t</sub> = &alpha;<sub>t</sub> &middot; '+AB+'<sub>t&minus;1</sub> and &beta;<sub>t</sub> = 1 &minus; &alpha;<sub>t</sub>',3],
+ ['&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; = '+fr('1',sq('&alpha;<sub>t</sub>'))+' <span style="color:#8a94a8">(</span> x<sub>t</sub> &minus; '+fr('&beta;<sub>t</sub>', sq('(1 &minus; '+AB+'<sub>t</sub>)'))+' &middot; '+EH+' <span style="color:#8a94a8">)</span> + <span class="sz">&sigma;&middot;z</span>',
+  '&hellip; which is EXACTLY form &#9312;. Same formula, two faces.',3],
+];
+function derivDraw(){
+  const el=$('deriv');el.innerHTML='';
+  DLINES.forEach(([tx,cm,st])=>{
+    const d=document.createElement('div');
+    const isDef=st==='def';
+    d.className='ln'+(isDef?' def':'')+(!isDef&&(st===S1||(S1===3&&st===3))?' hl':'');
+    d.innerHTML=tx+' <span class="cm">\u2190 '+cm+'</span>';
+    el.appendChild(d);});
+}
+function eqCheck(){
+  const t=T1,{w0,wt,s}=w01(t);
+  const a=SQA[t],b=SQB[t],imper=0.25*b;
+  const i=115;
+  const xt=a*X0[i]+b*EPS[i], eh=EPS[i]+imper*ERRA[i], z=Z[i];
+  const sig=Math.sqrt(BETA[t]);
+  const x0h=(xt-b*eh)/a;
+  const f2=w0*x0h+wt*xt+sig*z;
+  const at=alphaT(t);
+  const f1=(1/Math.sqrt(at))*(xt-BETA[t]/b*eh)+sig*z;
+  $('eqcheck').innerHTML=
+   'pixel #115 at t = '+t+':<br>'+
+   'form &#9313; (interpolation): <span class="big">'+f2.toFixed(12)+'</span><br>'+
+   'form &#9312; (&epsilon;-form): &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="big">'+f1.toFixed(12)+'</span><br>'+
+   'difference: <span class="big" style="color:var(--out)">'+Math.abs(f1-f2).toExponential(2)+'</span> — identical to machine precision.';
+}
+const lv=$('lever');let LW=0,LH=170;
+function fitLever(){[LW,LH]=fitCv(lv,170);leverDraw();}
+const offL=document.createElement('canvas');offL.width=offL.height=16;
+function leverDraw(){
+  const x=lv.getContext('2d');x.clearRect(0,0,LW,LH);
+  const t=T1,{w0,wt}=w01(t);
+  const trust=w0/(w0+wt);
+  const Lx=LW*0.14,Rx=LW*0.86,y=LH*0.52;
+  x.imageSmoothingEnabled=false;
+  /* endpoints */
+  const a=SQA[t],b=SQB[t],imper=0.25*b;
+  const x0h=new Float64Array(256),xt=new Float64Array(256);
+  for(let i=0;i<256;i++){xt[i]=a*X0[i]+b*EPS[i];const eh=EPS[i]+imper*ERRA[i];x0h[i]=(xt[i]-b*eh)/a;}
+  drawField(offL,x0h);x.drawImage(offL,Lx-24,y-58,48,48);
+  x.strokeStyle='#c07417';x.lineWidth=2;x.strokeRect(Lx-24,y-58,48,48);
+  x.fillStyle='#c07417';x.font='700 11px "Segoe UI"';x.textAlign='center';
+  x.fillText('x\u0302\u2080',Lx,y+6);
+  drawField(offL,xt);x.drawImage(offL,Rx-24,y-58,48,48);
+  x.strokeStyle='#5a6b86';x.strokeRect(Rx-24,y-58,48,48);
+  x.fillStyle='#5a6b86';x.fillText('x\u209C',Rx,y+6);
+  /* beam */
+  x.strokeStyle='#dde5f2';x.lineWidth=6;x.lineCap='round';
+  x.beginPath();x.moveTo(Lx,y+26);x.lineTo(Rx,y+26);x.stroke();
+  /* marker at 1-trust toward xt */
+  const mx=lerp(Lx,Rx,1-trust);
+  x.fillStyle='#7b5cd6';x.beginPath();x.moveTo(mx,y+18);x.lineTo(mx-7,y+34);x.lineTo(mx+7,y+34);x.closePath();x.fill();
+  x.font='700 11px Consolas,monospace';x.fillStyle='#7b5cd6';
+  x.fillText('mean of x\u209C\u208B\u2081',mx,y+48);
+  x.font='700 10.5px "Segoe UI"';
+  x.fillText('trust in x\u0302\u2080: '+(trust*100).toFixed(1)+'%',mx,y+62);
+  /* weight labels */
+  x.fillStyle='#c07417';x.font='700 10px Consolas,monospace';x.textAlign='left';
+  x.fillText('w\u2080 = '+w0.toFixed(4),Lx-24,y-66);
+  x.fillStyle='#5a6b86';x.textAlign='right';
+  x.fillText('w\u209C = '+wt.toFixed(4),Rx+24,y-66);
+  x.fillStyle='#8a94a8';x.textAlign='center';x.font='10px "Segoe UI"';
+  x.fillText('w\u2080 + w\u209C = '+(w0+wt).toFixed(4)+'  (\u2248 1: it is essentially a weighted average)',LW/2,LH-8);
+}
+function sel1(k){S1=k;
+  document.querySelectorAll('.c1').forEach(c=>c.classList.toggle('on',+c.dataset.s===k));
+  derivDraw();postH();}
+document.querySelectorAll('.c1').forEach(c=>c.onclick=()=>sel1(+c.dataset.s));
+$('t1').oninput=e=>{T1=Math.round(+e.target.value);$('t1v').textContent=T1;rule1();leverDraw();eqCheck();};
+
+/* ============ TAB 2 ============ */
+let HOP=10,pulse2=-1,pulseT=0;
+const gc2=$('gauss'),vc2=$('varm'),cc2=$('chain');
+function fit2(){
+  [0,0].toString();
+  for(const c of [gc2,vc2,cc2]){const w=c.parentElement.clientWidth-24,d=Math.min(devicePixelRatio||1,2);
+    c.style.height='120px';c.width=Math.round(w*d);c.height=Math.round(120*d);
+    c.getContext('2d').setTransform(d,0,0,d,0,0);}
+  gaussDraw();varDraw();chainDraw();
+}
+function gaussDraw(){
+  const x=gc2.getContext('2d'),W=gc2.clientWidth,H=120;x.clearRect(0,0,W,H);
+  function bell(cx,s,amp,y0,col,dash,x0,x1){
+    x.strokeStyle=col;x.lineWidth=1.8;if(dash)x.setLineDash([4,3]);
+    x.beginPath();
+    for(let i=0;i<=60;i++){const px=x0+(x1-x0)*i/60;
+      const u=(px-cx)/s;const py=y0-amp*Math.exp(-u*u/2);
+      i?x.lineTo(px,py):x.moveTo(px,py);}
+    x.stroke();x.setLineDash([]);}
+  const mid=W/2;
+  x.strokeStyle='#e6ebf5';x.beginPath();x.moveTo(mid,8);x.lineTo(mid,H-18);x.stroke();
+  /* left: 1-step: true ~ gaussian coincide */
+  bell(W*0.25,16,66,H-24,'#f6921e',false,8,mid-8);
+  bell(W*0.25,16.6,64,H-24,'#25324a',true,8,mid-8);
+  x.fillStyle='#5a6b86';x.font='700 9.5px "Segoe UI"';x.textAlign='center';
+  x.fillText('hop = 1: true \u2248 Gaussian \u2713',W*0.25,H-6);
+  /* right: big hop: bimodal true vs single gaussian */
+  bell(W*0.68,13,52,H-24,'#f6921e',false,mid+8,W-8);
+  bell(W*0.85,12,44,H-24,'#f6921e',false,mid+8,W-8);
+  bell(W*0.765,26,40,H-24,'#25324a',true,mid+8,W-8);
+  x.fillStyle='#d64545';
+  x.fillText('big hop: true splits \u2014 one Gaussian can\u2019t \u2717',W*0.755,H-6);
+}
+function varDraw(){
+  const x=vc2.getContext('2d'),W=vc2.clientWidth,H=120;x.clearRect(0,0,W,H);
+  const t=700;
+  const req=variGap(t,HOP), sup=postBeta(t);
+  const mx=Math.max(req,sup)*1.15;
+  function bar(y,v,col,lab){
+    x.fillStyle='#eef1fa';x.fillRect(86,y,W-100,16);
+    x.fillStyle=col;x.fillRect(86,y,(W-100)*v/mx,16);
+    x.fillStyle='#5a6b86';x.font='700 9.5px "Segoe UI"';x.textAlign='right';
+    x.fillText(lab,80,y+12);
+    x.fillStyle='#25324a';x.font='700 9.5px Consolas,monospace';x.textAlign='left';
+    x.fillText(v.toFixed(4),88+(W-100)*v/mx+4,y+12);}
+  x.fillStyle='#5a6b86';x.font='700 10px "Segoe UI"';x.textAlign='left';
+  x.fillText('fresh-noise variance for a hop of '+HOP+'  (at t = '+t+')',4,14);
+  bar(26,req,'#16a3a3','required');
+  bar(56,sup,'#f6921e','DDPM gives');
+  const gap=(1-sup/req)*100;
+  x.fillStyle=HOP<=1?'#128888':'#d64545';x.font='700 11px "Segoe UI"';
+  x.fillText(HOP<=1?'\u2713 exact at hop = 1 \u2014 this is what DDPM was derived for':
+    '\u2717 shortfall: '+gap.toFixed(0)+'% of the needed variance is missing \u2192 off-schedule samples',4,102);
+}
+function chainDraw(){
+  const x=cc2.getContext('2d'),W=cc2.clientWidth,H=120;x.clearRect(0,0,W,H);
+  const y=54,n=6;
+  const xs=[];for(let i=0;i<n;i++)xs.push(20+(W-40)*i/(n-1));
+  const labs=['x\u2089\u2089\u2089','x\u2089\u2089\u2088','x\u2089\u2089\u2087','\u2026','x\u2081','x\u2080'];
+  xs.forEach((px,i)=>{
+    x.fillStyle='#25324a';x.beginPath();x.arc(px,y,5,0,7);x.fill();
+    x.fillStyle='#5a6b86';x.font='700 10.5px Consolas,monospace';x.textAlign='center';
+    x.fillText(labs[i],px,y+20);
+    if(i<n-1){x.strokeStyle='#f6921e';x.lineWidth=2;
+      x.beginPath();x.moveTo(px+7,y);x.lineTo(xs[i+1]-7,y);x.stroke();
+      x.fillStyle='#f6921e';x.beginPath();x.moveTo(xs[i+1]-7,y);x.lineTo(xs[i+1]-13,y-4);x.lineTo(xs[i+1]-13,y+4);x.closePath();x.fill();
+      if(i<n-2){x.font='12px "Segoe UI"';x.fillText('\uD83C\uDFB2',(px+xs[i+1])/2,y-10);
+        x.font='700 8.5px Consolas,monospace';x.fillStyle='#c07417';
+        x.fillText('z',(px+xs[i+1])/2,y-24);}
+      else{x.font='700 9px "Segoe UI"';x.fillStyle='#128888';x.fillText('no z (t=0)',(px+xs[i+1])/2,y-10);}}
+  });
+  x.fillStyle='#8a94a8';x.font='10px "Segoe UI"';x.textAlign='center';
+  x.fillText('each arrow: p(x\u209C\u208B\u2081 | x\u209C) only \u2014 defined between ADJACENT steps',W/2,104);
+}
+$('hop').oninput=e=>{HOP=Math.round(+e.target.value);$('hopv').textContent=HOP;varDraw();};
+document.querySelectorAll('.c2').forEach(c=>c.onclick=()=>{
+  document.querySelectorAll('.c2').forEach(z2=>z2.classList.toggle('on',z2===c));
+  const s=+c.dataset.s;pulse2=s===3?0:s;pulseT=0;
+  if(s===3){pulse2=0;pulseT=0.0001;}
+  [0,1,2].forEach(i=>$('ac'+i).classList.toggle('pulse',i===s));
+});
+
+/* ============ loop ============ */
+let lastT=null;
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:(ts-lastT)*0.001;lastT=ts;
+  if(TAB===2&&pulseT>0){pulseT+=dt;
+    const k=Math.min(2,Math.floor(pulseT/1.0));
+    [0,1,2].forEach(i=>$('ac'+i).classList.toggle('pulse',i===k));
+    if(pulseT>3.1){pulseT=0;[0,1,2].forEach(i=>$('ac'+i).classList.remove('pulse'));}}
+}
+addEventListener('resize',()=>{fitLever();fit2();});
+rule0(1);sel0(1);draw0();
+rule1();derivDraw();eqCheck();fitLever();
+fit2();
+requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>

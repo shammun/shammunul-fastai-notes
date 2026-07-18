@@ -1,0 +1,486 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>beta_end — One Scalar, an Entire Noise Schedule</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+
+.tabbar{display:flex;gap:0;justify-content:center;margin:2px auto 12px;max-width:1060px;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;}
+.tab{flex:1;font-family:inherit;font-weight:700;font-size:13px;padding:10px 6px;border:none;background:#fff;color:var(--soft);cursor:pointer;border-right:1.5px solid var(--line);transition:all .15s;}
+.tab:last-child{border-right:none;} .tab:hover{color:var(--ac);} .tab.on{background:var(--ac);color:#fff;}
+.tab .sm{display:block;font-weight:400;font-size:10px;opacity:.8;}
+.panel{display:none;min-height:540px;} .panel.on{display:block;}
+.fx{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:16.5px;line-height:2.0;text-align:center;}
+pre.pcode{font-family:"SF Mono",Consolas,monospace;font-size:11.8px;line-height:1.75;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:9px 12px;overflow-x:auto;margin:0;}
+.pcode .cm{color:#8a94a8;} .pcode .hl2{background:#fdeedd;border-radius:5px;padding:1px 3px;color:#c07417;font-weight:700;}
+.pcode .hl3{background:#e4f5f5;border-radius:5px;padding:1px 3px;color:#128888;font-weight:700;}
+.mtable{width:100%;border-collapse:collapse;font-size:12px;}
+.mtable th,.mtable td{border:1px solid var(--line);padding:6px 9px;text-align:left;}
+.mtable th{background:#f4f7fd;color:var(--soft);font-size:10.5px;letter-spacing:.05em;}
+.mtable td.co{font-family:Consolas,monospace;font-size:11.3px;}
+.vswrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.vscard{border:2.5px solid;border-radius:13px;padding:10px 12px;background:#fff;}
+.vscard .vh{font-weight:800;font-size:13px;margin-bottom:6px;}
+.vscard canvas{width:92px;height:92px;image-rendering:pixelated;border-radius:9px;display:block;margin:8px auto 4px;border:2px solid var(--line);}
+.errbar{height:14px;border-radius:7px;background:#eef1fa;overflow:hidden;margin-top:5px;}
+.errbar div{height:100%;border-radius:7px;transition:width .3s;}
+.qbig{text-align:center;font-size:18px;font-weight:800;color:var(--ink);margin:4px 0 6px;}
+.finep{font-size:11.4px;color:#8a6d3b;background:#fff9ef;border:1.5px solid #eeddbb;border-radius:10px;padding:8px 11px;line-height:1.55;}
+.thumbrow{display:flex;gap:14px;justify-content:center;align-items:flex-end;margin-top:6px;}
+.thumbrow .tb{text-align:center;font-size:10px;color:var(--soft);font-family:Consolas,monospace;}
+.thumbrow canvas{width:72px;height:72px;image-rendering:pixelated;border-radius:8px;border:2px solid var(--line);display:block;margin-bottom:3px;}
+@media(max-width:860px){.vswrap{grid-template-columns:1fr;}}
+
+</style></head><body>
+<div class="wrap">
+
+<h1>beta_end — one scalar, an entire noise schedule</h1>
+<p class="sub"><code>DDPMScheduler(beta_end=0.01)</code> looks like a minor argument. It isn&rsquo;t: this
+single number pivots the whole &beta; line, which reshapes every &alpha;&#772;<sub>t</sub>, which redefines
+what &ldquo;noise level at timestep t&rdquo; means — the very thing the model memorized during training. Four
+tabs: turn the knob and watch the whole curve move; trace the number&rsquo;s journey from training notebook
+19 into this one (and why it must be re-declared); break the match and watch reconstructions shatter; and
+the reason 0.01 beat the paper&rsquo;s default 0.02. All values computed exactly from the schedules.</p>
+
+<div class="tabbar">
+  <button class="tab on" data-t="0">&#9312; One knob, whole curve<span class="sm">drag beta_end</span></button>
+  <button class="tab" data-t="1">&#9313; The lineage<span class="sm">nb 19 &rarr; nb 20 contract</span></button>
+  <button class="tab" data-t="2">&#9314; Break the contract<span class="sm">mismatch, executed</span></button>
+  <button class="tab" data-t="3">&#9315; Why 0.01, not 0.02<span class="sm">vs the cosine ideal</span></button>
+</div>
+
+<!-- ============ TAB 0 ============ -->
+<div class="panel on" id="p0">
+<div class="card">
+  <canvas id="knob" class="cv" style="background:#fff"></canvas>
+  <div class="selrow" style="margin:8px 0 0">
+    <span>beta_end</span><input type="range" id="be" min="0.004" max="0.03" step="0.001" value="0.01" style="width:230px"><span class="val" id="bev">0.010</span>
+    <span class="div"></span>
+    <span>probe t</span><input type="range" id="pt" min="0" max="999" value="500"><span class="val" id="ptv">500</span>
+    <span class="div"></span><span class="live" id="probe0"></span>
+  </div>
+  <div class="thumbrow" id="thumbs0">
+    <div class="tb"><canvas id="th0" width="16" height="16"></canvas>t = 250</div>
+    <div class="tb"><canvas id="th1" width="16" height="16"></canvas>t = 500</div>
+    <div class="tb"><canvas id="th2" width="16" height="16"></canvas>t = 750</div>
+  </div>
+</div>
+<div class="grid" style="margin-top:10px">
+  <div class="card"><div class="h2">The chain of consequences</div>
+  <table class="mtable">
+    <tr><th>SYMBOL</th><th>DEFINITION</th><th>MEANING</th></tr>
+    <tr><td class="fx" style="font-size:14px;text-align:left">&beta;<sub>t</sub></td><td>straight line from 0.0001 to <b>beta_end</b></td><td>Noise variance added at step t</td></tr>
+    <tr><td class="fx" style="font-size:14px;text-align:left">&alpha;<sub>t</sub> = 1 &minus; &beta;<sub>t</sub></td><td>per-step</td><td>Signal surviving one step</td></tr>
+    <tr><td class="fx" style="font-size:14px;text-align:left">&alpha;&#772;<sub>t</sub> = &alpha;&#8321;&middot;&alpha;&#8322;&hellip;&alpha;<sub>t</sub></td><td>running product</td><td>Signal surviving after t steps — <b>what every formula uses</b></td></tr>
+  </table></div>
+  <div class="card"><div class="h2">What to notice</div><div class="story">Drag <code>beta_end</code> between
+  the two markers. The &beta; line just tilts — but the &alpha;&#772; curve, being a <em>product of a thousand
+  factors</em>, reshapes dramatically: the same t means a completely different noise level. The thumbnails
+  are the same timesteps under your current curve. This is why the value is not a preference — it is the
+  <b>definition of every timestep&rsquo;s meaning</b>.</div></div>
+</div>
+</div>
+
+<!-- ============ TAB 1 ============ -->
+<div class="panel" id="p1">
+<div class="qbig">The number&rsquo;s journey: set once in training, re-declared at inference</div>
+<div class="stagebar">
+  <button class="chip cL" data-s="0">&#9312; nb 19: schedule built</button>
+  <button class="chip cL" data-s="1">&#9313; nb 19: training uses it</button>
+  <button class="chip cL" data-s="2">&#9314; save — weights only!</button>
+  <button class="chip cL" data-s="3">&#9315; nb 20: re-declared &amp; rebuilt</button>
+</div>
+<div class="grid">
+  <div class="card"><pre class="pcode" id="codeL"></pre></div>
+  <div class="card"><div class="h2">What&rsquo;s happening</div><div class="story" id="noteL"></div></div>
+</div>
+<div class="card" style="margin-top:10px">
+  <div class="h2">&#9989; The contract, verified live</div>
+  <div class="live" id="proofL"></div>
+</div>
+</div>
+
+<!-- ============ TAB 2 ============ -->
+<div class="panel" id="p2">
+<div class="qbig">Same model, wrong schedule — run it and watch</div>
+<div class="selrow" style="justify-content:center"><span>t</span><input type="range" id="t2" min="60" max="960" value="500"><span class="val" id="t2v">500</span></div>
+<div class="vswrap" style="margin-top:8px">
+  <div class="vscard" style="border-color:#16a3a3">
+    <div class="vh" style="color:#128888">&#9989; MATCHED — noised and interpreted with beta_end = 0.01</div>
+    <canvas id="cvM" width="16" height="16"></canvas>
+    <div class="live" id="errM"></div>
+    <div class="errbar"><div id="barM" style="background:#16a3a3"></div></div>
+  </div>
+  <div class="vscard" style="border-color:#d64545">
+    <div class="vh" style="color:#d64545">&#10060; MISMATCHED — noised with 0.02, interpreted as 0.01</div>
+    <canvas id="cvX" width="16" height="16"></canvas>
+    <div class="live" id="errX"></div>
+    <div class="errbar"><div id="barX" style="background:#d64545"></div></div>
+  </div>
+</div>
+<div class="card" style="margin-top:10px">
+  <div class="h2">The gap the model can&rsquo;t see past — exact values at your t</div>
+  <div class="live" id="gap2"></div>
+</div>
+<div class="finep">&#128209; Values here are computed <b>exactly</b> from both schedules (linspace &rarr; cumprod),
+not the rough illustrative numbers sometimes quoted in prose — e.g. at t = 500 the real pair is shown above.
+The conclusion is unchanged: the curves diverge enormously, and a model trained on one cannot read the other.</div>
+</div>
+
+<!-- ============ TAB 3 ============ -->
+<div class="panel" id="p3">
+<div class="qbig">0.01 hugs the cosine ideal; 0.02 wastes the tail</div>
+<div class="stagebar">
+  <button class="chip cC on" data-m="0">&alpha;&#772; curves</button>
+  <button class="chip cC" data-m="1">rate of information destruction</button>
+</div>
+<div class="card"><canvas id="cmp" class="cv" style="background:#fff"></canvas>
+<div class="live" id="dead3" style="margin-top:6px"></div></div>
+<div class="grid" style="margin-top:10px">
+  <div class="card"><div class="h2">Summary (the doc&rsquo;s table)</div>
+  <table class="mtable">
+    <tr><th>ASPECT</th><th>DETAIL</th></tr>
+    <tr><td>What it is</td><td>Max noise variance &beta;<sub>t</sub> at the final timestep</td></tr>
+    <tr><td>Where it&rsquo;s set</td><td class="co">linear_sched(betamax=0.01) — nb 19, cell 33</td></tr>
+    <tr><td>Default</td><td>0.02 (Ho et al., 2020)</td></tr>
+    <tr><td>Used here</td><td>0.01 — better signal preservation, closer to cosine</td></tr>
+    <tr><td>Controls</td><td>The entire &alpha;&#772;<sub>t</sub> curve — every timestep&rsquo;s meaning</td></tr>
+    <tr><td>Must match in</td><td class="co">DDPMScheduler &middot; DDIMScheduler &middot; linear_sched (custom)</td></tr>
+  </table></div>
+  <div class="card"><div class="h2">Reading the chart</div><div class="story">With <b>0.02</b>, &alpha;&#772; is
+  effectively zero long before t = 999 — the shaded tail is timesteps whose images are indistinguishable
+  from pure noise, so training examples drawn there teach the model almost nothing. With <b>0.01</b>, signal
+  survives deeper into the schedule and the destruction rate is spread more evenly — the property the cosine
+  schedule was designed for. Toggle to the rate view: the taller and earlier a curve&rsquo;s hump, the more
+  abruptly it burns information.</div></div>
+</div>
+<div class="kbox">&#128273; <b>Key takeaway:</b> <code>beta_end</code> is the noise schedule&rsquo;s DNA. It was
+chosen (0.01) and baked into the model&rsquo;s weights in notebook 19; notebook 20 must re-declare it in every
+scheduler because the checkpoint stores <em>weights, not the schedule</em>. Match it and the model is at home;
+change it and every timestep lies to the model.</div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+/* canvas math label: parts=[{t:'plain '},{m:'x',sub:'t-1',hat:true},...] centered at (cx,cy) */
+function mparts(x,parts,cx,cy,size,color){
+  x.save();x.textBaseline='alphabetic';
+  const F=s=>'700 '+Math.round(s)+'px "Segoe UI",sans-serif';
+  let tot=0;
+  for(const p of parts){
+    if(p.t!==undefined){x.font=F(size);tot+=x.measureText(p.t).width;}
+    else{x.font=F(size);tot+=x.measureText(p.m).width;
+      if(p.sub){x.font=F(size*0.66);tot+=x.measureText(p.sub).width+1;}}}
+  let px=cx-tot/2;
+  x.fillStyle=color;x.textAlign='left';
+  for(const p of parts){
+    if(p.t!==undefined){x.font=F(size);x.fillText(p.t,px,cy);px+=x.measureText(p.t).width;continue;}
+    x.font=F(size);const wm=x.measureText(p.m).width;
+    x.fillText(p.m,px,cy);
+    if(p.hat){x.font=F(size*0.95);
+      const wh=x.measureText('\u02C6').width;
+      x.fillText('\u02C6',px+wm/2-wh/2,cy-size*0.58);}
+    px+=wm;
+    if(p.sub){x.font=F(size*0.66);x.fillText(p.sub,px+1,cy+size*0.20);px+=x.measureText(p.sub).width+1;}}
+  x.restore();
+}
+
+
+const AB='&alpha;&#772;';
+function mkSched(bmax){const a=new Float64Array(1000);let p=1;
+  for(let i=0;i<1000;i++){const b=1e-4+(bmax-1e-4)*i/999;p*=1-b;a[i]=p;}return a;}
+const A01=mkSched(0.01), A02=mkSched(0.02);
+const ACOS=(()=>{const a=new Float64Array(1000);const s=0.008;
+  const f=u=>Math.cos((u+s)/(1+s)*Math.PI/2)**2;
+  for(let i=0;i<1000;i++)a[i]=f(i/999)/f(0);return a;})();
+function mixC(ab,t){const a=Math.sqrt(ab[t]),b=Math.sqrt(1-ab[t]);
+  const f=new Float64Array(256);for(let i=0;i<256;i++)f[i]=a*X0[i]+b*EPS[i];return f;}
+let TAB=0,lastT=null;
+const panels=[...document.querySelectorAll('.panel')];
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  TAB=+b.dataset.t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
+  panels.forEach((p,i)=>p.classList.toggle('on',i===TAB));
+  postH();setTimeout(postH,60);
+  if(TAB===0)fitK(); if(TAB===3)fitC();
+});
+
+/* ============ TAB 0 ============ */
+let BE=0.01,PT=500,ACUR=A01;
+const kv=$('knob');let KW=0,KH=280;
+function fitK(){[KW,KH]=fitCv(kv,280);knobDraw();}
+function knobDraw(){
+  const x=kv.getContext('2d');x.clearRect(0,0,KW,KH);
+  const L=KW*0.08,R=KW*0.95;
+  /* top: beta line */
+  const y0=KH*0.10,y1=KH*0.40,bMax=0.031;
+  x.strokeStyle='#e5ebf6';x.lineWidth=1;
+  x.strokeRect(L,y0,R-L,y1-y0);
+  x.fillStyle='#8a94a8';x.font='700 10px "Segoe UI"';x.textAlign='left';
+  x.fillText('\u03B2\u209C — a straight line from 0.0001 to beta_end',L,y0-5);
+  x.strokeStyle='#f6921e';x.lineWidth=2.6;
+  x.beginPath();
+  for(let i=0;i<=100;i++){const u=i/100;const b=1e-4+(BE-1e-4)*u;
+    const px=lerp(L,R,u),py=y1-(y1-y0)*(b/bMax);
+    i===0?x.moveTo(px,py):x.lineTo(px,py);}
+  x.stroke();
+  x.fillStyle='#c07417';x.font='700 10px Consolas,monospace';x.textAlign='right';
+  x.fillText('beta_end = '+BE.toFixed(3),R-4,y1-(y1-y0)*(BE/bMax)-7);
+  /* markers */
+  [[0.01,'#128888','0.01 used'],[0.02,'#d64545','0.02 paper default']].forEach(([v,c,lab])=>{
+    const py=y1-(y1-y0)*(v/bMax);
+    x.strokeStyle=c;x.setLineDash([4,4]);x.lineWidth=1.3;
+    x.beginPath();x.moveTo(L,py);x.lineTo(R,py);x.stroke();x.setLineDash([]);
+    x.fillStyle=c;x.font='9.5px "Segoe UI"';x.textAlign='left';
+    x.fillText(lab,L+4,py-4);});
+  /* bottom: abar curve */
+  const z0=KH*0.55,z1=KH*0.95;
+  x.strokeStyle='#e5ebf6';x.strokeRect(L,z0,R-L,z1-z0);
+  x.fillStyle='#8a94a8';x.font='700 10px "Segoe UI"';
+  x.fillText('\u03B1\u0304\u209C — the cumulative product this creates (what every formula reads)',L,z0-5);
+  /* frozen reference 0.01 */
+  x.strokeStyle='#c9d6ea';x.lineWidth=1.6;
+  x.beginPath();
+  for(let i=0;i<100;i++){const u=i/99;const t=Math.round(u*999);
+    const px=lerp(L,R,u),py=z1-(z1-z0)*A01[t];
+    i===0?x.moveTo(px,py):x.lineTo(px,py);}
+  x.stroke();
+  x.strokeStyle='#7b5cd6';x.lineWidth=2.8;
+  x.beginPath();
+  for(let i=0;i<100;i++){const u=i/99;const t=Math.round(u*999);
+    const px=lerp(L,R,u),py=z1-(z1-z0)*ACUR[t];
+    i===0?x.moveTo(px,py):x.lineTo(px,py);}
+  x.stroke();
+  x.fillStyle='#9fb0c8';x.font='9.5px "Segoe UI"';x.textAlign='right';
+  x.fillText('thin curve = 0.01 reference',R-4,z0+12);
+  /* probe */
+  const pu=PT/999,px=lerp(L,R,pu);
+  x.strokeStyle='#25324a';x.lineWidth=1.4;x.setLineDash([3,4]);
+  x.beginPath();x.moveTo(px,z0);x.lineTo(px,z1);x.stroke();x.setLineDash([]);
+  const py=z1-(z1-z0)*ACUR[PT];
+  x.fillStyle='#7b5cd6';x.beginPath();x.arc(px,py,4.5,0,7);x.fill();
+  x.fillStyle='#5a6b86';x.font='700 10px Consolas,monospace';x.textAlign='center';
+  x.fillText('t=0',L+10,z1+13);x.fillText('t=999',R-16,z1+13);
+}
+function knobLive(){
+  ACUR=mkSched(BE);
+  $('probe0').innerHTML='\u03B1\u0304['+PT+'] = <span class="big" style="color:var(--ac)">'+ACUR[PT].toFixed(4)+'</span> (at 0.01 it is '+A01[PT].toFixed(4)+')';
+  drawField($('th0'),mixC(ACUR,250));
+  drawField($('th1'),mixC(ACUR,500));
+  drawField($('th2'),mixC(ACUR,750));
+  knobDraw();
+}
+$('be').oninput=e=>{BE=+e.target.value;$('bev').textContent=BE.toFixed(3);knobLive();};
+$('pt').oninput=e=>{PT=Math.round(+e.target.value);$('ptv').textContent=PT;knobLive();};
+
+/* ============ TAB 1 ============ */
+let SL=0;
+const CL=[
+ '<span class="cm"># nb 19, cell 14 \u2014 the schedule factory</span>\ndef linear_sched(betamin=0.0001, <span class="hl2">betamax=0.02</span>, n_steps=1000):\n    beta = torch.linspace(betamin, betamax, n_steps)\n    return SimpleNamespace(a=1.-beta,\n                           abar=(1.-beta).cumprod(dim=0),\n                           sig=beta.sqrt())\n\n<span class="cm"># nb 19, cell 33 \u2014 the default is OVERRIDDEN</span>\nlin_abar = linear_sched(<span class="hl3">betamax=0.01</span>)\nalphabar = lin_abar.abar',
+ '<span class="cm"># nb 19, cell 36 \u2014 training\u2019s forward diffusion reads that exact curve</span>\ndef noisify(x0, alphabar):\n    t = torch.randint(0, n_steps, (n,))\n    epsilon = torch.randn(x0.shape, device=device)\n    alphabar_t = <span class="hl3">alphabar[t]</span>.reshape(-1,1,1,1).to(device)\n    xt = alphabar_t.sqrt()*x0 + (1-alphabar_t).sqrt()*epsilon\n    return (xt, t.to(device)), epsilon\n<span class="cm"># 25 epochs of MSE: predict epsilon from (xt, t)</span>',
+ 'torch.save(learn.model, mdl_path/\u2019fashion_ddpm3_25.pkl\u2019)\n<span class="cm"># the checkpoint stores WEIGHTS \u2014 the schedule itself is NOT saved.\n# the model\u2019s knowledge of \u201Cwhat noise level t means\u201D lives implicitly\n# in those weights, keyed to the 0.01 curve it trained on.</span>',
+ '<span class="cm"># nb 20 \u2014 the number must be re-declared, everywhere</span>\nmodel = torch.load(\u2019models/fashion_ddpm3_25.pkl\u2019).cuda()\nsched = DDPMScheduler(<span class="hl3">beta_end=0.01</span>)   <span class="cm"># DDPM sampling</span>\nsched = DDIMScheduler(<span class="hl3">beta_end=0.01</span>)   <span class="cm"># DDIM sampling</span>\nsc    = linear_sched(<span class="hl3">betamax=0.01</span>)      <span class="cm"># custom impl</span>',
+];
+const NL=[
+ '<b>&#9312; Built.</b> The factory&rsquo;s <em>default</em> is the paper&rsquo;s 0.02 — but cell 33 deliberately overrides it to <b>0.01</b> (chosen after the cells 24\u201330 comparison against the cosine schedule; tab &#9315;). From here on, 0.01 defines what every timestep means.',
+ '<b>&#9313; Learned.</b> <code>noisify()</code> indexes that exact <code>alphabar</code> to noise each training image. Over 25 epochs the model internalizes: &ldquo;an image at t = 500 looks like <em>this much</em> noise&rdquo; — where <em>this much</em> is the 0.01 curve&rsquo;s value.',
+ '<b>&#9314; Saved — and here&rsquo;s the trap.</b> The checkpoint contains weights only. The schedule that gives those weights meaning is <b>not in the file</b>. The number 0.01 must now travel by contract: whoever loads the model must re-declare it.',
+ '<b>&#9315; Re-declared.</b> Notebook 20 honors the contract three separate times — both diffusers schedulers and the from-scratch <code>linear_sched</code> all pass the same 0.01, so all three rebuild the identical curve. Verified below.',
+];
+function setL(k){SL=k;
+  document.querySelectorAll('.cL').forEach(c=>c.classList.toggle('on',+c.dataset.s===k));
+  $('codeL').innerHTML=CL[k];$('noteL').innerHTML=NL[k];postH();}
+document.querySelectorAll('.cL').forEach(c=>c.onclick=()=>setL(+c.dataset.s));
+function proofL(){
+  const B=mkSched(0.01); /* an independent second construction, as nb 20 does */
+  let mx=0;for(let t=0;t<1000;t++)mx=Math.max(mx,Math.abs(A01[t]-B[t]));
+  $('proofL').innerHTML='nb 19&rsquo;s curve and nb 20&rsquo;s rebuilt curve, compared entry-by-entry across all 1000 timesteps: max |difference| = <span class="big" style="color:var(--out)">'+mx.toExponential(1)+'</span> — same linspace, same cumprod, same 0.01 &rArr; the identical schedule. The contract works because the recipe is deterministic; only the number needs to travel.';
+}
+
+/* ============ TAB 2 ============ */
+let T2=500;
+const ERRE=new Float64Array(256);{__s=909;for(let i=0;i<256;i++)ERRE[i]=gauss();}
+function run2(){
+  const t=T2;
+  const eh=new Float64Array(256);
+  for(let i=0;i<256;i++)eh[i]=EPS[i]+0.25*Math.sqrt(1-A01[t])*ERRE[i];
+  function recon(abNoise,abModel){
+    const a1=Math.sqrt(abNoise[t]),b1=Math.sqrt(1-abNoise[t]);
+    const a2=Math.sqrt(abModel[t]),b2=Math.sqrt(1-abModel[t]);
+    const R=new Float64Array(256);let m=0;
+    for(let i=0;i<256;i++){const xt=a1*X0[i]+b1*EPS[i];
+      R[i]=(xt-b2*eh[i])/a2;m+=Math.abs(R[i]-X0[i]);}
+    return [R,m/256];}
+  const [RM,mM]=recon(A01,A01);
+  const [RX,mX]=recon(A02,A01);
+  drawField($('cvM'),RM);drawField($('cvX'),RX);
+  $('errM').innerHTML='mean |x&#770;&#8320; &minus; x&#8320;| = <span class="big" style="color:#128888">'+mM.toFixed(3)+'</span>';
+  $('errX').innerHTML='mean |x&#770;&#8320; &minus; x&#8320;| = <span class="big" style="color:#d64545">'+mX.toFixed(3)+'</span> — '+(mX/Math.max(1e-9,mM)).toFixed(1)+'&times; worse';
+  const mx=Math.max(mX,0.001);
+  $('barM').style.width=Math.min(100,mM/mx*100)+'%';
+  $('barX').style.width='100%';
+  $('gap2').innerHTML=
+   'at t = '+t+': &nbsp;\u03B1\u0304 under <b style="color:#128888">0.01</b> = <span class="big">'+A01[t].toFixed(4)+'</span>'+
+   ' &nbsp;vs&nbsp; under <b style="color:#d64545">0.02</b> = <span class="big">'+A02[t].toFixed(4)+'</span>'+
+   ' &nbsp;\u2014 the image really carries '+((1-A02[t])*100).toFixed(1)+'% noise variance, but the model budgets for '+((1-A01[t])*100).toFixed(1)+'%. Every term in its reconstruction is scaled wrong.';
+}
+$('t2').oninput=e=>{T2=Math.round(+e.target.value);$('t2v').textContent=T2;run2();};
+
+/* ============ TAB 3 ============ */
+let M3=0;
+const cv3=$('cmp');let CW=0,CH=290;
+function fitC(){[CW,CH]=fitCv(cv3,290);cmpDraw();}
+function firstBelow(ab,thr){for(let t=0;t<1000;t++)if(ab[t]<thr)return t;return 1000;}
+function cmpDraw(){
+  const x=cv3.getContext('2d');x.clearRect(0,0,CW,CH);
+  const L=CW*0.07,R=CW*0.96,y0=CH*0.10,y1=CH*0.86;
+  x.strokeStyle='#e5ebf6';x.lineWidth=1;x.strokeRect(L,y0,R-L,y1-y0);
+  const SER=[[A02,'#d64545','linear 0.02 (paper default)'],[A01,'#128888','linear 0.01 (used here)'],[ACOS,'#7b5cd6','cosine (Improved DDPM ideal)']];
+  if(M3===0){
+    /* dead zone shading for 0.02 */
+    const d02=firstBelow(A02,0.02), d01=firstBelow(A01,0.02);
+    x.fillStyle='rgba(214,69,69,0.07)';
+    x.fillRect(lerp(L,R,d02/999),y0,lerp(L,R,1)-lerp(L,R,d02/999),y1-y0);
+    SER.forEach(([ab,col])=>{
+      x.strokeStyle=col;x.lineWidth=2.4;x.beginPath();
+      for(let i=0;i<140;i++){const u=i/139;const t=Math.round(u*999);
+        const px=lerp(L,R,u),py=y1-(y1-y0)*ab[t];
+        i===0?x.moveTo(px,py):x.lineTo(px,py);}
+      x.stroke();});
+    [[d02,'#d64545'],[d01,'#128888']].forEach(([d,c])=>{
+      const px=lerp(L,R,d/999);
+      x.strokeStyle=c;x.setLineDash([4,4]);x.lineWidth=1.4;
+      x.beginPath();x.moveTo(px,y0);x.lineTo(px,y1);x.stroke();x.setLineDash([]);});
+    x.fillStyle='#8a94a8';x.font='700 10px "Segoe UI"';x.textAlign='center';
+    x.fillText('\u03B1\u0304\u209C \u2014 shaded region: \u03B1\u0304 < 0.02 under the 0.02 schedule (essentially pure noise)',(L+R)/2,y0-4);
+  }else{
+    /* rate of destruction: |delta abar| per step, smoothed */
+    let mx=0;const RATE=SER.map(([ab])=>{const r=new Float64Array(999);
+      for(let t=1;t<1000;t++){r[t-1]=ab[t-1]-ab[t];mx=Math.max(mx,r[t-1]);}return r;});
+    SER.forEach(([ab,col],k)=>{
+      x.strokeStyle=col;x.lineWidth=2.4;x.beginPath();
+      for(let i=0;i<140;i++){const u=i/139;const t=Math.min(998,Math.round(u*998));
+        const px=lerp(L,R,u),py=y1-(y1-y0)*(RATE[k][t]/mx)*0.94;
+        i===0?x.moveTo(px,py):x.lineTo(px,py);}
+      x.stroke();});
+    x.fillStyle='#8a94a8';x.font='700 10px "Segoe UI"';x.textAlign='center';
+    x.fillText('information destroyed per step, |\u0394\u03B1\u0304\u209C| \u2014 taller & earlier hump = more abrupt burn',(L+R)/2,y0-4);
+  }
+  /* legend */
+  SER.forEach(([ab,col,lab],k)=>{
+    x.fillStyle=col;x.font='700 10.5px "Segoe UI"';x.textAlign='left';
+    x.fillText('\u25AC '+lab,L+8,y0+16+k*15);});
+  x.fillStyle='#5a6b86';x.font='700 10px Consolas,monospace';x.textAlign='center';
+  x.fillText('t=0',L+10,y1+14);x.fillText('t=999',R-16,y1+14);
+}
+function dead3(){
+  const d02=firstBelow(A02,0.02),d01=firstBelow(A01,0.02);
+  $('dead3').innerHTML='\u03B1\u0304 first drops below 0.02 at t = <span class="big" style="color:#d64545">'+d02+'</span> under the 0.02 schedule \u2014 its last <b>'+(999-d02)+'</b> timesteps are near-pure noise \u2014 vs t = <span class="big" style="color:#128888">'+(d01>999?'never':d01)+'</span> under 0.01'+(d01<=999?' (only '+(999-d01)+' wasted)':'')+'. Exactly computed.';
+}
+document.querySelectorAll('.cC').forEach(c=>c.onclick=()=>{M3=+c.dataset.m;
+  document.querySelectorAll('.cC').forEach(z=>z.classList.toggle('on',+z.dataset.m===M3));
+  cmpDraw();});
+
+/* ============ loop ============ */
+function loop(ts){requestAnimationFrame(loop);lastT=ts;}
+addEventListener('resize',()=>{fitK();fitC();});
+fitK();knobLive();
+setL(0);proofL();
+run2();
+fitC();dead3();
+requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>

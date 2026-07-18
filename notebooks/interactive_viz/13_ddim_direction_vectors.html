@@ -1,0 +1,464 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Direction Vectors — the Vector Reading of DDIM</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+
+.tabbar{display:flex;gap:0;justify-content:center;margin:2px auto 12px;max-width:1060px;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;}
+.tab{flex:1;font-family:inherit;font-weight:700;font-size:13px;padding:10px 6px;border:none;background:#fff;color:var(--soft);cursor:pointer;border-right:1.5px solid var(--line);transition:all .15s;}
+.tab:last-child{border-right:none;} .tab:hover{color:var(--ac);} .tab.on{background:var(--ac);color:#fff;}
+.tab .sm{display:block;font-weight:400;font-size:10px;opacity:.8;}
+.panel{display:none;min-height:540px;} .panel.on{display:block;}
+.fx{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:17.5px;line-height:2.1;text-align:center;}
+.fr{display:inline-block;vertical-align:middle;text-align:center;line-height:1.25;}
+.fr .nu{border-bottom:1.7px solid #25324a;padding:0 5px;display:block;}
+.fr .de{padding:0 5px;display:block;}
+pre.pcode{font-family:"SF Mono",Consolas,monospace;font-size:12.2px;line-height:1.8;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:9px 12px;overflow-x:auto;margin:0;}
+.pcode .cm{color:#8a94a8;}
+.pcode .sg{background:#fdeedd;border-radius:5px;padding:1px 3px;color:#c07417;font-weight:700;}
+.pcode .dr{background:#e9edf5;border-radius:5px;padding:1px 3px;color:#41506b;font-weight:700;}
+.pcode .fn{background:#efe9fb;border-radius:5px;padding:1px 3px;color:#7b5cd6;font-weight:700;}
+.pcode .grey{opacity:.34;}
+.deriv2 .dl{padding:7px 12px;border-left:3px solid transparent;border-radius:7px;transition:all .15s;margin-bottom:3px;}
+.deriv2 .dl.hl{background:var(--acbg);border-left-color:var(--ac);}
+.deriv2 .cm{font-family:"Segoe UI";font-size:10.8px;color:#8a94a8;display:block;margin-top:1px;}
+.mtable{width:100%;border-collapse:collapse;font-size:12px;}
+.mtable th,.mtable td{border:1px solid var(--line);padding:6px 9px;text-align:left;}
+.mtable th{background:#f4f7fd;color:var(--soft);font-size:10.5px;letter-spacing:.05em;}
+.mtable td.co{font-family:Consolas,monospace;font-size:11.3px;}
+.budbar{height:34px;border-radius:11px;overflow:hidden;display:flex;border:2px solid var(--line);}
+.budbar div{height:100%;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#fff;transition:width .25s;white-space:nowrap;overflow:hidden;}
+.qbig{text-align:center;font-size:18px;font-weight:800;color:var(--ink);margin:4px 0 6px;}
+.finep{font-size:11.4px;color:#8a6d3b;background:#fff9ef;border:1.5px solid #eeddbb;border-radius:10px;padding:8px 11px;line-height:1.55;}
+
+</style></head><body>
+<div class="wrap">
+
+<h1>&ldquo;Direction pointing to x<sub>t</sub>&rdquo; — the vector reading of DDIM</h1>
+<p class="sub">The update has three components — <b style="color:#c07417">signal</b>,
+<b style="color:#41506b">direction</b>, <b style="color:#7b5cd6">fresh noise</b> — and the middle one has
+the strangest name. Why is a <em>noise prediction</em> called a &ldquo;direction pointing to x<sub>t</sub>&rdquo;?
+Four tabs: the three components tagged in code and math; the vector reading — including the exact geometric
+fact that the whole trajectory lives <b>on the unit circle</b> in the (x&#8320;, &epsilon;) plane and DDIM
+simply walks the arc; the noise budget behind (bbar_t1 &minus; vari), with an honest fine-print this code
+hides; and the structured walk that results.</p>
+
+<div class="tabbar">
+  <button class="tab on" data-t="0">&#9312; Three components<span class="sm">signal &middot; direction &middot; noise</span></button>
+  <button class="tab" data-t="1">&#9313; Why &ldquo;direction&rdquo;?<span class="sm">the arc on the unit circle</span></button>
+  <button class="tab" data-t="2">&#9314; The budget<span class="sm">why (bbar_t1 &minus; vari)</span></button>
+  <button class="tab" data-t="3">&#9315; The structured walk<span class="sm">and the t = 0 finish</span></button>
+</div>
+
+<!-- ============ TAB 0 ============ -->
+<div class="panel on" id="p0">
+<div class="card">
+  <pre class="pcode">x_0_hat = (x_t - bbar_t.sqrt() * noise) / abar_t.sqrt()
+
+x_t = <span class="sg">abar_t1.sqrt() * x_0_hat</span> + <span class="dr">(bbar_t1 - vari).sqrt() * noise</span>
+if t &gt; 0:
+    x_t += <span class="fn">sig * torch.randn(x_t.shape).to(x_t)</span></pre>
+  <div class="fx" id="f0" style="margin-top:10px"></div>
+  <div class="selrow" style="margin:8px 0 0;justify-content:center">
+    <span>t</span><input type="range" id="t0" min="2" max="999" value="500"><span class="val" id="t0v">500</span>
+    <span class="div"></span>
+    <span>&eta;</span><input type="range" id="e0" min="0" max="1" step="0.01" value="1" style="width:150px"><span class="val" id="e0v">1.00</span>
+  </div>
+</div>
+<div class="card" style="margin-top:10px">
+  <table class="mtable">
+    <tr><th>COMPONENT</th><th>FORMULA</th><th>PURPOSE</th><th>LIVE COEFF</th></tr>
+    <tr><td><b style="color:#c07417">Signal — the foundation</b></td><td class="fx" style="font-size:14px;text-align:left">&radic;&alpha;&#772;<sub>t&minus;1</sub> &middot; x&#770;&#8320;</td><td>The predicted clean image, scaled to the target step&rsquo;s signal level</td><td class="co" id="c0a"></td></tr>
+    <tr><td><b style="color:#41506b">Direction — the pathway</b></td><td class="fx" style="font-size:14px;text-align:left">&radic;(1 &minus; &alpha;&#772;<sub>t&minus;1</sub> &minus; &sigma;&sup2;) &middot; &epsilon;<sub>&theta;</sub></td><td>Keeps x<sub>t&minus;1</sub> on the same noise trajectory (tab &#9313;)</td><td class="co" id="c0b"></td></tr>
+    <tr><td><b style="color:#7b5cd6">Fresh noise — exploration</b></td><td class="fx" style="font-size:14px;text-align:left">&sigma;<sub>t</sub> &middot; z</td><td>Optional randomness, volume-controlled by &eta;; skipped at t = 0</td><td class="co" id="c0c"></td></tr>
+  </table>
+</div>
+<div class="kbox">&#128279; Term-by-term dissection lives on the <em>variance</em> page; the &eta; dial has its own
+pages. This page answers the naming: tab &#9313; shows in what precise sense the middle term is a <b>direction</b>.</div>
+</div>
+
+<!-- ============ TAB 1 ============ -->
+<div class="panel" id="p1">
+<div class="qbig">The noise <em>is</em> a displacement vector — and the trajectory is an arc</div>
+<div class="grid">
+  <div class="card"><div class="h2">Step 1 — the identity (two lines)</div>
+    <div class="deriv2 fx" id="dv1" style="font-size:15.5px;text-align:left"></div>
+  </div>
+  <div class="card"><div class="h2">Step 2 — pick honest axes</div>
+    <div class="story">Project image-space onto the two directions that matter for <em>this</em> trajectory:
+    the clean image <b>x&#8320;</b> (horizontal) and its noise <b>&epsilon;</b> (vertical). Every state is
+    x<sub>s</sub> = &radic;&alpha;&#772;<sub>s</sub>&middot;x&#8320; + &radic;(1&minus;&alpha;&#772;<sub>s</sub>)&middot;&epsilon;,
+    i.e. the point ( &radic;&alpha;&#772;<sub>s</sub>, &radic;(1&minus;&alpha;&#772;<sub>s</sub>) ) — and since
+    &alpha;&#772;<sub>s</sub> + (1&minus;&alpha;&#772;<sub>s</sub>) = 1, <b>every such point sits exactly on the
+    unit circle</b>. The whole diffusion trajectory is the arc from (0,1) = pure noise to (1,0) = clean.</div>
+  </div>
+</div>
+<div class="card" style="margin-top:10px">
+  <div class="stagebar">
+    <button class="chip c1" data-s="0">&#9312; the arc IS the trajectory</button>
+    <button class="chip c1" data-s="1">&#9313; decompose one DDIM step</button>
+    <button class="chip c1" data-s="2">&#9314; turn &eta; up — leave the arc a little</button>
+  </div>
+  <canvas id="arc" class="cv" style="background:#fff"></canvas>
+  <div class="selrow" style="margin:8px 0 0">
+    <span>t</span><input type="range" id="t1" min="40" max="980" value="700"><span class="val" id="t1v">700</span>
+    <span class="div"></span>
+    <span>jump &Delta;</span><input type="range" id="d1" min="1" max="300" value="120"><span class="val" id="d1v">120</span>
+    <span class="div"></span>
+    <span>&eta;</span><input type="range" id="e1" min="0" max="1" step="0.01" value="0" style="width:130px"><span class="val" id="e1v">0.00</span>
+  </div>
+</div>
+<div class="kbox" id="arcnote"></div>
+</div>
+
+<!-- ============ TAB 2 ============ -->
+<div class="panel" id="p2">
+<div class="qbig">(bbar_t1 &minus; vari) — the noise budget at the target step, minus the part saved for z</div>
+<div class="card">
+  <div class="fx">total noise variance required at t&minus;1: &nbsp;1 &minus; &alpha;&#772;<sub>t&minus;1</sub> &nbsp;=&nbsp; <span style="color:#41506b">(1 &minus; &alpha;&#772;<sub>t&minus;1</sub> &minus; &sigma;&sup2;)</span> &nbsp;+&nbsp; <span style="color:#7b5cd6">&sigma;&sup2;</span></div>
+  <div class="budbar" style="margin-top:10px"><div id="bb1" style="background:#41506b"></div><div id="bb2" style="background:#7b5cd6"></div></div>
+  <div class="selrow" style="margin:8px 0 0;justify-content:center">
+    <span>t</span><input type="range" id="t2" min="2" max="999" value="500"><span class="val" id="t2v">500</span>
+    <span class="div"></span>
+    <span>&eta;</span><input type="range" id="e2" min="0" max="1" step="0.01" value="1" style="width:170px"><span class="val" id="e2v">1.00</span>
+  </div>
+  <div class="live" id="bud2" style="margin-top:6px"></div>
+</div>
+<div class="grid" style="margin-top:10px">
+  <div class="card"><div class="h2">Read it like an accountant</div><div class="story">The schedule demands that
+  x<sub>t&minus;1</sub> carry exactly 1 &minus; &alpha;&#772;<sub>t&minus;1</sub> of noise variance in total. The update
+  pays that bill from two accounts: the <b style="color:#41506b">predicted</b> noise (deterministic, reuses
+  &epsilon;<sub>&theta;</sub>) and the <b style="color:#7b5cd6">fresh</b> noise (random). &eta; slides money between
+  the accounts; the bill never changes. Subtracting inside the square root is what leaves room for z.</div></div>
+  <div class="finep" id="fine2"></div>
+</div>
+</div>
+
+<!-- ============ TAB 3 ============ -->
+<div class="panel" id="p3">
+<div class="qbig">A structured walk toward the image — not a drunken stagger</div>
+<div class="card"><canvas id="walkcv" class="cv" style="background:#fff"></canvas>
+<div class="selrow" style="margin:8px 0 0;justify-content:center"><button class="play" id="wgo">&#9654; walk both</button></div></div>
+<div class="grid" style="margin-top:10px">
+  <div class="card"><div class="h2">The t = 0 special case</div>
+  <pre class="pcode">if t &gt; 0:
+    x_t += sig * torch.randn(...)
+<span class="grey"># at t == 0 this line never runs:</span>
+<span class="grey"># the final image = signal + direction, nothing else</span></pre>
+  <div class="story" style="margin-top:6px">The last step is the delivery: adding randomness to the finished
+  image would only blur it, so the guard makes the final update purely deterministic — pure
+  <b style="color:#c07417">signal</b> + <b style="color:#41506b">direction</b>.</div></div>
+  <div class="card"><div class="h2">Key takeaway</div>
+  <div class="story">Each DDIM step is an <b>interpolation</b>: move toward the predicted clean image
+  (&radic;&alpha;&#772;<sub>t&minus;1</sub>&middot;x&#770;&#8320;), stay on the established trajectory
+  (the direction term — the arc of tab &#9313;), and optionally explore (&sigma;&middot;z). The direction term
+  is why DDIM&rsquo;s denoising is a structured walk along a known road rather than DDPM&rsquo;s random stagger —
+  and why the road can be traveled in big hops.</div></div>
+</div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+/* canvas math label: parts=[{t:'plain '},{m:'x',sub:'t-1',hat:true},...] centered at (cx,cy) */
+function mparts(x,parts,cx,cy,size,color){
+  x.save();x.textBaseline='alphabetic';
+  const F=s=>'700 '+Math.round(s)+'px "Segoe UI",sans-serif';
+  let tot=0;
+  for(const p of parts){
+    if(p.t!==undefined){x.font=F(size);tot+=x.measureText(p.t).width;}
+    else{x.font=F(size);tot+=x.measureText(p.m).width;
+      if(p.sub){x.font=F(size*0.66);tot+=x.measureText(p.sub).width+1;}}}
+  let px=cx-tot/2;
+  x.fillStyle=color;x.textAlign='left';
+  for(const p of parts){
+    if(p.t!==undefined){x.font=F(size);x.fillText(p.t,px,cy);px+=x.measureText(p.t).width;continue;}
+    x.font=F(size);const wm=x.measureText(p.m).width;
+    x.fillText(p.m,px,cy);
+    if(p.hat){x.font=F(size*0.95);
+      const wh=x.measureText('\u02C6').width;
+      x.fillText('\u02C6',px+wm/2-wh/2,cy-size*0.58);}
+    px+=wm;
+    if(p.sub){x.font=F(size*0.66);x.fillText(p.sub,px+1,cy+size*0.20);px+=x.measureText(p.sub).width+1;}}
+  x.restore();
+}
+
+
+function fr2(nu,de){return '<span class="fr"><span class="nu">'+nu+'</span><span class="de">'+de+'</span></span>';}
+const AB='&alpha;&#772;';
+function bbar(t){return 1-ABAR[t];}
+function variOf(t){const s=Math.max(0,t-1);return (bbar(s)/bbar(t))*(1-ABAR[t]/ABAR[s]);}
+let TAB=0,lastT=null;
+const panels=[...document.querySelectorAll('.panel')];
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  TAB=+b.dataset.t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
+  panels.forEach((p,i)=>p.classList.toggle('on',i===TAB));
+  postH();setTimeout(postH,60);
+  if(TAB===1)fitA(); if(TAB===3)fitWk();
+});
+
+/* ============ TAB 0 ============ */
+let T0=500,E0=1;
+function f0(){
+  const t=T0,s=Math.max(0,t-1);
+  const vari=variOf(t),sig=E0*Math.sqrt(vari);
+  $('f0').innerHTML=
+   'x<sub>t&minus;1</sub> = <span style="color:#c07417">&radic;'+AB+'<sub>t&minus;1</sub> &middot; x&#770;&#8320;</span>'+
+   ' + <span style="color:#41506b">&radic;(1 &minus; '+AB+'<sub>t&minus;1</sub> &minus; &sigma;<sub>t</sub>&sup2;) &middot; &epsilon;<sub>&theta;</sub><sup>(t)</sup>(x<sub>t</sub>)</span>'+
+   ' + <span style="color:#7b5cd6">&sigma;<sub>t</sub> &middot; z</span>'+
+   '<div style="font-size:11px;color:#8a94a8;line-height:1.5;margin-top:-4px">'+
+   '<span style="color:#c07417">signal — the foundation</span> &nbsp;&middot;&nbsp; '+
+   '<span style="color:#41506b">direction pointing to x<sub>t</sub></span> &nbsp;&middot;&nbsp; '+
+   '<span style="color:#7b5cd6">random noise (only if t &gt; 0)</span></div>';
+  const sg=E0*Math.sqrt(vari);
+  $('c0a').textContent=SQA[s].toFixed(4);
+  $('c0b').textContent=Math.sqrt(Math.max(0,bbar(s)-sg*sg)).toFixed(4);
+  $('c0c').textContent=sg.toFixed(4)+(E0<0.02?'  (off)':'');
+}
+$('t0').oninput=e=>{T0=Math.round(+e.target.value);$('t0v').textContent=T0;f0();};
+$('e0').oninput=e=>{E0=+e.target.value;$('e0v').textContent=E0.toFixed(2);f0();};
+
+/* ============ TAB 1 ============ */
+let T1=700,D1=120,E1=0,S1=0,wU=0;
+const DV1=[
+ ['x<sub>t</sub> = &radic;'+AB+'<sub>t</sub> &middot; x&#8320; + &radic;(1 &minus; '+AB+'<sub>t</sub>) &middot; &epsilon;','the forward formula: signal + noise',0],
+ ['&rArr; &nbsp;&radic;(1 &minus; '+AB+'<sub>t</sub>) &middot; &epsilon; = x<sub>t</sub> &minus; &radic;'+AB+'<sub>t</sub> &middot; x&#8320;','rearrange: the noise term IS the displacement from scaled-clean to noisy',1],
+ ['&rArr; &nbsp;&epsilon; points <b>from</b> clean territory <b>to</b> x<sub>t</sub> — a direction','so an &epsilon; estimate is a direction estimate: reuse it to stay on the same road',2],
+];
+function dv1(){const el=$('dv1');el.innerHTML='';
+  DV1.forEach(([tx,cm])=>{const d=document.createElement('div');d.className='dl hl';
+    d.style.borderLeftColor='transparent';d.style.background='none';
+    d.innerHTML=tx+' <span class="cm">\u2190 '+cm+'</span>';el.appendChild(d);});}
+const av=$('arc');let AW2=0,AH2=330;
+function fitA(){[AW2,AH2]=fitCv(av,330);}
+const ARCN=[
+ '<b>&#9312; The arc is the trajectory.</b> The moving dot is x<sub>s</sub> gliding along the unit circle as s falls — horizontal coordinate &radic;'+ '\u03B1\u0304' +'<sub>s</sub> (signal share), vertical &radic;(1\u2212'+'\u03B1\u0304'+'<sub>s</sub>) (noise share). Denoising = sliding down the arc toward (1, 0). No step ever needs to leave it.',
+ '<b>&#9313; One DDIM step, decomposed.</b> To land on the arc at t\u2212\u0394, the update walks the axes: <b style="color:#c07417">along x</b> by &radic;'+'\u03B1\u0304'+'<sub>t\u2212\u0394</sub>&middot;x&#770;&#8320; (the signal term), then <b style="color:#41506b">up y</b> by &radic;(1\u2212'+'\u03B1\u0304'+'<sub>t\u2212\u0394</sub>\u2212&sigma;&sup2;)&middot;&epsilon;&#770; (the direction term). The name is now literal: it is the component along the &epsilon; axis — the direction that keeps you on this trajectory. Drag \u0394: any jump size lands exactly on the arc.',
+ '<b>&#9314; &eta; &gt; 0 — leave the arc a little.</b> Fresh z adds a small random offset (dashed circle, radius &sigma;) around the landing point: the step no longer lands <em>exactly</em> on this trajectory\u2019s arc but hops to a neighboring one. &eta; = 1 makes the hop DDPM-sized; &eta; = 0 turns it off and the walk is perfectly on-road.'
+];
+function arcDraw(now){
+  const x=av.getContext('2d');x.clearRect(0,0,AW2,AH2);
+  const M=44, R=Math.min(AW2-2*M, (AH2-2*M)*1.0), ox=M+ (AW2-2*M-R)/2, oy=AH2-M;
+  function pt(s){return [ox+R*SQA[s], oy-R*SQB[s]];}
+  /* axes */
+  x.strokeStyle='#c6d1e4';x.lineWidth=1.6;
+  x.beginPath();x.moveTo(ox,oy);x.lineTo(ox+R+18,oy);x.stroke();
+  x.beginPath();x.moveTo(ox,oy);x.lineTo(ox,oy-R-18);x.stroke();
+  x.fillStyle='#c07417';x.font='700 11px "Segoe UI"';x.textAlign='center';
+  x.fillText('component along x\u2080 (signal)',ox+R/2,oy+26);
+  x.save();x.translate(ox-26,oy-R/2);x.rotate(-Math.PI/2);
+  x.fillStyle='#41506b';x.fillText('component along \u03B5 (noise)',0,0);x.restore();
+  /* arc */
+  x.strokeStyle='#dde5f2';x.lineWidth=5;x.lineCap='round';
+  x.beginPath();
+  for(let s=999;s>=0;s-=6){const p=pt(s);s===999?x.moveTo(p[0],p[1]):x.lineTo(p[0],p[1]);}
+  x.stroke();
+  /* endpoints */
+  const pN=pt(999),pC=pt(0);
+  x.fillStyle='#5a6b86';x.font='700 10px Consolas,monospace';x.textAlign='left';
+  x.fillText('(0,1) pure noise',pN[0]+10,pN[1]+16);
+  x.fillText('t = 999',pN[0]+10,pN[1]+29);
+  x.fillStyle='#128888';x.textAlign='center';
+  x.fillText('(1,0) clean = x\u0302\u2080',pC[0],pC[1]+18);
+  x.fillStyle='#128888';x.beginPath();x.arc(pC[0],pC[1],4.5,0,7);x.fill();
+  /* walker (stage 0) or fixed x_t */
+  const t=S1===0?Math.round(40+ (980-40)*(0.5+0.5*Math.cos(now*0.0006)) ):T1;
+  const s2=Math.max(1,t-D1);
+  const P=pt(t);
+  x.fillStyle='#f6921e';x.beginPath();x.arc(P[0],P[1],7,0,7);x.fill();
+  x.strokeStyle='#fff';x.lineWidth=2;x.stroke();
+  {const ux=(P[0]-ox)/R, uy=(P[1]-oy)/R;
+   const lx=Math.max(78,Math.min(AW2-88,P[0]+ux*46)), ly=Math.max(16,P[1]+uy*46+4);
+   mparts(x,[{m:'x',sub:'t'},{t:'  (t = '+t+')'}],lx,ly,11,'#c07417');}
+  if(S1>=1){
+    const Q=pt(s2);
+    const vari=variOf(t),sig=E1*Math.sqrt(vari);
+    const yLen=Math.sqrt(Math.max(0,bbar(s2)-sig*sig));
+    /* decomposition arrows from origin */
+    function arrow(x1,y1,x2,y2,col,w2){
+      x.strokeStyle=col;x.lineWidth=w2;x.beginPath();x.moveTo(x1,y1);x.lineTo(x2,y2);x.stroke();
+      const a2=Math.atan2(y2-y1,x2-x1);
+      x.fillStyle=col;x.beginPath();x.moveTo(x2,y2);
+      x.lineTo(x2-9*Math.cos(a2-0.4),y2-9*Math.sin(a2-0.4));
+      x.lineTo(x2-9*Math.cos(a2+0.4),y2-9*Math.sin(a2+0.4));x.closePath();x.fill();}
+    const kx=ox+R*SQA[s2];
+    arrow(ox,oy,kx,oy,'#c07417',3);
+    mparts(x,[{t:'\u221A'},{m:'\u03B1\u0304',sub:'t\u2212\u0394'},{t:' \u00B7 '},{m:'x',hat:1,sub:'0'},{t:'  (signal)'}],(ox+kx)/2,oy-8,10.5,'#c07417');
+    arrow(kx,oy,kx,oy-R*yLen,'#41506b',3);
+    mparts(x,[{t:'direction term: \u221A(1\u2212'},{m:'\u03B1\u0304',sub:'t\u2212\u0394'},{t:'\u2212\u03C3\u00B2) \u00B7 '},{m:'\u03B5',hat:1}],Math.min(AW2-140,kx+110),oy-R*yLen/2,10.5,'#41506b');
+    /* landing */
+    x.fillStyle='#16a3a3';x.beginPath();x.arc(Q[0],Q[1],6,0,7);x.fill();
+    x.strokeStyle='#fff';x.lineWidth=2;x.stroke();
+    mparts(x,[{m:'x',sub:'t\u2212\u0394'},{t:'  lands ON the arc'}],Math.min(AW2-108,Q[0]+78),Q[1]-12,11,'#128888');
+    if(S1>=2&&sig>0.0005){
+      x.strokeStyle='#7b5cd6';x.setLineDash([4,4]);x.lineWidth=1.8;
+      x.beginPath();x.arc(kx,oy-R*yLen,Math.max(3,R*sig),0,7);x.stroke();x.setLineDash([]);
+      x.fillStyle='#7b5cd6';x.font='700 10px Consolas,monospace';x.textAlign='center';
+      x.fillText('\u00B1\u03C3\u00B7z  (\u03C3 = '+sig.toFixed(3)+')',kx,oy-R*yLen-Math.max(3,R*sig)-6);}
+  }
+  x.textAlign='center';
+}
+function set1(k){S1=k;
+  if(k===2&&E1<0.3){E1=1;$('e1').value=1;$('e1v').textContent='1.00';}
+  document.querySelectorAll('.c1').forEach(c=>c.classList.toggle('on',+c.dataset.s===k));
+  $('arcnote').innerHTML=ARCN[k];postH();}
+document.querySelectorAll('.c1').forEach(c=>c.onclick=()=>set1(+c.dataset.s));
+$('t1').oninput=e=>{T1=Math.round(+e.target.value);$('t1v').textContent=T1;if(S1===0)set1(1);};
+$('d1').oninput=e=>{D1=Math.round(+e.target.value);$('d1v').textContent=D1;if(S1===0)set1(1);};
+$('e1').oninput=e=>{E1=+e.target.value;$('e1v').textContent=E1.toFixed(2);};
+
+/* ============ TAB 2 ============ */
+let T2=500,E2=1;
+function bud2(){
+  const t=T2,s=Math.max(0,t-1);
+  const vari=variOf(t),sig2=(E2*Math.sqrt(vari))**2;
+  const tot=bbar(s);
+  const det=Math.max(0,tot-sig2);
+  $('bb1').style.width=(det/tot*100)+'%';$('bb1').textContent='direction: '+(det).toFixed(4);
+  $('bb2').style.width=(sig2/tot*100)+'%';$('bb2').textContent=sig2>tot*0.06?'fresh: '+sig2.toFixed(4):'';
+  $('bud2').innerHTML='direction share + fresh share = '+det.toFixed(6)+' + '+sig2.toFixed(6)+' = <span class="big" style="color:var(--out)">'+(det+sig2).toFixed(6)+'</span> = 1 \u2212 \u03B1\u0304<sub style="font-size:10px">t\u22121</sub> = <span class="big">'+tot.toFixed(6)+'</span> \u2713 (paper form, &sigma;&sup2; subtracted)';
+  const detCode=Math.max(0,tot-vari), totCode=detCode+sig2;
+  $('fine2').innerHTML='<b>&#128269; Fine print in this notebook&rsquo;s code:</b> the line subtracts the <em>full</em> '+
+   '<code>vari</code> (&eta;-independent), while the DDIM paper subtracts &sigma;&sup2; = &eta;&sup2;&middot;vari. '+
+   'At &eta; = 1 (the default used here) they are identical. At your current &eta; = '+E2.toFixed(2)+': code-form total = '+
+   totCode.toFixed(6)+' vs required '+tot.toFixed(6)+' — a gap of '+(tot-totCode).toExponential(2)+
+   (E2>0.98?' (zero: the forms coincide).':' — a slight under-dispersion some implementations accept for simplicity.');
+}
+$('t2').oninput=e=>{T2=Math.round(+e.target.value);$('t2v').textContent=T2;bud2();};
+$('e2').oninput=e=>{E2=+e.target.value;$('e2v').textContent=E2.toFixed(2);bud2();};
+
+/* ============ TAB 3 ============ */
+const wk=$('walkcv');let WW2=0,WH2=190,wGo=-1;
+function fitWk(){[WW2,WH2]=fitCv(wk,190);}
+function mkJ(seed){__s=seed;const a=[];for(let i=0;i<=60;i++)a.push(gauss());return a;}
+const J1=mkJ(11),J2=mkJ(22);
+function wkDraw(){
+  const x=wk.getContext('2d');x.clearRect(0,0,WW2,WH2);
+  const u=wGo<0?0:Math.min(1,wGo);
+  function lane(y,col,jit,lab,amp){
+    x.fillStyle='#8a94a8';x.font='700 10px "Segoe UI"';x.textAlign='left';
+    x.fillText(lab,14,y-26);
+    x.strokeStyle=col;x.lineWidth=2.4;x.beginPath();
+    const n=60;
+    for(let i=0;i<=n*u;i++){const uu=i/n;
+      const px=lerp(30,WW2-40,uu);
+      const py=y+Math.sin(uu*6.28)*6+(jit?jit[i]*amp*(1-uu*0.4):0);
+      i===0?x.moveTo(px,py):x.lineTo(px,py);}
+    x.stroke();
+    if(u>0){const i=Math.floor(60*u);const uu=i/60;
+      const px=lerp(30,WW2-40,uu),py=y+Math.sin(uu*6.28)*6+(jit?jit[i]*amp*(1-uu*0.4):0);
+      x.fillStyle=col;x.beginPath();x.arc(px,py,5,0,7);x.fill();}
+  }
+  lane(WH2*0.30,'#f6921e',J1,'DDPM \u2014 fresh z every step: the drunken stagger',14);
+  lane(WH2*0.74,'#16a3a3',null,'DDIM \u03B7=0 \u2014 signal + direction only: the structured walk along the arc',0);
+}
+$('wgo').onclick=()=>{wGo=0;};
+
+/* ============ loop ============ */
+function loop(ts){requestAnimationFrame(loop);
+  const dt=lastT==null?0:Math.max(0,ts-lastT)*0.001;lastT=ts;
+  if(TAB===1)arcDraw(ts);
+  if(TAB===3){if(wGo>=0&&wGo<1)wGo=Math.min(1,wGo+dt*0.35);wkDraw();}
+}
+addEventListener('resize',()=>{fitA();fitWk();});
+f0();
+dv1();fitA();set1(0);
+bud2();
+fitWk();wkDraw();
+requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>

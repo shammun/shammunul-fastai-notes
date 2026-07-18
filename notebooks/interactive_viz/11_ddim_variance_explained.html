@@ -1,0 +1,463 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>vari & sig — the DDIM Variance Lines, Decoded</title>
+<style>
+:root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;--inbg:#fff4e6;--outbg:#e4f5f5;--acbg:#f4efff;}
+*{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+.wrap{max-width:1060px;margin:0 auto;}
+h1{font-size:17px;margin:0 0 2px;text-align:center;}
+.sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+.sub b{color:var(--ink);} .sub code,.story code,.live code{font-family:"SF Mono",Consolas,monospace;font-size:.95em;background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;}
+.stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+.chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+.chip:hover{border-color:var(--ac);color:var(--ac);}
+.chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+.selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:7px;}
+.selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+.play{background:var(--ac);color:#fff;min-width:104px;}
+.stepb{background:#ece7fb;color:var(--ac);}
+.reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+.mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+.mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+input[type=range]{width:110px;accent-color:var(--ac);vertical-align:middle;}
+.mono{font-family:"SF Mono",Consolas,monospace;}
+.val{font-family:"SF Mono",Consolas,monospace;font-weight:700;color:var(--ac);display:inline-block;}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+.hero{max-width:1060px;margin:0 auto;}
+canvas.cv{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);}
+.legend{font-size:11.5px;color:var(--soft);text-align:center;margin:6px auto 0;max-width:1000px;line-height:1.5;}
+.legend b{color:var(--ink);}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:-1px;margin-right:3px;}
+.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:10px;max-width:1060px;margin:10px auto 0;align-items:start;}
+.grid>*{min-width:0;} .grid.nar{grid-template-columns:1fr;}
+.h2{font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--soft);margin:0 0 6px;}
+.story{font-size:12.5px;line-height:1.55;color:#33415c;}
+.story b{color:var(--ink);}
+.live{font-size:12.5px;line-height:1.6;}
+.live .big{font-family:"SF Mono",Consolas,monospace;font-weight:700;}
+pre.code{font-family:"SF Mono",Consolas,monospace;font-size:11.6px;line-height:1.65;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:8px 0;overflow-x:auto;margin:0;}
+.cl{padding:0 12px;white-space:pre;border-left:3px solid transparent;}
+.cl.hl{background:var(--acbg);border-left-color:var(--ac);color:#4a3aa8;font-weight:700;}
+.cl.cm{color:#8a94a8;}
+.cl.click{cursor:pointer;} .cl.click:hover{background:#eff2fd;}
+.pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+.pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 9px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+.pill:hover{border-color:var(--ac);}
+.pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+.pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+.pill.on{border-color:var(--ac);background:var(--acbg);box-shadow:0 3px 10px rgba(123,92,214,.25);}
+.pill.on .t{color:var(--ac);}
+.stack{display:flex;flex-direction:column;gap:10px;}
+.kbox{background:var(--acbg);border:1px solid #e2d9fb;border-radius:10px;padding:7px 11px;color:#4a3aa8;font-weight:600;font-size:12px;line-height:1.5;margin-top:8px;}
+
+
+
+.tabbar{display:flex;gap:0;justify-content:center;margin:2px auto 12px;max-width:1060px;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;}
+.tab{flex:1;font-family:inherit;font-weight:700;font-size:13px;padding:10px 6px;border:none;background:#fff;color:var(--soft);cursor:pointer;border-right:1.5px solid var(--line);transition:all .15s;}
+.tab:last-child{border-right:none;} .tab:hover{color:var(--ac);} .tab.on{background:var(--ac);color:#fff;}
+.tab .sm{display:block;font-weight:400;font-size:10px;opacity:.8;}
+.panel{display:none;min-height:540px;} .panel.on{display:block;}
+.fx{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:18px;line-height:2.15;text-align:center;}
+.fr{display:inline-block;vertical-align:middle;text-align:center;line-height:1.25;}
+.fr .nu{border-bottom:1.7px solid #25324a;padding:0 5px;display:block;}
+.fr .de{padding:0 5px;display:block;}
+pre.pcode{font-family:"SF Mono",Consolas,monospace;font-size:12.6px;line-height:1.9;background:#f7f9fe;border:1px solid var(--line);border-radius:10px;padding:10px 13px;overflow-x:auto;margin:0;}
+.pcode .ct{padding:1.5px 4px;border-radius:6px;cursor:pointer;transition:all .14s;border:1.5px solid transparent;}
+.pcode .ct:hover{border-color:var(--line);}
+.pcode .ct.hi{background:var(--acbg);border-color:var(--ac);font-weight:700;}
+.pcode .cm{color:#8a94a8;} .pcode .grey{opacity:.34;}
+.ubwrap{display:flex;justify-content:center;align-items:flex-start;gap:4px;flex-wrap:wrap;}
+.ub{display:inline-block;text-align:center;vertical-align:top;}
+.ub .expr{font-family:"STIX Two Math","Cambria Math",Georgia,serif;font-size:16.5px;line-height:2.0;padding:2px 7px;}
+.ub .bl{height:7px;border-left:2px solid;border-right:2px solid;border-bottom:2px solid;border-radius:0 0 9px 9px;margin:1px 5px 3px;}
+.ub .lab{font-size:10.5px;font-weight:700;}
+.ub .liv{font-family:Consolas,monospace;font-size:10.5px;color:var(--soft);margin-top:2px;}
+.op2{font-family:"STIX Two Math",Georgia,serif;font-size:18px;padding-top:8px;color:#8a94a8;}
+.deriv2 .dl{padding:7px 12px;border-left:3px solid transparent;border-radius:7px;transition:all .15s;margin-bottom:3px;}
+.deriv2 .dl.hl{background:var(--acbg);border-left-color:var(--ac);}
+.deriv2 .cm{font-family:"Segoe UI";font-size:10.8px;color:#8a94a8;display:block;margin-top:1px;}
+.mtable{width:100%;border-collapse:collapse;font-size:12px;}
+.mtable th,.mtable td{border:1px solid var(--line);padding:6px 9px;text-align:left;}
+.mtable th{background:#f4f7fd;color:var(--soft);font-size:10.5px;letter-spacing:.05em;}
+.mtable td.co{font-family:Consolas,monospace;font-size:11.3px;}
+.mtable tr.eta.on td{background:var(--acbg);}
+.qbig{text-align:center;font-size:18px;font-weight:800;color:var(--ink);margin:4px 0 6px;}
+
+</style></head><body>
+<div class="wrap">
+
+<h1>vari &amp; sig — two lines that price the randomness</h1>
+<p class="sub">The code computes <code>vari = (bbar_t1/bbar_t) * (1 - abar_t/abar_t1)</code> and
+<code>sig = vari.sqrt() * eta</code>. Four tabs, per the doc: every token of the two lines mapped to
+rendered math with live values; the underbraced DDIM formula showing &sigma;&rsquo;s <b>double use</b>
+(&sigma;&sup2; inside Term 2, &sigma; in Term 3 — with the conservation this creates, checked live); the
+<b>full derivation</b> that the cryptic ratio is exactly the DDPM posterior variance &beta;&#771;<sub>t</sub>,
+step by step and verified numerically; and the &eta; dial applied to the very code lines that consume &sigma;.</p>
+
+<div class="tabbar">
+  <button class="tab on" data-t="0">&#9312; The two lines, decoded<span class="sm">every token &rarr; math</span></button>
+  <button class="tab" data-t="1">&#9313; Where &sigma; lives<span class="sm">one supply, two consumers</span></button>
+  <button class="tab" data-t="2">&#9314; The derivation<span class="sm">ratio form &rarr; &beta;&#771;&#8348;, proven</span></button>
+  <button class="tab" data-t="3">&#9315; The &eta; dial in code<span class="sm">watch the lines react</span></button>
+</div>
+
+<!-- ============ TAB 0 ============ -->
+<div class="panel on" id="p0">
+<div class="card">
+  <pre class="pcode" id="code0"></pre>
+  <div class="selrow" style="margin:8px 0 0">
+    <span>t</span><input type="range" id="t0" min="2" max="999" value="500"><span class="val" id="t0v">500</span>
+    <span class="div"></span>
+    <span>&eta;</span><input type="range" id="e0" min="0" max="1" step="0.01" value="1" style="width:150px"><span class="val" id="e0v">1.00</span>
+  </div>
+</div>
+<div class="grid" style="margin-top:10px">
+  <div class="card"><div class="h2">What you clicked</div><div class="story" id="note0">Click any token in the two lines above.</div>
+  <div class="fx" id="tokmath" style="margin-top:6px"></div></div>
+  <div class="card"><div class="h2">Both lines, as mathematics — live at your t and &eta;</div>
+  <div class="fx" id="bigmath" style="font-size:17px"></div>
+  <div class="live" id="live0"></div></div>
+</div>
+<div class="kbox">&#127919; <b>What these lines are for:</b> they price <b>Term 3</b> of the DDIM update —
+the random-noise term &sigma;<sub>t</sub>&middot;z. <code>vari</code> is &sigma;&sup2;, <code>sig</code> is &sigma;.
+Tab &#9313; shows the full formula and the second, sneakier place &sigma; is consumed.</div>
+</div>
+
+<!-- ============ TAB 1 ============ -->
+<div class="panel" id="p1">
+<div class="qbig">The formula, underbraced — and &sigma;&rsquo;s double life</div>
+<div class="card">
+  <div class="ubwrap" id="ubf"></div>
+  <div class="selrow" style="margin:8px 0 0;justify-content:center">
+    <span>t</span><input type="range" id="t1" min="2" max="999" value="500"><span class="val" id="t1v">500</span>
+    <span class="div"></span>
+    <span>&eta;</span><input type="range" id="e1" min="0" max="1" step="0.01" value="1" style="width:170px"><span class="val" id="e1v">1.00</span>
+  </div>
+</div>
+<div class="grid" style="margin-top:10px">
+  <div class="card">
+    <div class="h2">One supply, two consumers</div>
+    <canvas id="pipe" class="cv" style="background:#fff"></canvas>
+  </div>
+  <div class="stack">
+    <div class="card"><div class="h2">&#9878;&#65039; The conservation this creates — checked live</div><div class="live" id="cons1"></div></div>
+    <div class="card"><div class="h2">Read it like this</div><div class="story">Term 2&rsquo;s coefficient <b>subtracts &sigma;&sup2; inside the square root</b> — it deliberately leaves room. Term 3 <b>fills exactly that room</b> with fresh noise. Slide &eta; anywhere: predicted noise and fresh noise trade places, but their variances always sum to 1 &minus; &alpha;&#772;<sub>t&minus;1</sub> — the schedule&rsquo;s required total at the target step. That is what the comment &ldquo;consistent with the noise schedule&rdquo; means.</div></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ TAB 2 ============ -->
+<div class="panel" id="p2">
+<div class="qbig">The cryptic ratio is the DDPM posterior variance — derived, then verified</div>
+<div class="stagebar">
+  <button class="chip cD" data-s="0">&#9312; start: the code&rsquo;s form</button>
+  <button class="chip cD" data-s="1">&#9313; common denominator</button>
+  <button class="chip cD" data-s="2">&#9314; use &alpha;&#772;<sub>t</sub> = &alpha;<sub>t</sub>&middot;&alpha;&#772;<sub>t&minus;1</sub></button>
+  <button class="chip cD" data-s="3">&#9315; it collapses to &beta;<sub>t</sub></button>
+  <button class="chip cD" data-s="4">&#9316; = &beta;&#771;<sub>t</sub>, the posterior variance</button>
+</div>
+<div class="grid">
+  <div class="card"><div class="deriv2 fx" id="dv" style="font-size:16px;text-align:left"></div></div>
+  <div class="stack">
+    <div class="card"><div class="h2">The step, in plain words</div><div class="story" id="dnote"></div></div>
+    <div class="card"><div class="h2">&#9989; Verified numerically</div>
+      <div class="live" id="dchk"></div>
+      <div class="selrow" style="margin:6px 0 0"><span>t</span><input type="range" id="t2" min="2" max="999" value="700"><span class="val" id="t2v">700</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ============ TAB 3 ============ -->
+<div class="panel" id="p3">
+<div class="qbig">Turn &eta; and watch the code that consumes &sigma; react</div>
+<div class="card">
+  <div class="selrow" style="justify-content:center">
+    <span>&eta;</span><input type="range" id="e3" min="0" max="1" step="0.01" value="1" style="width:230px"><span class="val" id="e3v">1.00</span>
+    <span class="div"></span><span>t</span><input type="range" id="t3" min="2" max="999" value="500"><span class="val" id="t3v">500</span>
+  </div>
+  <pre class="pcode" id="code3" style="margin-top:8px"></pre>
+</div>
+<div class="grid" style="margin-top:10px">
+  <div class="card"><div class="h2">Effect of &eta; (the doc&rsquo;s table, live)</div>
+  <table class="mtable" id="etat">
+    <tr><th>&eta;</th><th>&sigma;</th><th>BEHAVIOR</th><th>RESULT</th></tr>
+    <tr class="eta" data-r="0"><td>0</td><td>0</td><td>Fully deterministic</td><td>Same noise &rarr; same image</td></tr>
+    <tr class="eta" data-r="1"><td>0.5</td><td>half of DDPM&rsquo;s</td><td>Partially stochastic</td><td>Some variation</td></tr>
+    <tr class="eta" data-r="2"><td>1</td><td>full DDPM variance</td><td>Fully stochastic</td><td>Same noise &rarr; different images</td></tr>
+  </table></div>
+  <div class="card"><div class="h2">Code &harr; formula, the full map</div>
+  <table class="mtable">
+    <tr><th>CODE</th><th>MATH</th><th>ROLE</th></tr>
+    <tr><td class="co">vari</td><td class="fx" style="font-size:13.5px;text-align:left">&sigma;<sub>t</sub>&sup2;</td><td>Variance (Line 1)</td></tr>
+    <tr><td class="co">sig</td><td class="fx" style="font-size:13.5px;text-align:left">&sigma;<sub>t</sub> = &eta;&middot;&radic;&sigma;<sub>t</sub>&sup2;</td><td>Std&nbsp;dev, &eta;-scaled (Line 2)</td></tr>
+    <tr><td class="co">x_0_hat</td><td class="fx" style="font-size:13.5px;text-align:left">x&#770;&#8320; = (x<sub>t</sub> &minus; &radic;(1&minus;&alpha;&#772;<sub>t</sub>)&middot;&epsilon;<sub>&theta;</sub>) / &radic;&alpha;&#772;<sub>t</sub></td><td>Predicted clean image</td></tr>
+    <tr><td class="co">abar_t1.sqrt() * x_0_hat</td><td class="fx" style="font-size:13.5px;text-align:left">&radic;&alpha;&#772;<sub>t&minus;1</sub> &middot; x&#770;&#8320;</td><td>Term 1</td></tr>
+    <tr><td class="co">(bbar_t1 - sig**2).sqrt() * noise</td><td class="fx" style="font-size:13.5px;text-align:left">&radic;(1 &minus; &alpha;&#772;<sub>t&minus;1</sub> &minus; &sigma;<sub>t</sub>&sup2;) &middot; &epsilon;<sub>&theta;</sub></td><td>Term 2</td></tr>
+    <tr><td class="co">sig * torch.randn(...)</td><td class="fx" style="font-size:13.5px;text-align:left">&sigma;<sub>t</sub> &middot; &epsilon;<sub>t</sub></td><td>Term 3</td></tr>
+  </table></div>
+</div>
+<div class="kbox">&#128273; <b>Key insight:</b> the variance formula keeps the noise schedule mathematically
+consistent (it <em>is</em> the Bayes posterior variance — tab &#9314;); &eta; is DDIM&rsquo;s one new move —
+a volume knob on that exact quantity. &eta;=0 deletes Term 3 and hands you determinism; &eta;=1 restores
+DDPM; between is between.</div>
+</div>
+
+</div>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const lerp=(a,b,t)=>a+(b-a)*t, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+/* real linear schedule from the notebook: beta 1e-4 -> 0.01, N=1000 */
+const N=1000, BETA=new Float64Array(N), ABAR=new Float64Array(N), SQA=new Float64Array(N), SQB=new Float64Array(N);
+{let pp=1;for(let i=0;i<N;i++){const b=1e-4+(0.01-1e-4)*i/(N-1);BETA[i]=b;pp*=1-b;ABAR[i]=pp;SQA[i]=Math.sqrt(pp);SQB[i]=Math.sqrt(1-pp);}}
+/* seeded rng + gaussian */
+let __s=77771; const rnd=()=>{__s=(__s*1664525+1013904223)>>>0;return __s/4294967296;};
+function gauss(){let u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+/* 16x16 shirt pixel art (fashion-mnist-ish), scaled crisply */
+const SH=[
+"0011000000001100","0111100000011110","1111111111111111","1111111111111111",
+"1101111111111011","1100111111110011","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000",
+"0000111111110000","0000111111110000","0000111111110000","0000111111110000"];
+const X0=new Float64Array(256), EPS=new Float64Array(256);
+for(let i=0;i<256;i++){X0[i]=SH[i>>4][i&15]==='1'?0.85:-0.9; EPS[i]=gauss();}
+function drawField(cv,f,scale){ /* render 16x16 signed field to canvas, crisp */
+  const x=cv.getContext('2d'), s=cv.width/16;
+  for(let i=0;i<256;i++){const v=clamp((f[i]*(scale||1)+1)/2,0,1);const g=Math.round(30+v*215);
+    x.fillStyle=`rgb(${g},${g-6>0?g-6:0},${Math.round(g*0.94)})`;x.fillRect((i&15)*s,(i>>4)*s,s,s);}
+}
+function mixAt(t){const o=new Float64Array(256);for(let i=0;i<256;i++)o[i]=SQA[t]*X0[i]+SQB[t]*EPS[i];return o;}
+function fitCv(cv,cssH){const w=cv.parentElement.clientWidth-2, d=Math.min(devicePixelRatio||1,2);
+  cv.style.height=cssH+'px'; cv.width=Math.round(w*d); cv.height=Math.round(cssH*d);
+  const x=cv.getContext('2d'); x.setTransform(d,0,0,d,0,0); return [w,cssH];}
+/* roundRect polyfill for older canvas implementations */
+if(typeof CanvasRenderingContext2D!=='undefined'&&!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);
+    this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath();return this;};
+}
+/* canvas math label: parts=[{t:'plain '},{m:'x',sub:'t-1',hat:true},...] centered at (cx,cy) */
+function mparts(x,parts,cx,cy,size,color){
+  x.save();x.textBaseline='alphabetic';
+  const F=s=>'700 '+Math.round(s)+'px "Segoe UI",sans-serif';
+  let tot=0;
+  for(const p of parts){
+    if(p.t!==undefined){x.font=F(size);tot+=x.measureText(p.t).width;}
+    else{x.font=F(size);tot+=x.measureText(p.m).width;
+      if(p.sub){x.font=F(size*0.66);tot+=x.measureText(p.sub).width+1;}}}
+  let px=cx-tot/2;
+  x.fillStyle=color;x.textAlign='left';
+  for(const p of parts){
+    if(p.t!==undefined){x.font=F(size);x.fillText(p.t,px,cy);px+=x.measureText(p.t).width;continue;}
+    x.font=F(size);const wm=x.measureText(p.m).width;
+    x.fillText(p.m,px,cy);
+    if(p.hat){x.font=F(size*0.95);
+      const wh=x.measureText('\u02C6').width;
+      x.fillText('\u02C6',px+wm/2-wh/2,cy-size*0.58);}
+    px+=wm;
+    if(p.sub){x.font=F(size*0.66);x.fillText(p.sub,px+1,cy+size*0.20);px+=x.measureText(p.sub).width+1;}}
+  x.restore();
+}
+
+
+function fr2(nu,de){return '<span class="fr"><span class="nu">'+nu+'</span><span class="de">'+de+'</span></span>';}
+const AB='&alpha;&#772;', BB='&beta;&#772;';
+function bbar(t){return 1-ABAR[t];}
+function variOf(t){const s=Math.max(0,t-1);
+  return (bbar(s)/bbar(t))*(1-ABAR[t]/ABAR[s]);}
+let TAB=0,lastT=null;
+const panels=[...document.querySelectorAll('.panel')];
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  TAB=+b.dataset.t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
+  panels.forEach((p,i)=>p.classList.toggle('on',i===TAB));
+  postH();setTimeout(postH,60);
+  if(TAB===1)fitP();
+});
+
+/* ============ TAB 0 ============ */
+let T0=500,E0=1,sel0=null;
+const TOK={
+ bbar_t1:{m:'1 &minus; '+AB+'<sub>t&minus;1</sub> &nbsp;(= '+BB+'<sub>t&minus;1</sub>)',d:'Cumulative noise proportion at the <b>target</b> step t&minus;1.',v:t=>bbar(Math.max(0,t-1)).toFixed(5)},
+ bbar_t:{m:'1 &minus; '+AB+'<sub>t</sub> &nbsp;(= '+BB+'<sub>t</sub>)',d:'Cumulative noise proportion at the <b>current</b> step t.',v:t=>bbar(t).toFixed(5)},
+ abar_t:{m:AB+'<sub>t</sub>',d:'Cumulative signal (alphabar) at the current step.',v:t=>ABAR[t].toFixed(5)},
+ abar_t1:{m:AB+'<sub>t&minus;1</sub>',d:'Cumulative signal at the target step.',v:t=>ABAR[Math.max(0,t-1)].toFixed(5)},
+ vari:{m:'&sigma;<sub>t</sub>&sup2; = '+fr2(BB+'<sub>t&minus;1</sub>',BB+'<sub>t</sub>')+' &middot; ( 1 &minus; '+fr2(AB+'<sub>t</sub>',AB+'<sub>t&minus;1</sub>')+' )',d:'<b>Line 1&rsquo;s output: the variance &sigma;&sup2;.</b> Tab &#9314; proves this ratio is exactly the DDPM posterior variance &beta;&#771;<sub>t</sub>.',v:t=>variOf(t).toExponential(3)},
+ sqrt:{m:'&radic;&sigma;<sub>t</sub>&sup2; = &sigma;<sub>t</sub><span style="font-size:12px;color:var(--soft)"> (before &eta;)</span>',d:'Variance &rarr; standard deviation: the formula&rsquo;s Term 3 multiplies z by &sigma;, not &sigma;&sup2;.',v:t=>Math.sqrt(variOf(t)).toFixed(5)},
+ eta:{m:'&eta; &isin; [0, 1]',d:'<b>DDIM&rsquo;s one new move:</b> a volume knob on the legal amount of randomness. 0 &rarr; deterministic, 1 &rarr; DDPM.',v:t=>'(your slider)'},
+ sig:{m:'&sigma;<sub>t</sub> = &eta; &middot; &radic;&sigma;<sub>t</sub>&sup2;',d:'<b>Line 2&rsquo;s output: the &sigma; the formula actually uses</b> — in TWO places (tab &#9313;).',v:t=>'depends on &eta;'},
+};
+function ct(k,txt){return '<span class="ct'+(sel0===k?' hi':'')+'" data-k="'+k+'">'+txt+'</span>';}
+function code0(){
+  $('code0').innerHTML=
+   '<span class="cm"># Calculate variance for this step</span>\n'+
+   '<span class="cm"># This formula ensures the variance is consistent with the noise schedule</span>\n'+
+   ct('vari','vari')+' = ('+ct('bbar_t1','bbar_t1')+' / '+ct('bbar_t','bbar_t')+') * (1 - '+ct('abar_t','abar_t')+' / '+ct('abar_t1','abar_t1')+')\n\n'+
+   '<span class="cm"># Scale variance by eta (eta=0 \u2192 no variance, eta=1 \u2192 full variance)</span>\n'+
+   ct('sig','sig')+' = vari.'+ct('sqrt','sqrt()')+' * '+ct('eta','eta');
+  document.querySelectorAll('#code0 .ct').forEach(el=>el.onclick=()=>{sel0=el.dataset.k;code0();tok0();postH();});
+}
+function tok0(){
+  if(!sel0){$('tokmath').innerHTML='';return;}
+  const T=TOK[sel0];
+  $('note0').innerHTML=T.d+'<br><span style="color:var(--soft)">value at t = '+T0+': </span><b class="mono" style="color:var(--ac)">'+T.v(T0)+'</b>';
+  $('tokmath').innerHTML=T.m;
+}
+function big0(){
+  const t=T0,vari=variOf(t),sig=E0*Math.sqrt(vari);
+  $('bigmath').innerHTML=
+   '&sigma;<sub>t</sub>&sup2; = '+fr2('1 &minus; '+AB+'<sub>t&minus;1</sub>','1 &minus; '+AB+'<sub>t</sub>')+
+   ' &middot; ( 1 &minus; '+fr2(AB+'<sub>t</sub>',AB+'<sub>t&minus;1</sub>')+' )'+
+   '<span style="color:#8a94a8">&nbsp;&nbsp;&rarr;&nbsp;&nbsp;</span>&sigma;<sub>t</sub> = &eta; &middot; &radic;&sigma;<sub>t</sub>&sup2;';
+  $('live0').innerHTML=
+   'vari = <span class="big">'+vari.toExponential(4)+'</span> &nbsp;&middot;&nbsp; '+
+   '&radic;vari = <span class="big">'+Math.sqrt(vari).toFixed(5)+'</span> &nbsp;&middot;&nbsp; '+
+   'sig = &eta;&middot;&radic;vari = <span class="big" style="color:var(--ac)">'+sig.toFixed(5)+'</span>'+
+   (E0<0.02?' <b style="color:#128888">(&eta;=0 \u2192 Term 3 vanishes)</b>':E0>0.98?' <b style="color:#c07417">(full DDPM variance)</b>':'');
+}
+$('t0').oninput=e=>{T0=Math.round(+e.target.value);$('t0v').textContent=T0;tok0();big0();};
+$('e0').oninput=e=>{E0=+e.target.value;$('e0v').textContent=E0.toFixed(2);big0();};
+
+/* ============ TAB 1 ============ */
+let T1=500,E1=1;
+function ub(col,expr,lab,liv){
+  return '<span class="ub"><span class="expr">'+expr+'</span><div class="bl" style="border-color:'+col+'"></div><div class="lab" style="color:'+col+'">'+lab+'</div><div class="liv">'+liv+'</div></span>';
+}
+function ubf(){
+  const t=T1,s=Math.max(0,t-1);
+  const vari=variOf(t),sig=E1*Math.sqrt(vari);
+  const c1=SQA[s], c2=Math.sqrt(Math.max(0,bbar(s)-sig*sig));
+  $('ubf').innerHTML=
+   '<span class="op2">x<sub>t&minus;1</sub> =&nbsp;</span>'+
+   ub('#c07417','&radic;'+AB+'<sub>t&minus;1</sub> ( '+fr2('x<sub>t</sub> &minus; &radic;(1&minus;'+AB+'<sub>t</sub>) &middot; &epsilon;<sub>&theta;</sub><sup>(t)</sup>(x<sub>t</sub>)','&radic;'+AB+'<sub>t</sub>')+' )','&ldquo;predicted x&#8320;&rdquo;','coeff = '+c1.toFixed(4))+
+   '<span class="op2">+</span>'+
+   ub('#5a6b86','&radic;( 1 &minus; '+AB+'<sub>t&minus;1</sub> &minus; <b style="color:#7b5cd6">&sigma;<sub>t</sub>&sup2;</b> ) &middot; &epsilon;<sub>&theta;</sub><sup>(t)</sup>(x<sub>t</sub>)','&ldquo;direction pointing to x<sub>t</sub>&rdquo; — consumes &sigma;&sup2;','coeff = '+c2.toFixed(4))+
+   '<span class="op2">+</span>'+
+   ub('#7b5cd6','<b>&sigma;<sub>t</sub></b> &middot; &epsilon;<sub>t</sub>','&ldquo;random noise&rdquo; — consumes &sigma;','&sigma; = '+sig.toFixed(4));
+  cons1();
+}
+function cons1(){
+  const t=T1,s=Math.max(0,t-1);
+  const vari=variOf(t),sig=E1*Math.sqrt(vari);
+  const c2=Math.sqrt(Math.max(0,bbar(s)-sig*sig));
+  $('cons1').innerHTML=
+   'Term 2 coeff&sup2; &nbsp;+&nbsp; &sigma;&sup2; &nbsp;=&nbsp; '+
+   '<span class="mono">'+(c2*c2).toFixed(6)+'</span> + <span class="mono">'+(sig*sig).toFixed(6)+'</span> = '+
+   '<span class="big" style="color:var(--out)">'+(c2*c2+sig*sig).toFixed(6)+'</span><br>'+
+   '1 &minus; '+AB.replace('&alpha;&#772;','\u03B1\u0304')+'<sub style="font-size:10px">t\u22121</sub> = <span class="big">'+bbar(s).toFixed(6)+'</span> — equal for <b>every</b> &eta;. The total noise variance at the target step is pinned; &eta; only re-slices it between predicted and fresh.';
+}
+const pv=$('pipe');let PW=0,PH=190;
+function fitP(){[PW,PH]=fitCv(pv,190);pipeDraw();}
+function pipeDraw(){
+  const x=pv.getContext('2d');x.clearRect(0,0,PW,PH);
+  const t=T1,s=Math.max(0,t-1);
+  const vari=variOf(t),sig=E1*Math.sqrt(vari);
+  const frac=bbar(s)>0?(sig*sig)/bbar(s):0;
+  /* source box */
+  x.strokeStyle='#7b5cd6';x.lineWidth=2.2;x.fillStyle='#fbfaff';
+  x.beginPath();x.roundRect(14,PH*0.5-30,150,60,10);x.fill();x.stroke();
+  x.fillStyle='#7b5cd6';x.font='700 11px Consolas,monospace';x.textAlign='center';
+  x.fillText('sig = \u03B7\u00B7\u221Avari',89,PH*0.5-6);
+  x.font='700 10px Consolas,monospace';
+  x.fillText('= '+sig.toFixed(4),89,PH*0.5+12);
+  /* two pipes */
+  function pipe2(y2,col,w2,lab,val){
+    x.strokeStyle=col;x.lineWidth=Math.max(1.5,w2);
+    x.beginPath();x.moveTo(164,PH*0.5);x.quadraticCurveTo(PW*0.45,PH*0.5,PW*0.52,y2);
+    x.lineTo(PW*0.62,y2);x.stroke();
+    x.fillStyle=col;x.font='700 10.5px Consolas,monospace';x.textAlign='left';
+    x.fillText(lab,PW*0.64,y2-4);
+    x.font='10px "Segoe UI"';x.fillStyle='#5a6b86';
+    x.fillText(val,PW*0.64,y2+12);}
+  pipe2(PH*0.26,'#5a6b86',2+10*(1-frac),'\u2192 Term 2 takes \u03C3\u00B2 (subtracted inside \u221A)','predicted-noise variance: '+(bbar(s)-sig*sig).toFixed(4));
+  pipe2(PH*0.76,'#7b5cd6',2+10*frac,'\u2192 Term 3 takes \u03C3 (multiplies fresh z)','fresh-noise variance: '+(sig*sig).toFixed(4));
+  x.fillStyle='#8a94a8';x.font='10px "Segoe UI"';x.textAlign='center';
+  x.fillText('pipe widths \u221D share of the fixed total 1\u2212\u03B1\u0304 at t\u22121  \u00B7  drag \u03B7 and watch them trade',PW*0.5,PH-8);
+}
+$('t1').oninput=e=>{T1=Math.round(+e.target.value);$('t1v').textContent=T1;ubf();pipeDraw();};
+$('e1').oninput=e=>{E1=+e.target.value;$('e1v').textContent=E1.toFixed(2);ubf();pipeDraw();};
+
+/* ============ TAB 2 : derivation ============ */
+let S2=0,T2=700;
+const DL=[
+ ['&sigma;<sub>t</sub>&sup2; = '+fr2('1 &minus; '+AB+'<sub>t&minus;1</sub>','1 &minus; '+AB+'<sub>t</sub>')+' &middot; ( 1 &minus; '+fr2(AB+'<sub>t</sub>',AB+'<sub>t&minus;1</sub>')+' )','the code\u2019s form: (bbar_t1/bbar_t) \u00B7 (1 \u2212 abar_t/abar_t1)',0],
+ ['1 &minus; '+fr2(AB+'<sub>t</sub>',AB+'<sub>t&minus;1</sub>')+' = '+fr2(AB+'<sub>t&minus;1</sub> &minus; '+AB+'<sub>t</sub>',AB+'<sub>t&minus;1</sub>'),'focus the second factor; put it over the common denominator '+AB+'<sub>t&minus;1</sub>',1],
+ ['= '+fr2(AB+'<sub>t&minus;1</sub> &minus; &alpha;<sub>t</sub> &middot; '+AB+'<sub>t&minus;1</sub>',AB+'<sub>t&minus;1</sub>')+' = '+fr2(AB+'<sub>t&minus;1</sub> (1 &minus; &alpha;<sub>t</sub>)',AB+'<sub>t&minus;1</sub>'),'the schedule is a running product, so '+AB+'<sub>t</sub> = &alpha;<sub>t</sub> &middot; '+AB+'<sub>t&minus;1</sub> — substitute and factor',2],
+ ['= 1 &minus; &alpha;<sub>t</sub> = &beta;<sub>t</sub>','the '+AB+'<sub>t&minus;1</sub> cancels; the whole factor is just the single-step &beta;',3],
+ ['&sigma;<sub>t</sub>&sup2; = '+fr2('&beta;<sub>t</sub> &middot; (1 &minus; '+AB+'<sub>t&minus;1</sub>)','1 &minus; '+AB+'<sub>t</sub>')+' = &beta;&#771;<sub>t</sub>','substitute back: this is EXACTLY the DDPM posterior variance from Bayes\u2019 rule (derived by completing the square on the &ldquo;x_t on both sides&rdquo; page)',4],
+];
+const DN=[
+ 'Nothing hidden yet — this is character-for-character what <code>vari = (bbar_t1/bbar_t) * (1 - abar_t/abar_t1)</code> computes.',
+ 'Ordinary fraction algebra: a &minus; b/c = (c&minus;b)/c &hellip; here 1 &minus; '+ '\u03B1\u0304\u209C/\u03B1\u0304\u209C\u208B\u2081 becomes ('+'\u03B1\u0304\u209C\u208B\u2081 \u2212 \u03B1\u0304\u209C)/'+'\u03B1\u0304\u209C\u208B\u2081.',
+ 'The one schedule fact you need: '+'\u03B1\u0304 is a running product, so each entry is the previous one times the fresh \u03B1\u209C. Substituting exposes a common factor.',
+ 'And it cancels beautifully: the intimidating ratio was hiding plain old &beta;<sub>t</sub> = 1 &minus; &alpha;<sub>t</sub>, the single-step noise amount.',
+ 'So the code&rsquo;s variance is <b>&beta;&#771;<sub>t</sub></b> — the variance of q(x<sub>t&minus;1</sub> | x<sub>t</sub>, x&#8320;). Adding exactly this much keeps the marginal noise level on schedule; that is what the code comment promises. DDIM&rsquo;s twist is only the &eta; in front.',
+];
+function dvDraw(){
+  const el=$('dv');el.innerHTML='';
+  DL.forEach(([tx,cm,st])=>{const d=document.createElement('div');
+    d.className='dl'+(st<=S2?'':' ')+(st===S2?' hl':'');
+    d.style.opacity=st<=S2?1:0.28;
+    d.innerHTML=tx+' <span class="cm">\u2190 '+cm+'</span>';el.appendChild(d);});
+  $('dnote').innerHTML=DN[S2];
+}
+function dchk(){
+  const t=T2,s=Math.max(0,t-1);
+  const A=variOf(t);
+  const B=BETA[t]*bbar(s)/bbar(t);
+  let mx=0;for(let k=2;k<1000;k++){const kk=Math.max(0,k-1);
+    mx=Math.max(mx,Math.abs(variOf(k)-BETA[k]*bbar(kk)/bbar(k)));}
+  $('dchk').innerHTML=
+   'at t = '+t+':<br>'+
+   'code form (ratio): <span class="big">'+A.toExponential(9)+'</span><br>'+
+   '&beta;<sub>t</sub>&middot;'+ '\u03B2\u0304'+'<sub>t&minus;1</sub>/'+'\u03B2\u0304'+'<sub>t</sub> form: <span class="big">'+B.toExponential(9)+'</span><br>'+
+   'difference here: <span class="big" style="color:var(--out)">'+Math.abs(A-B).toExponential(1)+'</span> &middot; worst over the whole schedule: <span class="big" style="color:var(--out)">'+mx.toExponential(1)+'</span>';
+}
+document.querySelectorAll('.cD').forEach(c=>c.onclick=()=>{S2=+c.dataset.s;
+  document.querySelectorAll('.cD').forEach(z=>z.classList.toggle('on',+z.dataset.s===S2));
+  dvDraw();postH();});
+$('t2').oninput=e=>{T2=Math.round(+e.target.value);$('t2v').textContent=T2;dchk();};
+
+/* ============ TAB 3 ============ */
+let E3=1,T3=500;
+function code3(){
+  const t=T3,s=Math.max(0,t-1);
+  const vari=variOf(t),sig=E3*Math.sqrt(vari);
+  const c2=Math.sqrt(Math.max(0,bbar(s)-sig*sig));
+  $('code3').innerHTML=
+   'vari = (bbar_t1 / bbar_t) * (1 - abar_t / abar_t1)   <span class="cm">\u2192 '+vari.toExponential(3)+'</span>\n'+
+   'sig  = vari.sqrt() * eta                              <span class="cm">\u2192 '+sig.toFixed(5)+(E3<0.02?'  (\u03B7 = 0)':'')+'</span>\n\n'+
+   'x_t = abar_t1.sqrt() * x_0_hat + (bbar_t1 - sig**2).sqrt() * noise\n'+
+   '      <span class="cm">\u2191 '+SQA[s].toFixed(4)+'                 \u2191 (bbar_t1 - sig\u00B2).sqrt() = '+c2.toFixed(5)+'</span>\n'+
+   '<span class="'+(E3<0.02?'grey':'')+'">if t &gt; 0:\n    x_t += sig * torch.randn(x_t.shape).to(x_t)   <span class="cm">\u2192 '+(E3<0.02?'adds 0 \u2014 line is dead at \u03B7=0':'adds \u03C3\u00B7z, \u03C3 = '+sig.toFixed(5))+'</span></span>';
+  document.querySelectorAll('#etat .eta').forEach((r,i)=>{
+    r.classList.toggle('on',(i===0&&E3<0.02)||(i===1&&E3>=0.02&&E3<=0.98)||(i===2&&E3>0.98));});
+}
+$('e3').oninput=e=>{E3=+e.target.value;$('e3v').textContent=E3.toFixed(2);code3();};
+$('t3').oninput=e=>{T3=Math.round(+e.target.value);$('t3v').textContent=T3;code3();};
+
+/* ============ loop ============ */
+function loop(ts){requestAnimationFrame(loop);lastT=ts;}
+addEventListener('resize',()=>{fitP();});
+code0();big0();
+ubf();fitP();
+dvDraw();dchk();
+code3();
+requestAnimationFrame(loop);
+
+/* auto-height for the notebook iframe */
+function postH(){const el=document.querySelector('.wrap');if(!el)return;
+  const h=Math.ceil(el.getBoundingClientRect().height)+26;
+  if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:h},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.querySelector('.wrap'));
+setTimeout(postH,250);setTimeout(postH,900);
+
+})();
+</script>
+</body></html>
