@@ -1,0 +1,298 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The ×2 Mystery — one tensor, two worlds, one unit conversion</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  canvas.main{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:pointer;touch-action:none;}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1060px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.n{color:var(--neg);}
+</style></head><body>
+<h1>Why <code>preds[-1] * 2</code>? One tensor, two worlds — and a unit conversion</h1>
+<p class="sub">The map on top is the whole story: the same <b>[0, 1]</b> tensor forks into a <b style="color:var(--ac)">model world [−0.5, 0.5]</b> (training subtracted 0.5) and a <b style="color:var(--out)">judge world [−1, 1]</b> (the FID pipeline did ×2−1). The judge displays [−1,1] as black→white — so a raw half-range sample <i>literally looks washed-out gray to it</i>. That fake contrast gap inflates FID; <b>×2</b> converts the units and fixes it.
+<b>Chips walk the map · ④ shows the evidence through the judge's eyes · ⑤ animates the fix · ▶ replays the current stage.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① one tensor, two pipelines</button>
+  <button class="chip" data-s="1">② the model's world</button>
+  <button class="chip" data-s="2">③ the judge's world</button>
+  <button class="chip" data-s="3">④ through the judge's eyes</button>
+  <button class="chip" data-s="4">⑤ the ×2 fix</button>
+</div>
+
+<div class="selrow">
+  <button class="play" id="play">▶ Animate</button>
+  <button class="stepb" id="back">⏮</button>
+  <button class="stepb" id="fwd">⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1" style="width:110px"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="wrap"><div class="card"><canvas class="main" id="cv"></canvas></div></div>
+
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b class="a">purple lane</b> = training pipeline → everything the model ever makes lives in [−0.5, 0.5] · <b class="o">teal lane</b> = FID pipeline → the judge is calibrated on [−1, 1] · in ④/⑤ every image is rendered <i>exactly as the judge displays it</i> (its window: −1=black, +1=white) · <b class="n">red</b> = the fake gap caused purely by units</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+let W=1032,H=560,DPR=Math.min(2,window.devicePixelRatio||1);
+let stage=0,ph=1,playing=false,speed=1;
+
+// ---------- image data ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let x=Math.imul(a^a>>>15,1|a);x=x+Math.imul(x^x>>>7,61|x)^x;return((x^x>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const S=32;
+// shirt in [0,1] units (the to_tensor output)
+const shirt01=(()=>{const a=new Float32Array(S*S).fill(0.04);for(let y=0;y<S;y++)for(let x=0;x<S;x++){const fx=x/S,fy=y/S;let v=0.04;
+ if(fy>0.55&&fy<0.82&&fx>0.10&&fx<0.90){v=0.78;if(fy>0.74)v=0.95;if(fy<0.62&&fx>0.55)v=0.04;}
+ if(fy>0.30&&fy<0.58&&fx>0.12&&fx<0.52)v=0.72;
+ if(fy>0.34&&fy<0.55&&fx>0.20&&fx<0.46&&((x+y)%5<1))v=1.0;
+ if(fy>0.55&&fy<0.60&&fx>0.10&&fx<0.90)v=0.55;a[y*S+x]=v;}return a;})();
+// a slightly-imperfect "generated" version (so it isn't a pixel-clone of real)
+const gen01=(()=>{const r=mulberry32(11);const a=new Float32Array(S*S);
+ for(let y=0;y<S;y++)for(let x=0;x<S;x++){let s=0,n=0;
+  for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const yy=y+dy,xx=x+dx;
+   if(yy>=0&&yy<S&&xx>=0&&xx<S){s+=shirt01[yy*S+xx];n++;}}
+  a[y*S+x]=Math.max(0,Math.min(1,s/n+gauss(r)*0.03));}return a;})();
+// judge's display: value v (in [−1,1] units) → gray (v+1)/2
+function paintJudge(x,y,sz,vals,frame,label,sub){
+  const oc=document.createElement('canvas');oc.width=S;oc.height=S;const c=oc.getContext('2d');
+  const id=c.createImageData(S,S);
+  for(let i=0;i<S*S;i++){const g=Math.max(0,Math.min(255,(vals[i]+1)/2*255))|0;
+   id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=g;id.data[i*4+3]=255;}
+  c.putImageData(id,0,0);ctx.imageSmoothingEnabled=false;ctx.drawImage(oc,x,y,sz,sz);
+  ctx.strokeStyle=frame;ctx.lineWidth=2.5;ctx.strokeRect(x,y,sz,sz);
+  ctx.textAlign='center';ctx.font='700 11px Segoe UI';ctx.fillStyle=frame;
+  ctx.fillText(label,x+sz/2,y-8);
+  if(sub){ctx.fillStyle='#5a6b86';ctx.font='10px Consolas';ctx.fillText(sub,x+sz/2,y+sz+14);}
+}
+function fit(){const w=Math.min(cv.parentElement.clientWidth-4,1032);W=w;H=560;cv.width=W*DPR;cv.height=H*DPR;cv.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function node(x,y,w,h,col,bold,txt1,txt2,dim){
+  ctx.save();if(dim)ctx.globalAlpha=0.28;
+  ctx.fillStyle='#fff';ctx.strokeStyle=col;ctx.lineWidth=bold?3:1.8;rr(x,y,w,h,10);ctx.fill();ctx.stroke();
+  ctx.fillStyle=col;ctx.textAlign='center';ctx.font='700 12px Consolas';
+  ctx.fillText(txt1,x+w/2,y+(txt2?19:h/2+4));
+  if(txt2){ctx.font='10px Segoe UI';ctx.fillStyle='#5a6b86';ctx.fillText(txt2,x+w/2,y+35);}
+  ctx.restore();
+}
+function arrow(x1,y1,x2,y2,col,lab,dim,thick){
+  ctx.save();if(dim)ctx.globalAlpha=0.25;
+  ctx.strokeStyle=col;ctx.lineWidth=thick||2.2;ctx.beginPath();ctx.moveTo(x1,y1);
+  const mx=(x1+x2)/2;ctx.bezierCurveTo(mx,y1,mx,y2,x2,y2);ctx.stroke();
+  const ang=Math.atan2(y2-y2,x2-mx);
+  ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-8,y2-4.5);ctx.lineTo(x2-8,y2+4.5);ctx.closePath();ctx.fill();
+  if(lab){ctx.font='700 11px Consolas';ctx.textAlign='center';
+    ctx.fillStyle='#fff';const tw=ctx.measureText(lab).width;
+    ctx.fillRect(mx-tw/2-5,(y1+y2)/2-10,tw+10,18);
+    ctx.fillStyle=col;ctx.fillText(lab,mx,(y1+y2)/2+3);}
+  ctx.restore();
+}
+
+// ---------- the fork map (top, persistent) ----------
+function drawMap(){
+  const y0=30, nh=44, nw=Math.min(150,W*0.15);
+  const x0=24, x1=x0+nw+56, x2=x1+nw+120, x3=x2+nw+56;
+  const yT=y0, yB=y0+96, yM=(yT+yB)/2;
+  const dimT=(stage===2), dimB=(stage===1); // dim the other lane in stages 2/3
+  // source
+  node(x0,yM-nh/2,nw,nh,'#93a2bd',false,'PNG bytes','0 … 255',false);
+  arrow(x0+nw,yM,x1,yM,'#93a2bd','to_tensor',false);
+  node(x1,yM-nh/2,nw,nh,'#f6921e',stage===0,'[0, 1]','one shared tensor',false);
+  // fork
+  arrow(x1+nw,yM-6,x2,yT+nh/2,'#7b5cd6','− 0.5',dimT,stage===1?3.4:2.2);
+  arrow(x1+nw,yM+6,x2,yB+nh/2,'#16a3a3','× 2 − 1',dimB,stage===2?3.4:2.2);
+  node(x2,yT,nw,nh,'#7b5cd6',stage===1,'[−0.5, 0.5]','TRAIN pipeline',dimT);
+  node(x2,yB,nw,nh,'#16a3a3',stage===2,'[−1, 1]','FID pipeline',dimB);
+  // destinations
+  arrow(x2+nw,yT+nh/2,x3,yT+nh/2,'#7b5cd6','',dimT);
+  arrow(x2+nw,yB+nh/2,x3,yB+nh/2,'#16a3a3','',dimB);
+  const dw=Math.min(230,W-x3-20);
+  node(x3,yT,dw,nh,'#7b5cd6',stage===1,'MODEL WORLD','trains · noisifies · generates here',dimT);
+  node(x3,yB,dw,nh,'#16a3a3',stage===2,'JUDGE WORLD','FID statistics calibrated here',dimB);
+  // clash marker between the two destination boxes
+  if(stage>=3){
+    const cy=(yT+yB)/2+nh/2;
+    ctx.fillStyle=stage===4&&ph>=1?'#16a3a3':'#d64545';
+    ctx.font='700 12px Segoe UI';ctx.textAlign='center';
+    ctx.fillText(stage===4&&ph>=1?'✓ ×2 bridges the lanes — same units':'⚡ different units — the lanes never agreed',x3+dw/2,cy+6);
+  }
+  return yB+nh+18;
+}
+
+// ---------- range bar helper ----------
+function rangeBar(gx,gw,y,a,b,col,lab){
+  const AX0=-1.15,AX1=1.15;
+  const px=v=>gx+gw*(v-AX0)/(AX1-AX0);
+  ctx.strokeStyle='#c3cede';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(gx,y);ctx.lineTo(gx+gw,y);ctx.stroke();
+  [-1,-0.5,0,0.5,1].forEach(v=>{const x=px(v);
+    ctx.beginPath();ctx.moveTo(x,y-4);ctx.lineTo(x,y+4);ctx.stroke();
+    ctx.fillStyle='#93a2bd';ctx.font='9.5px Consolas';ctx.textAlign='center';ctx.fillText(v,x,y+16);});
+  ctx.fillStyle=col+'33';ctx.strokeStyle=col;ctx.lineWidth=2.5;
+  rr(px(a),y-16,px(b)-px(a),13,5);ctx.fill();ctx.stroke();
+  ctx.fillStyle=col;ctx.font='700 10.5px Consolas';ctx.textAlign='center';
+  ctx.fillText(lab,(px(a)+px(b))/2,y-22);
+}
+// histogram of values (in judge units) drawn into the judge's window
+function hist(gx,gw,gy,h,vals,col){
+  const B=36,counts=new Array(B).fill(0);
+  vals.forEach(v=>{const b=Math.max(0,Math.min(B-1,Math.floor((v+1.15)/2.3*B)));counts[b]++;});
+  const mx=Math.max(...counts);
+  ctx.strokeStyle=col;ctx.lineWidth=2;ctx.beginPath();
+  for(let b=0;b<B;b++){const x=gx+gw*(b+0.5)/B,y=gy-h*Math.pow(counts[b]/mx,0.5);
+    b?ctx.lineTo(x,y):ctx.moveTo(x,y);}
+  ctx.stroke();
+}
+
+// ---------- stages ----------
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const yTop=drawMap();
+  ctx.strokeStyle='#e7edf8';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(20,yTop);ctx.lineTo(W-20,yTop);ctx.stroke();
+  const y=yTop+16;
+
+  if(stage===0){
+    // emphasize the fork itself; below: the same shirt in its raw [0,1] form + caption
+    const sz=118,cxm=W/2;
+    const raw=new Float32Array(S*S);for(let i=0;i<S*S;i++)raw[i]=shirt01[i]*2-1; // just for display at full contrast
+    paintJudge(cxm-sz/2,y+26,sz,raw,'#f6921e','the shared source image','TF.to_tensor(o) ∈ [0, 1]');
+    ctx.fillStyle='#5a6b86';ctx.font='11.5px Segoe UI';ctx.textAlign='center';
+    ctx.fillText('One dataset, one tensor — but the notebook builds TWO transform pipelines from it,',cxm,y+26+sz+44);
+    ctx.fillText('and they make different range choices. Everything that follows comes from that fork.',cxm,y+26+sz+62);
+  }
+  if(stage===1){
+    const sz=118, ix=Math.max(40,W*0.10);
+    // model-world sample shown in ITS OWN world (native contrast): display maps [-0.5,0.5]→black..white
+    const own=new Float32Array(S*S);for(let i=0;i<S*S;i++)own[i]=(gen01[i]-0.5)*2; // native window
+    paintJudge(ix,y+26,sz,own,'#7b5cd6','a generated sample — in its own world','model output ∈ [−0.5, 0.5]');
+    const gx=ix+sz+60, gw=W-gx-60;
+    rangeBar(gx,gw,y+70,-0.5*Math.min(1,ph*1.2),0.5*Math.min(1,ph*1.2),'#7b5cd6','[−0.5, 0.5] — the model world');
+    ctx.fillStyle='#5a6b86';ctx.font='11px Segoe UI';ctx.textAlign='left';
+    ctx.fillText('Training data was shifted by −0.5, so every x₀ the model ever saw — and therefore',gx,y+116);
+    ctx.fillText('every x̂₀ it will ever produce — occupies only this half-width band. The model',gx,y+134);
+    ctx.fillText('cannot output anything outside it. It speaks permanently in half-units.',gx,y+152);
+  }
+  if(stage===2){
+    const sz=118, ix=Math.max(40,W*0.10);
+    const real=new Float32Array(S*S);for(let i=0;i<S*S;i++)real[i]=shirt01[i]*2-1;
+    paintJudge(ix,y+26,sz,real,'#16a3a3','a real reference image','eval transform → [−1, 1]');
+    const gx=ix+sz+60, gw=W-gx-60;
+    rangeBar(gx,gw,y+70,-1*Math.min(1,ph*1.2),1*Math.min(1,ph*1.2),'#16a3a3','[−1, 1] — the judge world');
+    ctx.fillStyle='#5a6b86';ctx.font='11px Segoe UI';ctx.textAlign='left';
+    ctx.fillText('The FID feature extractor (cmodel) was trained on inputs in [−1, 1], so all real',gx,y+116);
+    ctx.fillText('reference images are prepared with ×2−1. The judge\'s statistics — and its idea of',gx,y+134);
+    ctx.fillText('what "normal contrast" looks like — are calibrated entirely in full-width units.',gx,y+152);
+  }
+  if(stage>=3){
+    const fix=stage===4?Math.min(1,ph):0;    // 0 = raw, 1 = ×2 applied
+    const scale=1+fix;                        // gen values multiplied by this
+    const sz=Math.min(118,(W-360)/3);
+    const y1=y+30;
+    const cols=[W*0.20, W*0.50, W*0.80];
+    // 1) real, judge's eyes
+    const real=new Float32Array(S*S);for(let i=0;i<S*S;i++)real[i]=shirt01[i]*2-1;
+    paintJudge(cols[0]-sz/2,y1,sz,real,'#16a3a3','REAL — judge\'s eyes','range [−1, 1] · full contrast');
+    // 2) generated, judge's eyes, current scale
+    const gvals=new Float32Array(S*S);for(let i=0;i<S*S;i++)gvals[i]=(gen01[i]-0.5)*scale;
+    paintJudge(cols[1]-sz/2,y1,sz,gvals,fix>=1?'#16a3a3':'#d64545',
+      fix>=1?'GENERATED × 2 — judge\'s eyes':'GENERATED raw — judge\'s eyes',
+      'range [−'+(0.5*scale).toFixed(1)+', '+(0.5*scale).toFixed(1)+']'+(fix>=1?' · contrast restored':' · washed-out gray'));
+    // 3) side panel: FID verdict
+    const vx=cols[2]-80,vy=y1+6;
+    ctx.fillStyle='#fff';ctx.strokeStyle=fix>=1?'#16a3a3':'#d64545';ctx.lineWidth=2.5;rr(vx,vy,160,sz-12,12);ctx.fill();ctx.stroke();
+    ctx.textAlign='center';ctx.font='700 12px Segoe UI';
+    ctx.fillStyle=fix>=1?'#16a3a3':'#d64545';
+    ctx.fillText('FID verdict',vx+80,vy+22);
+    ctx.font='700 17px Consolas';
+    ctx.fillText(fix>=1?'≈ 3.3  ✓':'inflated  ✗',vx+80,vy+48);
+    ctx.font='9.5px Segoe UI';ctx.fillStyle='#5a6b86';
+    ctx.fillText(fix>=1?'measuring real quality':'punishing a unit mismatch,',vx+80,vy+68);
+    if(fix<1)ctx.fillText('not image quality',vx+80,vy+81);
+    // histograms in the judge's window
+    const gy=y1+sz+72, gx=70, gw=W-140, hh=52;
+    ctx.strokeStyle='#c3cede';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+gw,gy);ctx.stroke();
+    [-1,-0.5,0,0.5,1].forEach(v=>{const x=gx+gw*(v+1.15)/2.3;
+      ctx.beginPath();ctx.moveTo(x,gy-3);ctx.lineTo(x,gy+3);ctx.stroke();
+      ctx.fillStyle='#93a2bd';ctx.font='9.5px Consolas';ctx.textAlign='center';ctx.fillText(v,x,gy+15);});
+    hist(gx,gw,gy,hh,real,'#16a3a3');
+    hist(gx,gw,gy,hh,gvals,fix>=1?'#7b5cd6':'#d64545');
+    ctx.font='700 10px Segoe UI';ctx.textAlign='left';
+    ctx.fillStyle='#16a3a3';ctx.fillText('real pixel distribution',gx,gy-hh-8);
+    ctx.fillStyle=fix>=1?'#7b5cd6':'#d64545';ctx.textAlign='right';
+    ctx.fillText(fix>=1?'generated ×2 — overlapping ✓':'generated raw — squeezed to half width ✗',gx+gw,gy-hh-8);
+    ctx.textAlign='center';ctx.fillStyle='#5a6b86';ctx.font='10.5px Segoe UI';
+    ctx.fillText('what the FID feature extractor actually receives (judge\'s window, −1 black → +1 white)'+(stage===4?'  ·  ▶ replays the stretch':''),W/2,gy+34);
+  }
+}
+
+// ---------- text ----------
+const STORIES=[
+ 'Follow the map. One dataset → one <code>to_tensor</code> call → one tensor in [0, 1]. Then the notebook builds <b>two different</b> transform pipelines from that same tensor: the training pipeline (purple lane) and the FID-evaluation pipeline (teal lane) — and they make <i>different</i> range choices. Every confusing ×2 in diffusion code traces back to a fork like this one; the next four chips walk each lane and then collide them.',
+ 'The purple lane: training subtracts 0.5, so the <b>model world is [−0.5, 0.5]</b>, centred at zero (nicer for optimization). This is not a display detail — it is a hard constraint: every clean image the model was trained on, every noisy mix noisify built, and every x̂₀ the sampler will ever output lives inside this half-width band. The model speaks in half-units, permanently. Notice the image looks perfectly normal <i>inside its own world</i> — nothing is wrong with it.',
+ 'The teal lane: the FID pipeline instead does ×2−1, so the <b>judge world is [−1, 1]</b>. Why different? The pretrained feature extractor behind FID expects inputs in that range, and FID is a comparison of <i>feature statistics</i> — statistics only mean something if both sides are measured in the same units. All real reference images enter the judge in full-width units. The judge\'s entire sense of "normal" is calibrated there.',
+ 'Now the collision — rendered exactly as the judge displays its window (−1=black, +1=white). The real image: full contrast. The raw generated image: <b>every pixel squeezed into the middle grays</b> — to the judge it looks like a washed-out photocopy, and its pixel distribution (red curve) sits at half width. FID reads this as a systematic defect of the generator and inflates. But nothing is wrong with the samples — the two lanes simply never agreed on units. Feet versus metres.',
+ 'The fix is a unit conversion, one multiply: <code>s = preds[-1] * 2</code> maps [−0.5, 0.5] → [−1, 1]. Press ▶ and watch through the judge\'s eyes: the generated image\'s contrast snaps back, the red distribution stretches onto the teal one, and the verdict flips to the notebook\'s honest <b>FID ≈ 3.3</b>. The portable rule: <b>before any FID/KID, put both image sets in the same range</b> — a huge fraction of "why is my FID terrible?" bugs in the wild are exactly this line, missing.'];
+
+// full pipeline code shown in EVERY stage; only the highlight moves
+const FN_LINES=[
+ '<span class="cm"># the shared source ------------------------------------------------</span>',
+ 'TF.to_tensor(o)                                  <span class="cm"># bytes 0…255 → [0, 1]</span>',
+ '<span class="cm"># TRAIN pipeline (transformi for the DataLoaders) -------------------</span>',
+ 'b[xl] = [F.pad(TF.to_tensor(o), (<span class="num">2</span>,<span class="num">2</span>,<span class="num">2</span>,<span class="num">2</span>)) - <span class="num">0.5</span> for o in b[xl]]   <span class="cm"># → [−0.5, 0.5]</span>',
+ '<span class="cm"># EVAL pipeline (transformi for the FID ImageEval) ------------------</span>',
+ 'b[xl] = [F.pad(TF.to_tensor(o), (<span class="num">2</span>,<span class="num">2</span>,<span class="num">2</span>,<span class="num">2</span>))*<span class="num">2</span> - <span class="num">1</span> for o in b[xl]]  <span class="cm"># → [−1, 1]</span>',
+ '<span class="cm"># judging ------------------------------------------------------------</span>',
+ 'ie.fid(preds[-<span class="num">1</span>])        <span class="cm"># ✗ raw: half-range samples vs full-range references</span>',
+ 's = preds[-<span class="num">1</span>] * <span class="num">2</span>        <span class="cm"># unit conversion: [−0.5, 0.5] → [−1, 1]</span>',
+ 'ie.fid(s), ie.kid(s)     <span class="cm"># ✓ ≈ 3.3 — now it measures quality, not units</span>'];
+const STAGE_HL=[[1],[3],[5],[7],[8,9]];
+function codeFor(st){const hl=STAGE_HL[st];
+  return FN_LINES.map((l,i)=>hl.includes(i)?'<span class="hl">'+l+'</span>':l).join('\n');}
+
+function setStage(s){stage=s;ph=playing?0:1;document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+ $('story').innerHTML=STORIES[s];$('code').innerHTML=codeFor(s);draw();postH();}
+
+// ---------- interaction ----------
+cv.addEventListener('click',()=>{if(!playing){ph=0;playing=true;$('play').textContent='⏸ Pause';}});
+$('play').onclick=()=>{if(playing){playing=false;$('play').textContent='▶ Animate';return;}ph=0;playing=true;$('play').textContent='⏸ Pause';};
+$('fwd').onclick=()=>{stopP();setStage(Math.min(4,stage+1));ph=1;draw();};
+$('back').onclick=()=>{stopP();setStage(Math.max(0,stage-1));ph=1;draw();};
+$('reset').onclick=()=>{stopP();setStage(0);ph=1;draw();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopP();setStage(+c.dataset.s);ph=0;playing=true;$('play').textContent='⏸ Pause';});
+function stopP(){playing=false;$('play').textContent='▶ Animate';}
+let last=null;
+function loop(tsm){requestAnimationFrame(loop);
+ if(playing&&last!=null){ph=Math.min(1,ph+(tsm-last)*0.001*0.8*speed);draw();
+  if(ph>=1){playing=false;$('play').textContent='▶ Animate';}}
+ last=tsm;}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:Math.ceil(document.body.scrollHeight)},'*');}
+fit();addEventListener('resize',()=>{fit();draw();postH();});
+setStage(0);ph=1;draw();requestAnimationFrame(loop);
+</script><style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">(function(){function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}addEventListener('load',postH);addEventListener('resize',postH);if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);setTimeout(postH,150);setTimeout(postH,600);})();</script>
+</body></html>

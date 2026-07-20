@@ -1,0 +1,234 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ddim_step Anatomy — three ingredients, one guard, one knob</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:970px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:104px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:44px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  canvas.main{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:crosshair;touch-action:none;}
+  .eqstrip{max-width:1060px;margin:8px auto 0;background:#faf8ff;border:2px dashed var(--ac);border-radius:12px;padding:8px 12px;font-family:"SF Mono",Consolas,monospace;font-size:13.5px;text-align:center;line-height:1.75;}
+  .eqstrip .g{color:#16a3a3;font-weight:700;}.eqstrip .r{color:#d64545;font-weight:700;}.eqstrip .o{color:#f6921e;font-weight:700;}.eqstrip .a{color:#7b5cd6;font-weight:700;}
+  .eqstrip .dead{color:#b9c3d6;text-decoration:line-through;}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1060px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.n{color:var(--neg);}
+</style></head><body>
+<h1><code>ddim_step</code>: mix three streams — anchor, memory, and fresh dice</h1>
+<p class="sub">One sampling step turns x_t into x_{t−1/S}. It is a recipe with three ingredients: <b style="color:var(--ac)">√ᾱ_{t−1}·x̂0</b> (the anchor: our best guess of the clean image), <b style="color:var(--out)">√(β̄_{t−1}−σ²)·ε̂</b> (the memory: keep the <i>same</i> noise direction), and <b style="color:var(--neg)">σ·z</b> (fresh dice, volume-controlled by η).
+<b>Drag "position in run" to see any of the 100 steps · drag η between DDIM(0) and DDPM-ish(1) · chips animate each sub-computation · watch the guard light on the last step.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① what comes in</button>
+  <button class="chip" data-s="1">② σ — the dice volume</button>
+  <button class="chip" data-s="2">③ x̂0 + clamp(±1.5)</button>
+  <button class="chip" data-s="3">④ the σ=0 guard</button>
+  <button class="chip" data-s="4">⑤ recombine → x_{t−1}</button>
+</div>
+
+<div class="selrow">
+  <button class="play" id="play">▶ Animate step</button>
+  <button class="stepb" id="back">⏮</button>
+  <button class="stepb" id="fwd">⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  position in run <input id="isl" type="range" min="0" max="99" step="1" value="30" style="width:150px"><span class="speedv" id="iv">31/100</span>
+  <span class="div"></span>
+  η <input id="eta" type="range" min="0" max="1" step="0.05" value="1" style="width:110px"><span class="speedv" id="etav">1.00</span>
+</div>
+
+<div class="wrap"><div class="card"><canvas class="main" id="cv"></canvas></div></div>
+
+<div class="eqstrip" id="eq"></div>
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b class="a">purple stream</b> = anchor √ᾱ_{t−1}·x̂0 · <b class="o">teal stream</b> = kept noise √(β̄_{t−1}−σ²)·ε̂ · <b class="n">red stream</b> = fresh noise σ·z (η controls it) · the bar chart shows each stream's true coefficient at the selected step · <b class="n">GUARD lamp</b> lights when σ is forced to 0</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+let W=1032,H=430,DPR=Math.min(2,window.devicePixelRatio||1);
+let stage=0,idx=30,eta=1,playing=false,ph=0,speed=1;
+const STEPS=100;
+const abar=x=>Math.max(0,Math.cos(Math.min(1,Math.max(0,x))*Math.PI/2)**2);
+
+function stepVals(i,et){ // i = 0..99, t = ts[i]
+  const t=1-1/STEPS-i*(1/STEPS);
+  const tc=Math.max(0,t);
+  const ab=abar(tc), ab1=(tc>=1/STEPS)?abar(tc-1/STEPS):1;
+  const bb=1-ab, bb1=1-ab1;
+  let sig=(bb<=0)?0:Math.sqrt(bb1/bb)*Math.sqrt(Math.max(0,1-ab/ab1))*et;
+  let guard=false;
+  if(bb1<=sig*sig+0.01){sig=0;guard=true;}
+  const cAnchor=Math.sqrt(ab1);
+  const cKeep=Math.sqrt(Math.max(0,bb1-sig*sig));
+  return {t:tc,ab,ab1,bb,bb1,sig,guard,cAnchor,cKeep};
+}
+function fit(){const w=Math.min(cv.parentElement.clientWidth-4,1032);W=w;H=430;cv.width=W*DPR;cv.height=H*DPR;cv.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const V=stepVals(idx,eta);
+  // ---- left: mixing machine ----
+  const mx=30,my=30,mw=Math.min(560,W*0.55);
+  // input boxes
+  const boxes=[{lab:'x̂0 (anchor)',col:'#7b5cd6',c:V.cAnchor,y:my+6},
+               {lab:'ε̂ (kept noise)',col:'#16a3a3',c:V.cKeep,y:my+96},
+               {lab:'z (fresh dice)',col:'#d64545',c:V.sig,y:my+186}];
+  const outX=mx+mw-120,outY=my+80;
+  boxes.forEach((b,k)=>{
+    const dim=(stage===1&&k!==2)||(stage===2&&k!==0);
+    ctx.save();if(dim)ctx.globalAlpha=0.35;
+    ctx.fillStyle='#fff';ctx.strokeStyle=b.col;ctx.lineWidth=2;rr(mx,b.y,120,54,9);ctx.fill();ctx.stroke();
+    ctx.fillStyle=b.col;ctx.font='700 11px Segoe UI';ctx.textAlign='center';
+    ctx.fillText(b.lab,mx+60,b.y+20);
+    ctx.font='700 12px Consolas';ctx.fillStyle='#25324a';
+    ctx.fillText('coef '+b.c.toFixed(3),mx+60,b.y+40);
+    // stream: thickness proportional to coefficient
+    const th=Math.max(0.6,b.c*26);
+    ctx.strokeStyle=b.col;ctx.lineWidth=th;ctx.globalAlpha=(dim?0.25:0.75);
+    ctx.beginPath();ctx.moveTo(mx+120,b.y+27);
+    ctx.bezierCurveTo(mx+mw*0.5,b.y+27,mx+mw*0.55,outY+30,outX,outY+30);ctx.stroke();
+    ctx.restore();
+  });
+  // output box
+  ctx.fillStyle='#fff';ctx.strokeStyle='#f6921e';ctx.lineWidth=2.5;rr(outX,outY,116,60,10);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#f6921e';ctx.font='700 12px Segoe UI';ctx.textAlign='center';
+  ctx.fillText('x_{t−1}',outX+58,outY+24);
+  ctx.font='10px Segoe UI';ctx.fillStyle='#5a6b86';
+  ctx.fillText('next, less-noisy image',outX+58,outY+42);
+  // guard lamp
+  ctx.beginPath();ctx.arc(mx+60,my+266,10,0,7);
+  ctx.fillStyle=V.guard?'#d64545':'#e6ecf7';ctx.fill();ctx.strokeStyle=V.guard?'#a83232':'#c3cede';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=V.guard?'#d64545':'#93a2bd';ctx.font='700 10.5px Segoe UI';ctx.textAlign='left';
+  ctx.fillText(V.guard?'GUARD ON: β̄_{t−1} ≤ σ²+0.01 → σ:=0':'guard off (σ as computed)',mx+78,my+270);
+
+  // ---- right: coefficient bars across the whole run ----
+  const gx=mx+mw+40,gy=34,gw=W-gx-30,gh=250;
+  if(gw>140){
+    ctx.strokeStyle='#e7edf8';ctx.lineWidth=1;
+    for(let i=0;i<=2;i++){ctx.beginPath();ctx.moveTo(gx,gy+gh*i/2);ctx.lineTo(gx+gw,gy+gh*i/2);ctx.stroke();}
+    ctx.fillStyle='#93a2bd';ctx.font='9.5px Consolas';ctx.textAlign='right';
+    ctx.fillText('1',gx-4,gy+4);ctx.fillText('.5',gx-4,gy+gh/2+3);ctx.fillText('0',gx-4,gy+gh+3);
+    ctx.textAlign='center';
+    ctx.fillText('step 1',gx+8,gy+gh+13);ctx.fillText('step 100',gx+gw-14,gy+gh+13);
+    const series=[['cAnchor','#7b5cd6'],['cKeep','#16a3a3'],['sig','#d64545']];
+    series.forEach(s=>{ctx.strokeStyle=s[1];ctx.lineWidth=2.2;ctx.beginPath();
+      for(let i=0;i<STEPS;i++){const v=stepVals(i,eta)[s[0]];const x=gx+i/(STEPS-1)*gw,y=gy+gh*(1-Math.min(1,v));
+        i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();});
+    ctx.font='700 10px Segoe UI';ctx.textAlign='left';
+    ctx.fillStyle='#7b5cd6';ctx.fillText('√ᾱ_{t−1} (anchor grows)',gx+4,gy+12);
+    ctx.fillStyle='#16a3a3';ctx.fillText('√(β̄_{t−1}−σ²) (noise fades)',gx+4,gy+26);
+    ctx.fillStyle='#d64545';ctx.fillText('σ (dice, scaled by η='+eta.toFixed(2)+')',gx+4,gy+40);
+    // marker at idx
+    const mxx=gx+idx/(STEPS-1)*gw;
+    ctx.strokeStyle='#b9a5ec';ctx.setLineDash([4,3]);ctx.lineWidth=1.3;
+    ctx.beginPath();ctx.moveTo(mxx,gy);ctx.lineTo(mxx,gy+gh);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#5a6b86';ctx.font='10px Segoe UI';ctx.textAlign='center';
+    ctx.fillText('click/drag on this chart = scrub the run',gx+gw/2,gy+gh+30);
+    chartHit={gx,gy,gw,gh};
+  }
+  // step meta line
+  ctx.fillStyle='#25324a';ctx.font='700 12px Consolas';ctx.textAlign='left';
+  ctx.fillText('step '+(idx+1)+'/100:  t='+V.t.toFixed(2)+'   ᾱ_t='+V.ab.toFixed(4)+'   ᾱ_{t−1}='+V.ab1.toFixed(4)+(V.ab1===1?'  ← guard value!':''),30,H-80);
+  ctx.fillText('σ='+V.sig.toFixed(4)+'   β̄_t='+V.bb.toFixed(4)+'   β̄_{t−1}='+V.bb1.toFixed(4),30,H-58);
+  // eta annotation
+  ctx.font='11px Segoe UI';ctx.fillStyle='#5a6b86';
+  ctx.fillText(eta<0.05?'η=0: fully deterministic DDIM — the red stream is welded shut, same start noise → same image every time.':
+    eta>0.95?'η=1: maximal freshness — every step re-rolls some noise, like DDPM. The notebook uses this (eta=1.).':
+    'η='+eta.toFixed(2)+': partial re-rolling — between deterministic DDIM and stochastic DDPM.',30,H-32);
+}
+let chartHit=null;
+
+// ---------- text ----------
+function fmt(){
+  const V=stepVals(idx,eta);
+  const E=[
+   `in: x_t, ε̂=model(x_t,t), &nbsp;ᾱ_t=<span class="a">${V.ab.toFixed(4)}</span>, ᾱ_{t−1}=<span class="a">${V.ab1.toFixed(4)}</span>, β̄=1−ᾱ, η=${eta.toFixed(2)}`,
+   `σ = η·√(β̄_{t−1}/β̄_t)·√(1−ᾱ_t/ᾱ_{t−1}) = ${eta.toFixed(2)}·√(${V.bb1.toFixed(3)}/${V.bb.toFixed(3)})·√(1−${(V.ab/V.ab1).toFixed(3)}) = <span class="r">${V.sig.toFixed(4)}</span>`,
+   `x̂0 = clamp((x_t − √${V.bb.toFixed(3)}·ε̂)/√${V.ab.toFixed(4)}, <b>−1.5, 1.5</b>) &nbsp;<span style="color:#93a2bd">— same solve as denoise(), looser clamp</span>`,
+   V.guard? `β̄_{t−1}=${V.bb1.toFixed(4)} ≤ σ²+0.01 → <span class="r">σ := 0</span> &nbsp;⇒&nbsp; x_{t−1} = √ᾱ_{t−1}·x̂0 + √β̄_{t−1}·ε̂ <span class="dead">+ σ·z</span>`
+          : `β̄_{t−1}=${V.bb1.toFixed(4)} &gt; σ²+0.01=${(V.sig*V.sig+0.01).toFixed(4)} → guard off &nbsp;<span style="color:#93a2bd">(drag to step 100 to trip it)</span>`,
+   `x_{t−1} = <span class="a">${V.cAnchor.toFixed(3)}</span>·x̂0 + <span class="g">${V.cKeep.toFixed(3)}</span>·ε̂ + <span class="r">${V.sig.toFixed(3)}</span>·z`];
+  $('eq').innerHTML=E[stage];
+  $('iv').textContent=(idx+1)+'/100';$('etav').textContent=eta.toFixed(2);
+}
+const STORIES=[
+ 'What one call receives. The loop hands over the current image x_t, the model\'s noise reading ε̂, and the schedule evaluated at <b>two</b> times: now (ᾱ_t) and one step later (ᾱ_{t−1}, meaning t−1/steps — "one notch cleaner"). Everything else in the function is computed from these. Note the argument named <code>sig</code> that the loop passes in: it is immediately overwritten on line one — a small leftover wart in the notebook\'s code, worth knowing so it doesn\'t confuse you.',
+ 'σ is the volume knob for <b>fresh randomness</b>. Its formula compares how much noise-room the destination has (β̄_{t−1}/β̄_t) with how much signal this step recovers (1−ᾱ_t/ᾱ_{t−1}) — and then multiplies the whole thing by <b>η</b>. Slide η to 0 and σ dies everywhere: pure DDIM, a deterministic map from start-noise to image. Slide to 1: each step re-rolls a DDPM-like amount. Watch the red curve on the chart scale with the slider.',
+ 'The step\'s first real act is the same algebra as <code>denoise()</code>: estimate the clean image, x̂0 = (x_t − √β̄_t·ε̂)/√ᾱ_t, clamped to ±1.5. Why ±1.5 and not ±1? Early in the run √ᾱ_t is tiny, the division is violent, and a tight clamp would flatten too much — ±1.5 only stops genuine blow-ups. This x̂0 is a rough sketch at step 5 and nearly the final image by step 95.',
+ 'The guard protects the last hop. As t→0, β̄_{t−1}→0 — the destination has almost no noise-room left. If σ² (+0.01 margin) would exceed it, the update\'s √(β̄_{t−1}−σ²) would go <b>negative under the root → NaN</b>. So the code simply sets σ=0: the final hops become deterministic. Scrub to step 100 and watch the lamp light up and the red stream weld shut.',
+ 'The recombination — and the whole DDIM idea in one line. Instead of stumbling back one micro-step like DDPM, it <b>rebuilds a slightly-cleaner image from scratch</b>: take the x̂0 anchor scaled by √ᾱ_{t−1}, add back the <i>same</i> noise direction ε̂ scaled to exactly the noise level that t−1/S calls for, plus σ·z fresh dice if η allows. Follow the chart across the run: purple (trust the anchor) rises from ~0 to 1 while teal (keep the noise) falls to 0 — sampling is a 100-step handover from noise to anchor.'];
+// Full ddim_step shown in EVERY stage; only the highlight moves.
+// Line ids: 0 signature, 1 sig, 2 x0hat, 3 guard, 4 update, 5 fresh, 6 return
+const FN_LINES=[
+ 'def <span class="fn">ddim_step</span>(x_t, noise, abar_t, abar_t1, bbar_t, bbar_t1, eta, sig):',
+ '    sig = ((bbar_t1/bbar_t).sqrt() * (<span class="num">1</span> - abar_t/abar_t1).sqrt()) * eta',
+ '    x_0_hat = ((x_t - (<span class="num">1</span>-abar_t).sqrt()*noise) / abar_t.sqrt()).clamp(-<span class="num">1.5</span>, <span class="num">1.5</span>)',
+ '    if bbar_t1 &lt;= sig**<span class="num">2</span> + <span class="num">0.01</span>: sig = <span class="num">0.</span>',
+ '    x_t = abar_t1.sqrt()*x_0_hat + (bbar_t1 - sig**<span class="num">2</span>).sqrt()*noise',
+ '    x_t += sig * torch.randn(x_t.shape).to(x_t)',
+ '    return x_0_hat, x_t'];
+const STAGE_HL=[[0],[1],[2],[3],[4,5,6]];
+const STAGE_NOTE=[
+ '<span class="cm"># \u2460 the inputs \u2014 note: the incoming `sig` argument is never used; line 2 overwrites it</span>',
+ '<span class="cm"># \u2461 \u03c3 = fresh-noise volume \u00b7 \u03b7=0 \u2192 deterministic DDIM \u00b7 \u03b7=1 \u2192 DDPM-like</span>',
+ '<span class="cm"># \u2462 the denoise() solve again \u2014 \u00b11.5 clamp only stops early-step blow-ups</span>',
+ '<span class="cm"># \u2463 without this, \u221a(bbar_t1 \u2212 \u03c3\u00b2) = \u221a(negative) = NaN on the final hops</span>',
+ '<span class="cm"># \u2464 rebuild: \u221a\u03b1\u0304\u2081\u00b7anchor + \u221a(\u03b2\u0304\u2081\u2212\u03c3\u00b2)\u00b7kept-noise + \u03c3\u00b7fresh \u2192 return sketch + next image</span>'];
+function codeFor(st){
+  const hl=STAGE_HL[st];
+  return STAGE_NOTE[st]+'\n'+FN_LINES.map((l,i)=>hl.includes(i)?'<span class="hl">'+l+'</span>':l).join('\n');
+}
+function setStage(s){stage=s;document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+ $('story').innerHTML=STORIES[s];$('code').innerHTML=codeFor(s);
+ if(s===3&&!stepVals(idx,eta).guard){idx=99;$('isl').value=idx;}
+ fmt();draw();postH();}
+
+// ---------- interaction ----------
+$('isl').oninput=e=>{idx=+e.target.value;fmt();draw();};
+$('eta').oninput=e=>{eta=+e.target.value;fmt();draw();};
+let dragging=false;
+cv.addEventListener('pointerdown',e=>{dragging=true;pick(e);});
+addEventListener('pointermove',e=>{if(dragging)pick(e);});
+addEventListener('pointerup',()=>dragging=false);
+function pick(e){if(!chartHit)return;const r=cv.getBoundingClientRect();
+ const x=e.clientX-r.left,y=e.clientY-r.top,g=chartHit;
+ if(x>=g.gx-6&&x<=g.gx+g.gw+6&&y>=g.gy-6&&y<=g.gy+g.gh+10){
+   idx=Math.round(Math.max(0,Math.min(1,(x-g.gx)/g.gw))*(STEPS-1));$('isl').value=idx;fmt();draw();}}
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'⏸ Pause':'▶ Animate step';ph=0;};
+$('fwd').onclick=()=>{stopP();setStage(Math.min(4,stage+1));};
+$('back').onclick=()=>{stopP();setStage(Math.max(0,stage-1));};
+$('reset').onclick=()=>{stopP();idx=30;eta=1;$('isl').value=idx;$('eta').value=eta;setStage(0);};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopP();setStage(+c.dataset.s);});
+function stopP(){playing=false;$('play').textContent='▶ Animate step';}
+let last=null;
+function loop(tsm){requestAnimationFrame(loop);
+ if(playing&&last!=null){ph+=(tsm-last)*0.001;
+  if(ph>1.6){ph=0;const nx=(stage+1)%5;setStage(nx);if(nx===0)stopP();}}
+ last=tsm;}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:Math.ceil(document.body.scrollHeight)},'*');}
+fit();addEventListener('resize',()=>{fit();draw();postH();});
+setStage(0);requestAnimationFrame(loop);
+</script><style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">(function(){function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}addEventListener('load',postH);addEventListener('resize',postH);if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);setTimeout(postH,150);setTimeout(postH,600);})();</script>
+</body></html>

@@ -3,7 +3,6 @@
 <html lang="en">
 <head><meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
 <title>22_cosine_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
@@ -7508,7 +7507,8 @@ a.anchor-link {
     white-space: normal;
   }
 </style>
-<!-- End of mermaid configuration --></head>
+<!-- End of mermaid configuration --><link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
+</head>
 <body class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
 <div class="ce-container">
 <header class="ce-breadcrumb">
@@ -7524,6 +7524,8 @@ a.anchor-link {
     <span class="ce-action-icon">&#9654;</span> Open in Colab
   </a>
 </div>
+<main>
+
 <main>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -7557,6 +7559,155 @@ CONTINUOUS (this notebook):
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<hr/>
+<h2 id="%F0%9F%8E%AE-Interactive-Visualizations-in-This-Notebook">🎮 Interactive Visualizations in This Notebook<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-Visualizations-in-This-Notebook">¶</a></h2><p>This notebook includes <strong>8 interactive visualizations</strong> (hosted on GitHub Pages, embedded below in full-width auto-sizing iframes). Each one has <strong>stage chips</strong> that animate one idea at a time and sync the highlighted code, plus <strong>play / step / speed</strong> controls. Click things &mdash; dots, drawers, pillars, bars, and plots are clickable.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Visualization</th>
+<th>What it teaches</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Two Worlds of Time</strong></td>
+<td>discrete lookup table (nb 19) vs continuous <code>abar(t)</code> function</td>
+<td>right below</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Building cos²(πt/2)</strong></td>
+<td>the schedule from a spinning angle; &radic;ᾱ=cos, &radic;(1−ᾱ)=sin; <code>inv_abar</code> backwards</td>
+<td>after the schedule code</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Schedule Landscape (3D)</strong></td>
+<td>ride the cosine ribbon; why the 1000-slab staircase can't answer between steps</td>
+<td>after ↑2</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>The noisify Machine</strong></td>
+<td>five stations, the new <code>rand</code> dice, the <code>clamp(0, 0.999)</code> guard, broadcasting</td>
+<td>after noisify</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Direct Denoising Lab</strong></td>
+<td>solve for x₀; the ÷&radic;ᾱ error amplifier; why high-t reconstructions blur</td>
+<td>after denoise</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>ddim_step Anatomy</strong></td>
+<td>σ and η, x̂₀ + clamp(±1.5), the σ=0 guard, three streams recombining</td>
+<td>after ddim_step</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>The sample() Loop</strong></td>
+<td>the linspace rail, any step count, the final-step ᾱ=1 guard, steps-vs-FID</td>
+<td>after sample</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>The &times;2 Range Journey</strong></td>
+<td>why <code>preds[-1] * 2</code> &mdash; model world [−0.5,0.5] vs FID world [−1,1]</td>
+<td>after sampling</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Tip:</strong> run the setup cell below once, then each 🎮 cell works independently.</p>
+</blockquote>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE VISUALIZATIONS -- setup (run this cell ONCE).</span>
+<span class="c1"># Each "🎮 Interactive" cell below loads a standalone HTML file from the</span>
+<span class="c1"># published copy on GitHub Pages, in an isolated &lt;iframe&gt; (its CSS/JS can't leak</span>
+<span class="c1"># into the notebook). It is shown FULL WIDTH and auto-fits its content height.</span>
+<span class="c1"># No local files needed -- the visualizations are read from GitHub.</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+
+<span class="k">def</span> <span class="nf">show_viz</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"600px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Embed an interactive visualization full width; it auto-fits its height.</span>
+<span class="sd">    `path` may be a bare 'interactive_viz/&lt;file&gt;.html' (resolved to the GitHub</span>
+<span class="sd">    Pages copy) or a full https URL."""</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="s2">"https://shammun.github.io/shammunul-fastai-notes/notebooks/"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"http"</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">path</span>
+    <span class="k">return</span> <span class="n">HTML</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'&lt;iframe src="</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">" loading="lazy" allowfullscreen '</span>
+        <span class="sa">f</span><span class="s1">'style="width:100%;height:</span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s1">;border:1px solid #dde5f2;border-radius:12px;'</span>
+        <span class="sa">f</span><span class="s1">'box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"&gt;&lt;/iframe&gt;'</span>
+        <span class="s1">'&lt;script&gt;addEventListener("message",function(e){'</span>
+        <span class="s1">'if(e.data&amp;&amp;e.data.type==="ce-frame-height"&amp;&amp;e.data.height&gt;50){'</span>
+        <span class="s1">'var fs=document.querySelectorAll("iframe");for(var i=0;i&lt;fs.length;i++){'</span>
+        <span class="s1">'if(fs[i].contentWindow===e.source){fs[i].style.height=e.data.height+"px";break;}}}});&lt;/script&gt;'</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Two-Worlds-of-Time">🎮 Interactive: Two Worlds of Time<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Two-Worlds-of-Time">¶</a></h3><p>The single biggest change in this notebook, on one screen &mdash; nb 19's <strong>1000-drawer lookup cabinet</strong> vs this notebook's <strong>one-line function</strong>:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li><strong>Drag the timeline</strong> (or drag directly on either panel): both worlds answer the same question "how much signal at time t?" &mdash; watch the cabinet open drawer <code>round(999·t)</code> while the function just evaluates <code>cos²</code>.</li>
+<li>Chip <strong>③ Ask between the drawers</strong> parks t at 0.6175 &mdash; drawer 617.5 doesn't exist (red ✗), but <code>abar(0.6175)</code> answers instantly. This is <em>the</em> reason continuous time exists.</li>
+<li>Chip <strong>④ Why it matters</strong> shows one trained model sampled on 100 / 50 / 25-step rails &mdash; the payoff you'll measure with FID at the end of the notebook.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/cos22_big_picture.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/cos22_big_picture.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -7709,19 +7860,6 @@ CONTINUOUS (this notebook):
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Continuous-time cosine schedule</h3>
-  <p class="ce-interactive-hint">In continuous time, t goes from 0 to 1 smoothly &mdash; no discrete steps. <code>&#257;(t) = cos<sup>2</sup>(&pi;t/2)</code> gives a clean monotone decay from 1 to 0. Drag the <em>s</em> offset to see how the small "anti-singularity" shift (<code>cos<sup>2</sup>((t+s)/(1+s) &middot; &pi;/2)</code>) prevents the kernel from collapsing at t = 0.</p>
-  <canvas id="cct-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
-  <div class="ms-controls">
-    <label>s offset: <span id="cct-s-val" class="ms-val">0.008</span></label>
-    <input id="cct-s" type="range" min="0.0" max="0.1" step="0.001" value="0.008">
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>Why this matters:</strong> with s = 0, the schedule's derivative at t = 0 is exactly 0 &mdash; signal stays at 1 for an infinitesimal moment, then collapses. With s &gt; 0, the curve starts decaying immediately and gracefully. Tiny detail, real effect on training stability.
-  </p>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7729,7 +7867,6 @@ CONTINUOUS (this notebook):
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-
 <h2 id="The-Cosine-Schedule-with-Continuous-Time">The Cosine Schedule with Continuous Time<a class="anchor-link" href="#The-Cosine-Schedule-with-Continuous-Time">¶</a></h2><p>This is the key innovation of this notebook. Instead of using discrete timesteps (0, 1, 2, ..., 999), we use continuous time t in the range [0, 1].</p>
 <h3 id="The-Cosine-Formula">The Cosine Formula<a class="anchor-link" href="#The-Cosine-Formula">¶</a></h3><p>The cosine schedule for alphabar is:</p>
 $$\bar{\alpha}(t) = \cos^2\left(\frac{\pi t}{2}\right)$$<p>Where:</p>
@@ -7831,6 +7968,80 @@ At t=1: alphabar=0 (pure noise)
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Building-cos%C2%B2(%CF%80t/2)">🎮 Interactive: Building cos²(πt/2)<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Building-cos%C2%B2(%CF%80t/2)">¶</a></h3><p>Where the formula comes from &mdash; not memorized, <em>constructed</em>, one chip at a time:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Walk the chips: <strong>① t&rarr;angle &rarr; ② cos = signal knob &rarr; ③ square &rarr; ᾱ &rarr; ④ the Pythagoras trick &rarr; ⑤ inv_abar backwards</strong>. Each chip adds one curve to the plot and highlights the matching piece of the one-liner.</li>
+<li><strong>Drag t</strong> on the quarter-circle <em>or</em> on the plot &mdash; the mixed image at the bottom is honestly recomputed as &radic;ᾱ·x₀ + &radic;(1−ᾱ)·ε.</li>
+<li>Chip <strong>④</strong> is the payoff: &radic;ᾱ = cos θ and &radic;(1−ᾱ) = sin θ, so cos²+sin²=1 guarantees <strong>signal² + noise² = 1 at every t</strong> (watch the energy bar &mdash; it can never overflow).</li>
+<li>Chip <strong>⑤</strong> animates <code>inv_abar</code>: enter at an ᾱ height, hit the curve, drop down to read t &mdash; the three "undos" (&radic;, acos, &times;2/π) in reverse order.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/cos22_schedule_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/cos22_schedule_lab.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive-(3D):-The-Schedule-Landscape">🎮 Interactive (3D): The Schedule Landscape<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-(3D):-The-Schedule-Landscape">¶</a></h3><p>The same idea as terrain &mdash; <strong>drag to rotate, scroll to zoom</strong>:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li><strong>Ride the ribbon</strong> (chip ②): the orange courier's face is recomputed every frame from the actual mix formula &mdash; watch the shirt dissolve as ᾱ descends, and the twin &radic;ᾱ / &radic;(1−ᾱ) bars over its head trade places (they cross at t=0.5).</li>
+<li>Click the <strong>teal milestone pillars</strong> (or the pills below the scene) to jump to t = 0, 0.2, &hellip;, 0.99 and read what's special at each stop.</li>
+<li>Chip <strong>③</strong> parks the courier at t=0.6175: on the ribbon, no problem &mdash; but the red dashed line falls <em>between</em> two slabs of the discrete staircase behind. Toggle <strong>🪜 discrete staircase</strong> on/off to compare shapes: linear-1000 has already destroyed far more signal by mid-run.</li>
+<li>Chip <strong>④</strong> runs <code>inv_abar</code> as an elevator: beam in at height ᾱ, drop down to the floor, read off t.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/cos22_landscape_3d.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"800px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/cos22_landscape_3d.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:800px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -7947,7 +8158,43 @@ At t=1: alphabar=0 (pure noise)
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-The-noisify-Machine">🎮 Interactive: The noisify Machine<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-The-noisify-Machine">¶</a></h3><p>The function above as a five-station assembly line &mdash; with the nb 19 version alongside for a line-by-line diff:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li><strong>▶ Run batch</strong> sends 5 images through; each station lights up its line in <em>both</em> code panels (teal = new in nb 22, red = the nb 19 line it replaced).</li>
+<li><strong>Click any station</strong> (or chip) to zoom in: station ② rolls the new float dice (<code>rand</code> &rarr; 0.52, 0.81&hellip; vs <code>randint</code> &rarr; 517, 810&hellip;), station ③ shows the <code>clamp(0, 0.999)</code> ceiling and the ÷0 disaster it prevents, station ④ shows the <code>(n,) &rarr; (n,1,1,1)</code> reshape as stretchy broadcast dims.</li>
+<li><strong>🎲 re-roll</strong> draws fresh t and ε &mdash; notice each image always keeps <em>its own</em> noise level in station ⑤.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/cos22_noisify_machine.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"860px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/cos22_noisify_machine.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:860px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8425,6 +8672,42 @@ Reverse:  x_0 = (x_t - sqrt(1 - abar_t) * noise) / sqrt(abar_t)
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Direct-Denoising-Lab">🎮 Interactive: Direct Denoising Lab<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Direct-Denoising-Lab">¶</a></h3><p>The algebra above, made draggable &mdash; including the part the equations hide:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Walk chips <strong>①&rarr;④</strong> to animate the solve: subtract &radic;(1−ᾱ)·ε̂, divide by &radic;ᾱ, clamp.</li>
+<li>The <strong>model error slider</strong> is the honest part: a real UNet's ε̂ is never perfect. Set ~8% error and drag <strong>t</strong> upward &mdash; watch the <strong>error amplifier dial</strong> (1/&radic;ᾱ) spin up and the x̂₀ pane fall apart, while at low t the reconstruction stays sharp.</li>
+<li>Chip <strong>⑤</strong> shows the punchline curve: x̂₀'s error = &radic;(1−ᾱ)/&radic;ᾱ &times; model error. <strong>Click anywhere on the curve</strong> to move t; the three labelled zones reproduce exactly what you observed in the real reconstruction grid above (sharp / blurry / washed-out).</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/cos22_denoise_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"860px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/cos22_denoise_lab.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:860px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="Sampling-with-DDIM">Sampling with DDIM<a class="anchor-link" href="#Sampling-with-DDIM">¶</a></h2><p>Now let's generate new images using DDIM with continuous time.</p>
 </div>
@@ -8626,19 +8909,42 @@ $$
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: log-SNR across schedules</h3>
-  <p class="ce-interactive-hint">The signal-to-noise ratio <code>SNR(t) = &#257;(t) / (1 &minus; &#257;(t))</code> is the most schedule-invariant way to compare diffusion processes. Plot <code>log SNR</code> over time for three popular schedules &mdash; you'll see they all start high (lots of signal) and end at &minus;&infin; (pure noise), but they curve differently.</p>
-  <canvas id="snr-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
-  <div class="ms-controls">
-    <label><input type="checkbox" data-s="linear" checked> Linear</label>
-    <label><input type="checkbox" data-s="cosine" checked> Cosine (s=0.008)</label>
-    <label><input type="checkbox" data-s="sigmoid"> Sigmoid</label>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    <strong>The view from log-SNR:</strong> linear schedule descends almost linearly in log-SNR; cosine has a steeper drop at the end (more "easy" steps at high SNR, fewer at low SNR); sigmoid is symmetric. The right schedule is the one that distributes your training compute proportional to the difficulty at each timestep.
-  </p>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-ddim_step-Anatomy">🎮 Interactive: ddim_step Anatomy<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-ddim_step-Anatomy">¶</a></h3><p>One sampling step as three streams merging &mdash; with the η knob and the guard as physical things:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li><strong>Drag "position in run"</strong> (or click/drag on the right-hand chart) to see the same step at any of the 100 stops: early on the teal "kept noise" stream is thick and the purple "anchor" stream thin; by step 100 they've fully traded &mdash; sampling is a 100-step handover.</li>
+<li><strong>Drag η</strong>: at 0 the red fresh-dice stream welds shut (deterministic DDIM); at 1 it re-rolls DDPM-style (the notebook's setting).</li>
+<li>Scrub to <strong>step 100</strong> (or click chip ④): the <strong>GUARD lamp</strong> lights &mdash; β̄₍t₋₁₎ &le; σ²+0.01 forces σ=0, preventing &radic;(negative) &rarr; NaN on the final hop.</li>
+<li>Chips animate each sub-computation and highlight its exact line of <code>ddim_step</code>.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/cos22_ddim_stepper.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/cos22_ddim_stepper.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -8663,7 +8969,6 @@ $$<p>This produces the sequence $\left(\frac{S-1}{S},\; \frac{S-2}{S},\; \dots,\
 x_T \sim \mathcal{N}(0, I)
 $$<hr/>
 <h2 id="3.-Per-Step-Computations">3. Per-Step Computations<a class="anchor-link" href="#3.-Per-Step-Computations">¶</a></h2><p>At each step $i$ with current time $t_i$:</p>
-
 <h3 id="3a.-Noise-Schedule-Values">3a. Noise Schedule Values<a class="anchor-link" href="#3a.-Noise-Schedule-Values">¶</a></h3>$$
 \bar{\alpha}_{t} = \bar{\alpha}(t_i)
 $$$$
@@ -8882,6 +9187,44 @@ $$<hr/>
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-The-sample()-Loop">🎮 Interactive: The sample() Loop<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-The-sample()-Loop">¶</a></h3><p>Walk the time rail &mdash; and re-lay it with any number of stops:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Switch <strong>steps = 10 / 25 / 50 / 100</strong> and watch <code>linspace(1−1/S, 0, S)</code> re-divide the same rail &mdash; the continuous-time superpower in one control.</li>
+<li><strong>▶ Run the loop</strong>: left pane is x_t sharpening; right pane is the model's clean sketch x̂₀ (this is what <code>preds</code> collects) committing from "average garment" to a specific one.</li>
+<li><strong>Click any dot</strong> on the rail to jump there &mdash; the readout card shows that turn's t, ᾱ(t), ᾱ(t−1/S), and the loop's code line highlights follow.</li>
+<li>Click the <strong>red-ringed final dot</strong> (or chip ③): at t=0, "next time" would be <em>negative</em> &mdash; the guard substitutes ᾱ=1 (= zero noise = clean destination, by definition).</li>
+<li>Chip <strong>④</strong> shows the measured bill: 100 steps &rarr; FID&asymp;3.1, 50 steps &rarr; FID&asymp;4.4 at 2&times; speed (dashed bars = indicative, not run in the notebook). Click a bar to set the rail.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/cos22_sampling_lab.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"820px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/cos22_sampling_lab.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:820px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="Generating-Samples">Generating Samples<a class="anchor-link" href="#Generating-Samples">¶</a></h2>
 </div>
@@ -9047,7 +9390,44 @@ After &times; 2:    [-1, 1]
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-The-%C3%972-Range-Journey">🎮 Interactive: The &times;2 Range Journey<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-The-%C3%972-Range-Journey">¶</a></h3><p>The full answer to "why multiply by 2", animated as stretching/sliding range bars:</p>
+<p><strong>What to try</strong></p>
+<ul>
+<li>Chips <strong>①&rarr;③</strong> follow the two pipelines that split from the same <code>[0,1]</code> tensor: training subtracts 0.5 (<strong>model world [−0.5, 0.5]</strong>), evaluation does &times;2−1 (<strong>judge world [−1, 1]</strong>).</li>
+<li>Chip <strong>④ the mismatch</strong>: feed the judge raw generated pixels and the purple distribution sits squeezed at half width &mdash; FID reads a fake "low-contrast" gap that is <em>pure units</em>, not quality.</li>
+<li>Chip <strong>⑤ the fix</strong>: <code>preds[-1] * 2</code> stretches the purple distribution onto the teal one; the FID verdict flips to the notebook's honest &asymp;3.3.</li>
+<li>Rule to keep: <strong>same range on both sides before any FID/KID</strong> &mdash; this is one of the most common FID bugs in the wild.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/cos22_range_journey.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"780px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/cos22_range_journey.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:780px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9300,170 +9680,15 @@ At t=1: x_1 = 0*x_0 + 1*epsilon = epsilon (pure noise)
 </div>
 </div>
 </div>
-<style>
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive input[type="range"] { flex: 1; min-width: 160px; accent-color: var(--ce-purple, #6c5ce7); height: 6px; touch-action: manipulation; }
-.ce-interactive input[type="checkbox"] { accent-color: var(--ce-purple, #6c5ce7); }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 70px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-function alphaBarLinear(t) {
-  // Discrete linear, mapped to continuous via product approximation
-  var beta_min = 1e-4 * 1000, beta_max = 0.02 * 1000;
-  // integral of beta from 0 to t
-  var integral = beta_min * t + 0.5 * (beta_max - beta_min) * t * t;
-  return Math.exp(-integral);
-}
-function alphaBarCosine(t, s) {
-  s = s || 0.008;
-  var f = function(x) { return Math.pow(Math.cos(((x + s) / (1 + s)) * Math.PI / 2), 2); };
-  return f(t) / f(0);
-}
-function alphaBarSigmoid(t) {
-  // shifted sigmoid mapped to [0, 1]
-  var k = 6;
-  var s = function(x) { return 1 / (1 + Math.exp(k * (x - 0.5))); };
-  return (s(t) - s(1)) / (s(0) - s(1) + 1e-9);
-}
-
-// ============================================================================
-// Interactive 1: Continuous cosine
-// ============================================================================
-(function continuousCosine() {
-  var canvas = document.getElementById('cct-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-
-  function draw() {
-    var s = parseFloat(document.getElementById('cct-s').value);
-    document.getElementById('cct-s-val').textContent = s.toFixed(3);
-    ctx.clearRect(0, 0, W, H);
-    var m = { l: 56, r: 16, t: 24, b: 40 };
-    var iW = W - m.l - m.r, iH = H - m.t - m.b;
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-    for (var i = 0; i <= 4; i++) {
-      var y = m.t + (i / 4) * iH;
-      ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(m.l + iW, y); ctx.stroke();
-    }
-    ctx.fillStyle = '#6b7280'; ctx.font = '11px monospace';
-    for (var i = 0; i <= 4; i++) {
-      var y = m.t + iH - (i / 4) * iH;
-      ctx.fillText((i / 4).toFixed(2), 14, y + 4);
-    }
-    ctx.fillText('alphabar(t)', 8, m.t + 14);
-    for (var i = 0; i <= 4; i++) {
-      var x = m.l + (i / 4) * iW;
-      ctx.fillText((i / 4).toFixed(2), x - 10, m.t + iH + 16);
-    }
-    ctx.fillText('t (continuous)', m.l + iW / 2 - 36, m.t + iH + 30);
-
-    function plot(fn, color, dashed) {
-      ctx.strokeStyle = color; ctx.lineWidth = 2.6;
-      ctx.setLineDash(dashed ? [5, 4] : []);
-      ctx.beginPath();
-      for (var i = 0; i <= 200; i++) {
-        var t = i / 200;
-        var v = fn(t);
-        var x = m.l + t * iW;
-        var y = m.t + iH - v * iH;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-
-    plot(function(t) { return alphaBarCosine(t, 0); }, '#dc2626', true);
-    plot(function(t) { return alphaBarCosine(t, s); }, '#4f46e5', false);
-
-    ctx.fillStyle = '#dc2626'; ctx.fillRect(m.l + iW - 200, 12, 14, 4);
-    ctx.fillStyle = '#374151'; ctx.font = '12px sans-serif';
-    ctx.fillText('s = 0 (singular)', m.l + iW - 180, 16);
-    ctx.fillStyle = '#4f46e5'; ctx.fillRect(m.l + iW - 80, 12, 14, 4);
-    ctx.fillStyle = '#374151'; ctx.fillText('s = ' + s.toFixed(3), m.l + iW - 60, 16);
-  }
-
-  document.getElementById('cct-s').addEventListener('input', draw);
-  draw();
-})();
-
-// ============================================================================
-// Interactive 2: log-SNR
-// ============================================================================
-(function logSNR() {
-  var canvas = document.getElementById('snr-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-
-  function snr(ab) { return ab / (1 - ab + 1e-9); }
-
-  function draw() {
-    ctx.clearRect(0, 0, W, H);
-    var m = { l: 56, r: 16, t: 24, b: 40 };
-    var iW = W - m.l - m.r, iH = H - m.t - m.b;
-    var yMin = -10, yMax = 10;
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-    for (var i = 0; i <= 4; i++) {
-      var y = m.t + (i / 4) * iH;
-      ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(m.l + iW, y); ctx.stroke();
-    }
-    ctx.fillStyle = '#6b7280'; ctx.font = '11px monospace';
-    for (var i = 0; i <= 4; i++) {
-      var y = m.t + iH - (i / 4) * iH;
-      var v = yMin + (yMax - yMin) * (i / 4);
-      ctx.fillText(v.toFixed(0), 14, y + 4);
-    }
-    ctx.fillText('log SNR', 8, m.t + 14);
-    for (var i = 0; i <= 4; i++) {
-      var x = m.l + (i / 4) * iW;
-      ctx.fillText((i / 4).toFixed(2), x - 10, m.t + iH + 16);
-    }
-    ctx.fillText('t (normalized)', m.l + iW / 2 - 36, m.t + iH + 30);
-
-    var schemes = {
-      linear:  { fn: alphaBarLinear, color: '#dc2626' },
-      cosine:  { fn: function(t) { return alphaBarCosine(t, 0.008); }, color: '#4f46e5' },
-      sigmoid: { fn: alphaBarSigmoid, color: '#0fb9b1' },
-    };
-    var active = [];
-    document.querySelectorAll('[data-s]').forEach(function(cb) {
-      if (cb.checked) active.push(cb.dataset.s);
-    });
-
-    active.forEach(function(name, idx) {
-      var s = schemes[name];
-      ctx.strokeStyle = s.color; ctx.lineWidth = 2.6;
-      ctx.beginPath();
-      for (var i = 0; i <= 200; i++) {
-        var t = i / 200;
-        var ab = Math.max(1e-9, Math.min(1 - 1e-9, s.fn(t)));
-        var v = Math.log(snr(ab));
-        var x = m.l + t * iW;
-        var y = m.t + iH - ((v - yMin) / (yMax - yMin)) * iH;
-        y = Math.max(m.t, Math.min(m.t + iH, y));
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      ctx.fillStyle = s.color; ctx.fillRect(m.l + 12 + idx * 110, 12, 14, 4);
-      ctx.fillStyle = '#374151'; ctx.font = '11px sans-serif';
-      ctx.fillText(name, m.l + 12 + idx * 110 + 18, 16);
-    });
-  }
-
-  document.querySelectorAll('[data-s]').forEach(function(cb) {
-    cb.addEventListener('change', draw);
-  });
-  draw();
-})();
-
+<script id="ce-fullbleed-resize">
+(function(){
+  function fit(f){ try{var d=f.contentDocument; if(d&&d.body){var h=Math.ceil(Math.max(d.body.scrollHeight,d.body.offsetHeight)); if(h>50){f.style.height=(h+8)+"px";return true;}}}catch(e){} return false; }
+  function all(){ document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(fit); }
+  addEventListener("message",function(e){ if(!e.data||e.data.type!=="ce-frame-height"||!(e.data.height>50))return;
+    var ifr=document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)");
+    for(var i=0;i<ifr.length;i++){ if(ifr[i].contentWindow===e.source){ ifr[i].style.height=(e.data.height+8)+"px"; break; } } });
+  document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(function(f){ f.addEventListener("load",function(){fit(f);setTimeout(function(){fit(f);},400);setTimeout(function(){fit(f);},1200);}); });
+  addEventListener("resize",all); setInterval(all,1500); all();
 })();
 </script>
 </main>

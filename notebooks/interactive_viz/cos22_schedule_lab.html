@@ -1,0 +1,295 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Building ᾱ(t) = cos²(πt/2) — from a spinning angle to a noise schedule</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  canvas.main{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:crosshair;touch-action:none;}
+  .eqstrip{max-width:1060px;margin:8px auto 0;background:#faf8ff;border:2px dashed var(--ac);border-radius:12px;padding:8px 12px;font-family:"SF Mono",Consolas,monospace;font-size:14px;text-align:center;line-height:1.7;}
+  .eqstrip b{color:var(--ac);}
+  .eqstrip .g{color:#16a3a3;font-weight:700;} .eqstrip .r{color:#d64545;font-weight:700;} .eqstrip .o{color:#f6921e;font-weight:700;}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1060px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.n{color:var(--neg);}
+</style></head><body>
+<h1>Where cos²(πt/2) comes from — one spinning angle builds the whole schedule</h1>
+<p class="sub">The cosine schedule is not a random formula: t sets an <b style="color:var(--in)">angle θ = πt/2</b> on a quarter circle, <b style="color:var(--out)">cos θ</b> is the signal knob, <b style="color:var(--neg)">sin θ</b> is the noise knob — and Pythagoras (<code>cos²+sin²=1</code>) <i>guarantees</i> signal² + noise² = 1 at every t.
+<b>Drag t on either panel · chips build the idea one layer at a time · ⑤ runs the formula backwards (inv_abar).</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① t → angle θ = πt/2</button>
+  <button class="chip" data-s="1">② cos θ = signal knob</button>
+  <button class="chip" data-s="2">③ square it → ᾱ</button>
+  <button class="chip" data-s="3">④ the Pythagoras trick</button>
+  <button class="chip" data-s="4">⑤ inv_abar: run it backwards</button>
+</div>
+
+<div class="selrow">
+  <button class="play" id="play">▶ Play t: 0→1</button>
+  <button class="stepb" id="back">⏮</button>
+  <button class="stepb" id="fwd">⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1" style="width:110px"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  t <input id="tsl" type="range" min="0" max="1" step="0.002" value="0.3" style="width:170px"><span class="speedv" id="tv">0.30</span>
+</div>
+
+<div class="wrap"><div class="card"><canvas class="main" id="cv"></canvas></div></div>
+
+<div class="eqstrip" id="eq"></div>
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b class="i">orange</b> = the angle θ=πt/2 · <b class="o">teal</b> = cos θ and √ᾱ (signal) · <b class="n">red</b> = sin θ and √(1−ᾱ) (noise) · <b class="a">purple</b> = ᾱ(t) itself · dashed guides in ⑤ = inv_abar walking the plot backwards</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+let W=1032,H=430,DPR=Math.min(2,window.devicePixelRatio||1);
+let stage=0,t=0.3,playing=false,speed=1,invPhase=0; // invPhase animates stage 5
+const abar=x=>Math.cos(x*Math.PI/2)**2;
+
+// sprite + noise (same style as suite)
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let x=Math.imul(a^a>>>15,1|a);x=x+Math.imul(x^x>>>7,61|x)^x;return((x^x>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const S=32;
+const sprite=(()=>{const a=new Float32Array(S*S).fill(-0.5);for(let y=0;y<S;y++)for(let x=0;x<S;x++){const fx=x/S,fy=y/S;let v=-0.5;
+ if(fy>0.2&&fy<0.85&&fx>0.28&&fx<0.72)v=0.3; // shirt body
+ if(fy>0.2&&fy<0.45&&(fx>0.1&&fx<0.32||fx>0.68&&fx<0.9))v=0.22; // sleeves
+ if(fy>0.2&&fy<0.3&&fx>0.42&&fx<0.58)v=-0.4; // collar
+ a[y*S+x]=v;}return a;})();
+const noiseA=(()=>{const r=mulberry32(11);const a=new Float32Array(S*S);for(let i=0;i<S*S;i++)a[i]=gauss(r)*0.5;return a;})();
+const cache={};
+function noisy(ab){const k=Math.round(ab*400);if(cache[k])return cache[k];
+ const oc=document.createElement('canvas');oc.width=S;oc.height=S;const c=oc.getContext('2d');const id=c.createImageData(S,S);
+ const sa=Math.sqrt(ab),sb=Math.sqrt(1-ab);
+ for(let i=0;i<S*S;i++){let v=Math.max(0,Math.min(1,sa*sprite[i]+sb*noiseA[i]+0.5));const g=v*255|0;id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=g;id.data[i*4+3]=255;}
+ c.putImageData(id,0,0);cache[k]=oc;return oc;}
+
+function fit(){const w=Math.min(cv.parentElement.clientWidth-4,1032);W=w;H=430;cv.width=W*DPR;cv.height=H*DPR;cv.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+// layout: left quarter-circle, right plot, bottom image mix (stage 4 emphasises mix)
+function geom(){
+  const circ={cx:150,cy:250,R:170};
+  const plot={x:380,y:40,w:W-420,h:250};
+  return {circ,plot};
+}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const {circ,plot}=geom();
+  const th=t*Math.PI/2, c=Math.cos(th), s=Math.sin(th), ab=c*c;
+
+  // ---------- quarter circle ----------
+  ctx.strokeStyle='#dde5f2';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(circ.cx,circ.cy);ctx.lineTo(circ.cx+circ.R+14,circ.cy);ctx.stroke(); // x axis
+  ctx.beginPath();ctx.moveTo(circ.cx,circ.cy);ctx.lineTo(circ.cx,circ.cy-circ.R-14);ctx.stroke(); // y axis
+  ctx.strokeStyle='#c8d3e8';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(circ.cx,circ.cy,circ.R,-Math.PI/2,0);ctx.stroke();
+  // angle arc
+  ctx.strokeStyle='#f6921e';ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(circ.cx,circ.cy,34,0,-th,true);ctx.stroke();
+  ctx.fillStyle='#f6921e';ctx.font='700 12px Consolas';ctx.textAlign='left';
+  ctx.fillText('θ='+(th).toFixed(2)+' rad',circ.cx+40,circ.cy-14);
+  // radius arm
+  const px=circ.cx+c*circ.R, py=circ.cy-s*circ.R;
+  ctx.strokeStyle='#93a2bd';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(circ.cx,circ.cy);ctx.lineTo(px,py);ctx.stroke();
+  ctx.beginPath();ctx.arc(px,py,6,0,7);ctx.fillStyle='#f6921e';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  // cos projection (teal, along x)
+  if(stage>=1){
+    ctx.strokeStyle='#16a3a3';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(circ.cx,circ.cy+8);ctx.lineTo(circ.cx+c*circ.R,circ.cy+8);ctx.stroke();
+    ctx.setLineDash([4,3]);ctx.strokeStyle='#8fd0cd';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px,circ.cy+8);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#16a3a3';ctx.font='700 11.5px Consolas';ctx.textAlign='center';
+    ctx.fillText('cos θ = '+c.toFixed(3),circ.cx+c*circ.R/2,circ.cy+26);
+  }
+  // sin projection (red, along y)
+  if(stage>=3){
+    ctx.strokeStyle='#d64545';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(circ.cx-8,circ.cy);ctx.lineTo(circ.cx-8,circ.cy-s*circ.R);ctx.stroke();
+    ctx.setLineDash([4,3]);ctx.strokeStyle='#e8a0a0';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(circ.cx-8,py);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#d64545';ctx.font='700 11.5px Consolas';ctx.textAlign='right';
+    ctx.save();ctx.translate(circ.cx-16,circ.cy-s*circ.R/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';
+    ctx.fillText('sin θ = '+s.toFixed(3),0,0);ctx.restore();
+  }
+  ctx.fillStyle='#5a6b86';ctx.font='10.5px Segoe UI';ctx.textAlign='left';
+  ctx.fillText('the time dial: t sweeps θ from 0 to π/2',30,32);
+  ctx.font='9.5px Consolas';ctx.fillStyle='#93a2bd';ctx.textAlign='center';
+  ctx.fillText('t=0',circ.cx+circ.R,circ.cy+13);
+  ctx.fillText('t=1',circ.cx-16,circ.cy-circ.R);
+
+  // ---------- plot ----------
+  ctx.strokeStyle='#e7edf8';ctx.lineWidth=1;
+  for(let i=0;i<=2;i++){ctx.beginPath();ctx.moveTo(plot.x,plot.y+plot.h*i/2);ctx.lineTo(plot.x+plot.w,plot.y+plot.h*i/2);ctx.stroke();}
+  ctx.fillStyle='#93a2bd';ctx.font='9.5px Consolas';ctx.textAlign='right';
+  ctx.fillText('1',plot.x-5,plot.y+4);ctx.fillText('.5',plot.x-5,plot.y+plot.h/2+3);ctx.fillText('0',plot.x-5,plot.y+plot.h+3);
+  ctx.textAlign='center';
+  ctx.fillText('0',plot.x,plot.y+plot.h+13);ctx.fillText('0.5',plot.x+plot.w/2,plot.y+plot.h+13);ctx.fillText('1  t',plot.x+plot.w,plot.y+plot.h+13);
+  const X=tt=>plot.x+tt*plot.w, Y=v=>plot.y+plot.h*(1-v);
+  // curves per stage
+  function curve(fn,color,width,dash,upTo=1){ctx.strokeStyle=color;ctx.lineWidth=width;if(dash)ctx.setLineDash(dash);ctx.beginPath();
+    for(let i=0;i<=160;i++){const tt=i/160*upTo;i?ctx.lineTo(X(tt),Y(fn(tt))):ctx.moveTo(X(tt),Y(fn(tt)));}ctx.stroke();ctx.setLineDash([]);}
+  ctx.font='700 10.5px Segoe UI';ctx.textAlign='left';
+  if(stage===0){ // angle line θ/(π/2)=t : identity ramp representing the dial position
+    curve(tt=>tt,'#f6921e',2.5,null);
+    ctx.fillStyle='#f6921e';ctx.fillText('θ / (π/2)  — the dial position, linear in t',plot.x+8,plot.y+14);
+  }
+  if(stage>=1){ curve(tt=>Math.cos(tt*Math.PI/2),'#16a3a3',stage===1?2.5:1.6,stage===1?null:[5,4]);
+    ctx.fillStyle='#16a3a3';ctx.fillText('cos(πt/2)'+(stage>=2?'  (dashed)':''),plot.x+8,plot.y+14);}
+  if(stage>=2){ curve(tt=>abar(tt),'#7b5cd6',3,null);
+    ctx.fillStyle='#7b5cd6';ctx.fillText('ᾱ(t) = cos²(πt/2)',plot.x+8,plot.y+30);}
+  if(stage===3){ curve(tt=>Math.sin(tt*Math.PI/2),'#d64545',1.6,[5,4]);
+    ctx.fillStyle='#d64545';ctx.fillText('sin(πt/2) = √(1−ᾱ)',plot.x+8,plot.y+46);
+    // crossing marker at t=0.5
+    ctx.beginPath();ctx.arc(X(0.5),Y(Math.SQRT1_2),5,0,7);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#5a6b86';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#5a6b86';ctx.font='10px Segoe UI';ctx.textAlign='center';
+    ctx.fillText('t=0.5: signal = noise = 0.707',X(0.5),Y(Math.SQRT1_2)-12);ctx.textAlign='left';
+  }
+  // probe on the active curve
+  const activeF = stage===0? (tt=>tt) : stage===1? (tt=>Math.cos(tt*Math.PI/2)) : (tt=>abar(tt));
+  const pcol = stage===0?'#f6921e':stage===1?'#16a3a3':'#7b5cd6';
+  if(stage<4){
+    const qx=X(t),qy=Y(activeF(t));
+    ctx.setLineDash([4,3]);ctx.strokeStyle='#b9a5ec';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(qx,plot.y+plot.h);ctx.lineTo(qx,qy);ctx.lineTo(plot.x,qy);ctx.stroke();ctx.setLineDash([]);
+    ctx.beginPath();ctx.arc(qx,qy,5.5,0,7);ctx.fillStyle=pcol;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  }else{
+    // stage 5: inv_abar walk-back animation. Target abar value = abar(t) of current t.
+    curve(tt=>abar(tt),'#7b5cd6',3,null);
+    const targAb=abar(t);
+    const ph=invPhase; // 0..3
+    const yv=Y(targAb);
+    // 1) horizontal ray from y-axis
+    const rayEnd = Math.min(1,ph)* t;
+    ctx.strokeStyle='#f6921e';ctx.lineWidth=2.5;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.moveTo(plot.x,yv);ctx.lineTo(X(Math.max(0.0001,rayEnd)),yv);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#f6921e';ctx.font='700 11px Consolas';ctx.textAlign='left';
+    ctx.fillText('given ᾱ = '+targAb.toFixed(3),plot.x+6,yv-8);
+    // 2) hit the curve
+    if(ph>1){ctx.beginPath();ctx.arc(X(t),yv,6,0,7);ctx.fillStyle='#7b5cd6';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();}
+    // 3) drop to t axis
+    if(ph>2){const drop=Math.min(1,ph-2);
+      ctx.strokeStyle='#16a3a3';ctx.lineWidth=2.5;ctx.setLineDash([6,4]);
+      ctx.beginPath();ctx.moveTo(X(t),yv);ctx.lineTo(X(t),yv+(plot.y+plot.h-yv)*drop);ctx.stroke();ctx.setLineDash([]);
+      if(drop>=1){ctx.fillStyle='#16a3a3';ctx.textAlign='center';
+        ctx.fillText('t = '+t.toFixed(3),X(t),plot.y+plot.h+26);}
+    }
+  }
+
+  // ---------- bottom: the image built from the two knobs ----------
+  const by=318,sz=92,cxm=W/2;
+  ctx.imageSmoothingEnabled=false;
+  const clean=noisy(1),pure=noisy(0),mix=noisy(ab);
+  // clean * cos-knob + noise * sin-knob = mix
+  const gap=175;
+  ctx.drawImage(clean,cxm-gap-sz-46,by,sz,sz); ctx.strokeStyle='#16a3a3';ctx.lineWidth=2;ctx.strokeRect(cxm-gap-sz-46,by,sz,sz);
+  ctx.drawImage(pure,cxm-sz/2-30,by,sz,sz);   ctx.strokeStyle='#d64545';ctx.strokeRect(cxm-sz/2-30,by,sz,sz);
+  ctx.drawImage(mix,cxm+gap-46,by,sz,sz);     ctx.strokeStyle='#7b5cd6';ctx.strokeRect(cxm+gap-46,by,sz,sz);
+  ctx.font='700 11px Consolas';ctx.textAlign='center';
+  ctx.fillStyle='#16a3a3';ctx.fillText('× √ᾱ = '+c.toFixed(3),cxm-gap-sz/2-46,by+sz+15);
+  ctx.fillStyle='#d64545';ctx.fillText('× √(1−ᾱ) = '+s.toFixed(3),cxm+16,by+sz+15);
+  ctx.fillStyle='#7b5cd6';ctx.fillText('= x_t  (t='+t.toFixed(2)+')',cxm+gap,by+sz+15);
+  ctx.fillStyle='#25324a';ctx.font='700 20px Segoe UI';
+  ctx.fillText('+',cxm-gap/2-38,by+sz/2+7);
+  ctx.fillText('→',cxm+gap/2-8,by+sz/2+7);
+  ctx.font='10px Segoe UI';ctx.fillStyle='#5a6b86';ctx.textAlign='center';
+  ctx.fillText('x0 (clean)',cxm-gap-sz/2-46,by-6);
+  ctx.fillText('ε (noise)',cxm+16,by-6);
+  ctx.fillText('noisy image',cxm+gap,by-6);
+  // energy bar (stage 4 highlight): cos²+sin²
+  if(stage>=3){
+    const bx=W-198,bw=170,byy=by+18;
+    ctx.fillStyle='#fff';ctx.strokeStyle='#dde5f2';rr(bx,byy-14,bw,54,8);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#5a6b86';ctx.font='700 10px Segoe UI';ctx.textAlign='center';
+    ctx.fillText('energy budget: ᾱ + (1−ᾱ)',bx+bw/2,byy);
+    ctx.fillStyle='#16a3a3';ctx.fillRect(bx+10,byy+8,(bw-20)*ab,14);
+    ctx.fillStyle='#d64545';ctx.fillRect(bx+10+(bw-20)*ab,byy+8,(bw-20)*(1-ab),14);
+    ctx.strokeStyle='#25324a';ctx.lineWidth=1;ctx.strokeRect(bx+10,byy+8,bw-20,14);
+    ctx.fillStyle='#25324a';ctx.font='700 10px Consolas';
+    ctx.fillText(ab.toFixed(2)+' + '+(1-ab).toFixed(2)+' = 1.00, always',bx+bw/2,byy+34);
+  }
+}
+
+// ---------- text ----------
+function fmt(){
+  const th=t*Math.PI/2,c=Math.cos(th),s=Math.sin(th),ab=c*c;
+  const E=[
+   `t = <b>${t.toFixed(3)}</b> &nbsp;→&nbsp; θ = t·π/2 = <span class="o">${th.toFixed(3)} rad</span> &nbsp;<span style="color:#93a2bd">(t=0 → 0°, &nbsp;t=1 → 90°)</span>`,
+   `cos(θ) = cos(${th.toFixed(3)}) = <span class="g">${c.toFixed(3)}</span> &nbsp;— starts at 1, glides to 0. This will be the <b>signal</b> multiplier √ᾱ.`,
+   `ᾱ(t) = cos²(πt/2) = ${c.toFixed(3)}² = <b>${ab.toFixed(3)}</b> &nbsp;→&nbsp; √ᾱ = <span class="g">${c.toFixed(3)}</span> pops back out in noisify`,
+   `<span class="g">cos²θ</span> + <span class="r">sin²θ</span> = ${ab.toFixed(3)} + ${(1-ab).toFixed(3)} = <b>1</b> &nbsp;⇒&nbsp; √ᾱ = <span class="g">cos θ</span>, &nbsp;√(1−ᾱ) = <span class="r">sin θ</span>`,
+   `inv_abar(${ab.toFixed(3)}): &nbsp;√${ab.toFixed(3)} = ${c.toFixed(3)} &nbsp;→&nbsp; acos(${c.toFixed(3)}) = ${th.toFixed(3)} &nbsp;→&nbsp; ×2/π = <span class="g">${t.toFixed(3)} = t</span> ✓`];
+  $('eq').innerHTML=E[stage];$('tv').textContent=t.toFixed(2);
+}
+const STORIES=[
+ 'Step one is only a change of units. t runs from 0 to 1; multiply by π/2 and it becomes an <b>angle</b> running from 0° to 90°. Nothing has happened to any image yet — we just installed a dial. Drag t and watch the orange arm sweep the quarter circle.',
+ 'Now read the <b>shadow of the arm on the floor</b>: that horizontal teal bar is cos θ. At t=0 the arm lies flat → shadow length 1. At t=1 the arm points straight up → shadow length 0. A quantity that starts at "keep everything" and ends at "keep nothing", changing <i>slowly at both ends</i> — exactly the personality we want for a signal knob.',
+ 'The schedule squares it: <b>ᾱ(t) = cos²(πt/2)</b> (solid purple; dashed teal is un-squared cos for comparison). Squaring keeps the same shape but makes the flat shoulders even flatter — near t=0 the image loses almost nothing, near t=1 it is almost fully noise, and destruction is spread smoothly in between. Compare this with nb 19\'s linear-β schedule, which wasted its last ~300 steps on already-pure noise.',
+ 'Here is the elegant part. noisify needs two multipliers: √ᾱ for the image, √(1−ᾱ) for the noise. But √ᾱ = cos θ and — since 1−cos² = sin² — <b>√(1−ᾱ) = sin θ</b>. The two knobs are the two legs of one right triangle, so cos²+sin²=1 means <b>signal² + noise² = 1 automatically, at every t</b>. The energy bar in the corner can never overflow or leak. That is why this one-liner is a legitimate schedule and not just a pretty curve.',
+ 'And it runs backwards. Given an ᾱ value, <code>inv_abar</code> undoes each layer in reverse: √ (undo the square) → acos (undo the cos) → ×2/π (undo the angle change). Watch the plot: enter at the ᾱ axis (orange ray), hit the purple curve, drop down to read t (teal). One curve, both directions — nb 23 will use exactly this to "re-time" images. <i>(This works because ᾱ(t) always goes downhill — each ᾱ value is hit exactly once.)</i>'];
+const CODES=[
+ `<span class="cm"># t lives in [0, 1] — turn it into an angle first</span>
+def <span class="fn">abar</span>(t): return (<span class="hl">t * math.pi/<span class="num">2</span></span>).cos()**<span class="num">2</span>   <span class="cm"># θ = t·π/2  ∈ [0, π/2]</span>`,
+ `def <span class="fn">abar</span>(t): return (t * math.pi/<span class="num">2</span>)<span class="hl">.cos()</span>**<span class="num">2</span>   <span class="cm"># cos: 1 → 0, gentle at both ends</span>`,
+ `<span class="hl">def <span class="fn">abar</span>(t): return (t * math.pi/<span class="num">2</span>).cos()**<span class="num">2</span></span>   <span class="cm"># ᾱ(0)=1 pure signal · ᾱ(1)=0 pure noise</span>`,
+ `<span class="cm"># in noisify — the two knobs are cos θ and sin θ in disguise:</span>
+xt = <span class="hl">abar_t.sqrt()</span>*x0 + <span class="hl">(<span class="num">1</span>-abar_t).sqrt()</span>*ε
+<span class="cm">#      = cos(πt/2)·x0   +   sin(πt/2)·ε        (cos²+sin²=1 keeps energy fixed)</span>`,
+ `def <span class="fn">inv_abar</span>(x): return <span class="hl">x.sqrt()</span><span class="hl">.acos()</span> <span class="hl">* <span class="num">2</span>/math.pi</span>
+<span class="cm">#                    undo ²     undo cos   undo ·π/2   — three undos, in reverse order</span>`];
+function setStage(s){stage=s;invPhase=0;document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+ $('story').innerHTML=STORIES[s];$('code').innerHTML=CODES[s];fmt();draw();postH();}
+
+// ---------- interaction ----------
+$('tsl').oninput=e=>{t=+e.target.value;if(stage===4)invPhase=3;fmt();draw();};
+let dragging=false;
+cv.addEventListener('pointerdown',e=>{dragging=true;pick(e);});
+addEventListener('pointermove',e=>{if(dragging)pick(e);});
+addEventListener('pointerup',()=>dragging=false);
+function pick(e){const r=cv.getBoundingClientRect();const x=(e.touches?e.touches[0]:e).clientX-r.left,y=(e.touches?e.touches[0]:e).clientY-r.top;
+ const {circ,plot}=geom();
+ if(x>plot.x-10&&x<plot.x+plot.w+10&&y<310){t=Math.max(0,Math.min(1,(x-plot.x)/plot.w));}
+ else if(x<340&&y<310){const dx=x-circ.cx,dy=circ.cy-y;let th=Math.atan2(dy,dx);th=Math.max(0,Math.min(Math.PI/2,th));t=th/(Math.PI/2);}
+ if(stage===4)invPhase=3;
+ $('tsl').value=t;fmt();draw();}
+
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'⏸ Pause':'▶ Play t: 0→1';if(playing&&(stage===4?invPhase>=3:t>=0.995)){t=stage===4?t:0;invPhase=0;}};
+$('fwd').onclick=()=>{stop();if(stage===4){invPhase=Math.min(3,invPhase+1);}else{t=Math.min(1,t+0.05);$('tsl').value=t;}fmt();draw();};
+$('back').onclick=()=>{stop();if(stage===4){invPhase=Math.max(0,invPhase-1);}else{t=Math.max(0,t-0.05);$('tsl').value=t;}fmt();draw();};
+$('reset').onclick=()=>{stop();t=0.3;invPhase=0;$('tsl').value=t;setStage(stage);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stop();setStage(+c.dataset.s);if(+c.dataset.s===4){playing=true;$('play').textContent='⏸ Pause';}});
+function stop(){playing=false;$('play').textContent='▶ Play t: 0→1';}
+
+let last=null;
+function loop(ts){requestAnimationFrame(loop);
+ if(playing&&last!=null){const dt=(ts-last)*0.001*speed;
+  if(stage===4){invPhase=Math.min(3,invPhase+dt*1.1);if(invPhase>=3)stop();}
+  else{t=Math.min(1,t+dt*0.12);$('tsl').value=t;if(t>=1)stop();}
+  fmt();draw();}
+ last=ts;}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:Math.ceil(document.body.scrollHeight)},'*');}
+fit();addEventListener('resize',()=>{fit();draw();postH();});
+setStage(0);requestAnimationFrame(loop);
+</script><style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">(function(){function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}addEventListener('load',postH);addEventListener('resize',postH);if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);setTimeout(postH,150);setTimeout(postH,600);})();</script>
+</body></html>

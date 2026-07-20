@@ -1,0 +1,352 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Schedule Landscape — Ride ᾱ(t) in 3D</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:104px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+  .mode.on{border-color:var(--in);background:var(--in);color:#fff;}
+  input[type=range]{accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .stagewrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  #c3d{display:block;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:grab;width:100%;height:430px;touch-action:none;}
+  .pills{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:1060px;margin:8px auto 0;}
+  .pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:4px 8px;cursor:pointer;text-align:center;min-width:96px;transition:all .15s;}
+  .pill:hover{border-color:var(--ac);}
+  .pill .t{font-size:9.5px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+  .pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.5px;color:var(--ink);white-space:nowrap;}
+  .pill.on{border-color:var(--ac);background:#f4efff;box-shadow:0 3px 10px rgba(123,92,214,.25);}
+  .pill.on .t{color:var(--ac);}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1060px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.n{color:var(--neg);}
+</style></head><body>
+<h1>The schedule as a landscape: one smooth ribbon vs a 1000-step staircase</h1>
+<p class="sub">Height = <b style="color:var(--ac)">ᾱ (signal remaining)</b>, distance = <b>time t</b>. The front <b style="color:var(--ac)">purple ribbon</b> is this notebook's <code>abar(t)=cos²(πt/2)</code>; the back <b style="color:var(--in)">orange staircase</b> is nb 19's 1000-drawer lookup table (drawn as 25 slabs of 40 steps). The <b style="color:var(--in)">orange courier</b> is an image sliding into noise as it descends.
+<b>Drag to rotate · scroll to zoom · click a milestone pillar or pill to jump · chips replay each part of the story.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Meet the landscape</button>
+  <button class="chip" data-s="1">② Ride the ribbon (t: 0→1)</button>
+  <button class="chip" data-s="2">③ Stop between the stairs</button>
+  <button class="chip" data-s="3">④ inv_abar: the elevator</button>
+</div>
+
+<div class="selrow">
+  <button class="mode on" id="mStair">🪜 discrete staircase</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1" style="width:110px"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  <button class="stepb" id="back">⏮ milestone</button>
+  <button class="play" id="play">▶ Ride</button>
+  <button class="stepb" id="fwd">milestone ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+</div>
+
+<div class="stagewrap"><div class="card"><canvas id="c3d"></canvas></div></div>
+
+<div class="pills" id="pills"></div>
+
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b class="i">orange box</b> = the image at time t (its face really is √ᾱ·x0+√(1−ᾱ)·ε) · <b class="a">purple ribbon</b> = abar(t), defined everywhere · <b class="i">orange slabs</b> = ᾱ[0..999], defined only at integers · <b class="n">red ?</b> = a time the table can't answer · <b class="o">teal beam</b> = inv_abar dropping from ᾱ down to t</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let stage=0, t=0, playing=false, speed=1, stopAt=1, showStair=true, elevPh=0, elevTarget=0.62;
+const abar=x=>Math.cos(x*Math.PI/2)**2;
+// nb19 linear schedule for the staircase heights
+const AB=(()=>{const n=1000,a=new Float32Array(n);let p=1;for(let i=0;i<n;i++){const b=1e-4+(0.02-1e-4)*i/(n-1);p*=1-b;a[i]=p;}return a;})();
+
+// ---------- scene ----------
+const cv=$('c3d');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(40,2.4,0.1,100);
+let camTheta=-0.5,camPhi=0.42,camR=14.5,camTarget=new THREE.Vector3(0,1.4,0);
+function camUpdate(){
+  camera.position.set(camTarget.x+camR*Math.cos(camPhi)*Math.sin(camTheta),
+                      camTarget.y+camR*Math.sin(camPhi),
+                      camTarget.z+camR*Math.cos(camPhi)*Math.cos(camTheta));
+  camera.lookAt(camTarget);}
+scene.add(new THREE.AmbientLight(0xffffff,0.85));
+const dl=new THREE.DirectionalLight(0xffffff,0.6);dl.position.set(4,9,6);scene.add(dl);
+
+const X0=-5,X1=5,HMAX=3.6; // t -> x, abar -> y
+const tx=tt=>X0+(X1-X0)*tt, ay=a=>a*HMAX;
+
+// ground
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(14,8),new THREE.MeshLambertMaterial({color:0xe8eefb}));
+ground.rotation.x=-Math.PI/2;ground.position.y=-0.01;scene.add(ground);
+const grid=new THREE.GridHelper(14,14,0xd3dcee,0xe2e9f7);grid.position.y=0;scene.add(grid);
+
+// text sprite helper
+function textSprite(txt,color,size,bg){
+  const c=document.createElement('canvas');c.width=512;c.height=128;const g=c.getContext('2d');
+  if(bg){g.fillStyle=bg;g.beginPath();g.moveTo(20,10);g.arcTo(492,10,492,118,24);g.arcTo(492,118,20,118,24);g.arcTo(20,118,20,10,24);g.arcTo(20,10,492,10,24);g.fill();}
+  g.font='700 46px Segoe UI, sans-serif';g.fillStyle=color;g.textAlign='center';g.textBaseline='middle';g.fillText(txt,256,66);
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true}));
+  sp.scale.set(size*4,size,1);return sp;}
+function makeLabel(txt,color,x,y,z,size=0.5,bg=null){const s=textSprite(txt,color,size,bg);s.position.set(x,y,z);scene.add(s);return s;}
+
+// axes labels
+makeLabel('t = 0  (clean)','#5a6b86',X0,-0.45,2.6,0.42);
+makeLabel('t = 1  (pure noise)','#5a6b86',X1,-0.45,2.6,0.42);
+makeLabel('height = ᾱ (signal left)','#7b5cd6',X0-1.6,HMAX+0.4,0,0.42);
+// abar axis pole
+const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,HMAX,8),new THREE.MeshLambertMaterial({color:0xb9a5ec}));
+pole.position.set(X0,HMAX/2,1.2);scene.add(pole);
+
+// ---------- cosine ribbon (front, z=1.2) ----------
+const RIBW=0.85, RZ=1.2;
+(function(){
+  const N=120,pos=[],idx=[];
+  for(let i=0;i<=N;i++){const tt=i/N,x=tx(tt),y=ay(abar(tt));
+    pos.push(x,y,RZ-RIBW/2, x,y,RZ+RIBW/2);}
+  for(let i=0;i<N;i++){const a=i*2;idx.push(a,a+1,a+2, a+1,a+3,a+2);}
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();
+  const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:0x7b5cd6,transparent:true,opacity:0.82,side:THREE.DoubleSide}));
+  scene.add(m);
+  // edge line on ribbon centre
+  const lp=[];for(let i=0;i<=N;i++){const tt=i/N;lp.push(new THREE.Vector3(tx(tt),ay(abar(tt))+0.012,RZ));}
+  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(lp),new THREE.LineBasicMaterial({color:0x5b3fb8})));
+})();
+
+// ---------- discrete staircase (back, z=-2.0) ----------
+const SZ=-2.0, stairGroup=new THREE.Group();scene.add(stairGroup);
+const NSLAB=25;
+for(let i=0;i<NSLAB;i++){
+  const s0=i*40, tt0=s0/999, tt1=Math.min(1,(s0+40)/999);
+  const h=Math.max(0.02,ay(AB[Math.min(999,s0+20)]));
+  const w=(tx(tt1)-tx(tt0))*0.9;
+  const slab=new THREE.Mesh(new THREE.BoxGeometry(w,h,0.85),
+    new THREE.MeshLambertMaterial({color:0xf6921e,transparent:true,opacity:0.5}));
+  slab.position.set((tx(tt0)+tx(tt1))/2,h/2,SZ);
+  stairGroup.add(slab);
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(slab.geometry),new THREE.LineBasicMaterial({color:0xd97c0d}));
+  e.position.copy(slab.position);stairGroup.add(e);
+}
+const stairLab=makeLabel('ᾱ[0..999] — nb 19 lookup table (25 slabs × 40 steps)','#b06a10',0,ay(1)+0.55,SZ,0.4);
+stairGroup.add(stairLab);scene.add(stairGroup);
+
+// red "?" marker for stage 2 (between-stairs probe)
+const qLab=makeLabel('?  no drawer at t·999 = 617.5','#d64545',tx(0.6175),ay(AB[617])+1.0,SZ,0.5);
+const qLine=(()=>{const m=new THREE.Line(new THREE.BufferGeometry().setFromPoints(
+  [new THREE.Vector3(tx(0.6175),0,SZ),new THREE.Vector3(tx(0.6175),ay(1)+0.5,SZ)]),
+  new THREE.LineDashedMaterial({color:0xd64545,dashSize:0.15,gapSize:0.1}));m.computeLineDistances();scene.add(m);return m;})();
+qLab.visible=qLine.visible=false;
+
+// ---------- milestone pillars on ribbon ----------
+const MILES=[0,0.2,0.4,0.6,0.8,0.99];
+const pillars=[];
+MILES.forEach(mt=>{
+  const h=ay(abar(mt));
+  const p=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,Math.max(0.05,h),10),
+    new THREE.MeshLambertMaterial({color:0x16a3a3,transparent:true,opacity:0.75}));
+  p.position.set(tx(mt),Math.max(0.05,h)/2,RZ+0.9);p.userData.t=mt;scene.add(p);pillars.push(p);
+  const k=new THREE.Mesh(new THREE.SphereGeometry(0.11,12,12),new THREE.MeshLambertMaterial({color:0x16a3a3}));
+  k.position.set(tx(mt),Math.max(0.05,h)+0.08,RZ+0.9);k.userData.t=mt;scene.add(k);pillars.push(k);
+});
+
+// ---------- the courier: image box riding the ribbon ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let x=Math.imul(a^a>>>15,1|a);x=x+Math.imul(x^x>>>7,61|x)^x;return((x^x>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const IS=32;
+const sprite=(()=>{const a=new Float32Array(IS*IS).fill(-0.5);for(let y=0;y<IS;y++)for(let x=0;x<IS;x++){const fx=x/IS,fy=y/IS;let v=-0.5;
+ if(fy>0.55&&fy<0.82&&fx>0.10&&fx<0.90){v=0.28;if(fy>0.74)v=0.45;if(fy<0.62&&fx>0.55)v=-0.5;}
+ if(fy>0.30&&fy<0.58&&fx>0.12&&fx<0.52)v=0.22;
+ if(fy>0.34&&fy<0.55&&fx>0.20&&fx<0.46&&((x+y)%5<1))v=0.5;
+ if(fy>0.55&&fy<0.60&&fx>0.10&&fx<0.90)v=0.05;
+ a[y*IS+x]=v;}return a;})();
+const noiseA=(()=>{const r=mulberry32(7);const a=new Float32Array(IS*IS);for(let i=0;i<IS*IS;i++)a[i]=gauss(r)*0.5;return a;})();
+const texCv=document.createElement('canvas');texCv.width=IS;texCv.height=IS;const texCtx=texCv.getContext('2d');
+const boxTex=new THREE.CanvasTexture(texCv);boxTex.magFilter=THREE.NearestFilter;boxTex.minFilter=THREE.NearestFilter;
+function paintTex(ab){const id=texCtx.createImageData(IS,IS);const sa=Math.sqrt(ab),sb=Math.sqrt(1-ab);
+ for(let i=0;i<IS*IS;i++){let v=Math.max(0,Math.min(1,sa*sprite[i]+sb*noiseA[i]+0.5));const g=v*255|0;
+  id.data[i*4]=g;id.data[i*4+1]=g;id.data[i*4+2]=g;id.data[i*4+3]=255;}
+ texCtx.putImageData(id,0,0);boxTex.needsUpdate=true;}
+const courier=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.9,0.16),
+ [new THREE.MeshLambertMaterial({color:0xf6921e}),new THREE.MeshLambertMaterial({color:0xf6921e}),
+  new THREE.MeshLambertMaterial({color:0xf6921e}),new THREE.MeshLambertMaterial({color:0xf6921e}),
+  new THREE.MeshLambertMaterial({map:boxTex}),new THREE.MeshLambertMaterial({map:boxTex})]);
+scene.add(courier);
+const cEdge=new THREE.LineSegments(new THREE.EdgesGeometry(courier.geometry),new THREE.LineBasicMaterial({color:0xd97c0d}));
+scene.add(cEdge);
+// riding label
+let rideLab=makeLabel('t=0.00  ᾱ=1.000','#7b5cd6',0,0,0,0.5,'rgba(255,255,255,0.92)');
+// the label must never be hidden by the twin bars (or anything else):
+rideLab.material.depthTest=false;rideLab.material.depthWrite=false;rideLab.renderOrder=999;
+// signal/noise twin bars above courier
+const sigBar=new THREE.Mesh(new THREE.BoxGeometry(0.14,1,0.14),new THREE.MeshLambertMaterial({color:0x16a3a3}));scene.add(sigBar);
+const noiBar=new THREE.Mesh(new THREE.BoxGeometry(0.14,1,0.14),new THREE.MeshLambertMaterial({color:0xd64545}));scene.add(noiBar);
+// trail of ghost boxes
+const ghosts=new THREE.Group();scene.add(ghosts);
+let lastGhostT=-1;
+
+// ---------- elevator (stage 4) ----------
+const elev=new THREE.Group();scene.add(elev);
+const beam=new THREE.Mesh(new THREE.BoxGeometry(1,0.05,0.05),new THREE.MeshLambertMaterial({color:0xf6921e}));elev.add(beam);
+const hitDot=new THREE.Mesh(new THREE.SphereGeometry(0.13,12,12),new THREE.MeshLambertMaterial({color:0x7b5cd6}));elev.add(hitDot);
+const dropB=new THREE.Mesh(new THREE.BoxGeometry(0.05,1,0.05),new THREE.MeshLambertMaterial({color:0x16a3a3}));elev.add(dropB);
+let elevLabIn=makeLabel('given ᾱ = 0.32','#f6921e',0,0,0,0.44,'rgba(255,255,255,0.92)');
+let elevLabOut=makeLabel('t = inv_abar(0.32)','#16a3a3',0,0,0,0.44,'rgba(255,255,255,0.92)');
+elev.visible=elevLabIn.visible=elevLabOut.visible=false;
+
+function setCourier(tt){
+  const a=abar(tt), x=tx(tt), y=ay(a);
+  courier.position.set(x,y+0.5,RZ);cEdge.position.copy(courier.position);
+  paintTex(a);
+  // twin-bar heights first, so the label can sit clear ABOVE the taller bar
+  const sh=Math.max(0.02,Math.sqrt(a)*1.1), nh=Math.max(0.02,Math.sqrt(1-a)*1.1);
+  rideLab.position.set(x,y+1.05+Math.max(sh,nh)+0.42,RZ+0.6);
+  const c=document.createElement('canvas');c.width=512;c.height=128;const g=c.getContext('2d');
+  g.fillStyle='rgba(255,255,255,0.92)';g.fillRect(8,8,496,112);
+  g.font='700 44px Consolas,monospace';g.fillStyle='#7b5cd6';g.textAlign='center';g.textBaseline='middle';
+  g.fillText('t='+tt.toFixed(2)+'  ᾱ='+a.toFixed(3),256,66);
+  rideLab.material.map.dispose();rideLab.material.map=new THREE.CanvasTexture(c);rideLab.material.needsUpdate=true;
+  // twin bars: heights = sqrt(a), sqrt(1-a)
+  sigBar.scale.y=sh;sigBar.position.set(x-0.18,y+1.05+sh/2,RZ+0.55);
+  noiBar.scale.y=nh;noiBar.position.set(x+0.18,y+1.05+nh/2,RZ+0.55);
+  // ghost trail every 0.1
+  if(tt-lastGhostT>=0.1&&tt>0.05){lastGhostT=Math.floor(tt*10)/10;
+    const gh=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.9,0.02),new THREE.MeshBasicMaterial({map:boxTex.clone(),transparent:true,opacity:0.28}));
+    gh.material.map=new THREE.CanvasTexture(texCv);gh.material.map.magFilter=THREE.NearestFilter;
+    gh.position.set(x,y+0.5,RZ-0.02);ghosts.add(gh);}
+  if(tt<lastGhostT)clearGhosts(tt);
+}
+function clearGhosts(tt=-1){for(let i=ghosts.children.length-1;i>=0;i--){if(tt<0||ghosts.children[i].position.x>tx(tt))ghosts.remove(ghosts.children[i]);}if(tt<0)lastGhostT=-1;else lastGhostT=Math.floor(tt*10)/10;}
+
+function setElev(ph){ // ph 0..3 : beam sweeps, hit, drop
+  elev.visible=true;
+  const targT=(v=>{return Math.acos(Math.sqrt(v))*2/Math.PI;})(elevTarget);
+  const yv=ay(elevTarget);
+  const sweep=Math.min(1,ph); const bx0=X0, bx1=tx(targT);
+  const bx=bx0+(bx1-bx0)*sweep;
+  beam.scale.x=Math.max(0.01,(bx-bx0))/1;beam.position.set((bx0+bx)/2,yv,RZ);
+  elevLabIn.visible=true;elevLabIn.position.set(X0-1.15,yv+0.28,RZ);
+  hitDot.visible=ph>1;hitDot.position.set(bx1,yv,RZ);
+  const drop=Math.max(0,Math.min(1,ph-2));
+  dropB.visible=drop>0;dropB.scale.y=Math.max(0.01,yv*drop);dropB.position.set(bx1,yv-yv*drop/2,RZ);
+  elevLabOut.visible=drop>=1;elevLabOut.position.set(bx1,-0.5,RZ+0.4);
+  const c=document.createElement('canvas');c.width=512;c.height=128;const g=c.getContext('2d');
+  g.fillStyle='rgba(255,255,255,0.92)';g.fillRect(8,8,496,112);
+  g.font='700 40px Consolas,monospace';g.fillStyle='#16a3a3';g.textAlign='center';g.textBaseline='middle';
+  g.fillText('t = inv_abar('+elevTarget.toFixed(2)+') = '+targT.toFixed(3),256,66);
+  elevLabOut.material.map.dispose();elevLabOut.material.map=new THREE.CanvasTexture(c);elevLabOut.material.needsUpdate=true;
+}
+function hideElev(){elev.visible=elevLabIn.visible=elevLabOut.visible=false;}
+
+// ---------- pills ----------
+const pillWrap=$('pills');
+MILES.forEach((mt,i)=>{
+  const d=document.createElement('div');d.className='pill';d.dataset.t=mt;
+  d.innerHTML='<div class="t">'+(mt===0?'CLEAN':mt===0.99?'ALMOST NOISE':'t = '+mt.toFixed(2))+'</div><div class="s">ᾱ='+abar(mt).toFixed(3)+' · √ᾱ='+Math.sqrt(abar(mt)).toFixed(2)+'</div>';
+  d.onclick=()=>{stopPlay();t=mt;clearGhosts(t);sync();inspectMile(i);};
+  pillWrap.appendChild(d);
+});
+const MILE_NOTES=[
+ 'ᾱ=1: the box face is the untouched shirt. √ᾱ=1, √(1−ᾱ)=0 — the mix formula returns x0 exactly.',
+ 'ᾱ=0.905: barely descended. The cosine shoulder is flat here — early times destroy almost nothing, so the model gets many "easy" examples near cleanliness.',
+ 'ᾱ=0.655: visibly speckled but clearly a shirt. The ribbon is now in its steep middle section — this is where most destruction happens.',
+ 'ᾱ=0.345: mostly noise, silhouette still ghosting through. Note the discrete staircase behind is much LOWER here — the linear schedule already destroyed more by this point.',
+ 'ᾱ=0.095: nearly pure noise, but not exactly — the last traces fade gently, unlike linear-1000 which flatlines at ᾱ≈0 for its final ~300 steps.',
+ 'ᾱ≈0.0002: effectively noise. Training clamps t to 0.999 so ᾱ never hits exactly 0 — division by √ᾱ must stay legal in denoise().'];
+function inspectMile(i){document.querySelectorAll('.pill').forEach((p,k)=>p.classList.toggle('on',k===i));
+ $('story').innerHTML='<b>Milestone t='+MILES[i].toFixed(2)+':</b> '+MILE_NOTES[i]+' <span style="color:#93a2bd">(chips restore the stage story)</span>';postH();}
+
+// ---------- stories & code ----------
+const STORIES=[
+ 'Two answers to "how much signal is left at time t", built as terrain. The <b style="color:var(--ac)">purple ribbon</b> (front) is <code>abar(t)</code> — a continuous surface you can stand on at <i>any</i> t. The <b style="color:var(--in)">orange staircase</b> (back) is nb 19\'s precomputed table — 1000 separate ledges (drawn 40-per-slab), with nothing defined between them. Same overall descent from ᾱ=1 to ᾱ=0, completely different <i>kind</i> of object. Drag to orbit; click the teal pillars.',
+ 'Press ▶ and the courier rides the ribbon from t=0 to t=1. Its face is honestly recomputed every frame as √ᾱ·x0 + √(1−ᾱ)·ε — watch the shirt dissolve. The teal/red bars over its head are the two knobs √ᾱ and √(1−ᾱ) trading places; they cross at t=0.5. Notice the ride is gentle at both ends and steep in the middle — that is the cos² shape doing its job.',
+ 'Now the courier stops at t=0.6175 — a perfectly ordinary real number. On the ribbon: no problem, ᾱ(0.6175)=0.327, here is your image. On the staircase: t·999 = 617.5, and <span style="color:var(--neg)">there is no drawer 617.5</span> — the red dashed line falls between two ledges. Every extra sampling schedule (50 steps, 25 steps, or weird non-uniform ones) asks dozens of "between-the-stairs" questions like this. The table simply cannot play that game.',
+ 'The ribbon also works sideways. <code>inv_abar</code> answers the reverse question: "at which time is ᾱ = 0.32?" Watch the orange beam enter at that height on the ᾱ-pole, sweep until it hits the ribbon, then the teal elevator drops to the floor and reads off t. Because the ribbon only ever descends, every height is crossed exactly once — the inverse is unambiguous. (Notebook 23 uses this to assign a time to an arbitrarily-noisy image.)'];
+const CODES=[
+ `<span class="cm"># the two landscapes</span>
+ᾱ = alphabar(lin_sched())                  <span class="cm"># staircase: 1000 fixed ledges (nb 19)</span>
+<span class="hl">def <span class="fn">abar</span>(t): return (t*math.pi/<span class="num">2</span>).cos()**<span class="num">2</span></span>  <span class="cm"># ribbon: defined for every real t</span>`,
+ `<span class="cm"># the courier's face, recomputed at every t of the ride:</span>
+<span class="hl">xt = abar(t).sqrt()*x0 + (<span class="num">1</span>-abar(t)).sqrt()*ε</span>
+<span class="cm"># t=0.0 → 1.00·x0 + 0.00·ε      t=0.5 → 0.71·x0 + 0.71·ε      t→1 → ε</span>`,
+ `abar(torch.tensor(<span class="num">0.6175</span>))   <span class="cm"># ✓ tensor(0.3273) — ribbon answers</span>
+<span class="hl">ᾱ[<span class="num">617.5</span>]                      <span class="cm"># ✗ IndexError — no drawer between the stairs</span></span>
+<span class="cm"># this freedom = sample with ANY steps:  ts = linspace(1-1/steps, 0, steps)</span>`,
+ `<span class="hl">def <span class="fn">inv_abar</span>(x): return x.sqrt().acos() * <span class="num">2</span>/math.pi</span>
+<span class="cm"># enter at height ᾱ → hit the ribbon → drop to the floor → read t</span>
+inv_abar(torch.tensor(<span class="num">0.32</span>))   <span class="cm"># tensor(0.6117)</span>`];
+function setStage(s,replay=true){
+  stage=s;document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));
+  $('story').innerHTML=STORIES[s];$('code').innerHTML=CODES[s];
+  qLab.visible=qLine.visible=(s===2);hideElev();stopPlay();
+  if(s===0){t=0.28;clearGhosts();setCourier(t);}
+  if(s===1&&replay){t=0;clearGhosts();stopAt=1;startPlay();}
+  if(s===2){t=0.6175;clearGhosts(t);setCourier(t);}
+  if(s===3){elevPh=0;setCourier(0.6117);if(replay){playing=true;$('play').textContent='⏸ Pause';}}
+  sync();postH();}
+
+function sync(){if(stage===3){setElev(elevPh);setCourier(Math.acos(Math.sqrt(elevTarget))*2/Math.PI);}else setCourier(t);}
+
+// ---------- controls ----------
+function stopPlay(){playing=false;$('play').textContent=stage===3?'▶ Run inverse':'▶ Ride';}
+function startPlay(){playing=true;$('play').textContent='⏸ Pause';}
+$('play').onclick=()=>{if(playing){stopPlay();return;}
+ if(stage===3){if(elevPh>=3)elevPh=0;}else{if(t>=stopAt-0.005){t=0;clearGhosts();}stopAt=1;}
+ startPlay();};
+$('fwd').onclick=()=>{stopPlay();if(stage===3){elevPh=Math.min(3,Math.floor(elevPh)+1);}else{
+  const nxt=MILES.find(m=>m>t+1e-6);t=nxt!=null?nxt:0.99;clearGhosts(t);inspectMile(MILES.indexOf(t)>=0?MILES.indexOf(t):5);}sync();};
+$('back').onclick=()=>{stopPlay();if(stage===3){elevPh=Math.max(0,Math.ceil(elevPh)-1);}else{
+  const prev=[...MILES].reverse().find(m=>m<t-1e-6);t=prev!=null?prev:0;clearGhosts(t);}sync();};
+$('reset').onclick=()=>{setStage(stage,false);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('mStair').onclick=()=>{showStair=!showStair;stairGroup.visible=showStair;qLab.visible=qLine.visible=(stage===2&&showStair);$('mStair').classList.toggle('on',showStair);};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>setStage(+c.dataset.s));
+
+// orbit + zoom + click-pick
+let drag=false,px=0,py=0,moved=0;
+cv.addEventListener('pointerdown',e=>{drag=true;moved=0;px=e.clientX;py=e.clientY;cv.style.cursor='grabbing';});
+addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-px,dy=e.clientY-py;moved+=Math.abs(dx)+Math.abs(dy);
+ camTheta-=dx*0.005;camPhi=Math.max(0.08,Math.min(1.3,camPhi+dy*0.004));px=e.clientX;py=e.clientY;camUpdate();});
+addEventListener('pointerup',e=>{if(drag&&moved<6)clickPick(e);drag=false;cv.style.cursor='grab';});
+cv.addEventListener('wheel',e=>{e.preventDefault();camR=Math.max(6,Math.min(26,camR+e.deltaY*0.012));camUpdate();},{passive:false});
+const ray=new THREE.Raycaster(),mv=new THREE.Vector2();
+function clickPick(e){const r=cv.getBoundingClientRect();
+ mv.x=((e.clientX-r.left)/r.width)*2-1;mv.y=-((e.clientY-r.top)/r.height)*2+1;
+ ray.setFromCamera(mv,camera);
+ const hit=ray.intersectObjects(pillars)[0];
+ if(hit){stopPlay();t=hit.object.userData.t;clearGhosts(t);sync();inspectMile(MILES.indexOf(t));}}
+
+// ---------- loop ----------
+function fit(){const w=Math.min(cv.parentElement.clientWidth-4,1032);renderer.setSize(w,430,false);camera.aspect=w/430;camera.updateProjectionMatrix();}
+let lastT=null;
+function loop(ts){requestAnimationFrame(loop);
+ if(playing&&lastT!=null){const dt=(ts-lastT)*0.001*speed;
+  if(stage===3){elevPh=Math.min(3,elevPh+dt*1.0);setElev(elevPh);if(elevPh>=3)stopPlay();}
+  else{t=Math.min(stopAt,t+dt*0.12);setCourier(t);if(t>=stopAt)stopPlay();}}
+ lastT=ts;renderer.render(scene,camera);}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:Math.ceil(document.body.scrollHeight)},'*');}
+fit();addEventListener('resize',()=>{fit();});
+camUpdate();setStage(0,false);requestAnimationFrame(loop);
+</script><style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">(function(){function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}addEventListener('load',postH);addEventListener('resize',postH);if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);setTimeout(postH,150);setTimeout(postH,600);})();</script>
+</body></html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The sample() Loop — any step count, one guard, a FID price tag</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:970px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:104px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;padding:5px 12px;}
+  .mode.on{border-color:var(--out);background:var(--out);color:#fff;}
+  input[type=range]{accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:44px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  canvas.main{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:crosshair;touch-action:none;}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1060px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.n{color:var(--neg);}
+</style></head><body>
+<h1><code>sample()</code>: walk the time rail from noise to image — with any number of stops</h1>
+<p class="sub">The loop is just: lay out S stops with <code>linspace(1−1/S, 0, S)</code>, then at each stop ask the model for ε̂ and take one <code>ddim_step</code> toward t=0. Left pane = the evolving image x_t and the model's clean-sketch x̂0; rail = every stop, with the <b style="color:var(--neg)">final-step guard</b> at the last one.
+<b>Pick a step count · ▶ walks the rail · click any dot to jump (code highlights follow) · ④ compares the FID bill.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① lay the rail (linspace)</button>
+  <button class="chip" data-s="1">② one turn of the loop</button>
+  <button class="chip" data-s="2">③ the last stop's guard</button>
+  <button class="chip" data-s="3">④ steps vs FID</button>
+</div>
+
+<div class="selrow">
+  steps:
+  <button class="mode" data-n="10">10</button>
+  <button class="mode" data-n="25">25</button>
+  <button class="mode on" data-n="50">50</button>
+  <button class="mode" data-n="100">100</button>
+  <span class="div"></span>
+  <button class="play" id="play">▶ Run the loop</button>
+  <button class="stepb" id="back">⏮ stop</button>
+  <button class="stepb" id="fwd">stop ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1" style="width:100px"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="wrap"><div class="card"><canvas class="main" id="cv"></canvas></div></div>
+
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b class="o">teal frame</b> = current x_t · <b class="a">purple frame</b> = the model's x̂0 sketch at that stop (this is what <code>preds</code> collects) · rail dots = the linspace stops, <b class="n">red-ringed last dot</b> = where ᾱ_{t−1} is forced to 1 · image evolution is an honest simulation of the schedule math on a fixed sprite, not a trained UNet</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+let W=1032,H=440,DPR=Math.min(2,window.devicePixelRatio||1);
+let stage=0,steps=50,pos=0,playing=false,speed=1; // pos: 0..steps (fractional)
+const abar=x=>Math.max(0,Math.cos(Math.min(1,Math.max(0,x))*Math.PI/2)**2);
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let x=Math.imul(a^a>>>15,1|a);x=x+Math.imul(x^x>>>7,61|x)^x;return((x^x>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const S2=32;
+const target=(()=>{const a=new Float32Array(S2*S2).fill(-0.5);for(let y=0;y<S2;y++)for(let x=0;x<S2;x++){const fx=x/S2,fy=y/S2;let v=-0.5;
+ if(fy>0.55&&fy<0.82&&fx>0.10&&fx<0.90){v=0.28;if(fy>0.74)v=0.45;if(fy<0.62&&fx>0.55)v=-0.5;}
+ if(fy>0.30&&fy<0.58&&fx>0.12&&fx<0.52)v=0.22;
+ if(fy>0.34&&fy<0.55&&fx>0.20&&fx<0.46&&((x+y)%5<1))v=0.5;
+ if(fy>0.55&&fy<0.60&&fx>0.10&&fx<0.90)v=0.05;a[y*S2+x]=v;}return a;})();
+const startEps=(()=>{const r=mulberry32(7);const a=new Float32Array(S2*S2);for(let i=0;i<S2*S2;i++)a[i]=gauss(r)*0.5;return a;})();
+const blurT=(()=>{ // blurred target for early sketches
+ const a=new Float32Array(S2*S2);
+ for(let y=0;y<S2;y++)for(let x=0;x<S2;x++){let s=0,n=0;
+  for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const yy=y+dy,xx=x+dx;
+   if(yy>=0&&yy<S2&&xx>=0&&xx<S2){s+=target[yy*S2+xx];n++;}}
+  a[y*S2+x]=s/n;}return a;})();
+function tsOf(S){const a=[];for(let i=0;i<S;i++)a.push(1-1/S-i*(1/S));return a;}
+function paint(x,y,sz,arr,extraNoise=0,rngSeed=0){
+  const oc=document.createElement('canvas');oc.width=S2;oc.height=S2;const c=oc.getContext('2d');
+  const id=c.createImageData(S2,S2);const r=rngSeed?mulberry32(rngSeed):null;
+  for(let i=0;i<S2*S2;i++){let v=arr[i]+(r?gauss(r)*extraNoise:0);v=Math.max(0,Math.min(1,v+0.5));const g=v*255|0;
+   id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=g;id.data[i*4+3]=255;}
+  c.putImageData(id,0,0);ctx.imageSmoothingEnabled=false;ctx.drawImage(oc,x,y,sz,sz);}
+function stateAt(p){ // p ∈ [0,steps]; returns t, ab, xt buffer, x0hat buffer
+  const ts=tsOf(steps);
+  const i=Math.min(steps-1,Math.floor(p));
+  const frac=Math.min(1,p-i);
+  const t=i>=ts.length?0:ts[i]*(1-frac)+(i+1<ts.length?ts[i+1]:0)*frac;
+  const ab=abar(Math.max(0,t));
+  const sa=Math.sqrt(ab),sb=Math.sqrt(1-ab);
+  // honest schedule mix toward target along the run; sketch = blur→sharp blend
+  const conv=1-Math.min(1,t); // 0 at start, 1 at end
+  const xt=new Float32Array(S2*S2), x0h=new Float32Array(S2*S2);
+  const sharp=Math.min(1,conv*1.25);
+  for(let k=0;k<S2*S2;k++){
+    xt[k]=sa*target[k]+sb*startEps[k];
+    x0h[k]=blurT[k]*(1-sharp)+target[k]*sharp;
+  }
+  return {t:Math.max(0,t),ab,sa,sb,xt,x0h,i};
+}
+function fit(){const w=Math.min(cv.parentElement.clientWidth-4,1032);W=w;H=440;cv.width=W*DPR;cv.height=H*DPR;cv.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+let railHit=null,fidHit=null;
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(stage===3){drawFID();return;}
+  const St=stateAt(pos);
+  const sz=132,ix=40,iy=44;
+  paint(ix,iy,sz,St.xt);
+  ctx.strokeStyle='#16a3a3';ctx.lineWidth=2.5;ctx.strokeRect(ix,iy,sz,sz);
+  paint(ix+sz+44,iy,sz,St.x0h);
+  ctx.strokeStyle='#7b5cd6';ctx.strokeRect(ix+sz+44,iy,sz,sz);
+  ctx.textAlign='center';ctx.font='700 11.5px Segoe UI';
+  ctx.fillStyle='#16a3a3';ctx.fillText('x_t — the actual image',ix+sz/2,iy-9);
+  ctx.fillStyle='#7b5cd6';ctx.fillText('x̂0 — the model\'s sketch',ix+sz+44+sz/2,iy-9);
+  ctx.fillStyle='#5a6b86';ctx.font='11px Consolas';
+  ctx.fillText('t='+St.t.toFixed(3)+'  ᾱ='+St.ab.toFixed(4),ix+sz/2,iy+sz+18);
+  ctx.fillText('preds['+Math.min(steps-1,Math.floor(pos))+']',ix+sz+44+sz/2,iy+sz+18);
+  // readout card
+  const rx=ix+2*sz+92,ry=iy;
+  ctx.fillStyle='#fff';ctx.strokeStyle='#dde5f2';ctx.lineWidth=1.5;rr(rx,ry,Math.max(180,W-rx-40),sz,10);ctx.fill();ctx.stroke();
+  ctx.textAlign='left';ctx.font='700 12px Consolas';ctx.fillStyle='#25324a';
+  const i=Math.min(steps-1,Math.floor(pos)), ts=tsOf(steps), tNow=ts[Math.min(i,ts.length-1)];
+  const guard=tNow<1/steps;
+  const ab1=guard?1:abar(tNow-1/steps);
+  ctx.fillText('loop turn  i = '+i+' / '+steps,rx+14,ry+24);
+  ctx.fillText('t        = '+tNow.toFixed(3),rx+14,ry+46);
+  ctx.fillText('ᾱ(t)     = '+abar(tNow).toFixed(4),rx+14,ry+66);
+  ctx.fillStyle=guard?'#d64545':'#25324a';
+  ctx.fillText('ᾱ(t−1/S) = '+(guard?'1  ← GUARD':abar(tNow-1/steps).toFixed(4)),rx+14,ry+86);
+  ctx.fillStyle='#5a6b86';ctx.font='10.5px Segoe UI';
+  ctx.fillText(guard?'t < 1/S: asking abar(t−1/S) would mean abar(negative) — undefined.':'model call → ddim_step → append sketch. Repeat.',rx+14,ry+110);
+  // rail
+  const gy=iy+sz+52, gx=50, gw=W-100;
+  ctx.strokeStyle='#dde5f2';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+gw,gy);ctx.stroke();
+  ctx.font='10px Consolas';ctx.fillStyle='#93a2bd';ctx.textAlign='center';
+  ctx.fillText('t = 1 (noise)',gx,gy+26);ctx.fillText('t = 0 (image)',gx+gw,gy+26);
+  const tsArr=tsOf(steps);
+  tsArr.forEach((tv,k)=>{
+    const x=gx+(1-tv)*gw; // rail runs t:1→0 left→right
+    const isLast=k===tsArr.length-1, cur=k===Math.min(steps-1,Math.floor(pos));
+    ctx.beginPath();ctx.arc(x,gy,steps>60?3:steps>20?4.5:6,0,7);
+    ctx.fillStyle=k<=pos-1?'#7b5cd6':cur?'#f6921e':'#fff';
+    ctx.fill();ctx.strokeStyle=isLast?'#d64545':'#7b5cd6';ctx.lineWidth=isLast?2.5:1.4;ctx.stroke();
+  });
+  // walker
+  const wx=gx+Math.min(1,(pos/steps)+((1/steps)*(1-tsArr[0])*0))*gw*0; // walker via t
+  const tW=stateAt(pos).t;
+  const wxx=gx+(1-tW)*gw;
+  ctx.beginPath();ctx.arc(wxx,gy-16,7,0,7);ctx.fillStyle='#f6921e';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#5a6b86';ctx.font='10px Segoe UI';ctx.textAlign='center';
+  ctx.fillText('ts = linspace(1−1/'+steps+', 0, '+steps+')  — '+steps+' stops · click any dot to jump',gx+gw/2,gy+44);
+  railHit={gx,gy,gw};
+}
+function drawFID(){
+  const data=[[10,'~9',true],[25,'~6',true],[50,'4.4',false],[100,'3.1',false]];
+  const gx=110,gy=60,gw=W-220,gh=250,bw=Math.min(120,gw/6);
+  ctx.textAlign='center';ctx.font='700 13px Segoe UI';ctx.fillStyle='#25324a';
+  ctx.fillText('The bill: fewer stops = faster runs, worse FID  (same model, only `steps` changes)',W/2,30);
+  ctx.strokeStyle='#e7edf8';for(let i=0;i<=2;i++){ctx.beginPath();ctx.moveTo(gx,gy+gh*i/2);ctx.lineTo(gx+gw,gy+gh*i/2);ctx.stroke();}
+  const FMAX=10;
+  ctx.fillStyle='#93a2bd';ctx.font='9.5px Consolas';ctx.textAlign='right';
+  ctx.fillText('FID 10',gx-6,gy+6);ctx.fillText('5',gx-6,gy+gh/2+3);ctx.fillText('0',gx-6,gy+gh+3);
+  fidHit=[];
+  data.forEach((d,k)=>{
+    const v=parseFloat(d[1].replace('~',''));
+    const x=gx+gw*(k+0.5)/4-bw/2, h=gh*v/FMAX, y=gy+gh-h;
+    ctx.fillStyle=d[0]===steps?'#7b5cd6':d[2]?'#d9cdf4':'#b9a5ec';
+    rr(x,y,bw,h,6);ctx.fill();
+    if(d[2]){ctx.setLineDash([5,4]);ctx.strokeStyle='#7b5cd6';rr(x,y,bw,h,6);ctx.stroke();ctx.setLineDash([]);}
+    ctx.fillStyle='#25324a';ctx.font='700 13px Consolas';ctx.textAlign='center';
+    ctx.fillText('FID '+d[1],x+bw/2,y-8);
+    ctx.font='700 11px Segoe UI';ctx.fillStyle='#5a6b86';
+    ctx.fillText(d[0]+' steps',x+bw/2,gy+gh+18);
+    ctx.font='10px Segoe UI';
+    ctx.fillText((100/d[0])+'× faster',x+bw/2,gy+gh+33);
+    fidHit.push({x,y:gy,w:bw,h:gh,n:d[0]});
+  });
+  ctx.font='10.5px Segoe UI';ctx.fillStyle='#93a2bd';
+  ctx.fillText('3.1 and 4.4 are the notebook\'s measured values (eta=1, 2048 samples) · dashed bars are indicative only, not measured in the notebook · click a bar to set the rail',W/2,gy+gh+56);
+}
+
+// ---------- text ----------
+const STORIES=[
+ 'Before the loop runs, one line lays the whole route: <code>ts = torch.linspace(1−1/steps, 0, steps)</code>. For S stops that is (S−1)/S, (S−2)/S, …, 1/S, 0 — evenly spaced, starting just <i>below</i> 1 (remember: t=1 exactly would be pure noise with ᾱ=0) and ending exactly at 0. Change the step-count buttons above and watch the same rail re-divide: this is the continuous-time superpower — the rail is drawn fresh for any S, no lookup table to be compatible with.',
+ 'Each turn of the loop does three things, always the same: <b>(1)</b> ask the model "what noise do you see?" → ε̂ = model((x_t, t)) — note t goes in as a plain float; <b>(2)</b> hand everything to <code>ddim_step</code>, which returns the sketch x̂0 and the next image x_{t−1/S}; <b>(3)</b> append the sketch to <code>preds</code>. Press ▶ and watch both panes: x_t sharpens gradually, while the sketch x̂0 starts as a blurry "average garment" and commits to details as t falls.',
+ 'The last stop is special. The loop needs ᾱ at <i>two</i> times — now (t) and next (t−1/S). But at the final stop t=0, so "next" would be t=−1/S: a negative time where cos²(πt/2) is meaningless as a schedule value. The code\'s guard, <code>abar(t−1/steps) if t≥1/steps else tensor(1)</code>, substitutes the <b>right answer by definition</b>: ᾱ=1 means zero noise, i.e. "the destination is the finished, clean image". Click the red-ringed final dot and check the readout card.',
+ 'The measured trade-off, from this very notebook: 100 stops → FID ≈ 3.1; 50 stops → FID ≈ 4.4 at twice the speed. (10/25-step bars are dashed — indicative of the trend, not run in the notebook.) Two things to appreciate: <b>(1)</b> halving the compute cost only mildly hurts quality — each DDIM hop rebuilds from x̂0, so it tolerates big hops; <b>(2)</b> this whole experiment is three characters of code (<code>steps=50</code>) — with nb 19\'s baked-in 1000-step table it would have been a surgery. Also for reference: the continuous cosine setup beats nb 19\'s discrete linear result (~3.7) at the same 100 steps.'];
+// Full sample() shown in EVERY stage; only the highlight moves.
+const FN_LINES=[
+ '@torch.no_grad()',
+ 'def <span class="fn">sample</span>(f, model, sz, steps, eta=<span class="num">1.</span>):',
+ '    ts = torch.linspace(<span class="num">1</span> - <span class="num">1</span>/steps, <span class="num">0</span>, steps)',
+ '    x_t = torch.randn(sz).to(model.device)',
+ '    preds = []',
+ '    for i, t in enumerate(progress_bar(ts)):',
+ '        abar_t = abar(t)',
+ '        noise = model((x_t, t))',
+ '        abar_t1 = abar(t - <span class="num">1</span>/steps) if t >= <span class="num">1</span>/steps else torch.tensor(<span class="num">1</span>)',
+ '        x_0_hat, x_t = f(x_t, noise, abar_t, abar_t1,',
+ '                         <span class="num">1</span>-abar_t, <span class="num">1</span>-abar_t1, eta, <span class="num">1</span>-((i+<span class="num">1</span>)/<span class="num">100</span>))',
+ '        preds.append(x_0_hat.float().cpu())',
+ '    return preds'];
+const STAGE_HL=[[2,3,4],[6,7,9,10,11],[8],[]];
+const STAGE_NOTE=[
+ '<span class="cm"># \u2460 setup: lay the S-stop rail, start from pure noise, empty sketchbook</span>',
+ '<span class="cm"># \u2461 one loop turn: look up \u03b1\u0304 \u2192 ask the model \u2192 one ddim_step hop \u2192 keep the sketch</span>',
+ '<span class="cm"># \u2462 the final-stop guard: at t=0, "next time" t\u22121/S is negative \u2192 substitute \u03b1\u0304=1 (clean)</span>',
+ '<span class="cm"># \u2463 the whole experiment is one number \u2014 same weights, same function, different rail:</span>'];
+const STAGE_EXTRA=[ '', '', '',
+ '\n<span class="hl">preds = sample(ddim_step, model, sz, steps=<span class="num">100</span>, eta=<span class="num">1.</span>)   <span class="cm"># FID \u2248 3.1</span></span>'+
+ '\n<span class="hl">preds = sample(ddim_step, model, sz, steps=<span class="num">50</span>,  eta=<span class="num">1.</span>)   <span class="cm"># FID \u2248 4.4, 2\u00d7 faster</span></span>'];
+function codeFor(st){
+  const hl=STAGE_HL[st];
+  return STAGE_NOTE[st]+'\n'+FN_LINES.map((l,i)=>hl.includes(i)?'<span class="hl">'+l+'</span>':l).join('\n')+STAGE_EXTRA[st];
+}
+function setStage(s){stage=s;document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+ $('story').innerHTML=STORIES[s];$('code').innerHTML=codeFor(s);
+ if(s===2){pos=steps-0.001;}
+ draw();postH();}
+
+// ---------- interaction ----------
+document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{
+ steps=+b.dataset.n;document.querySelectorAll('.mode').forEach(x=>x.classList.toggle('on',x===b));
+ pos=Math.min(pos,steps);if(stage===2)pos=steps-0.001;draw();});
+cv.addEventListener('click',e=>{const r=cv.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;
+ if(stage===3&&fidHit){fidHit.forEach(h=>{if(x>=h.x&&x<=h.x+h.w&&y>=h.y&&y<=h.y+h.h){
+   steps=h.n;document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('on',+b.dataset.n===steps));draw();}});return;}
+ if(railHit&&Math.abs(y-railHit.gy)<26){
+   const f=Math.max(0,Math.min(1,(x-railHit.gx)/railHit.gw));
+   // rail position → t = 1-f → pos where stateAt(pos).t ≈ 1-f: pos ≈ f*steps
+   pos=Math.min(steps-0.001,f*steps);stopP();
+   if(stage!==1&&stage!==2)setStage(1);else draw();
+   if(Math.floor(pos)>=steps-1&&stage!==2)setStage(2);}});
+$('play').onclick=()=>{if(playing){stopP();return;}if(pos>=steps-0.01)pos=0;playing=true;$('play').textContent='⏸ Pause';if(stage===3)setStage(1);};
+$('fwd').onclick=()=>{stopP();pos=Math.min(steps-0.001,Math.floor(pos)+1);draw();};
+$('back').onclick=()=>{stopP();pos=Math.max(0,Math.ceil(pos)-1);draw();};
+$('reset').onclick=()=>{stopP();pos=0;setStage(stage===3?3:0);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopP();setStage(+c.dataset.s);});
+function stopP(){playing=false;$('play').textContent='▶ Run the loop';}
+let last=null;
+function loop(tsm){requestAnimationFrame(loop);
+ if(playing&&last!=null&&stage!==3){pos=Math.min(steps-0.001,pos+(tsm-last)*0.001*(steps/8)*speed);
+  if(pos>=steps-0.01)stopP();draw();}
+ last=tsm;}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:Math.ceil(document.body.scrollHeight)},'*');}
+fit();addEventListener('resize',()=>{fit();draw();postH();});
+setStage(0);requestAnimationFrame(loop);
+</script><style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">(function(){function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}addEventListener('load',postH);addEventListener('resize',postH);if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);setTimeout(postH,150);setTimeout(postH,600);})();</script>
+</body></html>

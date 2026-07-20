@@ -1,0 +1,329 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Two Worlds of Time — Discrete Lookup vs Continuous Function</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  canvas.main{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:crosshair;touch-action:none;}
+  .tslider{width:100%;margin-top:6px;}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:1060px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .hlo{background:rgba(246,146,30,.35);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.n{color:var(--neg);}
+</style></head><body>
+<h1>Two worlds of time: a 1000-drawer cabinet vs one smooth function</h1>
+<p class="sub">Every diffusion model needs to answer one question, thousands of times: <b>"at time t, how much signal ᾱ is left?"</b>
+Notebook 19 answered it with a <b style="color:var(--in)">lookup table of 1000 drawers</b> — this notebook answers it with <b style="color:var(--ac)">one line of math, abar(t)=cos²(πt/2)</b>, that works for <i>any</i> t.
+<b>Drag the timeline (or drag on either panel) · click the chips to tour each world · ▶ plays t across the whole range.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① The discrete world (nb 19)</button>
+  <button class="chip" data-s="1">② The continuous world (this nb)</button>
+  <button class="chip" data-s="2">③ Ask between the drawers</button>
+  <button class="chip" data-s="3">④ Why it matters</button>
+</div>
+
+<div class="selrow">
+  <button class="play" id="play">▶ Play</button>
+  <button class="stepb" id="back">⏮</button>
+  <button class="stepb" id="fwd">⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1" style="width:110px"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="wrap"><div class="card">
+  <canvas class="main" id="cv"></canvas>
+  <input class="tslider" id="tsl" type="range" min="0" max="0.999" step="0.001" value="0.35">
+</div></div>
+
+<div class="story" id="story"></div>
+<div class="code" id="code"></div>
+<p class="legend"><b class="i">orange</b> = discrete machinery (randint · lookup table ᾱ[t]) · <b class="a">purple</b> = continuous machinery (rand · abar(t) function) · <b class="o">teal</b> = the image both worlds produce · <b class="n">red ?</b> = a question the discrete world cannot answer</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+let W=1032,H=470,DPR=Math.min(2,window.devicePixelRatio||1);
+let stage=0, t=0.35, playing=false, speed=1, probe=0.6175; // probe lands between drawers in stage 2
+
+// ---------- seeded RNG + sprite + noise ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let x=Math.imul(a^a>>>15,1|a);x=x+Math.imul(x^x>>>7,61|x)^x;return((x^x>>>14)>>>0)/4294967296;}}
+function gauss(rng){let u=0,v=0;while(u===0)u=rng();while(v===0)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const S=32;
+// procedural "sneaker" sprite in [-0.5,0.5]
+const sprite=(()=>{const a=new Float32Array(S*S).fill(-0.5);
+ for(let y=0;y<S;y++)for(let x=0;x<S;x++){
+  const fx=x/S,fy=y/S;let v=-0.5;
+  if(fy>0.55&&fy<0.82&&fx>0.10&&fx<0.90){ // sole+body
+    v=0.28; if(fy>0.74)v=0.45;
+    if(fy<0.62&&fx>0.55)v=-0.5;
+  }
+  if(fy>0.30&&fy<0.58&&fx>0.12&&fx<0.52){v=0.22;} // ankle
+  if(fy>0.34&&fy<0.55&&fx>0.20&&fx<0.46&&((x+y)%5<1))v=0.5; // laces
+  if(fy>0.55&&fy<0.60&&fx>0.10&&fx<0.90)v=0.05; // stripe
+  a[y*S+x]=v;}
+ return a;})();
+const noise=(()=>{const rng=mulberry32(7);const a=new Float32Array(S*S);for(let i=0;i<S*S;i++)a[i]=gauss(rng)*0.5;return a;})();
+const imgCache={};
+function noisyImage(ab){ // returns offscreen canvas of x_t at given abar
+  const key=Math.round(ab*400); if(imgCache[key])return imgCache[key];
+  const oc=document.createElement('canvas');oc.width=S;oc.height=S;const c=oc.getContext('2d');
+  const id=c.createImageData(S,S);const sa=Math.sqrt(ab),sb=Math.sqrt(1-ab);
+  for(let i=0;i<S*S;i++){let v=sa*sprite[i]+sb*noise[i]; v=Math.max(0,Math.min(1,v+0.5));
+    const g=Math.round(v*255);id.data[i*4]=g;id.data[i*4+1]=g;id.data[i*4+2]=g;id.data[i*4+3]=255;}
+  c.putImageData(id,0,0); imgCache[key]=oc; return oc;}
+const abar=x=>Math.cos(x*Math.PI/2)**2;
+// nb19-style discrete linear schedule (betamin=1e-4, betamax=0.02, 1000 steps) for the drawer values
+const AB=(()=>{const n=1000,a=new Float32Array(n);let p=1;for(let i=0;i<n;i++){const b=1e-4+(0.02-1e-4)*i/(n-1);p*=1-b;a[i]=p;}return a;})();
+
+// ---------- layout helpers ----------
+function fit(){const w=Math.min(cv.parentElement.clientWidth-4,1032);W=w;H=470;cv.width=W*DPR;cv.height=H*DPR;cv.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+const PANEL={dx:14,dw:0,gap:14};
+function panels(){const pw=(W-PANEL.dx*2-PANEL.gap)/2;return{L:{x:PANEL.dx,y:34,w:pw,h:250},R:{x:PANEL.dx+pw+PANEL.gap,y:34,w:pw,h:250}};}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+// ---------- drawing ----------
+let drawerAnim=0; // 0..1 open animation
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const P=panels();
+  const tD=Math.min(999,Math.round(t*999));
+  const dim2=stage===2, s3=stage===3;
+
+  // panel titles
+  ctx.textAlign='center';ctx.font='700 13px Segoe UI';
+  ctx.fillStyle=stage===1?'#b9c3d6':'#f6921e';
+  ctx.fillText('DISCRETE — nb 19:  t ∈ {0,…,999},  ᾱ = table[t]',P.L.x+P.L.w/2,24);
+  ctx.fillStyle=stage===0?'#b9c3d6':'#7b5cd6';
+  ctx.fillText('CONTINUOUS — this nb:  t ∈ [0,1],  ᾱ = abar(t)',P.R.x+P.R.w/2,24);
+
+  drawDiscrete(P.L,tD,dim2);
+  drawContinuous(P.R,dim2);
+
+  // shared image strip at bottom
+  drawShared(tD,s3);
+}
+function drawDiscrete(p,tD,probeMode){
+  ctx.save();
+  if(stage===1)ctx.globalAlpha=0.35;
+  ctx.fillStyle='#fff';ctx.strokeStyle='#dde5f2';ctx.lineWidth=1.5;rr(p.x,p.y,p.w,p.h,10);ctx.fill();ctx.stroke();
+  // cabinet of drawers: show 20 drawers each = 50 steps
+  const nD=20,dw=(p.w-30)/nD;
+  const qT=probeMode?probe:t;
+  const qStep=Math.round(qT*999);
+  const drawerIdx=Math.floor(qStep/50);
+  const between=probeMode && Math.abs(qT*999-Math.round(qT*999))>1e-9;
+  for(let i=0;i<nD;i++){
+    const x=p.x+15+i*dw, y=p.y+34, h=64;
+    const isHit=i===drawerIdx;
+    const open=isHit?drawerAnim*7:0;
+    ctx.fillStyle=isHit?'#fdead2':'#f4f7fc';
+    ctx.strokeStyle=isHit?'#f6921e':'#dde5f2';ctx.lineWidth=isHit?2:1;
+    rr(x+1,y+open,dw-2,h,4);ctx.fill();ctx.stroke();
+    ctx.fillStyle=isHit?'#f6921e':'#93a2bd';ctx.font='9px Consolas';ctx.textAlign='center';
+    if(i%4===0||isHit)ctx.fillText(i*50,x+dw/2,y+open+h+11);
+    // knob
+    ctx.beginPath();ctx.arc(x+dw/2,y+open+h/2,2,0,7);ctx.fillStyle=isHit?'#f6921e':'#c3cede';ctx.fill();
+  }
+  ctx.textAlign='left';ctx.font='10.5px Segoe UI';ctx.fillStyle='#5a6b86';
+  ctx.fillText('the ᾱ lookup table — 1000 pre-computed drawers (20 shown, 50 steps each)',p.x+15,p.y+16);
+  // request/response
+  const y2=p.y+140;
+  ctx.font='700 13px Consolas';ctx.textAlign='center';
+  if(between){
+    ctx.fillStyle='#d64545';
+    ctx.fillText('ᾱ[ '+(qT*999).toFixed(1)+' ]  →  ✗ IndexError',p.x+p.w/2,y2+8);
+    ctx.font='11px Segoe UI';
+    ctx.fillText('drawers only exist at integers — there is no drawer '+(qT*999).toFixed(1),p.x+p.w/2,y2+28);
+    ctx.font='30px Segoe UI';ctx.fillText('?',p.x+p.w/2,y2+62);
+  }else{
+    ctx.fillStyle='#f6921e';
+    ctx.fillText('t = randint(0,1000) = '+qStep,p.x+p.w/2,y2+8);
+    ctx.fillStyle='#25324a';
+    ctx.fillText('ᾱ[t] = '+AB[qStep].toFixed(4),p.x+p.w/2,y2+30);
+    ctx.font='10.5px Segoe UI';ctx.fillStyle='#5a6b86';
+    ctx.fillText('open drawer #'+qStep+' → read the stored value',p.x+p.w/2,y2+50);
+    // memory cost badge
+    ctx.fillStyle='#fdead2';rr(p.x+p.w/2-88,y2+62,176,22,7);ctx.fill();
+    ctx.fillStyle='#b06a10';ctx.font='700 10.5px Segoe UI';
+    ctx.fillText('carries 1000 floats everywhere',p.x+p.w/2,y2+77);
+  }
+  ctx.restore();
+}
+function drawContinuous(p,probeMode){
+  ctx.save();
+  if(stage===0)ctx.globalAlpha=0.35;
+  ctx.fillStyle='#fff';ctx.strokeStyle='#dde5f2';ctx.lineWidth=1.5;rr(p.x,p.y,p.w,p.h,10);ctx.fill();ctx.stroke();
+  // curve plot
+  const gx=p.x+38,gy=p.y+30,gw=p.w-56,gh=110;
+  ctx.strokeStyle='#e7edf8';ctx.lineWidth=1;
+  for(let i=0;i<=2;i++){ctx.beginPath();ctx.moveTo(gx,gy+gh*i/2);ctx.lineTo(gx+gw,gy+gh*i/2);ctx.stroke();}
+  ctx.fillStyle='#93a2bd';ctx.font='9.5px Consolas';ctx.textAlign='right';
+  ctx.fillText('1',gx-5,gy+4);ctx.fillText('.5',gx-5,gy+gh/2+3);ctx.fillText('0',gx-5,gy+gh+3);
+  ctx.textAlign='center';ctx.fillText('0',gx,gy+gh+13);ctx.fillText('t',gx+gw/2,gy+gh+13);ctx.fillText('1',gx+gw,gy+gh+13);
+  ctx.strokeStyle='#7b5cd6';ctx.lineWidth=2.5;ctx.beginPath();
+  for(let i=0;i<=140;i++){const tt=i/140,x=gx+tt*gw,y=gy+gh*(1-abar(tt));i?ctx.lineTo(x,y):ctx.moveTo(x,y);}
+  ctx.stroke();
+  const qT=probeMode?probe:t, ab=abar(qT);
+  // probe dot + guides
+  const px=gx+qT*gw, py=gy+gh*(1-ab);
+  ctx.setLineDash([4,3]);ctx.strokeStyle='#b9a5ec';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(px,gy+gh);ctx.lineTo(px,py);ctx.lineTo(gx,py);ctx.stroke();ctx.setLineDash([]);
+  ctx.beginPath();ctx.arc(px,py,5.5,0,7);ctx.fillStyle='#7b5cd6';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  ctx.font='10.5px Segoe UI';ctx.fillStyle='#5a6b86';ctx.textAlign='left';
+  ctx.fillText('ᾱ(t) = cos²(πt/2) — the whole "table", drawn from one formula',p.x+15,p.y+16);
+  // function machine
+  const y2=p.y+164;
+  ctx.font='700 13px Consolas';ctx.textAlign='center';
+  ctx.fillStyle='#7b5cd6';
+  ctx.fillText('t = rand() = '+qT.toFixed(3),p.x+p.w/2,y2+4);
+  ctx.fillStyle='#25324a';
+  ctx.fillText('abar('+qT.toFixed(3)+') = '+ab.toFixed(4),p.x+p.w/2,y2+26);
+  ctx.font='10.5px Segoe UI';ctx.fillStyle='#5a6b86';
+  ctx.fillText(probeMode?'any real t works — even '+qT.toFixed(4):'no storage, no lookup — just evaluate cos²',p.x+p.w/2,y2+46);
+  ctx.fillStyle='#ece7fb';rr(p.x+p.w/2-88,y2+58,176,22,7);ctx.fill();
+  ctx.fillStyle='#7b5cd6';ctx.font='700 10.5px Segoe UI';
+  ctx.fillText('carries 1 line of math',p.x+p.w/2,y2+73);
+  ctx.restore();
+}
+function drawShared(tD,payoff){
+  const y=300;
+  if(payoff){ // stage 4: three step-count rails
+    ctx.textAlign='center';ctx.font='700 12.5px Segoe UI';ctx.fillStyle='#25324a';
+    ctx.fillText('The payoff: ONE trained model — sample it with any number of steps, no retraining',W/2,y+8);
+    const rails=[[100,'#7b5cd6'],[50,'#16a3a3'],[25,'#f6921e']];
+    rails.forEach((r,k)=>{
+      const ry=y+34+k*40, rx=60, rw=W-120;
+      ctx.strokeStyle='#dde5f2';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx+rw,ry);ctx.stroke();
+      ctx.fillStyle=r[1];
+      for(let i=0;i<r[0];i++){const tt=1-1/r[0]-i*(1/r[0]);const x=rx+(1-tt)*rw;ctx.beginPath();ctx.arc(x,ry,r[0]>60?2:3.2,0,7);ctx.fill();}
+      ctx.textAlign='left';ctx.font='700 11px Segoe UI';ctx.fillText(r[0]+' steps',rx,ry-9);
+      ctx.font='10.5px Consolas';ctx.fillStyle='#5a6b86';
+      ctx.fillText('ts = linspace(1-1/'+r[0]+', 0, '+r[0]+')'+(r[0]===100?'   FID ≈ 3.1':r[0]===50?'   FID ≈ 4.4 (2× faster)':'   (4× faster, rougher)'),rx+70,ry-9);
+    });
+    ctx.textAlign='center';ctx.font='11px Segoe UI';ctx.fillStyle='#5a6b86';
+    ctx.fillText('with a 1000-drawer table you are married to those 1000 positions; with abar(t) every dot above is a legal question',W/2,y+162);
+    return;
+  }
+  // normal: both worlds produce the SAME image
+  const qT=(stage===2)?probe:t;
+  const ab1=AB[Math.min(999,Math.round(qT*999))], ab2=abar(qT);
+  const sz=112;
+  const cxm=W/2;
+  // center gap must be wide enough for the widest readout text so it never
+  // overlaps either image; shrink the gap only on very narrow screens
+  const gap=Math.min(150,Math.max(96,(W-2*sz-40)/2));
+  const im1=noisyImage(ab1),im2=noisyImage(ab2);
+  ctx.imageSmoothingEnabled=false;
+  // discrete image
+  ctx.save(); if(stage===1)ctx.globalAlpha=0.3;
+  if(stage===2){ctx.globalAlpha=0.25;}
+  ctx.drawImage(im1,cxm-sz-gap,y+18,sz,sz);
+  ctx.strokeStyle='#f6921e';ctx.lineWidth=2;ctx.strokeRect(cxm-sz-gap,y+18,sz,sz);
+  ctx.textAlign='center';ctx.font='700 10.5px Segoe UI';ctx.fillStyle='#f6921e';
+  ctx.fillText(stage===2?'? (no drawer here)':'x_t from table  ᾱ='+ab1.toFixed(3),cxm-sz/2-gap,y+16+sz+14);
+  ctx.restore();
+  // continuous image
+  ctx.save(); if(stage===0)ctx.globalAlpha=0.3;
+  ctx.drawImage(im2,cxm+gap,y+18,sz,sz);
+  ctx.strokeStyle='#7b5cd6';ctx.lineWidth=2;ctx.strokeRect(cxm+gap,y+18,sz,sz);
+  ctx.textAlign='center';ctx.font='700 10.5px Segoe UI';ctx.fillStyle='#7b5cd6';
+  ctx.fillText('x_t from abar(t)  ᾱ='+ab2.toFixed(3),cxm+gap+sz/2,y+16+sz+14);
+  ctx.restore();
+  // center readouts — maxWidth caps them inside the gap so they can never
+  // spill onto the images even at extreme values / narrow layouts
+  const mw=2*gap-16;
+  ctx.textAlign='center';ctx.fillStyle='#16a3a3';ctx.font='700 11.5px Consolas';
+  ctx.fillText('√ᾱ (signal) = '+Math.sqrt(ab2).toFixed(3),cxm,y+46,mw);
+  ctx.fillStyle='#d64545';
+  ctx.fillText('√(1−ᾱ) (noise) = '+Math.sqrt(1-ab2).toFixed(3),cxm,y+68,mw);
+  ctx.fillStyle='#5a6b86';ctx.font='10.5px Segoe UI';
+  ctx.fillText('t = '+qT.toFixed(3),cxm,y+94,mw);
+  ctx.fillText('discrete twin = step '+Math.round(qT*999),cxm,y+112,mw);
+  ctx.font='10px Segoe UI';
+  ctx.fillText('same x0, same ε —',cxm,y+136,mw);
+  ctx.fillText('only the ᾱ recipe differs',cxm,y+152,mw);
+}
+
+// ---------- stories & code ----------
+const STORIES=[
+ 'Notebook 19 pre-computed <b>every</b> ᾱ value into a 1000-entry tensor at import time — <code style="color:var(--in)">ᾱ = alphabar(lin_sched())</code> — then treated it like a filing cabinet: training draws <code>t = randint(0,1000)</code> and opens drawer <code>ᾱ[t]</code>. It works, but the table must be built, stored, moved to the GPU, and passed to every function… and it only knows 1000 specific answers.',
+ 'This notebook throws the cabinet away. Time is now a real number in <b>[0,1]</b> — <code style="color:var(--ac)">t = torch.rand(n)</code> — and ᾱ is computed on demand by <code style="color:var(--ac)">abar(t) = cos(t·π/2)²</code>. At t=0 it returns 1 (pure signal); at t=1 it returns 0 (pure noise); in between, a smooth cosine ramp. No storage, no indexing, nothing to keep in sync.',
+ 'Here is the question that breaks the cabinet: <b>"what is ᾱ at t = 0.6175?"</b> In drawer-units that is step 617.5 — <span style="color:var(--neg)">there is no drawer 617.5</span>. The table can only answer at its 1000 integer positions. The function shrugs and computes cos²(0.6175·π/2) instantly. This freedom is exactly what lets sampling use 100, 50, or 25 steps from the <i>same</i> trained model — every step count just asks at different real-valued times.',
+ 'The practical payoff. The three rails below are three different sampling runs of <b>one identical model</b>: 100 steps, 50 steps, 25 steps. Each just calls <code>linspace(1−1/S, 0, S)</code> and asks abar(t) at those times. The notebook measures the trade-off honestly: 100 steps → FID≈3.1, 50 steps → FID≈4.4 at 2× speed. Fewer steps, same weights, no retraining — that is the entire sales pitch of continuous time.'];
+const CODES=[
+ `<span class="cm"># ---- notebook 19: the DISCRETE world ----------------------------</span>
+<span class="hlo">ᾱ = alphabar(lin_sched())         <span class="cm"># build the 1000-drawer table once</span></span>
+<span class="hlo">t = torch.randint(0, n_steps, (n,), dtype=torch.long)   <span class="cm"># integer time</span></span>
+<span class="hlo">ᾱ_t = ᾱ[t].reshape(-1,1,1,1)      <span class="cm"># open drawer #t</span></span>
+xt = ᾱ_t.sqrt()*x0 + (1-ᾱ_t).sqrt()*ε`,
+ `<span class="cm"># ---- this notebook: the CONTINUOUS world ------------------------</span>
+<span class="hl">def <span class="fn">abar</span>(t): return (t*math.pi/<span class="num">2</span>).cos()**<span class="num">2</span>   <span class="cm"># the whole "table"</span></span>
+<span class="hl">t = torch.rand(n,).clamp(<span class="num">0</span>, <span class="num">0.999</span>)         <span class="cm"># real-valued time in [0,1)</span></span>
+<span class="hl">abar_t = abar(t).reshape(-1,1,1,1)          <span class="cm"># just… compute it</span></span>
+xt = abar_t.sqrt()*x0 + (1-abar_t).sqrt()*ε`,
+ `<span class="cm"># the question that breaks the table:</span>
+ᾱ[<span class="num">617.5</span>]                <span class="cm"># ✗ IndexError — tensors index with integers only</span>
+<span class="hl">abar(torch.tensor(<span class="num">0.6175</span>))   <span class="cm"># ✓ tensor(0.3273) — any real t is fine</span></span>`,
+ `<span class="cm"># ONE model, ANY step count — sampling just picks different times:</span>
+<span class="hl">ts = torch.linspace(<span class="num">1</span>-<span class="num">1</span>/steps, <span class="num">0</span>, steps)  <span class="cm"># steps = 100, 50, 25… your call</span></span>
+for t in ts:
+    <span class="hl">abar_t = abar(t)</span>        <span class="cm"># the function answers at every one of them</span>
+    ...
+<span class="cm"># nb result:  100 steps → FID ≈ 3.1     50 steps → FID ≈ 4.4 (2× faster)</span>`];
+function setStage(s){stage=s;document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+ $('story').innerHTML=STORIES[s];$('code').innerHTML=CODES[s];
+ if(s===2){probe=0.6175;} draw(); postH();}
+
+// ---------- interaction ----------
+$('tsl').oninput=e=>{t=+e.target.value; if(stage===2)probe=t; drawerAnim=1; draw();};
+let dragging=false;
+function xyFromEvent(e){const r=cv.getBoundingClientRect();const p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left),y:(p.clientY-r.top)};}
+function pick(e){const {x}=xyFromEvent(e);const P=panels();
+  let tt=null;
+  if(x>=P.L.x&&x<=P.L.x+P.L.w)tt=(x-P.L.x-15)/(P.L.w-30);
+  if(x>=P.R.x&&x<=P.R.x+P.R.w)tt=(x-P.R.x-38)/(P.R.w-56);
+  if(tt!=null){t=Math.max(0,Math.min(0.999,tt));if(stage===2)probe=t;$('tsl').value=t;drawerAnim=1;draw();}}
+cv.addEventListener('pointerdown',e=>{dragging=true;pick(e);});
+addEventListener('pointermove',e=>{if(dragging)pick(e);});
+addEventListener('pointerup',()=>dragging=false);
+
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'⏸ Pause':'▶ Play';if(playing&&t>=0.995)t=0;};
+$('fwd').onclick=()=>{playing=false;$('play').textContent='▶ Play';t=Math.min(0.999,t+0.05);if(stage===2)probe=t;$('tsl').value=t;draw();};
+$('back').onclick=()=>{playing=false;$('play').textContent='▶ Play';t=Math.max(0,t-0.05);if(stage===2)probe=t;$('tsl').value=t;draw();};
+$('reset').onclick=()=>{playing=false;$('play').textContent='▶ Play';t=0.35;probe=0.6175;$('tsl').value=t;setStage(stage);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{playing=false;$('play').textContent='▶ Play';setStage(+c.dataset.s);});
+
+let last=null;
+function loop(ts){requestAnimationFrame(loop);
+ if(playing&&last!=null){t=Math.min(0.999,t+(ts-last)*0.0001*speed);if(stage===2)probe=t;$('tsl').value=t;if(t>=0.999){playing=false;$('play').textContent='▶ Play';}draw();}
+ if(drawerAnim<1){drawerAnim=Math.min(1,drawerAnim+0.1);draw();}
+ last=ts;}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:Math.ceil(document.body.scrollHeight)},'*');}
+fit();addEventListener('resize',()=>{fit();draw();postH();});
+setStage(0);requestAnimationFrame(loop);
+</script><style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">(function(){function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}addEventListener('load',postH);addEventListener('resize',postH);if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);setTimeout(postH,150);setTimeout(postH,600);})();</script>
+</body></html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The noisify Machine — Continuous Edition</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:960px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .mode{background:#fff;color:var(--soft);border:2px solid var(--line);border-radius:999px;}
+  .mode.on{border-color:var(--in);background:var(--in);color:#fff;}
+  input[type=range]{accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  canvas.main{display:block;width:100%;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:pointer;touch-action:none;}
+  .story{max-width:1060px;margin:8px auto 0;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .codegrid{max-width:1060px;margin:10px auto 0;display:flex;gap:10px;flex-wrap:wrap;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.62;overflow-x:auto;white-space:pre;flex:1 1 480px;min-width:320px;}
+  .code h5{margin:0 0 4px;color:#9fb0d0;font:700 10.5px "Segoe UI";letter-spacing:.05em;}
+  .code .hl{background:rgba(123,92,214,.4);border-radius:4px;padding:1px 4px;}
+  .code .old{background:rgba(214,69,69,.28);border-radius:4px;padding:1px 4px;}
+  .code .new{background:rgba(22,163,163,.3);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.n{color:var(--neg);}
+</style></head><body>
+<h1>Inside <code>noisify</code>: five stations from clean batch to training pair</h1>
+<p class="sub">One batch of clean images enters; a <code>((noisy, t), ε)</code> training pair leaves. Only <b>one station changed</b> since notebook 19 — the time dice — but that change ripples through everything.
+<b>Click any station (or its chip) to zoom in + highlight its code · ▶ runs a batch through end-to-end · 🎲 re-rolls t and ε · toggle 19 ⇄ 22 to see the diff.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① batch x0 in</button>
+  <button class="chip" data-s="1">② roll t ~ rand</button>
+  <button class="chip" data-s="2">③ the clamp guard</button>
+  <button class="chip" data-s="3">④ ᾱ + reshape</button>
+  <button class="chip" data-s="4">⑤ mix &amp; ship</button>
+</div>
+
+<div class="selrow">
+  <button class="play" id="play">▶ Run batch</button>
+  <button class="stepb" id="back">⏮</button>
+  <button class="stepb" id="fwd">⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  <button class="stepb" id="rng">🎲 re-roll</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1" style="width:110px"><span class="speedv" id="spv">1×</span>
+</div>
+
+<div class="wrap"><div class="card"><canvas class="main" id="cv"></canvas></div></div>
+
+<div class="story" id="story"></div>
+<div class="codegrid">
+  <div class="code" id="codeNew"></div>
+  <div class="code" id="codeOld"></div>
+</div>
+<p class="legend"><b class="i">orange dice</b> = each image's own t (floats now, not ints) · <b class="a">purple</b> = ᾱ machinery · <b class="n">red</b> = ε noise + the t=1 danger zone the clamp guards against · <b class="o">teal</b> = the shipped training pair</p>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+let W=1032,H=440,DPR=Math.min(2,window.devicePixelRatio||1);
+let stage=0,playing=false,speed=1,prog=0; // prog 0..5 station progress
+const NB=5; // batch of 5 shown
+const abar=x=>Math.cos(x*Math.PI/2)**2;
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let x=Math.imul(a^a>>>15,1|a);x=x+Math.imul(x^x>>>7,61|x)^x;return((x^x>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const S=24;
+function makeSprite(kind){const a=new Float32Array(S*S).fill(-0.5);
+ for(let y=0;y<S;y++)for(let x=0;x<S;x++){const fx=x/S,fy=y/S;let v=-0.5;
+  if(kind===0){if(fy>0.2&&fy<0.85&&fx>0.3&&fx<0.7)v=0.3;if(fy>0.2&&fy<0.45&&(fx<0.32||fx>0.68)&&fx>0.08&&fx<0.92)v=0.22;} // shirt
+  if(kind===1){if(fy>0.5&&fy<0.8&&fx>0.1&&fx<0.9)v=0.35;if(fy>0.25&&fy<0.55&&fx>0.1&&fx<0.5)v=0.25;} // shoe
+  if(kind===2){const d=Math.hypot(fx-0.5,fy-0.45);if(d<0.3)v=0.3;if(fy>0.7&&fy<0.9&&fx>0.35&&fx<0.65)v=0.4;} // bag
+  if(kind===3){if(fx>0.4&&fx<0.6&&fy>0.15&&fy<0.85)v=0.32;if(fy>0.6&&fy<0.85&&fx>0.25&&fx<0.75)v=0.28;} // trouser
+  if(kind===4){if(fy>0.3&&fy<0.75&&fx>0.2&&fx<0.8)v=0.3;if(fy>0.28&&fy<0.36&&fx>0.15&&fx<0.85)v=0.45;} // pullover
+  a[y*S+x]=v;}
+ return a;}
+const sprites=[0,1,2,3,4].map(makeSprite);
+let seed=3, ts=[], eps=[];
+function roll(){const r=mulberry32(seed);
+ ts=[...Array(NB)].map(()=>Math.min(0.999,r()));
+ eps=[...Array(NB)].map(()=>{const rr=mulberry32((seed*97+ts.length*13+Math.floor(r()*1e6))|0);
+   const a=new Float32Array(S*S);for(let i=0;i<S*S;i++)a[i]=gauss(rr)*0.5;return a;});}
+roll();
+function drawIm(x,y,sz,base,noise,ab){ // draws sa*base+sb*noise
+  const oc=document.createElement('canvas');oc.width=S;oc.height=S;const c=oc.getContext('2d');
+  const id=c.createImageData(S,S);const sa=Math.sqrt(ab),sb=Math.sqrt(1-ab);
+  for(let i=0;i<S*S;i++){let v=Math.max(0,Math.min(1,sa*base[i]+(noise?sb*noise[i]:0)+0.5));const g=v*255|0;
+   id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=g;id.data[i*4+3]=255;}
+  c.putImageData(id,0,0);ctx.imageSmoothingEnabled=false;ctx.drawImage(oc,x,y,sz,sz);}
+function drawNoise(x,y,sz,noise){const oc=document.createElement('canvas');oc.width=S;oc.height=S;const c=oc.getContext('2d');
+ const id=c.createImageData(S,S);for(let i=0;i<S*S;i++){let v=Math.max(0,Math.min(1,noise[i]+0.5));const g=v*255|0;
+  id.data[i*4]=g;id.data[i*4+1]=g*0.75|0;id.data[i*4+2]=g*0.75|0;id.data[i*4+3]=255;}
+ c.putImageData(id,0,0);ctx.imageSmoothingEnabled=false;ctx.drawImage(oc,x,y,sz,sz);}
+
+function fit(){const w=Math.min(cv.parentElement.clientWidth-4,1032);W=w;H=440;cv.width=W*DPR;cv.height=H*DPR;cv.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+function rr2(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+const ST=[{n:'① batch x0',c:'#5a6b86'},{n:'② t = rand(n)',c:'#f6921e'},{n:'③ clamp(0,.999)',c:'#d64545'},{n:'④ abar(t) → (n,1,1,1)',c:'#7b5cd6'},{n:'⑤ mix → ((xt,t), ε)',c:'#16a3a3'}];
+function stationGeom(){const gap=10,sw=(W-28-gap*4)/5;return [...Array(5)].map((_,i)=>({x:14+i*(sw+gap),y:30,w:sw,h:330}));}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const G=stationGeom();
+  // conveyor line
+  ctx.strokeStyle='#dde5f2';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(14,H-44);ctx.lineTo(W-14,H-44);ctx.stroke();
+  // progress puck
+  const pk=Math.min(1,prog/5);
+  ctx.beginPath();ctx.arc(14+(W-28)*pk,H-44,8,0,7);ctx.fillStyle='#7b5cd6';ctx.fill();
+  ctx.font='10px Segoe UI';ctx.fillStyle='#93a2bd';ctx.textAlign='left';ctx.fillText('batch progress',14,H-24);
+
+  G.forEach((g,i)=>{
+    const active=i===stage, done=prog>i+0.02, running=prog>i&&prog<i+1;
+    ctx.fillStyle=active?'#faf8ff':'#fff';
+    ctx.strokeStyle=active?ST[i].c:'#dde5f2';ctx.lineWidth=active?2.5:1.5;
+    rr2(g.x,g.y,g.w,g.h,10);ctx.fill();ctx.stroke();
+    ctx.fillStyle=ST[i].c;ctx.font='700 11px Segoe UI';ctx.textAlign='center';
+    ctx.fillText(ST[i].n,g.x+g.w/2,g.y+16);
+    if(done&&!running){ctx.fillStyle='#16a3a3';ctx.font='700 11px Segoe UI';ctx.textAlign='right';ctx.fillText('✓',g.x+g.w-8,g.y+16);}
+    drawStationBody(i,g,Math.max(0,Math.min(1,prog-i)));
+  });
+}
+function drawStationBody(i,g,ph){ // ph 0..1 animation within the station
+  const sz=Math.min(44,(g.w-20)/2-4);
+  const colX=k=>g.x+g.w/2+(k%2?4:-sz-4), colY=k=>g.y+30+Math.floor(k/2)*(sz+8);
+  ctx.textAlign='center';
+  if(i===0){ // clean batch
+    for(let k=0;k<NB;k++){if(ph<k/NB&&prog<5&&prog>0)continue;
+      const y=colY(k), x=colX(k);
+      drawIm(x,y,sz,sprites[k],null,1);
+      ctx.strokeStyle='#c3cede';ctx.lineWidth=1;ctx.strokeRect(x,y,sz,sz);}
+    ctx.fillStyle='#5a6b86';ctx.font='10px Segoe UI';
+    ctx.fillText('shape (512,1,32,32)',g.x+g.w/2,g.y+g.h-10);
+    ctx.fillText('(5 shown)',g.x+g.w/2,g.y+g.h-24);
+  }
+  if(i===1){ // dice
+    for(let k=0;k<NB;k++){
+      const y=g.y+34+k*54, x=g.x+g.w/2;
+      const rollv=ph<1&&prog>1&&prog<2 ? Math.random() : ts[k];
+      const show=prog>1||stage===1;
+      ctx.fillStyle='#fdead2';rr2(x-40,y,80,40,8);ctx.fill();
+      ctx.strokeStyle='#f6921e';ctx.lineWidth=1.5;rr2(x-40,y,80,40,8);ctx.stroke();
+      ctx.fillStyle='#f6921e';ctx.font='700 14px Consolas';
+      ctx.fillText(show?rollv.toFixed(2):'?',x,y+25);
+    }
+    ctx.fillStyle='#5a6b86';ctx.font='10px Segoe UI';
+    ctx.fillText('floats! (was randint→517…)',g.x+g.w/2,g.y+g.h-10);
+  }
+  if(i===2){ // clamp guard
+    const y0=g.y+40, h=g.h-100, x=g.x+g.w/2;
+    // number line 0..1 vertical
+    ctx.strokeStyle='#c3cede';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y0);ctx.lineTo(x,y0+h);ctx.stroke();
+    ctx.fillStyle='#93a2bd';ctx.font='9.5px Consolas';
+    ctx.fillText('0',x-14,y0+h+4);ctx.fillText('1',x-14,y0+4);
+    // danger zone at top
+    ctx.fillStyle='rgba(214,69,69,.15)';ctx.fillRect(x-26,y0,52,h*0.02+8);
+    ctx.fillStyle='#d64545';ctx.font='700 9px Segoe UI';
+    ctx.fillText('t=1 → ᾱ=0 → ÷0 later!',x,y0-8);
+    // clamp ceiling
+    ctx.strokeStyle='#d64545';ctx.lineWidth=2;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(x-30,y0+h*0.001+8);ctx.lineTo(x+30,y0+h*0.001+8);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#d64545';ctx.font='9px Consolas';ctx.fillText('.999 ceiling',x+2,y0+22);
+    // dots for each t
+    ts.forEach((tv,k)=>{const y=y0+h*(1-tv);
+      ctx.beginPath();ctx.arc(x+(k-2)*7,y,4.5,0,7);ctx.fillStyle='#f6921e';ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1.2;ctx.stroke();});
+    ctx.fillStyle='#5a6b86';ctx.font='10px Segoe UI';
+    ctx.fillText('all dots kept below 1.0',g.x+g.w/2,g.y+g.h-10);
+  }
+  if(i===3){ // abar + reshape
+    for(let k=0;k<NB;k++){
+      const y=g.y+30+k*46, x=g.x+12;
+      ctx.fillStyle='#f6921e';ctx.font='700 11px Consolas';ctx.textAlign='left';
+      ctx.fillText(ts[k].toFixed(2),x,y+14);
+      ctx.fillStyle='#93a2bd';ctx.fillText('→',x+36,y+14);
+      ctx.fillStyle='#7b5cd6';
+      ctx.fillText(abar(ts[k]).toFixed(3),x+54,y+14);
+      // reshape block: 1 tall bar becomes 1x1x1 cube glyph
+      const bx=x+112;
+      ctx.fillStyle='#ece7fb';ctx.fillRect(bx,y+2,14,16);
+      ctx.strokeStyle='#7b5cd6';ctx.lineWidth=1;ctx.strokeRect(bx,y+2,14,16);
+      ctx.strokeRect(bx+3,y-1,14,16);
+      ctx.font='8.5px Consolas';ctx.fillStyle='#93a2bd';
+      ctx.fillText('(1,1,1,1)',bx+34,y+14);
+    }
+    ctx.textAlign='center';ctx.fillStyle='#5a6b86';ctx.font='10px Segoe UI';
+    ctx.fillText('(n,) → (n,1,1,1) so ᾱ',g.x+g.w/2,g.y+g.h-24);
+    ctx.fillText('broadcasts over C,H,W',g.x+g.w/2,g.y+g.h-10);
+  }
+  if(i===4){ // mix & ship
+    for(let k=0;k<NB;k++){
+      const y=g.y+26+k*56, x=g.x+g.w/2-sz-6;
+      const ab=abar(ts[k]);
+      drawIm(x,y,sz,sprites[k],eps[k],prog>4.99||stage===4?ab:1);
+      ctx.strokeStyle='#16a3a3';ctx.lineWidth=1.5;ctx.strokeRect(x,y,sz,sz);
+      ctx.fillStyle='#f6921e';ctx.font='700 9.5px Consolas';ctx.textAlign='left';
+      ctx.fillText('t='+ts[k].toFixed(2),x+sz+6,y+14);
+      drawNoise(x+sz+6,y+18,24,eps[k]);
+      ctx.strokeStyle='#d64545';ctx.lineWidth=1;ctx.strokeRect(x+sz+6,y+18,24,24);
+    }
+    ctx.textAlign='center';ctx.fillStyle='#5a6b86';ctx.font='10px Segoe UI';
+    ctx.fillText('((xt, t), ε) — input pair + target',g.x+g.w/2,g.y+g.h-10);
+  }
+}
+
+// ---------- stories & code ----------
+const STORIES=[
+ 'A fresh batch of clean Fashion-MNIST images arrives, already padded to 32×32 and centred to [−0.5, 0.5] by <code>transformi</code>. Five of the 512 are shown. Nothing random has happened yet — everything that follows is per-image randomness, so every image in the batch will get its <b>own</b> t and its <b>own</b> ε.',
+ 'The one line that changed since notebook 19. Old dice: <code style="color:var(--neg)">randint(0,1000)</code> → integers like 517, 810. New dice: <code style="color:var(--out)">torch.rand(n)</code> → floats like 0.52, 0.81. Each image gets its own float. Because ᾱ is now a function, <i>any</i> float is a legal time — the model will therefore be trained on effectively infinitely many noise levels instead of exactly 1000.',
+ 'Why <code>.clamp(0, 0.999)</code>? At t=1 exactly, ᾱ=cos²(π/2)=<b>0</b>. That image would be 100% noise — carrying zero information about x0, a useless training example — and worse, anything that later divides by √ᾱ (like <code>denoise</code>) would divide by zero → NaN → poisoned batch. The clamp quietly caps every t at 0.999 (ᾱ≈2.5·10⁻⁶): still essentially pure noise, but mathematically safe.',
+ 'Each t goes through <code>abar()</code> to become its ᾱ — but ᾱ has shape (n,) while the images are (n,1,32,32). The reshape to <b>(n,1,1,1)</b> gives each scalar three "stretchy" size-1 dims, so broadcasting automatically copies image k\'s own ᾱ across all its 1×32×32 pixels. Identical trick to nb 19 — only where the numbers <i>come from</i> changed (function vs table).',
+ 'The forward-process mix, unchanged since nb 15: <code>xt = √ᾱ·x0 + √(1−ᾱ)·ε</code>. Image k is mixed with <i>its own</i> t (look: the k with big t is nearly pure static, the small-t one barely changed). The machine ships <code>((xt, t), ε)</code>: the model will see (xt, t) and must output ε — the exact noise used, which we kept as the answer key.'];
+function codeNew(hi){
+ const L=[
+  ['def <span class="fn">noisify</span>(x0):','h'],
+  ['    n = len(x0)',0],
+  ['    <span class="new">t = torch.rand(n,).to(x0)</span>',1],
+  ['        <span class="new">.clamp(<span class="num">0</span>, <span class="num">0.999</span>)</span>   <span class="cm"># never exactly 1</span>',2],
+  ['    ε = torch.randn(x0.shape, device=device)',4],
+  ['    <span class="new">abar_t = abar(t)</span>.reshape(-<span class="num">1</span>,<span class="num">1</span>,<span class="num">1</span>,<span class="num">1</span>)',3],
+  ['    xt = abar_t.sqrt()*x0 + (<span class="num">1</span>-abar_t).sqrt()*ε',4],
+  ['    return (xt, <span class="new">t</span>), ε   <span class="cm"># t is float now</span>',4]];
+ return '<h5>THIS NOTEBOOK (22) — continuous</h5>'+L.map(l=>{
+   const on=(l[1]===hi);
+   return (on?'<span class="hl">':'')+l[0]+(on?'</span>':'');}).join('\n');}
+function codeOld(hi){
+ const L=[
+  ['def <span class="fn">noisify</span>(x0, <span class="old">ᾱ</span>):  <span class="cm"># table passed in</span>','h'],
+  ['    n = len(x0)',0],
+  ['    <span class="old">t = torch.randint(<span class="num">0</span>, n_steps, (n,),</span>',1],
+  ['        <span class="old">dtype=torch.long)</span>  <span class="cm"># ints — no clamp needed</span>',2],
+  ['    ε = torch.randn(x0.shape, device=device)',4],
+  ['    <span class="old">ᾱ_t = ᾱ[t]</span>.reshape(-<span class="num">1</span>,<span class="num">1</span>,<span class="num">1</span>,<span class="num">1</span>)  <span class="cm"># drawer lookup</span>',3],
+  ['    xt = ᾱ_t.sqrt()*x0 + (<span class="num">1</span>-ᾱ_t).sqrt()*ε',4],
+  ['    return (xt, t), ε']];
+ return '<h5>NOTEBOOK 19 — discrete (for contrast)</h5>'+L.map(l=>{
+   const on=(l[1]===hi);
+   return (on?'<span class="hl">':'')+l[0]+(on?'</span>':'');}).join('\n');}
+function setStage(s){stage=s;document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+ $('story').innerHTML=STORIES[s];$('codeNew').innerHTML=codeNew(s);$('codeOld').innerHTML=codeOld(s);
+ if(!playing)prog=s+1;draw();postH();}
+
+// ---------- interaction ----------
+cv.addEventListener('click',e=>{const r=cv.getBoundingClientRect();const x=e.clientX-r.left;
+ const G=stationGeom();G.forEach((g,i)=>{if(x>=g.x&&x<=g.x+g.w){stopP();setStage(i);}});});
+$('play').onclick=()=>{if(playing){stopP();return;}playing=true;$('play').textContent='⏸ Pause';if(prog>=4.99)prog=0;};
+$('fwd').onclick=()=>{stopP();setStage(Math.min(4,stage+1));};
+$('back').onclick=()=>{stopP();setStage(Math.max(0,stage-1));};
+$('reset').onclick=()=>{stopP();prog=0;setStage(0);};
+$('rng').onclick=()=>{seed=(seed*16807+13)%2147483647;roll();draw();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stopP();setStage(+c.dataset.s);});
+function stopP(){playing=false;$('play').textContent='▶ Run batch';}
+
+let last=null;
+function loop(tsm){requestAnimationFrame(loop);
+ if(playing&&last!=null){prog=Math.min(5,prog+(tsm-last)*0.001*0.9*speed);
+  const st=Math.min(4,Math.floor(prog));
+  if(st!==stage){stage=st;document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===st));
+   $('story').innerHTML=STORIES[st];$('codeNew').innerHTML=codeNew(st);$('codeOld').innerHTML=codeOld(st);postH();}
+  if(prog>=5)stopP();draw();}
+ last=tsm;}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:Math.ceil(document.body.scrollHeight)},'*');}
+fit();addEventListener('resize',()=>{fit();draw();postH();});
+prog=1;setStage(0);draw();requestAnimationFrame(loop);
+</script><style id="ce-fit">html,body{overflow-x:hidden}body{min-height:0 !important}</style>
+<script id="ce-fit-js">(function(){function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}addEventListener('load',postH);addEventListener('resize',postH);if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);setTimeout(postH,150);setTimeout(postH,600);})();</script>
+</body></html>
