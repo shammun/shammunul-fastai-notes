@@ -1,0 +1,233 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Measure, Don't Assume</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:930px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .ctr{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:12px;color:var(--soft);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:110px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .toggle{display:inline-flex;border:2px solid var(--line);border-radius:999px;overflow:hidden;}
+  .toggle button{border-radius:0;background:#fff;color:var(--soft);padding:5px 12px;font-size:12px;}
+  .toggle button.on{background:var(--out);color:#fff;}
+  .toggle button.onbad{background:var(--neg);color:#fff;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .fidwrap{display:flex;flex-direction:column;gap:10px;padding-top:6px;min-width:230px;}
+  .fidrow{font-size:12px;color:var(--soft);}
+  .fidbar{height:20px;border-radius:7px;margin-top:3px;position:relative;background:#f4f7fd;border:1px solid var(--line);overflow:hidden;}
+  .fidbar>span{position:absolute;left:0;top:0;bottom:0;border-radius:6px;transition:width .6s;}
+  .fidbar b{position:absolute;right:8px;top:2px;font-family:monospace;font-size:12px;}
+  .explain{background:#fff;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:10px;box-shadow:0 6px 16px rgba(123,92,214,.08);
+    padding:8px 13px;font-size:12.5px;line-height:1.55;max-width:950px;margin:9px auto 0;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.6;max-width:950px;margin:9px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 3px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.n{color:var(--neg);}
+</style></head><body>
+<h1>Measure, Don't Assume — the Trick That Takes FID 22 → 4</h1>
+<p class="sub">The no-time UNet drifts: without knowing t, it sometimes removes more or less noise than the schedule expects. <b>Classic DDIM keeps assuming the timetable anyway.</b> The fix: at every step, ask the noise predictor how much signal is <i>actually</i> there, and do the algebra with that. Toggle the two modes, press ▶, and watch the drift.</p>
+
+<div class="stagebar" id="stagebar">
+  <button class="chip on" data-s="0">① the problem: schedule ≠ reality</button>
+  <button class="chip" data-s="1">② measure ᾱ̂ with the noise predictor</button>
+  <button class="chip" data-s="2">③ safety: clamp around the median</button>
+  <button class="chip" data-s="3">④ use ᾱ̂ in the algebra → FID 4</button>
+</div>
+<div class="ctr">
+  <button class="play" id="playb">▶ Run sampling</button>
+  <button class="stepb" id="stepb">One step ➜</button>
+  <button class="reset" id="resetb">↺ Re-roll drift</button>
+  <span class="toggle">
+    <button id="tgc" class="onbad">classic (assume schedule)</button><button id="tgp">noise-predictor (measure)</button>
+  </span>
+  <span>speed <input type="range" id="speed" min="1" max="4" step="1" value="2" style="width:90px"> <span class="speedv" id="spv">2×</span></span>
+</div>
+
+<div class="main">
+  <div class="card">
+    <p class="cap">what the sampler <i>believes</i> vs what's <i>true</i> <small>x-axis: sampling progress (t: 1→0) · y-axis: signal fraction ᾱ · click the plot to jump</small></p>
+    <canvas id="plot" width="520" height="270" style="width:520px;height:270px;max-width:92vw;cursor:pointer"></canvas>
+  </div>
+  <div class="card fidwrap">
+    <p class="cap" style="margin-bottom:0">the scoreboard <small>FID: lower = closer to real FashionMNIST</small></p>
+    <div class="fidrow">classic DDIM on the no-time model
+      <div class="fidbar"><span style="background:var(--neg);width:100%"></span><b style="color:#fff">FID ≈ 22</b></div></div>
+    <div class="fidrow">+ noise-predictor correction
+      <div class="fidbar"><span style="background:var(--out);width:18%"></span><b style="color:var(--out)">FID ≈ 4</b></div></div>
+    <div class="fidrow" style="font-size:11.5px;line-height:1.5;color:var(--soft)">
+      Belief−reality gap this run:<br>
+      <span style="font-family:monospace">classic: <b id="gapc" style="color:var(--neg)">—</b> · corrected: <b id="gapp" style="color:var(--out)">—</b></span><br>
+      <span id="gapnote"></span>
+    </div>
+  </div>
+</div>
+
+<div class="explain" id="explain"></div>
+<div class="code" id="code"></div>
+<div class="legend"><b class="a">purple = the schedule (belief)</b> · <b class="n">red = true signal under classic sampling (drifts away)</b> · <b class="o">teal = true signal when corrected each step</b> · <b class="i">orange band = the median clamp corridor</b></div>
+
+<script>
+const $=id=>document.getElementById(id);
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gaussFrom(r){let u=0,v=0;while(u===0)u=r();while(v===0)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const abar=t=>Math.cos(t*Math.PI/2)**2;
+const STEPS=40;
+let seed=5, mode='classic', cur=0, stage=0, timer=null, speed=2;
+let classic=[], corrected=[], measured=[];
+// simulate drift: the no-time model's effective denoising misses the schedule by a random walk.
+function simulate(){
+  const rng=mulberry32(seed);
+  classic=[];corrected=[];measured=[];
+  let dC=0, dP=0; // multiplicative drift in logit space
+  for(let i=0;i<STEPS;i++){
+    const t=1-(i/(STEPS-1))*0.999, a=Math.min(0.995,Math.max(0.004,abar(t)));
+    const shock=0.22*gaussFrom(rng);
+    dC+=shock;                       // classic: drift accumulates unchecked
+    dP=(dP+shock)*0.35;              // corrected: measurement pulls it back each step
+    const lg=x=>Math.log(x/(1-x)), sg=x=>1/(1+Math.exp(-x));
+    classic.push(sg(lg(a)+dC));
+    corrected.push(sg(lg(a)+dP));
+    measured.push(sg(lg(a)+dP+0.12*gaussFrom(rng)));  // ᾱ̂: noisy measurement of truth
+  }
+}
+// ---------- plot ----------
+const CW=520,CH=270,M={l:40,r:12,t:16,b:30};
+const px=i=>M.l+(i/(STEPS-1))*(CW-M.l-M.r), py=a=>CH-M.b-a*(CH-M.t-M.b);
+function drawPlot(){
+  const cv=$('plot'),ctx=cv.getContext('2d');ctx.clearRect(0,0,CW,CH);
+  ctx.strokeStyle='#dde5f2';ctx.strokeRect(M.l,M.t,CW-M.l-M.r,CH-M.t-M.b);
+  ctx.fillStyle='#5a6b86';ctx.font='10px monospace';
+  ctx.fillText('start (t=1)',M.l,CH-14);ctx.fillText('end (t=0)',CW-72,CH-14);
+  ctx.fillText('ᾱ=1',6,py(1)+4);ctx.fillText('ᾱ=0',6,py(0)+4);
+  // schedule (belief)
+  ctx.strokeStyle='#7b5cd6';ctx.lineWidth=2.6;ctx.beginPath();
+  for(let i=0;i<STEPS;i++){const t=1-(i/(STEPS-1))*0.999;const Y=py(abar(t));
+    i===0?ctx.moveTo(px(i),Y):ctx.lineTo(px(i),Y);}
+  ctx.stroke();
+  ctx.fillStyle='#7b5cd6';ctx.font='bold 10px sans-serif';ctx.fillText('the schedule: what the sampler believes',M.l+8,py(abar(0.9))-32);
+  // clamp corridor at current step (stage 2+, predictor mode)
+  if(stage>=2&&mode==='pred'){
+    const med=measured[cur];
+    const lo=Math.max(0,med/2), hi=Math.min(1,med*2);
+    ctx.fillStyle='rgba(246,146,30,.16)';
+    ctx.fillRect(px(Math.max(0,cur-1.4)),py(hi),px(Math.min(STEPS-1,cur+1.4))-px(Math.max(0,cur-1.4)),py(lo)-py(hi));
+    ctx.strokeStyle='rgba(246,146,30,.7)';ctx.setLineDash([3,3]);ctx.lineWidth=1.4;
+    ctx.strokeRect(px(Math.max(0,cur-1.4)),py(hi),px(Math.min(STEPS-1,cur+1.4))-px(Math.max(0,cur-1.4)),py(lo)-py(hi));
+    ctx.setLineDash([]);
+    ctx.fillStyle='#b06710';ctx.font='9.5px sans-serif';
+    ctx.fillText('clamp: [med/2, 2·med]',Math.min(CW-118,px(cur)+6),py(hi)-4);
+  }
+  // truth trajectory up to cur
+  const truth=(mode==='classic')?classic:corrected;
+  ctx.strokeStyle=(mode==='classic')?'#d64545':'#16a3a3';ctx.lineWidth=2.4;ctx.beginPath();
+  for(let i=0;i<=cur;i++){i===0?ctx.moveTo(px(i),py(truth[i])):ctx.lineTo(px(i),py(truth[i]));}
+  ctx.stroke();
+  // measured dots (predictor mode, stage>=1)
+  if(mode==='pred'&&stage>=1){
+    for(let i=0;i<=cur;i+=2){
+      ctx.fillStyle='rgba(22,163,163,.85)';
+      ctx.beginPath();ctx.arc(px(i),py(measured[i]),3,0,7);ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
+    }
+    ctx.fillStyle='#0f7d7d';ctx.font='9.5px sans-serif';
+    ctx.fillText('teal dots = tmodel(x_t).sigmoid() — live measurements',M.l+8,M.t+12);
+  }
+  // gap arrow at cur
+  const t=1-(cur/(STEPS-1))*0.999, sched=abar(t), tru=truth[cur];
+  ctx.strokeStyle='#8d9cb8';ctx.lineWidth=1.6;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(px(cur),py(sched));ctx.lineTo(px(cur),py(tru));ctx.stroke();ctx.setLineDash([]);
+  // markers
+  ctx.fillStyle='#7b5cd6';ctx.beginPath();ctx.arc(px(cur),py(sched),5.5,0,7);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=(mode==='classic')?'#d64545':'#16a3a3';
+  ctx.beginPath();ctx.arc(px(cur),py(tru),5.5,0,7);ctx.fill();ctx.stroke();
+  // gap readouts
+  let gc=0,gp=0;for(let i=0;i<STEPS;i++){const tt=1-(i/(STEPS-1))*0.999;
+    gc+=Math.abs(classic[i]-abar(tt));gp+=Math.abs(corrected[i]-abar(tt));}
+  $('gapc').textContent=(gc/STEPS).toFixed(3);
+  $('gapp').textContent=(gp/STEPS).toFixed(3);
+  $('gapnote').textContent=(mode==='classic')
+    ?'…and classic still plugs the purple value into the algebra.'
+    :'…and the corrected sampler plugs the measured value in instead.';
+}
+$('plot').addEventListener('click',e=>{
+  const r=e.target.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(CW/r.width);
+  cur=Math.max(0,Math.min(STEPS-1,Math.round((x-M.l)/(CW-M.l-M.r)*(STEPS-1))));
+  stop();drawPlot();
+});
+// ---------- stages ----------
+const EXPLAIN=[
+ `<b style="color:var(--neg)">① The silent failure mode.</b> A normal diffusion model is told t, so its denoising stays glued to the timetable. The <b>no-time</b> model gets no such anchor: each step it removes roughly the right amount of noise, but "roughly" compounds — a random walk away from the schedule (red line). Classic DDIM never notices: at every step it computes x̂₀ using the <b>scheduled</b> ᾱ (purple), which is now the wrong number. Wrong ᾱ → wrong x̂₀ → wrong next step. Result: FID ≈ 22.`,
+ `<b style="color:var(--out)">② The fix is sitting right there.</b> We already trained a model whose entire job is to <b>read the noise level off the pixels</b>. So inside every DDIM step, call it: <code>a = tmodel(x_t).sigmoid()</code> — the teal dots. Note the shape gymnastics: <code>[..., None, None]</code> adds back the two spatial dims so one scalar per image broadcasts across all pixels. Each image in the batch even gets its <i>own</i> ᾱ̂, something a shared schedule could never offer.`,
+ `<b style="color:var(--in)">③ Trust, but clamp.</b> Individual predictions can be flaky — one bad ᾱ̂ near 0 would make the division by √ᾱ̂ explode. The guard: take the batch <b>median</b> (robust to outliers, unlike the mean) and squeeze every prediction into <b>[med/2, 2·med]</b> — the orange corridor. Any image's estimate may only disagree with the batch consensus by a factor of 2. The x̂₀ clamp is also widened to (−2, 2): a loose safety net for rare blow-ups rather than a tight straitjacket.`,
+ `<b style="color:var(--out)">④ Close the loop.</b> Swap ᾱ̂ into the estimate: x̂₀ = (x_t − √(1−ᾱ̂)·ε̂)/√ᾱ̂. Now the algebra matches reality, so each step lands where it should, and the drift is corrected before it compounds (teal line hugging purple). It's a thermostat instead of a timer: the timer bakes for 40 minutes no matter what; the thermostat checks the oven. Same models, same steps — FID 22 → <b>4</b>, purely from measuring instead of assuming.`
+];
+const CODE=[
+`<span class="cm"># ① classic ddim_step — plugs in the SCHEDULED abar_t, right or wrong</span>
+def <span class="fn">ddim_step_classic</span>(x_t, noise, abar_t, abar_t1, ...):
+    sig = ((bbar_t1/bbar_t).sqrt() * (<span class="num">1</span>-abar_t/abar_t1).sqrt()) * eta
+    x_0_hat = ((x_t - (<span class="num">1</span>-<span class="hl">abar_t</span>).sqrt()*noise) / <span class="hl">abar_t</span>.sqrt()).clamp(-<span class="num">0.5</span>,<span class="num">0.5</span>)
+    <span class="cm"># FID ≈ 22 with the no-time model — the assumed ᾱ is off</span>`,
+`<span class="cm"># ② the corrected step ASKS the noise predictor first</span>
+with torch.no_grad():
+    <span class="hl">a = tmodel(x_t)[..., None, None].sigmoid()</span>   <span class="cm"># measure ᾱ̂ per image;</span>
+    <span class="cm"># [...,None,None] restores (b,1,1,1) so it broadcasts over pixels</span>`,
+`<span class="cm"># ③ robustify: batch median + factor-of-2 corridor</span>
+med = a.median()
+<span class="hl">a = a.clamp(med/<span class="num">2</span>, med*<span class="num">2</span>)</span>       <span class="cm"># no single flaky estimate can explode the math</span>`,
+`<span class="cm"># ④ same algebra, measured ingredient</span>
+x_0_hat = ((x_t - (<span class="num">1</span>-<span class="hl">a</span>).sqrt()*noise) / <span class="hl">a</span>.sqrt()).clamp(-<span class="num">2</span>, <span class="num">2</span>)
+<span class="cm"># “update based on the noise that actually seems to be left,</span>
+<span class="cm">#  not the noise that was supposed to be left” → FID ≈ 4</span>`
+];
+function setStage(s){stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('explain').innerHTML=EXPLAIN[s];$('code').innerHTML=CODE[s];
+  if(s>=1)setMode('pred',false); if(s===0)setMode('classic',false);
+  drawPlot();}
+function setMode(m,redraw=true){mode=m;
+  $('tgc').className=(m==='classic')?'onbad':'';
+  $('tgp').className=(m==='pred')?'on':'';
+  if(redraw)drawPlot();}
+$('tgc').onclick=()=>{stop();setMode('classic');};
+$('tgp').onclick=()=>{stop();setMode('pred');};
+function stop(){if(timer){clearInterval(timer);timer=null;}$('playb').textContent='▶ Run sampling';}
+function play(){$('playb').textContent='❚❚ Pause';if(cur>=STEPS-1)cur=0;
+  timer=setInterval(()=>{if(cur>=STEPS-1){stop();return;}cur++;drawPlot();},280/speed);}
+$('playb').onclick=()=>{timer?stop():play();};
+$('stepb').onclick=()=>{stop();if(cur<STEPS-1){cur++;drawPlot();}};
+$('resetb').onclick=()=>{stop();seed=(seed*48271)%2147483647||5;simulate();cur=0;drawPlot();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stop();setStage(+c.dataset.s);});
+simulate();cur=STEPS-1;setStage(0);
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

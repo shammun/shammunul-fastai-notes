@@ -1,0 +1,212 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Baseline Bar</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:920px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .ctr{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:12px;color:var(--soft);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:110px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  .big{font-family:monospace;font-weight:800;font-size:15px;}
+  .scorebox{display:flex;gap:14px;justify-content:center;margin:6px auto 0;flex-wrap:wrap;max-width:940px;}
+  .score{background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 14px;font-size:12px;color:var(--soft);text-align:center;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .score .v{font-family:monospace;font-weight:800;font-size:16px;display:block;}
+  .explain{background:#fff;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:10px;box-shadow:0 6px 16px rgba(123,92,214,.08);
+    padding:8px 13px;font-size:12.5px;line-height:1.55;max-width:940px;margin:9px auto 0;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.65;max-width:940px;margin:9px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>The Baseline Bar — Why "Always Predict 0.5" Scores ≈ 3.3</h1>
+<p class="sub">Before celebrating any trained model, you must know what <b>zero learning</b> scores. Drag the <b style="color:var(--in)">orange prediction line</b> across the histogram of true targets and watch the MSE respond — the U-shaped curve on the right shows there's a best constant, and even the best constant can't go below the <b>variance of the targets</b>.</p>
+
+<div class="stagebar" id="stagebar">
+  <button class="chip on" data-s="0">① sample many ᾱ ~ U(0,1)</button>
+  <button class="chip" data-s="1">② targets = logit(ᾱ)</button>
+  <button class="chip" data-s="2">③ predict one constant c</button>
+  <button class="chip" data-s="3">④ MSE = variance + (bias)²</button>
+</div>
+<div class="ctr">
+  <button class="play" id="playb">▶ Rain samples</button>
+  <button class="stepb" id="stepb">Step stage ➜</button>
+  <button class="reset" id="resetb">↺ Reset</button>
+  <span>speed <input type="range" id="speed" min="1" max="4" step="1" value="2" style="width:100px"> <span class="speedv" id="spv">2×</span></span>
+  <span style="margin-left:8px">constant c = <span class="big" style="color:var(--in)" id="cv">0.00</span>
+  <input type="range" id="cslider" min="-3" max="3" step="0.05" value="0" style="width:150px"></span>
+</div>
+
+<div class="main">
+  <div class="card">
+    <p class="cap">true targets: logit(ᾱ) for <span id="ncount">0</span> images <small>drag the orange line — or drag directly on the plot</small></p>
+    <canvas id="hist" width="470" height="250" style="width:470px;height:250px;cursor:ew-resize;max-width:92vw"></canvas>
+  </div>
+  <div class="card">
+    <p class="cap">loss landscape: MSE(c) <small>the U-curve every regression baseline lives on</small></p>
+    <canvas id="loss" width="330" height="250" style="width:330px;height:250px;max-width:92vw"></canvas>
+  </div>
+</div>
+
+<div class="scorebox">
+  <div class="score">MSE at your c <span class="v" style="color:var(--in)" id="msev">—</span></div>
+  <div class="score">best possible constant <span class="v" style="color:var(--ac)">c* = mean ≈ 0.00</span></div>
+  <div class="score">variance of targets (the floor) <span class="v" style="color:var(--out)" id="varv">π²/3 ≈ 3.29</span></div>
+  <div class="score">trained model must beat <span class="v" style="color:var(--neg)">≈ 3.3 — or it learned nothing</span></div>
+</div>
+
+<div class="explain" id="explain"></div>
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = your constant prediction</b> · <b class="o">teal = the irreducible floor (target variance)</b> · <b class="a">purple = the loss landscape</b></div>
+
+<script>
+const $=id=>document.getElementById(id);
+let seed=7;function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+let rng=mulberry32(seed);
+const logit=p=>Math.log(p/(1-p));
+let samples=[], stage=0, c=0, timer=null, speed=2;
+const MAXN=3000;
+function addSamples(k){for(let i=0;i<k&&samples.length<MAXN;i++){const a=Math.min(0.999,Math.max(0.001,rng()));samples.push(logit(a));}}
+addSamples(400);
+function stats(){const n=samples.length;if(!n)return{m:0,v:0};let m=0;for(const s of samples)m+=s;m/=n;let v=0;for(const s of samples)v+=(s-m)*(s-m);v/=n;return{m,v};}
+function mse(cc){const n=samples.length;if(!n)return 0;let s=0;for(const t of samples)s+=(cc-t)*(cc-t);return s/n;}
+// ------- histogram -------
+const HX=[-6,6];
+function drawHist(){
+  const cv=$('hist'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const px=x=>20+(x-HX[0])/(HX[1]-HX[0])*(W-40), B=48;
+  const bins=new Array(B).fill(0);
+  for(const s of samples){const b=Math.floor((s-HX[0])/(HX[1]-HX[0])*B);if(b>=0&&b<B)bins[b]++;}
+  const mx=Math.max(1,...bins);
+  ctx.strokeStyle='#dde5f2';ctx.beginPath();ctx.moveTo(20,H-24);ctx.lineTo(W-20,H-24);ctx.stroke();
+  ctx.fillStyle='#5a6b86';ctx.font='10px monospace';
+  for(const t of [-4,-2,0,2,4]){ctx.fillText(t,px(t)-6,H-10);}
+  for(let b=0;b<B;b++){
+    const h=bins[b]/mx*(H-56);
+    const x=20+b/B*(W-40), w=(W-40)/B-1;
+    ctx.fillStyle= stage>=1 ? 'rgba(123,92,214,.65)' : 'rgba(90,107,134,.5)';
+    ctx.fillRect(x,H-24-h,w,h);
+  }
+  // residual whiskers from c to a few samples when stage>=3
+  if(stage>=2){
+    const X=px(c);
+    ctx.strokeStyle='#f6921e';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(X,14);ctx.lineTo(X,H-24);ctx.stroke();
+    ctx.fillStyle='#f6921e';ctx.font='bold 11px monospace';
+    ctx.fillText('c='+c.toFixed(2),Math.min(W-70,X+6),24);
+    if(stage>=3){
+      ctx.lineWidth=1.4;ctx.strokeStyle='rgba(214,69,69,.5)';
+      for(let i=0;i<Math.min(26,samples.length);i+=1){
+        const s=samples[i*7%samples.length];const y=34+ (i%13)*((H-70)/13);
+        ctx.beginPath();ctx.moveTo(X,y);ctx.lineTo(px(s),y);ctx.stroke();
+        ctx.fillStyle='rgba(123,92,214,.9)';ctx.beginPath();ctx.arc(px(s),y,2.4,0,7);ctx.fill();
+      }
+      ctx.fillStyle='#d64545';ctx.font='10px sans-serif';
+      ctx.fillText('each red line = one error; MSE = mean of (line length)²',24,H-32);
+    }
+  }
+  $('ncount').textContent=samples.length;
+}
+// ------- loss curve -------
+function drawLoss(){
+  const cv=$('loss'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const {m,v}=stats();
+  const px=x=>20+(x+3)/6*(W-40), py=y=>H-26-(y/14)*(H-52);
+  ctx.strokeStyle='#dde5f2';ctx.beginPath();ctx.moveTo(20,H-26);ctx.lineTo(W-20,H-26);ctx.stroke();
+  ctx.fillStyle='#5a6b86';ctx.font='10px monospace';
+  for(const t of [-3,-1.5,0,1.5,3])ctx.fillText(t,px(t)-8,H-12);
+  ctx.fillText('c →',W-38,H-2);
+  // variance floor
+  ctx.setLineDash([5,4]);ctx.strokeStyle='#16a3a3';ctx.lineWidth=1.6;
+  ctx.beginPath();ctx.moveTo(20,py(v));ctx.lineTo(W-20,py(v));ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#16a3a3';ctx.fillText('floor = Var ≈ '+v.toFixed(2),24,py(v)-5);
+  // parabola
+  ctx.strokeStyle='#7b5cd6';ctx.lineWidth=2.5;ctx.beginPath();
+  for(let i=0;i<=120;i++){const cc=-3+i/120*6;const y=v+(cc-m)*(cc-m);
+    i===0?ctx.moveTo(px(cc),py(Math.min(14,y))):ctx.lineTo(px(cc),py(Math.min(14,y)));}
+  ctx.stroke();
+  // marker at current c
+  const y=mse(c);
+  ctx.fillStyle='#f6921e';ctx.beginPath();ctx.arc(px(c),py(Math.min(14,y)),6,0,7);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#f6921e';ctx.font='bold 11px monospace';
+  ctx.fillText('MSE='+y.toFixed(2),Math.min(W-84,px(c)+8),py(Math.min(14,y))-8);
+  $('msev').textContent=y.toFixed(3);
+  $('varv').textContent=v.toFixed(2)+'  (π²/3≈3.29)';
+}
+function render(){drawHist();drawLoss();$('cv').textContent=c.toFixed(2);$('cslider').value=c;}
+// drag on histogram
+let dragging=false;
+$('hist').addEventListener('pointerdown',e=>{dragging=true;moveC(e);});
+addEventListener('pointermove',e=>{if(dragging)moveC(e);});
+addEventListener('pointerup',()=>dragging=false);
+function moveC(e){const cv=$('hist'),r=cv.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(cv.width/r.width);
+  c=Math.max(-3,Math.min(3,HX[0]+(x-20)/(cv.width-40)*(HX[1]-HX[0])));
+  if(stage<2)setStage(2); render();}
+$('cslider').oninput=e=>{c=+e.target.value;if(stage<2)setStage(2);render();};
+// stages
+const EXPLAIN=[
+ `<b style="color:var(--ac)">① The targets come from the data recipe itself.</b> Every training image got an ᾱ drawn uniformly from (0,1). So before the model sees a single pixel, we know <i>exactly</i> what distribution the answers follow. That's a superpower: it lets us compute what a know-nothing model scores. Press <b>▶ Rain samples</b> to pile up more draws.`,
+ `<b style="color:var(--ac)">② …but the model is trained on logit(ᾱ), and logit reshapes the distribution.</b> Uniform in (0,1) becomes the <b>logistic distribution</b> in logit space — a bell-ish curve centered at 0 with heavy tails (this is why the histogram isn't flat!). Its mean is 0 and its variance is exactly <b>π²/3 ≈ 3.29</b>. Keep that number in mind.`,
+ `<b style="color:var(--ac)">③ A constant prediction is a vertical line.</b> The notebook's dummy model outputs 0.5 for every image, no matter what. Drag the orange line: every red whisker is one image's error. Note the trap: the notebook predicts <b>0.5 in logit space</b> — which corresponds to sigmoid(0.5) ≈ 0.62, i.e. "62% signal" — not logit(0.5)=0. Close to optimal, but not exactly it.`,
+ `<b style="color:var(--ac)">④ The famous decomposition:</b> MSE(c) = <b style="color:var(--out)">Var(targets)</b> + <b style="color:var(--in)">(c − mean)²</b>. The parabola bottoms out at c = mean = 0, and even there the loss is still ≈ <b>3.29 — the variance floor no constant can beat</b>. So when the notebook says "if your trained model gets ~3, you've learned nothing", this is why: ~3.3 is free. The real trained model reaches ≈ 0.02–0.05 — hundreds of times below the floor — proof it genuinely reads noise levels from pixels.`
+];
+const CODE=[
+`<span class="cm"># ① the recipe that fixes the target distribution</span>
+<span class="hl">al_t = torch.rand((len(x0), 1, 1, 1))</span>          <span class="cm"># ᾱ ~ Uniform(0,1) — known!</span>`,
+`<span class="cm"># ② what the model must predict</span>
+return xt, <span class="hl">al_t.squeeze().logit()</span>              <span class="cm"># logit(U) = logistic dist: mean 0, var π²/3</span>`,
+`<span class="cm"># ③ the dummy baseline from the notebook</span>
+class <span class="fn">f</span>(nn.Module):
+    def forward(self, x):
+        <span class="hl">return torch.full((len(x),), <span class="num">0.5</span>)</span>      <span class="cm"># same answer for every image</span>`,
+`<span class="cm"># ④ measure it — flatten first so shapes can't silently broadcast!</span>
+def <span class="fn">flat_mse</span>(x, y):
+    <span class="hl">return F.mse_loss(x.flatten(), y.flatten())</span>
+<span class="cm"># baseline ≈ 3.3–3.7 · trained model ≈ 0.02–0.05 → real learning</span>`
+];
+function setStage(s){stage=s;
+  document.querySelectorAll('.chip').forEach(ch=>ch.classList.toggle('on',+ch.dataset.s===s));
+  $('explain').innerHTML=EXPLAIN[s];$('code').innerHTML=CODE[s];render();}
+function stop(){if(timer){clearInterval(timer);timer=null;}$('playb').textContent='▶ Rain samples';}
+function play(){$('playb').textContent='❚❚ Pause';
+  timer=setInterval(()=>{addSamples(30*speed);render();if(samples.length>=MAXN)stop();},60);}
+$('playb').onclick=()=>{timer?stop():play();};
+$('stepb').onclick=()=>{stop();setStage((stage+1)%4);};
+$('resetb').onclick=()=>{stop();samples=[];rng=mulberry32(seed);addSamples(400);c=0;setStage(0);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+document.querySelectorAll('.chip').forEach(ch=>ch.onclick=()=>{stop();setStage(+ch.dataset.s);});
+setStage(0);
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

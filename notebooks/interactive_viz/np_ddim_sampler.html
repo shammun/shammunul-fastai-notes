@@ -1,0 +1,244 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The DDIM Sampling Machine</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:930px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .ctr{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:6px;font-size:12px;color:var(--soft);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:96px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);}
+  .speedv,.etav{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  select{font-family:inherit;font-size:12px;font-weight:700;color:var(--ac);border:1.5px solid var(--line);border-radius:8px;padding:4px 7px;background:#fff;cursor:pointer;}
+  .timeline{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;max-width:960px;margin:0 auto 8px;}
+  .tstep{width:26px;height:26px;border-radius:6px;border:1px solid var(--line);background:#fff;color:#b9c4d8;
+    font-family:monospace;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s;}
+  .tstep:hover{border-color:var(--ac);color:var(--ac);}
+  .tstep.done{background:#e9f7f6;color:#0f7d7d;border-color:#bfe6e4;}
+  .tstep.cur{background:var(--ac);color:#fff;border-color:var(--ac);box-shadow:0 3px 10px rgba(123,92,214,.35);}
+  .main{display:flex;gap:12px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  canvas.img{image-rendering:pixelated;border-radius:8px;border:1px solid var(--line);display:block;margin:0 auto;}
+  .imgwrap{padding:2px;border-radius:10px;}
+  .imgwrap.hin{outline:3px solid var(--in);}
+  .imgwrap.hout{outline:3px solid var(--out);}
+  .imgwrap.hac{outline:3px solid var(--ac);}
+  .ro{font-family:monospace;font-size:11.5px;text-align:center;margin-top:5px;line-height:1.7;color:var(--soft);}
+  .ro b{font-weight:800;color:var(--ink);}
+  .opcol{display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:19px;font-weight:700;color:var(--soft);min-width:26px;padding-top:60px;}
+  .explain{background:#fff;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:10px;box-shadow:0 6px 16px rgba(123,92,214,.08);
+    padding:8px 13px;font-size:12.5px;line-height:1.55;max-width:950px;margin:9px auto 0;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.6;max-width:950px;margin:9px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 3px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>The DDIM Sampling Machine — from Pure Noise to a Garment</h1>
+<p class="sub">This is <code>sample()</code> running live. <b>Click any square on the timeline to jump to that step</b>, use the chips to zoom into one step's four sub-moves (each highlights its code line), and drag <b style="color:var(--ac)">η</b> to trade determinism for variety. Watch x̂₀ — the model's <i>guess of the finished image</i> — sharpen from blur to trouser.</p>
+
+<div class="ctr">
+  <button class="play" id="playb">▶ Sample</button>
+  <button class="stepb" id="stepb">One step ➜</button>
+  <button class="reset" id="resetb">↺ New noise</button>
+  <span>steps <select id="nsteps"><option>10</option><option selected>18</option><option>36</option></select></span>
+  <span>η <input type="range" id="eta" min="0" max="1" step="0.1" value="1" style="width:90px"> <span class="etav" id="etv">1.0</span></span>
+  <span>speed <input type="range" id="speed" min="1" max="4" step="1" value="2" style="width:90px"> <span class="speedv" id="spv">2×</span></span>
+</div>
+<div class="timeline" id="timeline"></div>
+<div class="stagebar" id="stagebar">
+  <button class="chip on" data-s="0">① model predicts ε̂</button>
+  <button class="chip" data-s="1">② solve for x̂₀</button>
+  <button class="chip" data-s="2">③ how much fresh noise? σ(η)</button>
+  <button class="chip" data-s="3">④ re-mix → x_{t−1}</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <p class="cap">current x_t <small>step <span id="stepn">0</span>: t = <span id="tval">0.94</span>, ᾱ_t = <span id="aval">0.01</span></small></p>
+    <div class="imgwrap" id="wxt"><canvas class="img" id="cxt" width="16" height="16" style="width:132px;height:132px"></canvas></div>
+    <div class="ro">signal <b id="sigp">1%</b> · noise <b id="noip">99%</b></div>
+  </div>
+  <div class="opcol">→</div>
+  <div class="card">
+    <p class="cap">model's ε̂ <small>"here is the noise I see"</small></p>
+    <div class="imgwrap" id="weps"><canvas class="img" id="ceps" width="16" height="16" style="width:132px;height:132px"></canvas></div>
+    <div class="ro">noise = model(x_t)<br><b style="color:var(--ac)">no t passed in!</b></div>
+  </div>
+  <div class="opcol">→</div>
+  <div class="card">
+    <p class="cap">x̂₀ estimate <small>"…so the clean image must be this"</small></p>
+    <div class="imgwrap" id="wx0"><canvas class="img" id="cx0" width="16" height="16" style="width:132px;height:132px"></canvas></div>
+    <div class="ro">(x_t − √(1−ᾱ)·ε̂)/√ᾱ<br>clamped to [−0.5, 0.5]</div>
+  </div>
+  <div class="opcol">→</div>
+  <div class="card">
+    <p class="cap">next x_{t−1} <small>keep some noise, step down the schedule</small></p>
+    <div class="imgwrap" id="wxn"><canvas class="img" id="cxn" width="16" height="16" style="width:132px;height:132px"></canvas></div>
+    <div class="ro">ᾱ_{t−1} = <b id="a1val">0.02</b> · σ = <b id="sval">0.00</b></div>
+  </div>
+</div>
+
+<div class="explain" id="explain"></div>
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange highlight = what this stage reads</b> · <b class="o">teal = what it produces</b> · <b class="a">purple = the running position</b> — with η=0 re-running gives the identical image (deterministic); with η=1 each step injects fresh randomness like DDPM.</div>
+
+<script>
+const $=id=>document.getElementById(id);
+// ---------- RNG ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gaussFrom(r){let u=0,v=0;while(u===0)u=r();while(v===0)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+// ---------- sprite ----------
+const N=16,x0=new Float32Array(N*N).fill(-0.5);
+(function(){for(let r=3;r<15;r++)for(let c=0;c<N;c++){
+  const inL=(c>=4&&c<=6),inR=(c>=9&&c<=11),gap=(c>=7&&c<=8);
+  if(inL||inR)x0[r*N+c]=0.32+((r+c)%4===0?0.1:0);
+  if(gap)x0[r*N+c]=-0.5;
+  if(r<=4&&c>=4&&c<=11)x0[r*N+c]=0.42;}
+  for(let c=4;c<=11;c++){x0[1*N+c]=0.45;x0[2*N+c]=0.35;}})();
+const abar=t=>Math.cos(t*Math.PI/2)**2;
+// ---------- simulate a full trajectory (cached, so timeline jumps are instant) ----------
+let seed=42, STEPS=18, eta=1.0, traj=null;
+function simulate(){
+  const rng=mulberry32(seed);
+  const g=()=>gaussFrom(rng);
+  const ts=[];for(let i=0;i<STEPS;i++)ts.push(1-1/STEPS - i*(1-1/STEPS)/(STEPS-1)); // 1-1/steps → 0
+  let xt=new Float32Array(N*N);for(let i=0;i<N*N;i++)xt[i]=g();
+  const states=[];
+  for(let i=0;i<STEPS;i++){
+    const t=ts[i], at=abar(t);
+    const t1=(t>=1/STEPS)?t-1/STEPS:0, at1=(t>=1/STEPS)?abar(t1):1;
+    const bt=1-at, bt1=1-at1;
+    // "model": near-perfect ε̂ = true residual noise + small structured error that shrinks as image cleans up
+    const eps=new Float32Array(N*N);
+    for(let k=0;k<N*N;k++){
+      const trueEps=(xt[k]-Math.sqrt(at)*x0[k])/Math.sqrt(Math.max(1e-4,bt));
+      eps[k]=trueEps + 0.22*Math.sqrt(bt)*g();  // imperfection ∝ noise level
+    }
+    // x̂0
+    const x0h=new Float32Array(N*N);
+    for(let k=0;k<N*N;k++){
+      x0h[k]=Math.max(-0.5,Math.min(0.5,(xt[k]-Math.sqrt(bt)*eps[k])/Math.sqrt(Math.max(1e-4,at))));
+    }
+    // sigma
+    let sig=Math.sqrt(bt1/Math.max(1e-6,bt))*Math.sqrt(Math.max(0,1-at/Math.max(1e-6,at1)))*eta;
+    if(bt1<=sig*sig+0.01)sig=0;
+    // next
+    const xn=new Float32Array(N*N);
+    for(let k=0;k<N*N;k++){
+      xn[k]=Math.sqrt(at1)*x0h[k]+Math.sqrt(Math.max(0,bt1-sig*sig))*eps[k]+sig*g();
+    }
+    states.push({t,at,at1,sig,xt:xt.slice(),eps,x0h,xn});
+    xt=xn;
+  }
+  traj=states;
+}
+// ---------- drawing ----------
+function draw(cid,arr,lo,hi){
+  const cv=$(cid),ctx=cv.getContext('2d'),im=ctx.createImageData(N,N);
+  for(let i=0;i<N*N;i++){let v=(arr[i]-lo)/(hi-lo);v=Math.max(0,Math.min(1,v));const g=Math.round(v*255);
+    im.data[4*i]=g;im.data[4*i+1]=g;im.data[4*i+2]=g;im.data[4*i+3]=255;}
+  ctx.putImageData(im,0,0);
+}
+// ---------- timeline ----------
+let cur=0, stage=0, timer=null, speed=2;
+function buildTimeline(){
+  const tl=$('timeline');tl.innerHTML='';
+  for(let i=0;i<STEPS;i++){
+    const d=document.createElement('div');d.className='tstep';d.textContent=i;
+    d.title='jump to step '+i;
+    d.onclick=()=>{stop();cur=i;render();};
+    tl.appendChild(d);
+  }
+}
+// ---------- stages / code ----------
+const EXPLAIN=[
+ `<b style="color:var(--ac)">① Ask the model.</b> The no-time UNet receives <b>only pixels</b> — compare the code: it used to be <code>model((x_t, t))</code>, now it's just <code>model(x_t)</code>. From texture alone it answers "this part of the static is noise". Early on (left of the timeline) nearly everything is noise, so ε̂ is basically the whole image; near the end it flags only the residual fizz.`,
+ `<b style="color:var(--ac)">② Algebra, not magic.</b> The forward recipe was x_t = √ᾱ·x₀ + √(1−ᾱ)·ε. If the model's ε̂ is right, we can just <b>solve for x₀</b>: x̂₀ = (x_t − √(1−ᾱ)·ε̂)/√ᾱ. Watch this panel while playing: at step 0 the guess is a vague grey blob (dividing by tiny √ᾱ amplifies every error — hence the clamp to [−0.5,0.5]); each later step lets it commit to a sharper trouser. The samples the notebook plots are exactly these x̂₀'s.`,
+ `<b style="color:var(--ac)">③ The η dial.</b> DDIM's twist on DDPM: <i>choose</i> how much fresh randomness to re-inject. σ = √(β̄_{t−1}/β̄_t)·√(1−ᾱ_t/ᾱ_{t−1})·η. With <b>η=0</b>, σ=0 — the walk is deterministic and the same starting noise always yields the same trouser. With <b>η=1</b> you recover DDPM-like stochasticity — more variety, and (per the notebook's comparison) better FID here. The <code>if bbar_t1 ≤ σ²+0.01: σ=0</code> guard just prevents √(negative) at the final steps.`,
+ `<b style="color:var(--ac)">④ Step down the ladder, don't leap.</b> We do NOT output x̂₀ — we re-mix it to the noise level the <i>next</i> rung expects: x_{t−1} = √ᾱ_{t−1}·x̂₀ + √(β̄_{t−1}−σ²)·ε̂ + σ·(fresh noise). Keeping some noise lets later steps revise early mistakes — early x̂₀ guesses are wrong in the details, and jumping straight to them would freeze those mistakes in. Then the loop returns to ① with a slightly cleaner image.`
+];
+function codeFor(s){
+ const L=[
+`<span class="cm"># inside sample(): the loop body — stage ①</span>
+for i, t in enumerate(progress_bar(ts)):
+    abar_t = abar(t)
+    <span class="hl">noise = model(x_t)</span>              <span class="cm"># was: model((x_t, t)) — the t is GONE</span>
+    abar_t1 = abar(t - <span class="num">1</span>/steps) if t >= <span class="num">1</span>/steps else torch.tensor(<span class="num">1</span>)`,
+`<span class="cm"># inside ddim_step(): stage ② — invert the forward formula</span>
+<span class="hl">x_0_hat = ((x_t - (<span class="num">1</span>-abar_t).sqrt()*noise) / abar_t.sqrt()).clamp(-<span class="num">0.5</span>, <span class="num">0.5</span>)</span>
+<span class="cm"># x_t = √ᾱ·x₀ + √(1−ᾱ)·ε   ⇒   x₀ = (x_t − √(1−ᾱ)·ε̂)/√ᾱ</span>`,
+`<span class="cm"># inside ddim_step(): stage ③ — the stochasticity dial</span>
+<span class="hl">sig = ((bbar_t1/bbar_t).sqrt() * (<span class="num">1</span> - abar_t/abar_t1).sqrt()) * eta</span>
+if bbar_t1 <= sig**<span class="num">2</span> + <span class="num">0.01</span>: sig = <span class="num">0.</span>   <span class="cm"># avoid √(negative) at the end</span>`,
+`<span class="cm"># inside ddim_step(): stage ④ — re-mix at the next noise level</span>
+<span class="hl">x_t = abar_t1.sqrt()*x_0_hat + (bbar_t1 - sig**<span class="num">2</span>).sqrt()*noise</span>
+x_t += sig * torch.randn(x_t.shape).to(x_t)      <span class="cm"># fresh noise, scaled by η</span>
+preds.append(x_0_hat.float().cpu())              <span class="cm"># keep the guess for plotting</span>`];
+ return L[s];
+}
+function setStage(s){stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('explain').innerHTML=EXPLAIN[s];$('code').innerHTML=codeFor(s);
+  $('wxt').className='imgwrap'+((s===0||s===1)?' hin':'');
+  $('weps').className='imgwrap'+(s===0?' hout':(s===1||s===3)?' hin':'');
+  $('wx0').className='imgwrap'+(s===1?' hout':(s===3?' hin':''));
+  $('wxn').className='imgwrap'+(s===3?' hout':'');
+}
+function render(){
+  const st=traj[Math.min(cur,traj.length-1)];
+  draw('cxt',st.xt,-2.2,2.2);
+  draw('ceps',st.eps,-2.5,2.5);
+  draw('cx0',st.x0h,-0.6,0.6);
+  draw('cxn',st.xn,-2.2,2.2);
+  $('stepn').textContent=cur;
+  $('tval').textContent=st.t.toFixed(2);
+  $('aval').textContent=st.at.toFixed(3);
+  $('a1val').textContent=st.at1.toFixed(3);
+  $('sval').textContent=st.sig.toFixed(3);
+  $('sigp').textContent=Math.round(st.at*100)+'%';
+  $('noip').textContent=Math.round((1-st.at)*100)+'%';
+  [...document.querySelectorAll('.tstep')].forEach((d,i)=>{
+    d.className='tstep'+(i<cur?' done':i===cur?' cur':'');});
+}
+function stop(){if(timer){clearInterval(timer);timer=null;}$('playb').textContent='▶ Sample';}
+function play(){$('playb').textContent='❚❚ Pause';
+  if(cur>=STEPS-1)cur=0;
+  timer=setInterval(()=>{
+    if(cur>=STEPS-1){stop();return;}
+    cur++;render();
+  },900/speed);}
+$('playb').onclick=()=>{timer?stop():play();};
+$('stepb').onclick=()=>{stop();if(cur<STEPS-1){cur++;render();}};
+$('resetb').onclick=()=>{stop();seed=(seed*1664525+1013904223)>>>0||42;simulate();cur=0;render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('eta').oninput=e=>{stop();eta=+e.target.value;$('etv').textContent=eta.toFixed(1);simulate();render();};
+$('nsteps').onchange=e=>{stop();STEPS=+e.target.value;simulate();buildTimeline();cur=0;render();};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{setStage(+c.dataset.s);});
+simulate();buildTimeline();setStage(0);render();
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

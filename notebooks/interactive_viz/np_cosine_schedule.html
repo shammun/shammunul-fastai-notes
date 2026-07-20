@@ -1,0 +1,238 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Cosine Dial</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:930px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .ctr{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:12px;color:var(--soft);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:120px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  canvas.img{image-rendering:pixelated;border-radius:8px;border:1px solid var(--line);display:block;margin:0 auto;}
+  .ro{font-family:monospace;font-size:12px;text-align:center;margin-top:5px;line-height:1.7;}
+  .ro b{font-weight:800;}
+  .explain{background:#fff;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:10px;box-shadow:0 6px 16px rgba(123,92,214,.08);
+    padding:8px 13px;font-size:12.5px;line-height:1.55;max-width:940px;margin:9px auto 0;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.65;max-width:940px;margin:9px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>The Cosine Dial — <span style="font-family:monospace;font-size:15px">ᾱ(t) = cos²(t·π/2)</span> and Its Inverse</h1>
+<p class="sub">The no-time diffusion model trains on this schedule. <b>Drag the dot along the curve</b> (or press ▶ to sweep a whole sampling run) and watch the image, the readouts, and the mirrored inverse move together. The chips walk through why this particular curve, and why we also need to run it <b>backwards</b>.</p>
+
+<div class="stagebar" id="stagebar">
+  <button class="chip on" data-s="0">① the dial: t → ᾱ</button>
+  <button class="chip" data-s="1">② why cosine? gentle at both ends</button>
+  <button class="chip" data-s="2">③ the inverse: ᾱ → t</button>
+  <button class="chip" data-s="3">④ uniform-t vs uniform-ᾱ (two notebooks, two recipes)</button>
+</div>
+<div class="ctr">
+  <button class="play" id="playb">▶ Sweep t: 1 → 0</button>
+  <button class="stepb" id="stepb">Step stage ➜</button>
+  <button class="reset" id="resetb">↺ Reset</button>
+  <span>speed <input type="range" id="speed" min="1" max="4" step="1" value="2" style="width:100px"> <span class="speedv" id="spv">2×</span></span>
+</div>
+
+<div class="main">
+  <div class="card">
+    <p class="cap">the schedule <small>drag the dot · click anywhere on the plot</small></p>
+    <canvas id="curve" width="400" height="250" style="width:400px;height:250px;cursor:grab;max-width:92vw"></canvas>
+  </div>
+  <div class="card">
+    <p class="cap">the image at this point <small>x_t = √ᾱ·x₀ + √(1−ᾱ)·ε</small></p>
+    <canvas class="img" id="cimg" width="16" height="16" style="width:150px;height:150px"></canvas>
+    <div class="ro">
+      t = <b style="color:var(--ac)" id="tv">0.50</b><br>
+      ᾱ = cos²(t·π/2) = <b style="color:var(--in)" id="av">0.50</b><br>
+      noise = 1−ᾱ = <b style="color:#7383a0" id="nv">0.50</b><br>
+      <span id="invline" style="color:var(--out)">inv_abar(ᾱ) = acos(√ᾱ)·2/π = <b id="itv">0.50</b> ✔</span>
+    </div>
+  </div>
+  <div class="card" id="histcard" style="display:none">
+    <p class="cap">where do training samples land? <small>1,500 draws each — same formula, different dice</small></p>
+    <canvas id="hist2" width="330" height="250" style="width:330px;height:250px;max-width:92vw"></canvas>
+  </div>
+</div>
+
+<div class="explain" id="explain"></div>
+<div class="code" id="code"></div>
+<div class="legend"><b class="a">purple = time t</b> · <b class="i">orange = signal ᾱ</b> · <b class="o">teal = the inverse map</b> — the inverse is the bridge that lets a <i>predicted</i> ᾱ̂ be converted back into an equivalent "position in time" during sampling.</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let seed=11;function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+let rng=mulberry32(seed);
+function gauss(){let u=0,v=0;while(u===0)u=rng();while(v===0)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const abar=t=>Math.cos(t*Math.PI/2)**2;
+const invab=a=>Math.acos(Math.sqrt(a))*2/Math.PI;
+// sprite (same trouser as noisify viz)
+const N=16,x0=new Float32Array(N*N).fill(-0.5);
+(function(){for(let r=3;r<15;r++)for(let c=0;c<N;c++){
+  const inL=(c>=4&&c<=6),inR=(c>=9&&c<=11),gap=(c>=7&&c<=8);
+  if(inL||inR)x0[r*N+c]=0.32+((r+c)%4===0?0.1:0);
+  if(gap)x0[r*N+c]=-0.5;
+  if(r<=4&&c>=4&&c<=11)x0[r*N+c]=0.42;}
+  for(let c=4;c<=11;c++){x0[1*N+c]=0.45;x0[2*N+c]=0.35;}})();
+const eps=new Float32Array(N*N);for(let i=0;i<N*N;i++)eps[i]=gauss();
+function drawImg(t){
+  const a=abar(t),sa=Math.sqrt(a),sn=Math.sqrt(1-a);
+  const cv=$('cimg'),ctx=cv.getContext('2d'),im=ctx.createImageData(N,N);
+  for(let i=0;i<N*N;i++){let v=(sa*x0[i]+sn*eps[i]+1.6)/3.2;v=Math.max(0,Math.min(1,v));
+    const g=Math.round(v*255);im.data[4*i]=g;im.data[4*i+1]=g;im.data[4*i+2]=g;im.data[4*i+3]=255;}
+  ctx.putImageData(im,0,0);
+}
+// curve
+let t=0.5,stage=0,timer=null,speed=2,drag=false;
+const CW=400,CH=250,M={l:38,r:14,t:14,b:30};
+const px=x=>M.l+x*(CW-M.l-M.r), py=y=>CH-M.b-y*(CH-M.t-M.b);
+function drawCurve(){
+  const cv=$('curve'),ctx=cv.getContext('2d');ctx.clearRect(0,0,CW,CH);
+  ctx.strokeStyle='#dde5f2';ctx.lineWidth=1;
+  ctx.strokeRect(M.l,M.t,CW-M.l-M.r,CH-M.t-M.b);
+  ctx.fillStyle='#5a6b86';ctx.font='10px monospace';
+  ctx.fillText('t=0',px(0)-8,CH-14);ctx.fillText('0.5',px(0.5)-9,CH-14);ctx.fillText('t=1',px(1)-10,CH-14);
+  ctx.fillText('ᾱ=1',4,py(1)+4);ctx.fillText('0.5',10,py(0.5)+4);ctx.fillText('0',18,py(0)+4);
+  ctx.fillText('clean',px(0)-4,M.t-2+10);ctx.fillText('pure noise',px(1)-52,py(0)-6);
+  // slope guides at ends (stage 1)
+  if(stage===1){
+    ctx.strokeStyle='rgba(214,69,69,.6)';ctx.lineWidth=2;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.moveTo(px(0),py(1));ctx.lineTo(px(0.22),py(1));ctx.stroke();       // flat at t=0
+    ctx.beginPath();ctx.moveTo(px(0.78),py(0));ctx.lineTo(px(1),py(0));ctx.stroke();       // flat at t=1
+    ctx.setLineDash([]);
+    ctx.fillStyle='#d64545';ctx.font='10px sans-serif';
+    ctx.fillText('slope ≈ 0: noise creeps in gently',px(0.02),py(1)-6);
+    ctx.fillText('slope ≈ 0: last traces fade gently',px(0.42),py(0)-18);
+  }
+  // linear comparison (stage 1)
+  if(stage===1){
+    ctx.strokeStyle='rgba(90,107,134,.45)';ctx.lineWidth=1.6;ctx.setLineDash([2,4]);
+    ctx.beginPath();ctx.moveTo(px(0),py(1));ctx.lineTo(px(1),py(0));ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#8d9cb8';ctx.font='10px sans-serif';ctx.fillText('a linear schedule (for contrast)',px(0.44),py(0.62));
+  }
+  // curve
+  ctx.strokeStyle='#7b5cd6';ctx.lineWidth=2.6;ctx.beginPath();
+  for(let i=0;i<=140;i++){const tt=i/140;const X=px(tt),Y=py(abar(tt));i===0?ctx.moveTo(X,Y):ctx.lineTo(X,Y);}
+  ctx.stroke();
+  // guides
+  const a=abar(t);
+  ctx.setLineDash([4,3]);ctx.lineWidth=1.6;
+  ctx.strokeStyle='#7b5cd6';ctx.beginPath();ctx.moveTo(px(t),py(0));ctx.lineTo(px(t),py(a));ctx.stroke();
+  ctx.strokeStyle='#f6921e';ctx.beginPath();ctx.moveTo(px(t),py(a));ctx.lineTo(px(0),py(a));ctx.stroke();
+  ctx.setLineDash([]);
+  // inverse arrow (stage 2)
+  if(stage===2){
+    ctx.strokeStyle='#16a3a3';ctx.lineWidth=2.2;
+    ctx.beginPath();ctx.moveTo(px(0)+3,py(a)-8);ctx.lineTo(px(t)-6,py(a)-8);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(px(t)-6,py(a)-8);ctx.lineTo(px(t)-13,py(a)-12);ctx.moveTo(px(t)-6,py(a)-8);ctx.lineTo(px(t)-13,py(a)-4);ctx.stroke();
+    ctx.fillStyle='#16a3a3';ctx.font='bold 10px sans-serif';
+    ctx.fillText('inv_abar: start from ᾱ, recover t',px(0.06),py(a)-14);
+  }
+  // dot
+  ctx.fillStyle='#f6921e';ctx.beginPath();ctx.arc(px(t),py(a),7,0,7);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2.4;ctx.stroke();
+}
+function setT(e){
+  const cv=$('curve'),r=cv.getBoundingClientRect();
+  const x=(e.clientX-r.left)*(CW/r.width);
+  t=Math.max(0,Math.min(0.999,(x-M.l)/(CW-M.l-M.r)));
+  render();
+}
+$('curve').addEventListener('pointerdown',e=>{drag=true;stop();setT(e);});
+addEventListener('pointermove',e=>{if(drag)setT(e);});
+addEventListener('pointerup',()=>drag=false);
+// histograms for stage 3
+function drawHist2(){
+  const cv=$('hist2'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const B=30,K=1500,r2=mulberry32(99);
+  const binsC=new Array(B).fill(0),binsU=new Array(B).fill(0);
+  for(let i=0;i<K;i++){
+    const a1=abar(Math.min(0.999,r2())); binsC[Math.min(B-1,Math.floor(a1*B))]++;
+    const a2=r2(); binsU[Math.min(B-1,Math.floor(a2*B))]++;
+  }
+  const mx=Math.max(...binsC,...binsU);
+  const px2=b=>16+b/B*(W-30), bw=(W-30)/B;
+  const half=(H-54)/2;
+  ctx.fillStyle='#5a6b86';ctx.font='10px sans-serif';
+  ctx.fillText('THIS notebook (no-time model): t~U → ᾱ=cos²  — piles up at the ends',16,12);
+  for(let b=0;b<B;b++){const h=binsC[b]/mx*half;
+    ctx.fillStyle='rgba(123,92,214,.75)';ctx.fillRect(px2(b),16+half-h,bw-1,h);}
+  ctx.fillText('noise-predictor training data: ᾱ~U directly — flat',16,30+half);
+  for(let b=0;b<B;b++){const h=binsU[b]/mx*half;
+    ctx.fillStyle='rgba(246,146,30,.8)';ctx.fillRect(px2(b),34+half+half-h,bw-1,h);}
+  ctx.fillStyle='#5a6b86';ctx.font='10px monospace';
+  ctx.fillText('ᾱ=0',16,H-4);ctx.fillText('ᾱ=1',W-38,H-4);
+}
+// stages
+const EXPLAIN=[
+ `<b style="color:var(--ac)">① One dial controls the whole diffusion.</b> Slide t from 0 to 1 and ᾱ glides from 1 (pure image) to 0 (pure noise). Both the noisified <i>training</i> images and the <i>sampling</i> loop's expectations come from this single curve — training draws a random t and mixes accordingly; sampling walks t from 1 back to 0 in 100 tiny steps.`,
+ `<b style="color:var(--ac)">② Why cos² and not a straight line?</b> Look at the two red dashed segments: the curve is nearly <b>flat at both ends</b> (its derivative, −(π/2)sin(πt), is 0 at t=0 and t=1). Near t=0 noise creeps in gently — the model gets many examples of <i>almost-clean</i> images; near t=1 the last traces of signal fade gently instead of being annihilated early, so even very noisy training images still contain a whisper of garment to learn from. A linear schedule (grey dashes) rushes through both regimes.`,
+ `<b style="color:var(--out)">③ Running the dial backwards.</b> Because cos² is strictly decreasing on [0,1], every ᾱ corresponds to exactly <b>one</b> t: solve √ᾱ = cos(tπ/2) to get <b>t = acos(√ᾱ)·2/π</b>. This inverse looks like bookkeeping now, but it's the hinge of the whole notebook: when the noise predictor announces "I measure ᾱ̂ = 0.3", <code>inv_abar</code> is how you'd translate that into "so we're effectively at t ≈ 0.63" — a measured position on the schedule instead of an assumed one.`,
+ `<b style="color:var(--in)">④ Two recipes, two histograms.</b> Same mixing formula, different dice. The <b style="color:var(--ac)">no-time diffusion model</b> samples t uniformly, so its ᾱ values pile up near 0 and 1 (the flat ends of cos² catch many t's). The <b style="color:var(--in)">noise predictor</b> sampled ᾱ uniformly — a flat histogram, equal practice at every noise level. Each distribution suits its job: the diffusion model needs extra practice at the hard extremes; the regressor needs unbiased coverage of the quantity it must estimate.`
+];
+const CODE=[
+`def <span class="fn">abar</span>(t):
+    <span class="hl">return (t * math.pi/<span class="num">2</span>).cos() ** <span class="num">2</span></span>     <span class="cm"># t=0 → 1 (clean) · t=1 → 0 (noise)</span>`,
+`<span class="cm"># derivative of cos²(πt/2) is −(π/2)·sin(πt): zero at BOTH ends</span>
+<span class="cm"># → gentle noise onset near t=0, gentle signal fade-out near t=1</span>
+def <span class="fn">abar</span>(t): return (t * math.pi/<span class="num">2</span>).<span class="hl">cos() ** <span class="num">2</span></span>`,
+`def <span class="fn">inv_abar</span>(x):
+    <span class="hl">return x.sqrt().acos() * <span class="num">2</span> / math.pi</span>   <span class="cm"># √ᾱ=cos(tπ/2) ⇒ t=acos(√ᾱ)·2/π</span>`,
+`<span class="cm"># no-time diffusion model (this part):  sample TIME uniformly</span>
+t  = torch.rand((n,)).clamp(<span class="num">0</span>, <span class="num">0.999</span>)
+<span class="hl">abar_t = abar(t)</span>.reshape(-<span class="num">1</span>,<span class="num">1</span>,<span class="num">1</span>,<span class="num">1</span>)          <span class="cm"># ᾱ shaped by cos² — NOT flat</span>
+<span class="cm"># noise predictor (part 3):  sample ᾱ uniformly → flat coverage</span>
+al_t = torch.rand((len(x0),<span class="num">1</span>,<span class="num">1</span>,<span class="num">1</span>))`
+];
+function setStage(s){stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('explain').innerHTML=EXPLAIN[s];$('code').innerHTML=CODE[s];
+  $('histcard').style.display=(s===3)?'block':'none';
+  if(s===3)drawHist2();
+  render();}
+function render(){
+  drawCurve();drawImg(t);
+  const a=abar(t);
+  $('tv').textContent=t.toFixed(2);$('av').textContent=a.toFixed(3);
+  $('nv').textContent=(1-a).toFixed(3);$('itv').textContent=invab(Math.max(1e-6,a)).toFixed(2);
+}
+function stop(){if(timer){clearInterval(timer);timer=null;}$('playb').textContent='▶ Sweep t: 1 → 0';}
+function play(){$('playb').textContent='❚❚ Pause';if(t<0.02)t=0.999;
+  timer=setInterval(()=>{t-=0.004*speed;if(t<=0){t=0;stop();}render();},30);}
+$('playb').onclick=()=>{timer?stop():play();};
+$('stepb').onclick=()=>{stop();setStage((stage+1)%4);};
+$('resetb').onclick=()=>{stop();t=0.5;setStage(0);};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stop();setStage(+c.dataset.s);});
+setStage(0);
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

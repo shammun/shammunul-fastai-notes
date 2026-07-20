@@ -1,0 +1,529 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ride the Funnel — the Noise Predictor in 3D</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.8px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 11px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);margin:0 4px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:105px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:105px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .av{font-family:monospace;font-weight:700;color:var(--in);min-width:76px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  #c3d{display:block;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:grab;width:100%;height:450px;touch-action:none;}
+  .pills{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:8px auto 0;}
+  .pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:3px 7px 4px;cursor:pointer;text-align:center;min-width:86px;transition:all .15s;}
+  .pill:hover{border-color:var(--ac);}
+  .pill .t{font-size:9.3px;font-weight:700;color:var(--soft);letter-spacing:.02em;}
+  .pill .s{font-family:"SF Mono",Consolas,monospace;font-size:10.2px;color:var(--ink);white-space:nowrap;}
+  .pill .n{font-size:8.8px;color:#b06710;font-weight:700;}
+  .pill .fun{height:4px;background:#f4f0ff;border-radius:3px;margin-top:2px;overflow:hidden;}
+  .pill .fun span{display:block;height:100%;background:linear-gradient(90deg,var(--in),#f6b86e);border-radius:3px;}
+  .pill.on{border-color:var(--ac);background:#f4efff;box-shadow:0 3px 10px rgba(123,92,214,.25);}
+  .pill.on .t{color:var(--ac);}
+  .pill.star{border-style:dashed;border-color:#b9a5ec;}
+  .pill.star.on{border-style:solid;border-color:var(--ac);}
+  .story{margin-top:8px;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  .inforow{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;align-items:stretch;}
+  .inspect{flex:1 1 430px;min-width:300px;border-left:5px solid var(--out);}
+  .inspect h4{margin:0 0 4px;font-size:12.5px;color:var(--out);}
+  .inspect .body{font-size:12.2px;color:var(--soft);line-height:1.55;}
+  .inspect .body b{color:var(--ink);}
+  .inspect .body code{background:#eef2fb;border-radius:4px;padding:0 4px;font-size:11.3px;}
+  .code{flex:1 1 430px;min-width:300px;background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.2px;line-height:1.62;overflow-x:auto;white-space:pre;}
+  .code .ln{display:block;border-radius:4px;padding:0 4px;margin:0 -2px;transition:background .12s;}
+  .code .ln.rng{background:rgba(123,92,214,.16);}
+  .code .ln.cur{background:rgba(123,92,214,.52);box-shadow:inset 2.5px 0 0 #b9a5ec;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;line-height:1.5;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>Ride the Funnel — <code>get_model()</code>: 1,024 pixels in, 1 number out</h1>
+<p class="sub">The nine vertical gates are the nine entries of the <code>nn.Sequential</code> this cell builds. The <b style="color:var(--in)">orange box is the data</b> — a batch of noisy images — and every gate it passes <b>reshapes it</b>: <b>big face = big spatial grid, thick = many channels</b>. The dashed <b style="color:var(--in)">orange arc over each ResBlock is its skip connection</b> — watch a copy of the data ride over the top while the conv path goes through.
+<b>Drag to rotate · scroll to zoom · click any gate · ⏭ steps one gate · chips replay their part of the journey · the ᾱ slider changes how noisy the input is (and what the model predicts!).</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Meet the funnel</button>
+  <button class="chip" data-s="1">② The squeeze: trade <i>where</i> for <i>what</i></button>
+  <button class="chip" data-s="2">③ Inside a ResBlock (slow-mo)</button>
+  <button class="chip" data-s="3">④ The read-out: 512 → 1 number</button>
+</div>
+<div class="selrow">
+  <button class="stepb" id="back">⏮ 1 gate</button>
+  <button class="play" id="play">▶ Play all</button>
+  <button class="stepb" id="fwd">1 gate ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="speedv" id="spv">1×</span>
+  <span class="div"></span>
+  input noise: ᾱ <input id="asl" type="range" min="0.05" max="0.95" step="0.01" value="0.65"><span class="av" id="av">0.65</span>
+</div>
+
+<div class="wrap">
+  <div class="card"><canvas id="c3d"></canvas><div id="fb3d" style="display:none;padding:26px 18px;text-align:center;color:var(--soft);font-size:12.5px;line-height:1.6"><b>The 3D scene needs an internet connection</b> (three.js loads from a CDN).<br>Everything else still works — press ▶ Play or click the pills below to walk the batch through the network gate by gate.</div></div>
+  <div class="pills" id="pills"></div>
+  <div class="story" id="story"></div>
+  <div class="inforow">
+    <div class="inspect card" style="box-shadow:none">
+      <h4 id="insTitle">How to read the scene</h4>
+      <div class="body" id="insBody">The nine panels ARE <code>get_model()</code>'s nine modules (click one!). The orange box is the batch: its <b>face</b> is the spatial grid (32×32 … 1×1), its <b>thickness</b> is the channel count (1 … 512). The funnel bar inside each pill below tracks how many numbers per image survive — from 1,024 pixels down to a single verdict: <b>logit(ᾱ̂)</b>.</div>
+    </div>
+    <div class="code" id="code"></div>
+  </div>
+  <div class="legend"><b class="i">orange box = the batch</b> (its label tracks the shape) · faint boxes = shapes it already took ·
+  <b class="i">dashed arc + riding dot = the skip / identity path</b> of each ResBlock (the ⊕ is where the two paths add) ·
+  <b class="a">purple bar = the flat 512-feature vector</b> · <b class="o">teal cube + flag = the verdict</b>, logit(ᾱ̂) — one number that <code>.sigmoid()</code> turns into "fraction of signal left".</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const HAS3D=(typeof THREE!=='undefined');
+let p=0, playing=false, speed=1, stage=0, aVal=0.65, lockStage=false;
+
+// ================= model metadata (matches get_model exactly) =================
+const ORANGE=0xf6921e, PURPLE=0x7b5cd6, TEAL=0x16a3a3;
+const logit=a=>Math.log(a/(1-a)), sig=x=>1/(1+Math.exp(-x));
+const G=[ // the nine nn.Sequential entries
+ {name:'ResBlock 1→16', sub:'ks=5, s=1',  sp:32, ch:16,  conv:1, tag:'g0',
+  note:`<b>The stem — stride 1.</b> The plane is <em>kept</em> at 32×32 while 1 gray channel fans out into <b>16 learned feature maps</b>. The <code>ks=5</code> kernel (padding ks//2=2 keeps 32→32) gives this first layer a wider field of view than the 3×3s that follow — useful, because noise is a <em>texture</em>, best judged over a patch, not a pixel.`},
+ {name:'ResBlock 16→32', sub:'s=2', sp:16, ch:32, conv:1, tag:'g1',
+  note:`<b>Downsample ①.</b> Stride 2 makes the kernel jump two pixels at a time: the plane <b>halves</b> to 16×16, the channels <b>double</b> to 32. The classic CNN bargain — give up <em>where</em>, gain <em>what</em>. Numbers per image: 16,384 → <b>8,192</b> (watch the pill funnel shrink).`},
+ {name:'ResBlock 32→64', sub:'s=2', sp:8, ch:64, conv:1, tag:'g2',
+  note:`<b>Downsample ②.</b> 8×8 plane, 64 channels. Each surviving cell now summarizes a growing neighborhood of the original image — the receptive field compounds with every stride-2 gate. High-frequency static (i.e., <em>noise</em>) is exactly what these mid-level texture detectors pick out.`},
+ {name:'ResBlock 64→128', sub:'s=2', sp:4, ch:128, conv:1, tag:'g3',
+  note:`<b>Downsample ③.</b> 4×4 plane, 128 channels. The skip path is earning its keep here: when in/out shapes differ, the identity route becomes <code>idconv(pool(x))</code> — a pooling step plus a 1×1 conv — so the two paths can still be added. Chip ③ replays this in slow motion.`},
+ {name:'ResBlock 128→256', sub:'s=2', sp:2, ch:256, conv:1, tag:'g4',
+  note:`<b>Downsample ④.</b> 2×2 plane, 256 channels. Almost no "image" left — the tensor is a bundle of abstract texture measurements. For noise-level regression that's perfect: the network needs the <em>statistics</em> of the static, not its layout.`},
+ {name:'ResBlock 256→512', sub:'s=2', sp:1, ch:512, conv:1, tag:'g5',
+  note:`<b>Downsample ⑤ — the plane vanishes.</b> 1×1 spatial, 512 channels: a <b>512-number description of the whole image</b>. This is why 28×28 inputs were padded to 32: <b>32 = 2⁵</b>, so five clean halvings land <em>exactly</em> on 1×1. Nothing is left to convolve.`},
+ {name:'Flatten', sub:'⭐', vec:1, star:1, tag:'g6',
+  note:`<b>⭐ Costume change, not computation.</b> <code>[bs,512,1,1] → [bs,512]</code>: the same 512 numbers, with the two size-1 dims dropped so a Linear layer can read them as a flat vector. Watch the box become a <b>tall purple bar</b> — nothing was gained or lost.`},
+ {name:'Dropout(0.2)', sub:'train-only', vec:1, drop:1, tag:'g7',
+  note:`<b>The anti-crutch.</b> During <em>training</em>, each of the 512 features is zeroed with probability 0.2 (the flicker you see) — the final layer can never lean on any single feature, so it generalizes. During <em>inference</em> Dropout is an identity: the bar passes through untouched (PyTorch rescales at train time so no correction is needed).`},
+ {name:'Linear 512→1', sub:'bias=False', vec:1, lin:1, tag:'g8',
+  note:`<b>The verdict — one weighted sum.</b> 512 features · 512 weights → <b>a single number: logit(ᾱ̂)</b>. No softmax, no classes: this is a <em>regressor</em>, trained with MSE against the true logit(ᾱ). No bias either — the BatchNorm inside every ResBlock keeps features centered, and the target distribution is centered at 0, so a learned offset adds nothing. Apply <code>.sigmoid()</code> and the raw number becomes "fraction of signal left".`},
+];
+// waypoints: w=0 input, w=k → output of gate k-1  (10 waypoints, p ∈ [0,9])
+const SHAPES=['[bs, 1, 32, 32]','[bs, 16, 32, 32]','[bs, 32, 16, 16]','[bs, 64, 8, 8]','[bs, 128, 4, 4]',
+              '[bs, 256, 2, 2]','[bs, 512, 1, 1]','[bs, 512]','[bs, 512]','[bs, 1]'];
+const COUNTS=[1024,16384,8192,4096,2048,1024,512,512,512,1];
+const fmt=n=>n.toLocaleString('en-US');
+function dimsOf(w){
+  if(w===0)return[0.30,2.80,2.80];
+  const q=G[w-1];
+  if(q.vec)return q.lin?[0.18,0.55,0.18]:[0.20,2.50,0.20];
+  return[0.30+Math.log2(q.ch)/9*1.50, 0.50+q.sp/32*2.30, 0.50+q.sp/32*2.30];
+}
+function colorOf(w){ return w<=6?ORANGE:(w<=8?PURPLE:TEAL); }
+
+// ================= layout =================
+const GAP=1.75, gateX=k=>(k-4)*GAP;
+const INX=gateX(0)-0.95*GAP;
+const WX=[INX]; for(let w=1;w<=9;w++)WX.push(gateX(w-1)+0.5*GAP);
+
+// ================= DOM that works with or without 3D =================
+// pills (with the numbers-funnel bar)
+const pillsEl=$('pills');
+const PILLNAMES=['input xb','after [0] ResBlock','after [1] ResBlock','after [2] ResBlock','after [3] ResBlock',
+                 'after [4] ResBlock','after [5] ResBlock','after [6] Flatten','after [7] Dropout','after [8] Linear'];
+PILLNAMES.forEach((t,w)=>{
+  const d=document.createElement('div');
+  d.className='pill'+((w===7||w===9)?' star':'');
+  const width=Math.max(4,Math.round(Math.log2(COUNTS[w]+1)/Math.log2(16385)*100));
+  d.innerHTML=`<div class="t">${t}</div><div class="s">${SHAPES[w]}</div><div class="n">${fmt(COUNTS[w])} numbers/img</div><div class="fun"><span style="width:${width}%"></span></div>`;
+  d.onclick=()=>{stopPlay(); p=w; sync(true); w===0?inspectInput():inspect(w-1);};
+  pillsEl.appendChild(d);
+});
+const pillEls=[...pillsEl.children];
+
+// full code panel with per-line highlighting
+const CODE_LINES=[
+ {h:'<span class="cm"># the exact notebook cell</span>'},
+ {t:'def', h:'def <span class="fn">get_model</span>(act=nn.ReLU, nfs=(<span class="num">16</span>,<span class="num">32</span>,<span class="num">64</span>,<span class="num">128</span>,<span class="num">256</span>,<span class="num">512</span>), norm=nn.BatchNorm2d):'},
+ {t:'g0',  h:'    layers  = [ResBlock(<span class="num">1</span>, <span class="num">16</span>, ks=<span class="num">5</span>, stride=<span class="num">1</span>, act=act, norm=norm)]'},
+ {t:'loop',h:'    layers += [ResBlock(nfs[i], nfs[i+<span class="num">1</span>], act=act, norm=norm, stride=<span class="num">2</span>)'},
+ {t:'loop',h:'               for i in range(len(nfs)-<span class="num">1</span>)]'},
+ {t:'g678',h:'    layers += [nn.Flatten(), nn.Dropout(<span class="num">0.2</span>), nn.Linear(nfs[-<span class="num">1</span>], <span class="num">1</span>, bias=False)]'},
+ {t:'def', h:'    return nn.Sequential(*layers)'},
+ {h:' '},
+ {h:'<span class="cm"># what the loop unrolls to — one line per gate in the scene:</span>'},
+ {t:'in',  h:'xb                               <span class="cm"># [bs,1,32,32] — 28×28 padded to 32 = 2⁵</span>'},
+ {t:'g0',  h:'[<span class="num">0</span>] ResBlock 1→16  ks=5 s=1     <span class="cm"># 16@32×32 · plane kept, wider first look</span>'},
+ {t:'g1',  h:'[<span class="num">1</span>] ResBlock 16→32  s=2        <span class="cm"># 32@16×16 · ↓½ plane, ×2 channels</span>'},
+ {t:'g2',  h:'[<span class="num">2</span>] ResBlock 32→64  s=2        <span class="cm"># 64@8×8</span>'},
+ {t:'g3',  h:'[<span class="num">3</span>] ResBlock 64→128 s=2        <span class="cm"># 128@4×4</span>'},
+ {t:'g4',  h:'[<span class="num">4</span>] ResBlock 128→256 s=2       <span class="cm"># 256@2×2</span>'},
+ {t:'g5',  h:'[<span class="num">5</span>] ResBlock 256→512 s=2       <span class="cm"># 512@1×1 · the plane is gone</span>'},
+ {t:'g6',  h:'[<span class="num">6</span>] Flatten()                  <span class="cm"># [bs,512] · drop the two 1-dims</span>'},
+ {t:'g7',  h:'[<span class="num">7</span>] Dropout(<span class="num">0.2</span>)               <span class="cm"># train-only; identity at inference</span>'},
+ {t:'g8',  h:'[<span class="num">8</span>] Linear(<span class="num">512</span>→<span class="num">1</span>, bias=False)  <span class="cm"># THE number: logit(ᾱ̂)</span>'},
+ {t:'sig', h:'<span class="cm"># read it out:</span> tmodel(x_t).<span class="fn">sigmoid</span>()   <span class="cm"># → ᾱ̂, fraction of signal left</span>'},
+ {t:'skip',h:'<span class="cm"># inside every ResBlock:</span> act(<span class="fn">convs</span>(x) + <span class="fn">idconv</span>(<span class="fn">pool</span>(x)))  <span class="cm"># ← the skip</span>'},
+];
+const TAGS=['in','g0','g1','g2','g3','g4','g5','g6','g7','g8'];
+const STAGE_TAGS=[['def'],['g0','loop','g1','g2','g3','g4','g5'],['skip','loop'],['g678','g6','g7','g8','sig']];
+const codeEl=$('code');
+codeEl.innerHTML=CODE_LINES.map(l=>`<span class="ln">${l.h||' '}</span>`).join('');
+const lnEls=[...codeEl.querySelectorAll('.ln')];
+let curTag=null;
+function updateCodeHl(){
+  lnEls.forEach((el,i)=>{const t=CODE_LINES[i].t;
+    el.classList.toggle('rng',!!t&&STAGE_TAGS[stage].includes(t));
+    el.classList.toggle('cur',!!t&&t===curTag);});
+}
+function setCur(tag){if(tag===curTag)return;curTag=tag;updateCodeHl();}
+
+// inspect
+function inspect(k){
+  const q=G[k], w=k+1;
+  setCur(q.tag);
+  $('insTitle').textContent=`get_model()[${k}] — ${q.name} (${q.sub})`;
+  $('insBody').innerHTML=`output: <code>${SHAPES[w]}</code> · <b>${fmt(COUNTS[w])}</b> numbers/img${q.conv?` · spatial <b>${q.sp}×${q.sp}</b> · channels <b>${q.ch}</b>`:''}<br>${q.note}`;
+}
+function inspectInput(){
+  setCur('in');
+  $('insTitle').textContent='the input batch — xb';
+  $('insBody').innerHTML=`shape: <code>[bs, 1, 32, 32]</code> · <b>1,024</b> pixels/img<br><b>One noisified image per row</b>, made by <code>noisify</code>: √ᾱ·x₀ + √(1−ᾱ)·ε. The garment and the static are mixed together in these 1,024 gray values — and the network must read the mixing ratio ᾱ back out of them. Drag the <b>ᾱ slider</b> above: the picture on the box face gets cleaner or noisier, and (after a full run) the prediction flag at the far end follows it.`;
+}
+
+// stories
+const STORIES=[
+ `<b>① Meet the funnel.</b> Nine gates = the nine entries of <code>nn.Sequential</code> that <code>get_model()</code> returns — six ResBlocks, then Flatten, Dropout, Linear (each is labeled; click any gate to interrogate it). The <b style="color:var(--in)">orange box on the left is the data</b>: a batch of noisified images, <code>[bs, 1, 32, 32]</code> — big face (32×32 pixels), paper-thin (1 channel). Note the dashed <b style="color:var(--in)">arc over every ResBlock</b>: that's its skip connection, and you'll see it used at each crossing. Press <b>1 gate ⏭</b> to push the batch through gate [0].`,
+ `<b>② The squeeze.</b> This chip <b>replays the descent</b>: at every stride-2 gate the box's <b>face halves and its body thickens</b> — 32×32 → 16×16 → … → 1×1 while channels climb 16 → 32 → … → 512 (the label riding on the box and the highlighted pill track every change, and each old shape stays behind as a faint ghost). Watch two things: the <b>trouser image fades off the face</b> — spatial identity is being spent — and the <b>numbers-per-image funnel in the pills collapses</b> 16,384 → 512. The <em>where</em> is gone; only <em>what the texture is like</em> survives. That's exactly the right currency for judging noise.`,
+ `<b>③ Inside a ResBlock — slow motion.</b> Every gate you've been crossing actually runs <b>two paths at once</b>: the <b>conv path</b> straight through the gate (two convolutions — the part that <em>learns</em>) and the <b style="color:var(--in)">identity path riding the dashed arc over the top</b> — here with stride 2, it's <code>idconv(pool(x))</code>: a pool to match the smaller grid plus a 1×1 conv to match the channels. At the far side they're <b>added (⊕)</b> and pass through the activation. The payoff: even if the conv path learns nothing useful at first, the block can pass data through unchanged — so gradients always have a highway back to the input, and a 6-deep stack trains as easily as a shallow net.`,
+ `<b>④ The read-out.</b> After gate [5] the "image" is a <code>[bs,512,1,1]</code> stub. <b>Flatten</b> drops the two 1-dims — same numbers, now a <b style="color:var(--ac)">flat purple bar</b> a Linear layer can read. <b>Dropout(0.2)</b> flickers 20% of it away <em>during training only</em> (an anti-crutch; at inference it's a pass-through). Then <b>Linear(512→1, bias=False)</b> takes one weighted sum: <b style="color:var(--out)">logit(ᾱ̂)</b> — the whole network's verdict, one number. The flag shows <code>.sigmoid()</code> turning it into "fraction of signal left" — <b>drag the ᾱ slider and replay</b>: noisier input ⇒ lower prediction, tracking the truth. That is the entire job this Part trains.`
+];
+function setStage(s,keep){
+  stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('story').innerHTML=STORIES[s];
+  updateCodeHl();
+}
+
+// ================= DOM-only sync pieces =================
+let lastPill=-1;
+function syncDom(force){
+  const w=Math.min(Math.floor(p),8), fr=p-w;
+  const pIdx=Math.max(0,Math.min(9,fr>0.55?w+1:w));
+  setCur(TAGS[pIdx]);
+  if(force||pIdx!==lastPill){lastPill=pIdx;
+    pillEls.forEach((el,i)=>el.classList.toggle('on',i===pIdx));}
+  if(playing&&!lockStage){ const s=p<0.05?0:p<=6.02?1:3; if(s!==stage)setStage(s,true); }
+}
+
+// ================= 3D scene =================
+let sync;   // assigned below (3D or DOM-only)
+if(!HAS3D){
+  $('c3d').style.display='none'; $('fb3d').style.display='block';
+  sync=function(force){ p=Math.max(0,Math.min(9,p)); syncDom(force); };
+}else{
+const cv=$('c3d');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(38,2.3,0.1,120);
+camera.position.set(0,3.2,17.6); camera.lookAt(0,0.2,0);
+scene.add(new THREE.AmbientLight(0xffffff,0.9));
+const dlit=new THREE.DirectionalLight(0xffffff,0.45); dlit.position.set(4,10,8); scene.add(dlit);
+const group=new THREE.Group(); scene.add(group);
+
+// crisp text sprites
+function makeLabel(lines,{size=24,color='#25324a',mono=false,bold=true}={}){
+  const c=document.createElement('canvas'),x=c.getContext('2d');
+  const font=`${bold?'700':'400'} ${size}px ${mono?'Consolas,monospace':'"Segoe UI",sans-serif'}`;
+  x.font=font;
+  const w=Math.max(...lines.map(t=>x.measureText(t).width))+20, h=lines.length*(size+8)+12;
+  c.width=w*2; c.height=h*2; x.scale(2,2); x.font=font; x.textAlign='center'; x.textBaseline='middle'; x.fillStyle=color;
+  lines.forEach((t,i)=>x.fillText(t,w/2,10+(size+8)*i+size/2));
+  const tx=new THREE.CanvasTexture(c); tx.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,depthTest:false,transparent:true}));
+  const k=0.0135; sp.scale.set(w*k,h*k,1); sp.renderOrder=6;
+  return sp;
+}
+
+// ---- gates ----
+const gates=[],gateEdges=[];
+G.forEach((q,k)=>{
+  const size=q.vec?(q.star?3.25:(q.lin?1.6:2.95)):(0.5+q.sp/32*2.3+0.9);
+  const geo=new THREE.BoxGeometry(0.22,size,size);
+  const col=q.star?PURPLE:(q.lin?TEAL:(q.drop?0xc9b8ea:0xaebfe0));
+  const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({color:col,transparent:true,opacity:q.star?0.85:(q.drop?0.38:0.55)}));
+  m.position.set(gateX(k),0,0); m.userData={k}; group.add(m); gates.push(m);
+  const eg=new THREE.EdgesGeometry(geo);
+  const em=q.drop?new THREE.LineDashedMaterial({color:0x8a6fc0,dashSize:0.18,gapSize:0.12})
+                 :new THREE.LineBasicMaterial({color:q.star?0x5f45ad:(q.lin?0x0f7d7d:0x8fa2c4)});
+  const e=new THREE.LineSegments(eg,em); if(q.drop)e.computeLineDistances();
+  e.position.copy(m.position); group.add(e); gateEdges.push(e);
+  const labY=-2.45-(k%2)*0.62;
+  const lab=makeLabel([`[${k}] ${q.name}`,q.sub],{size:19,color:q.star?'#7b5cd6':(q.lin?'#0f7d7d':(q.drop?'#8a6fc0':'#5a6b86'))});
+  lab.position.set(gateX(k),labY,0); group.add(lab);
+});
+
+// ---- region titles + padding note ----
+const sqT=makeLabel(['THE SQUEEZE','six ResBlocks: ↓½ plane, ×2 channels'],{size:21,color:'#c9791a'});
+sqT.position.set(gateX(2.5),4.15,0); group.add(sqT);
+const roT=makeLabel(['THE READ-OUT','512 features → 1 number'],{size:21,color:'#0f7d7d'});
+roT.position.set(gateX(7),4.15,0); group.add(roT);
+const inLab=makeLabel(['input batch'],{size:21,color:'#c07417'});
+inLab.position.set(INX,-2.95,0); group.add(inLab);
+const padLab=makeLabel(['28×28 padded to 32 = 2⁵','→ five clean halvings'],{size:15,color:'#8a97b0'});
+padLab.position.set(INX,-3.72,0); group.add(padLab);
+
+// ---- skip arcs over every ResBlock ----
+const arcs=[],arcPts=[],plusLabs=[];
+for(let k=0;k<6;k++){
+  const gx=gateX(k), top=(0.5+G[k].sp/32*2.3+0.9)/2+0.62, pts=[];
+  for(let i=0;i<=40;i++){const u=i/40;
+    pts.push(new THREE.Vector3(gx-0.80+1.60*u, Math.sin(u*Math.PI)*top, 0.10));}
+  arcPts.push(pts);
+  const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineDashedMaterial({color:ORANGE,dashSize:0.14,gapSize:0.10,transparent:true,opacity:0.25}));
+  l.computeLineDistances(); group.add(l); arcs.push(l);
+  const pl=makeLabel(['⊕'],{size:26,color:'#c9791a'});
+  pl.position.set(gx+0.86,0.42,0.12); pl.visible=false; group.add(pl); plusLabs.push(pl);
+}
+const skipDot=new THREE.Mesh(new THREE.SphereGeometry(0.12,12,10),
+  new THREE.MeshLambertMaterial({color:ORANGE,emissive:0x7a4a08}));
+skipDot.visible=false; group.add(skipDot);
+// slow-mo annotations (stage ③, over the gate being replayed)
+const skipLabA=makeLabel(['identity path: idconv(pool(x))'],{size:16,color:'#c9791a',mono:true});
+const skipLabB=makeLabel(['conv path: convs(x) — the part that learns'],{size:16,color:'#5a6b86',mono:true});
+skipLabA.visible=skipLabB.visible=false; group.add(skipLabA); group.add(skipLabB);
+
+// ---- dropout flicker label ----
+const dropLab=makeLabel(['⚡ 20% zeroed — train only','(inference: pass-through)'],{size:16,color:'#8a6fc0'});
+dropLab.position.set(gateX(7),2.35,0.3); dropLab.visible=false; group.add(dropLab);
+
+// ---- input face texture: trouser mixed with noise at ᾱ ----
+const N=16, x0=new Float32Array(N*N).fill(-0.5);
+(function(){
+  for(let r=3;r<15;r++)for(let c=0;c<N;c++){
+    const inL=(c>=4&&c<=6), inR=(c>=9&&c<=11), gap=(c>=7&&c<=8);
+    if(inL||inR) x0[r*N+c]=0.32+((r+c)%4===0?0.1:0);
+    if(gap) x0[r*N+c]=-0.5;
+  }
+  for(let c=4;c<=11;c++){x0[1*N+c]=0.45;x0[2*N+c]=0.35;x0[3*N+c]=0.40;x0[4*N+c]=0.38;}
+})();
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gaussFrom(r){let u=0,v=0;while(u===0)u=r();while(v===0)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const eps=(()=>{const r=mulberry32(7);return Float32Array.from({length:N*N},()=>gaussFrom(r)*0.5);})();
+const faceCv=document.createElement('canvas'); faceCv.width=faceCv.height=64;
+const faceTx=new THREE.CanvasTexture(faceCv); faceTx.magFilter=THREE.NearestFilter;
+function drawInputFace(){
+  const x=faceCv.getContext('2d'), sa=Math.sqrt(aVal), sn=Math.sqrt(1-aVal);
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const v=sa*x0[r*N+c]+sn*eps[r*N+c];
+    const g=Math.round(Math.max(0,Math.min(255,(v+0.5)*255)));
+    x.fillStyle=`rgb(${g},${g},${g})`; x.fillRect(c*4,r*4,4,4);
+  }
+  faceTx.needsUpdate=true;
+}
+drawInputFace();
+
+// ---- the traveling tensor ----
+const tGeo=new THREE.BoxGeometry(1,1,1);
+const tMat=new THREE.MeshLambertMaterial({color:ORANGE,transparent:true,opacity:0.94});
+const tensor=new THREE.Mesh(tGeo,tMat); group.add(tensor);
+const tEdge=new THREE.LineSegments(new THREE.EdgesGeometry(tGeo),new THREE.LineBasicMaterial({color:0x9a5c10}));
+tensor.add(tEdge);
+const tFace=new THREE.Mesh(new THREE.PlaneGeometry(0.94,0.94),new THREE.MeshBasicMaterial({map:faceTx,transparent:true,opacity:0.95}));
+tFace.position.x=0.51; tFace.rotation.y=Math.PI/2; tensor.add(tFace);
+const shapeTex=SHAPES.map(s=>{const l=makeLabel([s],{size:23,mono:true,color:'#25324a'});l.visible=false;group.add(l);return l;});
+
+// ---- ghost trail ----
+const ghosts=[];
+for(let w=1;w<=8;w++){
+  const d=dimsOf(w);
+  const gm=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),
+    new THREE.MeshLambertMaterial({color:colorOf(w),transparent:true,opacity:0.10,depthWrite:false}));
+  gm.scale.set(d[0],d[1],d[2]); gm.position.set(WX[w],0,0); gm.visible=false; group.add(gm);
+  const ge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)),
+    new THREE.LineBasicMaterial({color:w<=6?0xe6b073:0xb9a5ec,transparent:true,opacity:0.5}));
+  ge.scale.copy(gm.scale); ge.position.copy(gm.position); ge.visible=false; group.add(ge);
+  ghosts.push({w,gm,ge});
+}
+
+// ---- prediction flag (updatable) ----
+const flagCv=document.createElement('canvas'); flagCv.width=560; flagCv.height=150;
+const flagTx=new THREE.CanvasTexture(flagCv); flagTx.minFilter=THREE.LinearFilter;
+function drawFlag(){
+  const x=flagCv.getContext('2d'); x.clearRect(0,0,560,150);
+  const lg=logit(aVal)+0.11, ah=sig(lg);
+  x.textAlign='left'; x.textBaseline='middle';
+  x.font='700 40px Consolas,monospace'; x.fillStyle='#0f7d7d';
+  x.fillText(`logit(ᾱ̂) = ${lg>=0?'+':''}${lg.toFixed(2)}`,14,30);
+  x.font='700 34px Consolas,monospace'; x.fillStyle='#7b5cd6';
+  x.fillText(`.sigmoid() → ᾱ̂ = ${ah.toFixed(2)}`,14,76);
+  x.font='700 30px Consolas,monospace'; x.fillStyle='#5a6b86';
+  x.fillText(`true ᾱ = ${aVal.toFixed(2)}  ✓ close`,14,120);
+  flagTx.needsUpdate=true;
+}
+drawFlag();
+const flag=new THREE.Sprite(new THREE.SpriteMaterial({map:flagTx,depthTest:false,transparent:true}));
+flag.scale.set(560*0.0075,150*0.0075,1); flag.renderOrder=6;
+flag.position.set(WX[9]+2.15,1.35,0); flag.visible=false; scene.add(flag); group.add(flag);
+const verdictLab=makeLabel(['the verdict'],{size:19,color:'#0f7d7d'});
+verdictLab.position.set(WX[9],-1.35,0); group.add(verdictLab);
+
+// ---- center + tilt ----
+{const bb=new THREE.Box3().setFromObject(group);group.position.x=-(bb.min.x+bb.max.x)/2;}
+group.rotation.y=-0.16; group.rotation.x=0.06;
+
+// ================= p → scene =================
+const lerp=(a,b,t)=>a+(b-a)*t, sm=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
+let lastShape=-1;
+sync=function(force){
+  p=Math.max(0,Math.min(9,p));
+  const w=Math.min(Math.floor(p),8), t=p-w;
+  const x0p=WX[w], x1p=WX[w+1];
+  const x=lerp(x0p,x1p,t);
+  // morph around the gate crossing (gate w sits between waypoints w and w+1)
+  const tg=(gateX(w)-x0p)/(x1p-x0p);
+  const mt=sm((t-(tg-0.16))/0.32);
+  const d0=dimsOf(w), d1=dimsOf(w+1);
+  const dm=[0,1,2].map(i=>lerp(d0[i],d1[i],mt));
+  // dropout flicker while crossing gate 7
+  let op=0.94;
+  const crossingDrop=(w===7&&mt>0.02&&mt<0.98);
+  if(crossingDrop) op=0.94-0.42*Math.pow(Math.sin(mt*Math.PI*3),2);
+  dropLab.visible=crossingDrop;
+  tensor.position.set(x,0,0); tensor.scale.set(dm[0],dm[1],dm[2]);
+  tMat.opacity=op;
+  // color lerp
+  const c0=new THREE.Color(colorOf(w)), c1=new THREE.Color(colorOf(w+1));
+  tMat.color.copy(c0).lerp(c1,mt);
+  tEdge.material.color.copy(tMat.color).multiplyScalar(0.55);
+  // input image fades as channels grow
+  tFace.material.opacity=Math.max(0,0.95-(w+mt)*0.30);
+  tFace.visible=tFace.material.opacity>0.03;
+  // shape label rides the tensor
+  const si=mt>0.5?w+1:w;
+  shapeTex.forEach((l,i)=>l.visible=i===si);
+  shapeTex[si].position.set(x,dm[1]/2+0.55,0);
+  // gates glow while data inside; visited gates brighten
+  gates.forEach((g,k)=>{
+    const near=Math.abs(x-gateX(k))<0.5;
+    g.material.emissive=g.material.emissive||new THREE.Color(0);
+    g.material.emissive.setHex(near?0x3a2f6e:0x000000);
+    g.scale.setScalar(near?1.06:1); gateEdges[k].scale.setScalar(near?1.06:1);
+  });
+  // skip arcs: brighten + dot rides while crossing that ResBlock
+  const emph=(stage===2);
+  arcs.forEach((a,k)=>{
+    const crossing=(w===k&&mt>0&&mt<1&&k<6);
+    a.material.opacity=crossing?0.95:(emph?0.55:0.25);
+    plusLabs[k].visible=(w===k&&mt>0.80&&t<tg+0.28);
+    if(crossing){
+      skipDot.visible=true;
+      const pt=arcPts[k][Math.min(40,Math.round(mt*40))];
+      skipDot.position.copy(pt);
+      skipDot.scale.setScalar(emph?1.6:1);
+    }
+  });
+  if(!(w<6&&mt>0&&mt<1))skipDot.visible=false;
+  // slow-mo labels hover over the gate being replayed in stage ③
+  if(emph&&w<6){
+    const gx=gateX(w),top=(0.5+G[w].sp/32*2.3+0.9)/2+0.62;
+    skipLabA.position.set(gx,top+0.62,0.2);
+    skipLabB.position.set(gx,-1.55,0.2);
+    skipLabA.visible=skipLabB.visible=true;
+  } else skipLabA.visible=skipLabB.visible=false;
+  // ghosts
+  ghosts.forEach(g=>{g.gm.visible=g.ge.visible=p>g.w+0.55;});
+  // prediction flag at the end
+  flag.visible=p>8.62;
+  // DOM
+  syncDom(force);
+};
+
+// ---- orbit + zoom + click ----
+let drag=false,moved=0,px0=0,py0=0;
+cv.addEventListener('pointerdown',e=>{drag=true;moved=0;px0=e.clientX;py0=e.clientY;cv.style.cursor='grabbing';});
+addEventListener('pointerup',()=>{drag=false;cv.style.cursor='grab';});
+addEventListener('pointermove',e=>{if(!drag)return;
+  moved+=Math.abs(e.clientX-px0)+Math.abs(e.clientY-py0);
+  group.rotation.y+=(e.clientX-px0)*0.008;
+  group.rotation.x=Math.max(-0.7,Math.min(0.7,group.rotation.x+(e.clientY-py0)*0.006));
+  px0=e.clientX;py0=e.clientY;});
+cv.addEventListener('wheel',e=>{e.preventDefault();camera.position.z=Math.max(10,Math.min(27,camera.position.z+e.deltaY*0.012));},{passive:false});
+const ray=new THREE.Raycaster(),mou=new THREE.Vector2();
+cv.addEventListener('click',e=>{
+  if(moved>6)return;
+  const r=cv.getBoundingClientRect();
+  mou.x=((e.clientX-r.left)/r.width)*2-1; mou.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(mou,camera);
+  const hit=ray.intersectObjects(gates)[0];
+  if(hit)inspect(hit.object.userData.k);
+});
+
+// ---- render loop hooks ----
+window.__render3d=function(){ renderer.render(scene,camera); };
+window.__fit3d=function(){ const w=Math.min(cv.parentElement.clientWidth-4,1032); renderer.setSize(w,450,false); camera.aspect=w/450; camera.updateProjectionMatrix(); };
+window.__drawInputFace=drawInputFace; window.__drawFlag=drawFlag;
+}// end HAS3D
+
+// ================= controls (shared) =================
+let stopAt=99;
+const stageRate=()=>stage===2?0.42:1;
+function stopPlay(){playing=false;$('play').textContent='▶ Play all';}
+function startPlay(target){stopAt=Math.min(target,9);playing=true;$('play').textContent='⏸ Pause';}
+$('play').onclick=()=>{if(playing){stopPlay();return;} lockStage=false; if(p>=8.99)p=0; startPlay(9);};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(9,Math.floor(p+1e-4)+1);sync(true);p===0?inspectInput():inspect(Math.round(p)-1);};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p-1e-4)-1);sync(true);p===0?inspectInput():inspect(Math.round(p)-1);};
+$('reset').onclick=()=>{stopPlay();lockStage=false;p=0;setStage(0);sync(true);inspectInput();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('asl').oninput=e=>{aVal=+e.target.value;$('av').textContent=aVal.toFixed(2);
+  if(HAS3D){window.__drawInputFace();window.__drawFlag();}};
+const CHIP_RANGE=[{a:0,b:0},{a:0,b:6},{a:2,b:3},{a:6,b:9}];
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+  stopPlay(); lockStage=true;
+  const s=+c.dataset.s; setStage(s);
+  const r=CHIP_RANGE[s];
+  p=r.a; sync(true);
+  if(s===2)inspect(2);
+  if(r.b>r.a)startPlay(r.b);
+});
+
+// ================= loop =================
+let lastT=null;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(playing&&lastT!=null){
+    p=Math.min(stopAt,p+(ts-lastT)*0.001*0.80*speed*stageRate());
+    sync(false);
+    if(p>=stopAt)stopPlay();
+  }
+  lastT=ts;
+  if(HAS3D)window.__render3d();
+}
+if(HAS3D){window.__fit3d();addEventListener('resize',()=>window.__fit3d());}
+setStage(0); sync(true); inspectInput(); requestAnimationFrame(loop);
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

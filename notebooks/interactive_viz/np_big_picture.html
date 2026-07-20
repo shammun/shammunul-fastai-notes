@@ -1,0 +1,236 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Two-Model System</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 8px;max-width:920px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .ctr{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:12px;color:var(--soft);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .stage-wrap{max-width:960px;margin:0 auto;}
+  svg{display:block;width:100%;height:auto;}
+  .card-svg{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 16px rgba(123,92,214,.08);padding:6px;}
+  .explain{background:#fff;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:10px;box-shadow:0 6px 16px rgba(123,92,214,.08);
+    padding:9px 13px;font-size:12.5px;line-height:1.55;max-width:960px;margin:9px auto 0;color:var(--ink);}
+  .explain b.i{color:var(--in);}.explain b.o{color:var(--out);}.explain b.a{color:var(--ac);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.6;max-width:960px;margin:9px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+  text{font-family:"Segoe UI",system-ui,sans-serif;}
+  .boxlbl{font-size:11px;font-weight:700;}
+  .boxsub{font-size:9px;fill:var(--soft);}
+  .dim{opacity:.22;transition:opacity .3s;}
+  .lit{opacity:1;transition:opacity .3s;}
+  .clickzone{cursor:pointer;}
+</style></head><body>
+<h1>The Two-Model System — What This Whole Notebook Builds</h1>
+<p class="sub">A standard diffusion model is <b>told</b> the noise level (<code>model(x_t, t)</code>). This notebook removes that crutch: one model <b style="color:var(--out)">estimates</b> the noise level from pixels alone, another <b style="color:var(--ac)">denoises without ever seeing t</b>. Click each stage — or press ▶ Play — and watch the matching code light up.</p>
+
+<div class="stagebar" id="stagebar">
+  <button class="chip on" data-s="0">⓪ the old way (for contrast)</button>
+  <button class="chip" data-s="1">① train the noise predictor</button>
+  <button class="chip" data-s="2">② train the no-time UNet</button>
+  <button class="chip" data-s="3">③ sampling: combine both</button>
+  <button class="chip" data-s="4">④ the payoff: FID 22 → 4</button>
+</div>
+<div class="ctr">
+  <button class="play" id="playb">▶ Play</button>
+  <button class="stepb" id="stepb">Step ➜</button>
+  <button class="reset" id="resetb">↺ Reset</button>
+  <span>speed <input type="range" id="speed" min="1" max="4" step="1" value="2"> <span class="speedv" id="spv">2×</span></span>
+</div>
+
+<div class="stage-wrap card-svg">
+<svg id="scene" viewBox="0 0 960 330" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a6b86"/></marker>
+    <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7b5cd6"/></marker>
+    <marker id="arrT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#16a3a3"/></marker>
+  </defs>
+
+  <!-- ===== ROW 0 : old way ===== -->
+  <g id="g0" class="lit clickzone" data-s="0">
+    <text x="12" y="24" class="boxlbl" fill="#5a6b86">OLD WAY (notebooks before this one)</text>
+    <rect x="12" y="34" width="90" height="52" rx="9" fill="#fff7ec" stroke="#f6921e" stroke-width="2"/>
+    <text x="57" y="56" text-anchor="middle" class="boxlbl" fill="#b06710">noisy image</text>
+    <text x="57" y="70" text-anchor="middle" class="boxsub">x_t</text>
+    <rect x="12" y="96" width="90" height="34" rx="9" fill="#fff7ec" stroke="#f6921e" stroke-width="2" stroke-dasharray="5 3"/>
+    <text x="57" y="112" text-anchor="middle" class="boxlbl" fill="#b06710">timestep t</text>
+    <text x="57" y="124" text-anchor="middle" class="boxsub">"psst, it's 70% noise"</text>
+    <path d="M104 60 H 150" stroke="#5a6b86" stroke-width="2" marker-end="url(#arr)"/>
+    <path d="M104 113 C 130 113 135 80 150 72" stroke="#5a6b86" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+    <rect x="153" y="40" width="118" height="60" rx="9" fill="#f2edfd" stroke="#7b5cd6" stroke-width="2"/>
+    <text x="212" y="66" text-anchor="middle" class="boxlbl" fill="#7b5cd6">UNet(x_t, t)</text>
+    <text x="212" y="82" text-anchor="middle" class="boxsub">gets the answer for free</text>
+    <path d="M273 70 H 318" stroke="#16a3a3" stroke-width="2" marker-end="url(#arrT)"/>
+    <rect x="321" y="46" width="86" height="48" rx="9" fill="#e9f7f6" stroke="#16a3a3" stroke-width="2"/>
+    <text x="364" y="66" text-anchor="middle" class="boxlbl" fill="#0f7d7d">noise ε̂</text>
+    <text x="364" y="82" text-anchor="middle" class="boxsub">prediction</text>
+    <text x="440" y="72" class="boxsub" font-size="11">← Jeremy's question: do we really need to pass t?</text>
+    <text x="440" y="88" class="boxsub" font-size="11">A human can guess the noise level just by looking…</text>
+  </g>
+
+  <!-- ===== ROW 1 : noise predictor ===== -->
+  <g id="g1" class="dim clickzone" data-s="1">
+    <text x="12" y="168" class="boxlbl" fill="#5a6b86">THIS NOTEBOOK — MODEL A (parts 3–6)</text>
+    <rect x="12" y="178" width="90" height="52" rx="9" fill="#fff7ec" stroke="#f6921e" stroke-width="2"/>
+    <text x="57" y="200" text-anchor="middle" class="boxlbl" fill="#b06710">noisy image</text>
+    <text x="57" y="214" text-anchor="middle" class="boxsub">x_t only!</text>
+    <path d="M104 204 H 150" stroke="#5a6b86" stroke-width="2" marker-end="url(#arr)"/>
+    <rect x="153" y="180" width="118" height="50" rx="9" fill="#e9f7f6" stroke="#16a3a3" stroke-width="2"/>
+    <text x="212" y="200" text-anchor="middle" class="boxlbl" fill="#0f7d7d">noise predictor</text>
+    <text x="212" y="214" text-anchor="middle" class="boxsub">ResNet CNN → 1 number</text>
+    <path d="M273 205 H 318" stroke="#16a3a3" stroke-width="2" marker-end="url(#arrT)"/>
+    <rect x="321" y="182" width="100" height="46" rx="9" fill="#e9f7f6" stroke="#16a3a3" stroke-width="2"/>
+    <text x="371" y="201" text-anchor="middle" class="boxlbl" fill="#0f7d7d">logit(ᾱ̂)</text>
+    <text x="371" y="216" text-anchor="middle" class="boxsub">"I see ~35% signal"</text>
+  </g>
+
+  <!-- ===== ROW 2 : no-time UNet ===== -->
+  <g id="g2" class="dim clickzone" data-s="2">
+    <text x="475" y="168" class="boxlbl" fill="#5a6b86">MODEL B (part 7)</text>
+    <rect x="475" y="178" width="90" height="52" rx="9" fill="#fff7ec" stroke="#f6921e" stroke-width="2"/>
+    <text x="520" y="200" text-anchor="middle" class="boxlbl" fill="#b06710">noisy image</text>
+    <text x="520" y="214" text-anchor="middle" class="boxsub">x_t only!</text>
+    <path d="M567 204 H 612" stroke="#5a6b86" stroke-width="2" marker-end="url(#arr)"/>
+    <rect x="615" y="180" width="128" height="50" rx="9" fill="#f2edfd" stroke="#7b5cd6" stroke-width="2"/>
+    <text x="679" y="199" text-anchor="middle" class="boxlbl" fill="#7b5cd6">no-time UNet</text>
+    <text x="679" y="214" text-anchor="middle" class="boxsub">forward(x): t is always 0</text>
+    <path d="M745 205 H 790" stroke="#16a3a3" stroke-width="2" marker-end="url(#arrT)"/>
+    <rect x="793" y="182" width="86" height="46" rx="9" fill="#e9f7f6" stroke="#16a3a3" stroke-width="2"/>
+    <text x="836" y="201" text-anchor="middle" class="boxlbl" fill="#0f7d7d">noise ε̂</text>
+    <text x="836" y="216" text-anchor="middle" class="boxsub">no t needed</text>
+  </g>
+
+  <!-- ===== ROW 3 : sampling loop ===== -->
+  <g id="g3" class="dim clickzone" data-s="3">
+    <text x="12" y="262" class="boxlbl" fill="#5a6b86">SAMPLING (parts 8–9): the loop that generates new images</text>
+    <rect x="12" y="272" width="84" height="44" rx="9" fill="#f4f7fd" stroke="#5a6b86" stroke-width="2"/>
+    <text x="54" y="291" text-anchor="middle" class="boxlbl">pure noise</text>
+    <text x="54" y="305" text-anchor="middle" class="boxsub">x_T ~ N(0,1)</text>
+    <path d="M98 294 H 136" stroke="#5a6b86" stroke-width="2" marker-end="url(#arr)"/>
+    <rect x="139" y="272" width="120" height="44" rx="9" fill="#f2edfd" stroke="#7b5cd6" stroke-width="2"/>
+    <text x="199" y="291" text-anchor="middle" class="boxlbl" fill="#7b5cd6">B: predict ε̂</text>
+    <text x="199" y="305" text-anchor="middle" class="boxsub">noise = model(x_t)</text>
+    <path d="M261 294 H 299" stroke="#5a6b86" stroke-width="2" marker-end="url(#arr)"/>
+    <rect x="302" y="272" width="132" height="44" rx="9" fill="#e9f7f6" stroke="#16a3a3" stroke-width="2"/>
+    <text x="368" y="291" text-anchor="middle" class="boxlbl" fill="#0f7d7d">A: predict ᾱ̂</text>
+    <text x="368" y="305" text-anchor="middle" class="boxsub">a = tmodel(x_t).sigmoid()</text>
+    <path d="M436 294 H 474" stroke="#5a6b86" stroke-width="2" marker-end="url(#arr)"/>
+    <rect x="477" y="272" width="150" height="44" rx="9" fill="#fff" stroke="#7b5cd6" stroke-width="2"/>
+    <text x="552" y="291" text-anchor="middle" class="boxlbl" fill="#7b5cd6">DDIM step with ᾱ̂</text>
+    <text x="552" y="305" text-anchor="middle" class="boxsub">x̂₀ from *measured* noise</text>
+    <path d="M629 294 H 667" stroke="#5a6b86" stroke-width="2" marker-end="url(#arr)"/>
+    <rect x="670" y="272" width="94" height="44" rx="9" fill="#fff7ec" stroke="#f6921e" stroke-width="2"/>
+    <text x="717" y="291" text-anchor="middle" class="boxlbl" fill="#b06710">cleaner x_t</text>
+    <text x="717" y="305" text-anchor="middle" class="boxsub">less noise now</text>
+    <path id="looppath" d="M717 272 C 717 240 199 240 199 272" stroke="#7b5cd6" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#arrA)"/>
+    <text x="458" y="252" text-anchor="middle" class="boxsub" fill="#7b5cd6" font-weight="700">repeat ×100 steps</text>
+    <circle id="pulse" r="5" fill="#f6921e" opacity="0"/>
+  </g>
+
+  <!-- ===== ROW 4 : payoff ===== -->
+  <g id="g4" class="dim clickzone" data-s="4">
+    <rect x="784" y="252" width="164" height="68" rx="10" fill="#fff" stroke="#dde5f2" stroke-width="2"/>
+    <text x="866" y="270" text-anchor="middle" class="boxlbl">Image quality (FID ↓)</text>
+    <rect x="800" y="278" width="60" height="14" rx="4" fill="#d64545" opacity=".85"/>
+    <text x="866" y="289" class="boxsub" font-size="10">22 without A</text>
+    <rect x="800" y="298" width="12" height="14" rx="4" fill="#16a3a3"/>
+    <text x="818" y="309" class="boxsub" font-size="10">4 with A ✔</text>
+  </g>
+</svg>
+</div>
+
+<div class="explain" id="explain"></div>
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = inputs</b> · <b class="o">teal = outputs / model A (the noise predictor)</b> · <b class="a">purple = actions / model B (the no-time UNet)</b> — click any row of the diagram to jump to that stage</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const EXPLAIN=[
+ `<b class="a">⓪ The old way.</b> Every diffusion model so far received <b>two</b> inputs: the noisy image <b class="i">x_t</b> and the timestep <b class="i">t</b>. Passing t is like handing the model a sticky note saying <i>"this image is 70% noise"</i>. Jeremy's hunch while staring at <code>show_image</code> outputs: <b>the noise level is visible in the pixels themselves</b> — a model should be able to figure it out on its own. This notebook tests that hunch.`,
+ `<b class="o">① Model A — the noise predictor (a plain ResNet CNN, not a UNet).</b> Training data is easy to manufacture in unlimited amounts: take a clean image, pick a random ᾱ ∈ (0,1), mix in that much Gaussian noise, and ask the model to recover ᾱ from the pixels. It outputs <b>one single number</b> per image — logit(ᾱ̂) — so this is just a <b>regression</b> problem with MSE loss. Sigmoid turns the output back into a 0–1 signal fraction.`,
+ `<b class="a">② Model B — the no-time UNet.</b> Identical to a normal diffusion UNet except its <code>forward(x)</code> hard-codes <code>t = 0</code>, so it is <b>blind to the timestep</b>. It must learn to look at an image, silently judge how noisy it is, and predict the noise ε — all from pixels. Training it is otherwise business as usual (cosine schedule, predict ε, MSE).`,
+ `<b class="a">③ Sampling is where the two models meet.</b> Start from pure noise, then loop ~100 times: <b class="a">B</b> predicts the noise ε̂; <b class="o">A</b> <i>measures</i> how much signal is actually left (ᾱ̂); the DDIM step uses that <b>measured</b> ᾱ̂ — not the scheduled one — to estimate the clean image x̂₀ and take one step toward it. Press ▶ Play to watch the orange pulse run the loop.`,
+ `<b class="o">④ The payoff.</b> Sampling the no-time UNet with the fixed schedule gives FID ≈ <b style="color:var(--neg)">22</b> (bad — the schedule assumes noise the model may have already removed, or not). Letting model A measure the true remaining noise at every step drops FID to ≈ <b class="o">4</b> (good!). Self-correction beats a fixed timetable: if a step removed <i>less</i> noise than scheduled, A notices, and the next step compensates.`
+];
+const CODE=[
+`<span class="cm"># ⓪ every previous notebook: the model is TOLD the timestep</span>
+noise = model(<span class="hl">(x_t, t)</span>)          <span class="cm"># t = "how noisy am I" — given for free</span>`,
+`<span class="cm"># ① part 3+5: manufacture (noisy image → true ᾱ) pairs, train a CNN</span>
+def <span class="fn">noisify</span>(x0):
+    al_t = torch.rand((len(x0),<span class="num">1</span>,<span class="num">1</span>,<span class="num">1</span>))                 <span class="cm"># random signal fraction</span>
+    xt   = al_t.sqrt()*x0 + (<span class="num">1</span>-al_t).sqrt()*ε         <span class="cm"># mix image + noise</span>
+    <span class="hl">return xt, al_t.squeeze().logit()</span>                 <span class="cm"># target = ONE number</span>`,
+`<span class="cm"># ② part 7: a UNet that never sees the timestep</span>
+class <span class="fn">UNet</span>(UNet2DModel):
+    def <span class="fn">forward</span>(self, x):
+        return super().forward(x, <span class="hl"><span class="num">0</span></span>).sample        <span class="cm"># t hard-coded to 0 — time-blind</span>`,
+`<span class="cm"># ③ part 8: inside every sampling step, BOTH models fire</span>
+noise = model(x_t)                                    <span class="cm"># B: what noise is here?</span>
+<span class="hl">a = tmodel(x_t)[...,None,None].sigmoid()</span>              <span class="cm"># A: how much signal is left?</span>
+x_0_hat = ((x_t - (<span class="num">1</span>-a).sqrt()*noise) / a.sqrt())     <span class="cm"># use MEASURED ᾱ̂, not schedule</span>`,
+`<span class="cm"># ④ part 9: the scoreboard</span>
+<span class="cm"># classic DDIM (scheduled ᾱ):  FID ≈ 22   ← no-time model + rigid schedule</span>
+<span class="cm"># noise-predictor DDIM (ᾱ̂):    <span class="hl">FID ≈ 4</span>    ← measure, don't assume</span>`
+];
+let stage=0, timer=null, speed=2, pulseT=0, pulseTimer=null;
+const groups=[...document.querySelectorAll('g[id^=g]')];
+function setStage(s){
+  stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on', +c.dataset.s===s));
+  groups.forEach((g,i)=>{ g.setAttribute('class', (i<=s?'lit':'dim')+' clickzone'); });
+  $('explain').innerHTML=EXPLAIN[s];
+  $('code').innerHTML=CODE[s];
+  stopPulse();
+  if(s===3) startPulse();
+}
+function startPulse(){
+  const path=$('looppath'), pulse=$('pulse'); pulse.setAttribute('opacity','1'); pulseT=0;
+  const L=path.getTotalLength();
+  pulseTimer=setInterval(()=>{ pulseT=(pulseT+0.008*speed)%1;
+    const p=path.getPointAtLength(pulseT*L);
+    pulse.setAttribute('cx',p.x); pulse.setAttribute('cy',p.y); },30);
+}
+function stopPulse(){ if(pulseTimer){clearInterval(pulseTimer);pulseTimer=null;} $('pulse').setAttribute('opacity','0'); }
+function stop(){ if(timer){clearInterval(timer);timer=null;} $('playb').textContent='▶ Play'; }
+function play(){ $('playb').textContent='❚❚ Pause';
+  timer=setInterval(()=>{ if(stage>=4){stop();return;} setStage(stage+1); }, 3800/speed); }
+$('playb').onclick=()=>{ timer?stop():play(); };
+$('stepb').onclick=()=>{ stop(); setStage(Math.min(4,stage+1)); };
+$('resetb').onclick=()=>{ stop(); setStage(0); };
+$('speed').oninput=e=>{ speed=+e.target.value; $('spv').textContent=speed+'×'; if(timer){stop();play();} };
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ stop(); setStage(+c.dataset.s); });
+groups.forEach(g=>g.addEventListener('click',()=>{ stop(); setStage(+g.dataset.s); }));
+setStage(0);
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

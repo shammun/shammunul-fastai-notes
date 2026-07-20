@@ -1,0 +1,255 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Noisify Machine</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:920px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .ctr{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:8px;font-size:12px;color:var(--soft);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{accent-color:var(--ac);}
+  .speedv{font-family:monospace;font-weight:700;color:var(--ac);min-width:34px;display:inline-block;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:stretch;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  canvas.img{image-rendering:pixelated;border-radius:8px;border:1px solid var(--line);display:block;}
+  .imgwrap{position:relative;}
+  .imgwrap.win canvas.img{outline:3px solid var(--in);outline-offset:1px;}
+  .imgwrap.wout canvas.img{outline:3px solid var(--out);outline-offset:1px;}
+  .opcol{display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:20px;font-weight:700;color:var(--soft);min-width:56px;gap:2px;}
+  .opcol .coef{font-family:monospace;font-size:11px;color:var(--ac);font-weight:700;background:#f2edfd;border-radius:7px;padding:2px 7px;white-space:nowrap;}
+  .abarrow{display:flex;gap:10px;align-items:center;justify-content:center;margin:8px 0 2px;font-size:12.5px;color:var(--soft);flex-wrap:wrap;}
+  .abarrow input[type=range]{width:240px;}
+  .abv{font-family:monospace;font-weight:800;color:var(--in);font-size:14px;min-width:52px;}
+  .mixbar{height:14px;width:240px;border-radius:8px;border:1px solid var(--line);overflow:hidden;display:flex;}
+  .mixbar .sig{background:var(--in);height:100%;}
+  .mixbar .noi{background:#8d9cb8;height:100%;flex:1;}
+  .logitcard{min-width:280px;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.65;max-width:940px;margin:10px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .explain{background:#fff;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:10px;box-shadow:0 6px 16px rgba(123,92,214,.08);
+    padding:8px 13px;font-size:12.5px;line-height:1.55;max-width:940px;margin:9px auto 0;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+  @media (max-width:900px){.opcol{min-width:34px;font-size:16px;}}
+</style></head><body>
+<h1>The Noisify Machine — <span style="font-family:monospace;font-size:15px">x_t = √ᾱ·x₀ + √(1−ᾱ)·ε</span></h1>
+<p class="sub">This one formula manufactures <b>all</b> the training data for the noise predictor. Drag the <b style="color:var(--in)">ᾱ slider</b> (or click a point on the logit curve) to remix signal and noise, step through the four stages of <code>noisify</code>, and watch the matching code line light up.</p>
+
+<div class="stagebar" id="stagebar">
+  <button class="chip on" data-s="0">① sample ᾱ ~ Uniform(0,1)</button>
+  <button class="chip" data-s="1">② sample noise ε ~ N(0,1)</button>
+  <button class="chip" data-s="2">③ mix: x_t = √ᾱ·x₀ + √(1−ᾱ)·ε</button>
+  <button class="chip" data-s="3">④ target = logit(ᾱ)</button>
+</div>
+<div class="ctr">
+  <button class="play" id="playb">▶ Play (sweep ᾱ)</button>
+  <button class="stepb" id="stepb">Step stage ➜</button>
+  <button class="reset" id="resetb">↺ New ε (re-roll noise)</button>
+  <span>speed <input type="range" id="speed" min="1" max="4" step="1" value="2" style="width:100px"> <span class="speedv" id="spv">2×</span></span>
+</div>
+
+<div class="abarrow">
+  <span>ᾱ (signal fraction) =</span> <span class="abv" id="abv">0.50</span>
+  <input type="range" id="abar" min="0.01" max="0.99" step="0.01" value="0.5">
+  <span class="mixbar"><span class="sig" id="sigbar" style="width:50%"></span><span class="noi"></span></span>
+  <span style="font-size:11px">■ <b style="color:var(--in)">signal</b> / ■ <b style="color:#7383a0">noise</b> (variance shares)</span>
+</div>
+
+<div class="main">
+  <div class="card">
+    <p class="cap">clean image x₀ <small>a FashionMNIST-style "trouser" (16×16)</small></p>
+    <div class="imgwrap" id="w0"><canvas class="img" id="c0" width="16" height="16" style="width:144px;height:144px"></canvas></div>
+    <div style="text-align:center;font-family:monospace;font-size:11px;color:var(--in);font-weight:700;margin-top:5px" id="coef0">× √ᾱ = 0.707</div>
+  </div>
+  <div class="opcol"><span>+</span></div>
+  <div class="card">
+    <p class="cap">noise ε <small>fresh Gaussian, same shape</small></p>
+    <div class="imgwrap" id="w1"><canvas class="img" id="c1" width="16" height="16" style="width:144px;height:144px"></canvas></div>
+    <div style="text-align:center;font-family:monospace;font-size:11px;color:#7383a0;font-weight:700;margin-top:5px" id="coef1">× √(1−ᾱ) = 0.707</div>
+  </div>
+  <div class="opcol"><span>=</span></div>
+  <div class="card">
+    <p class="cap">noisy image x_t <small>what the model actually sees</small></p>
+    <div class="imgwrap wout" id="w2"><canvas class="img" id="c2" width="16" height="16" style="width:144px;height:144px"></canvas></div>
+    <div style="text-align:center;font-family:monospace;font-size:11px;color:var(--out);font-weight:700;margin-top:5px" id="vartxt">Var ≈ ᾱ·1 + (1−ᾱ)·1 = 1 ✔</div>
+  </div>
+  <div class="card logitcard">
+    <p class="cap">the training target: logit(ᾱ) <small>click anywhere on the curve to set ᾱ</small></p>
+    <canvas id="logitc" width="280" height="170" style="width:280px;height:170px;cursor:crosshair"></canvas>
+    <div style="text-align:center;font-family:monospace;font-size:12px;margin-top:4px">
+      logit(<span id="lgin" style="color:var(--in);font-weight:700">0.50</span>) = log(ᾱ/(1−ᾱ)) = <span id="lgout" style="color:var(--out);font-weight:800">0.00</span>
+    </div>
+  </div>
+</div>
+
+<div class="explain" id="explain"></div>
+<div class="code" id="code"></div>
+<div class="legend"><b class="i">orange = input / signal</b> · <b class="o">teal = output / target</b> · <b class="a">purple = the current action</b></div>
+
+<script>
+const $=id=>document.getElementById(id);
+// ---------- seeded gaussian noise ----------
+let seed=42;
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+let rng=mulberry32(seed);
+function gauss(){let u=0,v=0;while(u===0)u=rng();while(v===0)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+// ---------- the 16x16 trouser sprite (values in [-0.5, 0.5] like the notebook) ----------
+const N=16;
+const x0=new Float32Array(N*N).fill(-0.5);
+(function(){
+  // waistband
+  for(let c=4;c<=11;c++){x0[1*N+c]=0.45;x0[2*N+c]=0.35;}
+  // two legs, slightly flaring
+  for(let r=3;r<15;r++){
+    const spread=Math.floor((r-3)/6);
+    for(let c=4-0;c<=6;c++) x0[r*N+Math.max(3-spread,2)+ (c-4)]=0.30+0.1*((r%3===0)?1:0);
+    for(let c=0;c<3;c++){ x0[r*N+Math.min(9+spread,11)+c- (spread>0?0:0)]=0.30+0.1*((r%2===0)?0.5:0); }
+  }
+  // clean two-leg construction (overwrite simpler): 
+  for(let r=3;r<15;r++)for(let c=0;c<N;c++){
+    const inL=(c>=4&&c<=6), inR=(c>=9&&c<=11), gap=(c>=7&&c<=8);
+    if(r>=3&&(inL||inR)) x0[r*N+c]=0.32+((r+c)%4===0?0.1:0);
+    if(r>=3&&gap) x0[r*N+c]=-0.5;
+    if(r<=4&&c>=4&&c<=11) x0[r*N+c]=0.42; // crotch area joins
+  }
+})();
+let eps=new Float32Array(N*N);
+function rollNoise(){ rng=mulberry32(seed++); for(let i=0;i<N*N;i++) eps[i]=gauss(); }
+rollNoise();
+// ---------- drawing ----------
+function draw(cid, arr, lo, hi){
+  const cv=$(cid),ctx=cv.getContext('2d'),im=ctx.createImageData(N,N);
+  for(let i=0;i<N*N;i++){let v=(arr[i]-lo)/(hi-lo);v=Math.max(0,Math.min(1,v));const g=Math.round(v*255);
+    im.data[4*i]=g;im.data[4*i+1]=g;im.data[4*i+2]=g;im.data[4*i+3]=255;}
+  ctx.putImageData(im,0,0);
+}
+let abar=0.5, stage=0, timer=null, speed=2, sweepDir=-1;
+function logit(p){return Math.log(p/(1-p));}
+function render(){
+  const sa=Math.sqrt(abar), sn=Math.sqrt(1-abar);
+  draw('c0',x0,-0.6,0.6);
+  const se=new Float32Array(N*N); for(let i=0;i<N*N;i++)se[i]=eps[i];
+  draw('c1',se,-2.5,2.5);
+  const xt=new Float32Array(N*N); for(let i=0;i<N*N;i++)xt[i]=sa*x0[i]+sn*eps[i];
+  draw('c2',xt,-1.6,1.6);
+  $('abv').textContent=abar.toFixed(2);
+  $('abar').value=abar;
+  $('sigbar').style.width=(abar*100)+'%';
+  $('coef0').textContent='× √ᾱ = '+sa.toFixed(3);
+  $('coef1').textContent='× √(1−ᾱ) = '+sn.toFixed(3);
+  $('lgin').textContent=abar.toFixed(2);
+  $('lgout').textContent=logit(abar).toFixed(2);
+  drawLogit();
+}
+function drawLogit(){
+  const cv=$('logitc'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  const px=p=>14+p*(W-28), py=v=>H/2 - v*(H/2-16)/5; // v in [-5,5]
+  // axes
+  ctx.strokeStyle='#dde5f2';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(px(0),py(0));ctx.lineTo(px(1),py(0));ctx.stroke();
+  ctx.beginPath();ctx.moveTo(px(0.5),py(-5));ctx.lineTo(px(0.5),py(5));ctx.stroke();
+  ctx.fillStyle='#5a6b86';ctx.font='10px monospace';
+  ctx.fillText('ᾱ=0',px(0)-2,py(0)+12);ctx.fillText('0.5',px(0.5)-8,py(0)+12);ctx.fillText('1',px(1)-4,py(0)+12);
+  ctx.fillText('+5',px(0.5)+5,py(5)+4);ctx.fillText('−5',px(0.5)+5,py(-5)+2);
+  // curve
+  ctx.strokeStyle='#7b5cd6';ctx.lineWidth=2.5;ctx.beginPath();
+  for(let i=0;i<=200;i++){const p=0.006+ (i/200)*0.988; const v=Math.max(-5,Math.min(5,logit(p)));
+    const X=px(p),Y=py(v); i===0?ctx.moveTo(X,Y):ctx.lineTo(X,Y);}
+  ctx.stroke();
+  // marker
+  const v=Math.max(-5,Math.min(5,logit(abar)));
+  ctx.setLineDash([4,3]);ctx.strokeStyle='#f6921e';
+  ctx.beginPath();ctx.moveTo(px(abar),py(0));ctx.lineTo(px(abar),py(v));ctx.stroke();
+  ctx.strokeStyle='#16a3a3';
+  ctx.beginPath();ctx.moveTo(px(abar),py(v));ctx.lineTo(px(0.5),py(v));ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#16a3a3';ctx.beginPath();ctx.arc(px(abar),py(v),5,0,7);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+}
+$('logitc').addEventListener('click',e=>{
+  const r=e.target.getBoundingClientRect();
+  const p=((e.clientX-r.left)*($('logitc').width/r.width)-14)/($('logitc').width-28);
+  abar=Math.max(0.01,Math.min(0.99,p)); stop(); setStage(3); render();
+});
+// ---------- stages ----------
+const EXPLAIN=[
+ `<b style="color:var(--ac)">① Sample ᾱ directly.</b> Unlike the DDPM notebook (which sampled a time t and pushed it through a cosine schedule), here we skip the schedule and draw <b>ᾱ itself</b> uniformly from (0,1). The shape <code>(batch,1,1,1)</code> isn't decoration — those three trailing 1-dims let one scalar per image <b>broadcast</b> across all channels, rows, and columns during the multiply.`,
+ `<b style="color:var(--ac)">② Sample ε.</b> Fresh standard-Gaussian noise, exactly the same shape as the images. Every pixel gets its own independent draw from N(0,1) — press <b>↺ New ε</b> and notice x₀ never changes, only the static does.`,
+ `<b style="color:var(--ac)">③ The mix.</b> Why <b>square roots</b>? Because variances add: Var(x_t) = ᾱ·Var(x₀) + (1−ᾱ)·Var(ε) ≈ ᾱ + (1−ᾱ) = <b>1</b>. The image never gets brighter or dimmer overall as noise is added — total "energy" is conserved, which keeps every noise level on the same footing for the network. Drag the slider and watch √ᾱ and √(1−ᾱ) trade off.`,
+ `<b style="color:var(--ac)">④ The target.</b> ᾱ lives in (0,1), but a linear layer's raw output is unbounded — asking it to hit a hard-capped range makes learning awkward near the edges. <b>logit(ᾱ) = log(ᾱ/(1−ᾱ))</b> stretches (0,1) to (−∞,+∞): 0.5→0, 0.9→+2.2, 0.99→+4.6. The model predicts this unbounded number; at test time <code>.sigmoid()</code> folds it back into (0,1). Notice on the curve how the ends stretch out — tiny differences near 0 or 1 become big, learnable differences in logit space.`
+];
+const CODE=[
+`def <span class="fn">noisify</span>(x0):
+    device = x0.device
+    <span class="hl">al_t = torch.rand((len(x0), <span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>), device=device)</span>   <span class="cm"># ① ᾱ ~ U(0,1), broadcastable</span>
+    ε  = torch.randn(x0.shape, device=device)
+    xt = al_t.sqrt()*x0 + (<span class="num">1</span>-al_t).sqrt()*ε
+    return xt, al_t.squeeze().logit()`,
+`def <span class="fn">noisify</span>(x0):
+    device = x0.device
+    al_t = torch.rand((len(x0), <span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>), device=device)
+    <span class="hl">ε  = torch.randn(x0.shape, device=device)</span>                <span class="cm"># ② one N(0,1) draw per pixel</span>
+    xt = al_t.sqrt()*x0 + (<span class="num">1</span>-al_t).sqrt()*ε
+    return xt, al_t.squeeze().logit()`,
+`def <span class="fn">noisify</span>(x0):
+    device = x0.device
+    al_t = torch.rand((len(x0), <span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>), device=device)
+    ε  = torch.randn(x0.shape, device=device)
+    <span class="hl">xt = al_t.sqrt()*x0 + (<span class="num">1</span>-al_t).sqrt()*ε</span>                   <span class="cm"># ③ variance-preserving mix</span>
+    return xt, al_t.squeeze().logit()`,
+`def <span class="fn">noisify</span>(x0):
+    device = x0.device
+    al_t = torch.rand((len(x0), <span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>), device=device)
+    ε  = torch.randn(x0.shape, device=device)
+    xt = al_t.sqrt()*x0 + (<span class="num">1</span>-al_t).sqrt()*ε
+    <span class="hl">return xt, al_t.squeeze().logit()</span>                        <span class="cm"># ④ unbounded target for MSE</span>`
+];
+function setStage(s){
+  stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('explain').innerHTML=EXPLAIN[s];
+  $('code').innerHTML=CODE[s];
+  $('w0').className='imgwrap'+((s===0||s===2)?' win':'');
+  $('w1').className='imgwrap'+((s===1||s===2)?' win':'');
+  $('w2').className='imgwrap'+(s>=2?' wout':'');
+}
+function stop(){if(timer){clearInterval(timer);timer=null;}$('playb').textContent='▶ Play (sweep ᾱ)';}
+function play(){$('playb').textContent='❚❚ Pause';setStage(2);
+  timer=setInterval(()=>{abar+=sweepDir*0.008*speed;
+    if(abar<=0.02){abar=0.02;sweepDir=1;} if(abar>=0.98){abar=0.98;sweepDir=-1;}
+    render();},40);}
+$('playb').onclick=()=>{timer?stop():play();};
+$('stepb').onclick=()=>{stop();setStage((stage+1)%4);};
+$('resetb').onclick=()=>{stop();rollNoise();setStage(1);render();};
+$('speed').oninput=e=>{speed=+e.target.value;$('spv').textContent=speed+'×';};
+$('abar').oninput=e=>{stop();abar=+e.target.value;render();};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{stop();setStage(+c.dataset.s);});
+setStage(0);render();
+</script>
+<style id="ce-fit">
+  html,body{overflow-x:hidden}
+  body{min-height:0 !important}
+</style>
+<script id="ce-fit-js">
+(function(){
+  function ch(){ return Math.ceil(Math.max(document.body.scrollHeight, document.body.offsetHeight)); }
+  function postH(){ if(window.parent!==window) window.parent.postMessage({type:'ce-frame-height',height:ch()},'*'); }
+  addEventListener('load',postH); addEventListener('resize',postH);
+  if(window.ResizeObserver) new ResizeObserver(postH).observe(document.body);
+  setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>
