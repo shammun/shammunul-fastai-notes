@@ -7698,7 +7698,7 @@ CONTINUOUS (this notebook):
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># Dataset configuration</span>
 <span class="n">xl</span><span class="p">,</span> <span class="n">yl</span> <span class="o">=</span> <span class="s1">'image'</span><span class="p">,</span> <span class="s1">'label'</span>  <span class="c1"># Column names</span>
-<span class="n">name</span> <span class="o">=</span> <span class="s2">"fashion_mnist"</span>     <span class="c1"># Dataset name</span>
+<span class="n">name</span> <span class="o">=</span> <span class="s2">"zalando-datasets/fashion_mnist"</span>     <span class="c1"># Dataset name</span>
 <span class="n">bs</span> <span class="o">=</span> <span class="mi">512</span>                   <span class="c1"># Batch size</span>
 
 <span class="c1"># Load dataset</span>
@@ -7992,7 +7992,7 @@ At t=1: alphabar=0 (pure noise)
 <span class="sd">"""</span>
 <span class="sd"># Dataset configuration</span>
 <span class="sd">xl, yl = 'image', 'label'  # Column names</span>
-<span class="sd">name = "fashion_mnist"     # Dataset name</span>
+<span class="sd">name = "zalando-datasets/fashion_mnist"     # Dataset name</span>
 <span class="sd">bs = 512                   # Batch size</span>
 
 <span class="sd"># Load dataset</span>
@@ -8189,7 +8189,7 @@ At t=1: alphabar=0 (pure noise)
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># Save/load model</span>
 <span class="c1"># torch.save(learn.model, 'models/fashion_cos.pkl')</span>
-<span class="n">model</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">'models/fashion_cos.pkl'</span><span class="p">)</span><span class="o">.</span><span class="n">cuda</span><span class="p">()</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">'models/fashion_cos.pkl'</span><span class="p">,</span> <span class="n">weights_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">cuda</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
@@ -8454,7 +8454,7 @@ Reverse:  x_0 = (x_t - sqrt(1 - abar_t) * noise) / sqrt(abar_t)
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># Set up FID evaluation (same as before)</span>
-<span class="n">cmodel</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">'models/data_aug2.pkl'</span><span class="p">)</span>
+<span class="n">cmodel</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">'models/data_aug.pkl'</span><span class="p">,</span> <span class="n">weights_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">del</span><span class="p">(</span><span class="n">cmodel</span><span class="p">[</span><span class="mi">8</span><span class="p">])</span>  <span class="c1"># Remove classification layers</span>
 <span class="k">del</span><span class="p">(</span><span class="n">cmodel</span><span class="p">[</span><span class="mi">7</span><span class="p">])</span>
 
