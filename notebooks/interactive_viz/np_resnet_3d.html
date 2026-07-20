@@ -175,15 +175,26 @@ const CODE_LINES=[
  {t:'skip',h:'<span class="cm"># inside every ResBlock:</span> act(<span class="fn">convs</span>(x) + <span class="fn">idconv</span>(<span class="fn">pool</span>(x)))  <span class="cm"># ← the skip</span>'},
 ];
 const TAGS=['in','g0','g1','g2','g3','g4','g5','g6','g7','g8'];
+// every selectable thing -> the full set of code lines that correspond to it:
+// its unroll line PLUS the get_model line that creates it
+const CURMAP={
+  'in':  ['in'],
+  'g0':  ['g0'],                       // stem: def line + unroll line share the tag
+  'g1':  ['g1','loop'], 'g2': ['g2','loop'], 'g3': ['g3','loop'],
+  'g4':  ['g4','loop'], 'g5': ['g5','loop'],
+  'g6':  ['g6','g678'], 'g7': ['g7','g678'],
+  'g8':  ['g8','g678','sig'],
+};
 const STAGE_TAGS=[['def'],['g0','loop','g1','g2','g3','g4','g5'],['skip','loop'],['g678','g6','g7','g8','sig']];
 const codeEl=$('code');
 codeEl.innerHTML=CODE_LINES.map(l=>`<span class="ln">${l.h||' '}</span>`).join('');
 const lnEls=[...codeEl.querySelectorAll('.ln')];
 let curTag=null;
 function updateCodeHl(){
+  const curSet=CURMAP[curTag]||[curTag];
   lnEls.forEach((el,i)=>{const t=CODE_LINES[i].t;
-    el.classList.toggle('rng',!!t&&STAGE_TAGS[stage].includes(t));
-    el.classList.toggle('cur',!!t&&t===curTag);});
+    el.classList.toggle('rng',!!t&&STAGE_TAGS[stage].includes(t)&&!curSet.includes(t));
+    el.classList.toggle('cur',!!t&&curSet.includes(t));});
 }
 function setCur(tag){if(tag===curTag)return;curTag=tag;updateCodeHl();}
 
@@ -219,9 +230,14 @@ let lastPill=-1;
 function syncDom(force){
   const w=Math.min(Math.floor(p),8), fr=p-w;
   const pIdx=Math.max(0,Math.min(9,fr>0.55?w+1:w));
-  setCur(TAGS[pIdx]);
-  if(force||pIdx!==lastPill){lastPill=pIdx;
-    pillEls.forEach((el,i)=>el.classList.toggle('on',i===pIdx));}
+  // only (re)tag the code when the data actually reaches a new waypoint (or on
+  // explicit jumps) — otherwise a background re-render would erase the code
+  // highlight of a gate the user just clicked to inspect
+  if(force||pIdx!==lastPill){
+    setCur(TAGS[pIdx]);
+    lastPill=pIdx;
+    pillEls.forEach((el,i)=>el.classList.toggle('on',i===pIdx));
+  }
   if(playing&&!lockStage){ const s=p<0.05?0:p<=6.02?1:3; if(s!==stage)setStage(s,true); }
 }
 
@@ -272,6 +288,7 @@ G.forEach((q,k)=>{
   const lab=makeLabel([`[${k}] ${q.name}`,q.sub],{size:19,color:q.star?'#7b5cd6':(q.lin?'#0f7d7d':(q.drop?'#8a6fc0':'#5a6b86'))});
   lab.position.set(gateX(k),labY,0); group.add(lab);
 });
+let flashK=-1, flashT=0;
 
 // ---- region titles + padding note ----
 const sqT=makeLabel(['THE SQUEEZE','six ResBlocks: ↓½ plane, ×2 channels'],{size:21,color:'#c9791a'});
@@ -414,12 +431,16 @@ sync=function(force){
   const si=mt>0.5?w+1:w;
   shapeTex.forEach((l,i)=>l.visible=i===si);
   shapeTex[si].position.set(x,dm[1]/2+0.55,0);
-  // gates glow while data inside; visited gates brighten
+  // gates glow while data inside; visited gates brighten; clicked gate flashes
+  const fAge=flashK>=0?(performance.now()-flashT)/650:2;
   gates.forEach((g,k)=>{
     const near=Math.abs(x-gateX(k))<0.5;
+    const fl=(k===flashK&&fAge<1)?(1-fAge):0;
     g.material.emissive=g.material.emissive||new THREE.Color(0);
-    g.material.emissive.setHex(near?0x3a2f6e:0x000000);
-    g.scale.setScalar(near?1.06:1); gateEdges[k].scale.setScalar(near?1.06:1);
+    if(fl>0) g.material.emissive.setRGB(0.23+0.45*fl,0.18+0.28*fl,0.43+0.35*fl);
+    else g.material.emissive.setHex(near?0x3a2f6e:0x000000);
+    const sc=(near?1.06:1)+(fl>0?0.10*fl:0);
+    g.scale.setScalar(sc); gateEdges[k].scale.setScalar(sc);
   });
   // skip arcs: brighten + dot rides while crossing that ResBlock
   const emph=(stage===2);
@@ -460,18 +481,46 @@ addEventListener('pointermove',e=>{if(!drag)return;
   group.rotation.x=Math.max(-0.7,Math.min(0.7,group.rotation.x+(e.clientY-py0)*0.006));
   px0=e.clientX;py0=e.clientY;});
 cv.addEventListener('wheel',e=>{e.preventDefault();camera.position.z=Math.max(10,Math.min(27,camera.position.z+e.deltaY*0.012));},{passive:false});
-const ray=new THREE.Raycaster(),mou=new THREE.Vector2();
+// screen-space gate picking: project every gate center to pixels each time and
+// select the nearest column. Immune to the panels being edge-on, and to any
+// rotation/zoom the user has applied. (Raycasting the thin panels — or fat
+// proxies around them — misfires: tilted rays clip a neighbor's box first.)
+function gateScreenCenters(){
+  const r=cv.getBoundingClientRect(), out=[];
+  gates.forEach(g=>{
+    const v=g.getWorldPosition(new THREE.Vector3()).project(camera);
+    out.push({x:r.left+(v.x*0.5+0.5)*r.width, y:r.top+(-v.y*0.5+0.5)*r.height});
+  });
+  return out;
+}
+function pickGate(e){
+  const cs=gateScreenCenters();
+  // dynamic horizontal tolerance: a bit under half the on-screen gate spacing
+  let sp=60; if(cs.length>1){sp=0; for(let i=1;i<cs.length;i++)sp+=Math.abs(cs[i].x-cs[i-1].x); sp/=cs.length-1;}
+  const dxLim=Math.max(14,Math.min(28,sp*0.42)), dyLim=195;
+  let best=-1,bd=1e9;
+  cs.forEach((c,k)=>{
+    const dx=Math.abs(e.clientX-c.x), dy=Math.abs(e.clientY-c.y);
+    if(dx<=dxLim&&dy<=dyLim&&dx<bd){bd=dx;best=k;}
+  });
+  return best;
+}
 cv.addEventListener('click',e=>{
   if(moved>6)return;
-  const r=cv.getBoundingClientRect();
-  mou.x=((e.clientX-r.left)/r.width)*2-1; mou.y=-((e.clientY-r.top)/r.height)*2+1;
-  ray.setFromCamera(mou,camera);
-  const hit=ray.intersectObjects(gates)[0];
-  if(hit)inspect(hit.object.userData.k);
+  const k=pickGate(e);
+  if(k>=0){ inspect(k); flashK=k; flashT=performance.now(); }
 });
+// hover feedback: pointer cursor over any gate column
+cv.addEventListener('pointermove',e=>{
+  if(drag)return;
+  cv.style.cursor=pickGate(e)>=0?'pointer':'grab';
+});
+// expose gate screen positions for testing/debug
+window.__gateXY=gateScreenCenters;
 
 // ---- render loop hooks ----
 window.__render3d=function(){ renderer.render(scene,camera); };
+window.__flashActive=function(){ return flashK>=0 && (performance.now()-flashT)<680; };
 window.__fit3d=function(){ const w=Math.min(cv.parentElement.clientWidth-4,1032); renderer.setSize(w,450,false); camera.aspect=w/450; camera.updateProjectionMatrix(); };
 window.__drawInputFace=drawInputFace; window.__drawFlag=drawFlag;
 }// end HAS3D
@@ -508,7 +557,7 @@ function loop(ts){
     if(p>=stopAt)stopPlay();
   }
   lastT=ts;
-  if(HAS3D)window.__render3d();
+  if(HAS3D){ if(window.__flashActive&&window.__flashActive())sync(false); window.__render3d(); }
 }
 if(HAS3D){window.__fit3d();addEventListener('resize',()=>window.__fit3d());}
 setStage(0); sync(true); inspectInput(); requestAnimationFrame(loop);
