@@ -18,11 +18,25 @@
   .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
   input[type=range]{width:100px;accent-color:var(--ac);}
   .v{font-family:monospace;font-weight:700;color:var(--ac);min-width:38px;display:inline-block;}
-  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:stretch;flex-wrap:wrap;max-width:1500px;margin:0 auto;}
+  .main > .card:first-child{flex:1.35 1 380px;min-width:320px;}
+  .rightcol{display:flex;flex-direction:column;flex:1 1 330px;min-width:300px;max-width:560px;}
+  .rightcol .phase{margin-top:0;margin-bottom:8px;}
+  .rightcol .cap{margin-bottom:4px;}
+  .rightcol .code{flex:1 1 auto;min-height:170px;overflow:auto;width:auto;}
+  .algo{background:#fffdf8;border:1px solid var(--line);border-left:5px solid var(--in);border-radius:10px;padding:8px 11px;font-size:12px;line-height:1.5;margin-bottom:8px;}
+  .algo h5{margin:0 0 3px;font-size:12.6px;color:var(--ink);}
+  .algo .what{margin:0 0 6px;color:var(--soft);}
+  .algo ol{margin:0 0 6px;padding-left:18px;}
+  .algo li{margin:2px 0;color:var(--soft);border-radius:6px;padding:1px 5px;transition:background .15s;}
+  .algo li b{color:var(--ink);}
+  .algo li.on{background:#f4efff;box-shadow:inset 3px 0 0 var(--ac);color:var(--ink);}
+  .algo .meta{margin:0 0 3px;font-size:11.3px;color:var(--soft);}
+  .algo .watch{margin:0;font-size:11.3px;color:#c9791a;}
   .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
   .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
   .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
-  canvas#cv{border-radius:10px;border:1px solid var(--line);display:block;cursor:crosshair;background:#fbfdff;}
+  canvas#cv{border-radius:10px;border:1px solid var(--line);display:block;cursor:crosshair;background:#fbfdff;width:100%;height:auto;}
   .sigbar{position:relative;height:20px;border-radius:999px;margin:8px 2px 0;background:linear-gradient(90deg,#16a3a3,#7b5cd6 45%,#f6921e);cursor:pointer;}
   .sigknob{position:absolute;top:-4px;width:28px;height:28px;margin-left:-14px;background:#fff;border:3px solid var(--ink);border-radius:50%;box-shadow:0 3px 8px rgba(37,50,74,.3);transition:left .1s;pointer-events:none;}
   .siglab{display:flex;justify-content:space-between;font-size:10px;color:var(--soft);margin:3px 4px 0;font-weight:700;}
@@ -82,7 +96,6 @@ Click on the canvas to drop an extra particle.</p>
     <div class="sigbar" id="sigbar"><div class="sigknob" id="knob"></div></div>
     <div class="siglab"><span style="color:var(--out)">σ = 0 (data)</span><span>← click to jump to any stage →</span><span style="color:var(--in)">σ = σ_max (noise)</span></div>
     <p class="stat" id="stat"></p>
-    <div class="phase" id="phase"></div>
     <div class="key">
       <span><i class="kd" style="background:rgba(22,163,163,.65)"></i> small teal dots = the DATASET (3 clusters)</span>
       <span><i class="kd" style="background:#7b5cd6;border:1.5px solid #fff;box-shadow:0 0 0 1px #7b5cd6;width:11px;height:11px;"></i> big dot = one sample being generated (color = its current σ)</span>
@@ -93,7 +106,9 @@ Click on the canvas to drop an extra particle.</p>
       <span>⭐ orange-rimmed dot = the <b>hero</b> — its moves get labelled live</span>
     </div>
   </div>
-  <div class="card">
+  <div class="card rightcol">
+    <div class="algo" id="algo"></div>
+    <div class="phase" id="phase"></div>
     <p class="cap" id="codecap">Euler — 1 model call / step<br><small>the highlighted line is executing</small></p>
     <div class="code" id="code"></div>
   </div>
@@ -143,7 +158,7 @@ function initParticles(){
   dhist=particles.map(()=>[]);
   phaseViz=null;flashes=[];manual=null;
   $('phase').innerHTML=DEFAULT_PHASE;
-  draw();syncKnob();code();stat();
+  draw();syncKnob();code();renderAlgo();stat();
 }
 // --- one sampler step for all particles (returns list of code-line phases used) ---
 function stepAll(){
@@ -237,7 +252,7 @@ function jumpTo(target){
     dhist=dhist.map(()=>[]); // LMS history cannot be rewound exactly; rebuild empty
     stepI=target;
   } else { while(stepI<target && stepAll()); }
-  draw();syncKnob();code();stat();
+  draw();syncKnob();code();renderAlgo();stat();
 }
 // --- drawing ---
 function colSig(sig){
@@ -404,6 +419,55 @@ function syncKnob(){
   const t=Math.log(Math.max(sigs[i],SMIN))/Math.log(SMAX);
   $('knob').style.left=(Math.max(0,Math.min(1,t))*100)+'%';
 }
+const ALGO={
+ euler:{title:"Euler — the simplest possible sampler",
+  what:"Repeat n times: ask the model once where \"clean\" is from here, then take ONE straight hop down to the next noise level. That is the entire algorithm.",
+  steps:[["e1","Pick the rung","read the current noise level σ and the next one σ_next from the Karras ladder."],
+         ["e2","Ask the model","one call: \"what would the clean image be?\" → the purple guess dots on the canvas."],
+         ["e3","Form the direction","d = (sample − guess)/σ — the arrow pointing AWAY from clean."],
+         ["e4","Hop","move straight against d by exactly the ladder gap: x += d·(σ_next − σ)."]],
+  meta:"cost: <b>1 model call / step</b> · <b>deterministic</b> — same start point ⇒ same picture, every run",
+  watch:"smooth river-like trails; every kink is discretization error — raise <b>steps</b> and watch them straighten."},
+ anc:{title:"Euler Ancestral — Euler + fresh randomness at every step",
+  what:"Same skeleton as Euler, but each rung is split in two: overshoot deterministically to a LOWER noise level, then climb part-way back up by adding brand-new random noise.",
+  steps:[["e1","Pick the rung","σ and σ_next from the ladder, as always."],
+         ["e2","Ask the model","one call → clean guess (purple dots)."],
+         ["a1","Split the rung","divide the gap into σ_down and σ_up (the η knob controls the split)."],
+         ["e3","Overshoot","deterministic hop down to σ_down — further than Euler would have stopped."],
+         ["a2","Re-noise ⚡","add FRESH noise of scale σ_up (orange rings) — the sample \"forgets\" a little of its past."]],
+  meta:"cost: <b>1 model call / step</b> · <b>stochastic</b> — η = 0 collapses into plain Euler, η = 1 = maximum forgetting",
+  watch:"jittery trails + orange flashes; the same start can end in different clusters on different runs. Better variety, zero reproducibility."},
+ heun:{title:"Heun — look before you leap, then look AGAIN",
+  what:"Take Euler's hop only provisionally, ask the model a SECOND time at that trial landing, then redo the real hop using the average of the two slopes.",
+  steps:[["h0","Churn (optional)","first nudge σ slightly UP with a little random kick (skipped when churn = 0)."],
+         ["e2","Ask the model (#1)","clean guess from the current point."],
+         ["e3","Form the direction","d at the start of the gap."],
+         ["h1","Trial hop","the plain-Euler landing — RED dots. Nothing committed yet."],
+         ["h2","Ask the model (#2)","second call FROM the red trial point at σ_next — this is the extra cost."],
+         ["h3","Correct","redo the hop with the average (d + d₂)/2 — where the path bends, this hugs the curve Euler would cut."]],
+  meta:"cost: <b>2 model calls / step</b> — the fair comparison is Heun-n vs Euler-2n · deterministic when churn = 0",
+  watch:"red dots appear, then get corrected; try only 4–6 steps — Heun stays on track exactly where Euler cuts corners."},
+ lms:{title:"LMS — curvature from MEMORY, not extra model calls",
+  what:"Like Heun it wants to know how the direction is changing — but instead of paying for a second model call, it recycles the directions remembered from previous rungs and fits a curve through them.",
+  steps:[["e2","Ask the model","one call → clean guess."],
+         ["e3","Form the direction","d for this rung."],
+         ["l1","Remember","push d into a rolling memory of the last few directions (the order knob)."],
+         ["l2","Fit","fit a polynomial through the remembered directions — curvature information for FREE."],
+         ["l3","Hop along the curve","step along the fitted curve instead of a straight line."]],
+  meta:"cost: <b>1 model call / step</b> · deterministic · needs a few rungs of history before it beats Euler",
+  watch:"the first steps behave exactly like Euler (no history yet); set <b>order = 1</b> and it IS Euler — then compare order 4."},
+};
+function renderAlgo(){
+  const a=ALGO[KIND];
+  document.getElementById('algo').innerHTML=
+    `<h5>${a.title}</h5><p class="what">${a.what}</p>`+
+    `<ol>${a.steps.map(([ph,t,d])=>`<li data-ph="${ph}"><b>${t}.</b> ${d}</li>`).join('')}</ol>`+
+    `<p class="meta">${a.meta}</p><p class="watch">👀 watch for: ${a.watch}</p>`;
+  algoHl('');
+}
+function algoHl(ph){
+  document.querySelectorAll('#algo li').forEach(li=>li.classList.toggle('on',!!ph&&li.dataset.ph===ph));
+}
 function phaseSeq(){
   if(KIND==='euler')return['e1','e2','e3','e4'];
   if(KIND==='anc')return['e1','e2','a1','e3','a2'];
@@ -443,6 +507,7 @@ function applyPhase(seq,k,isManual){
   $('phase').innerHTML=(isManual?`<span class="subtag">sub-step ${k+1} / ${seq.length}</span>`:'')
     +phrase(seq[k])
     +(isManual?' <span class="nexthint">— press ⏵ Substep for the next sub-step</span>':'');
+  algoHl(seq[k]);
   draw();
 }
 function finishStep(isManual){
@@ -451,11 +516,12 @@ function finishStep(isManual){
     ? `<b>done.</b> σ = 0: every sample is the model's final clean answer. Check the landing shares in the line above against the true cluster weights — that agreement is what "sampling the distribution" means.`
     : `<b>rung ${stepI-1} complete</b> — all samples now sit at σ = ${sigs[stepI]<0.1?sigs[stepI].toFixed(3):sigs[stepI].toFixed(2)}. ${stepI<3?'Early hops are HUGE (look at the trails streaming in from off-screen — pure noise lives far outside this view).':stepI>sigs.length-4?'Final hops are tiny: fine placement inside a cluster.':'Mid-descent: samples are choosing their cluster.'}`
     +(isManual&&stepI<sigs.length-1?' <span class="nexthint">— ⏵ Substep again to begin the next step\'s sub-steps.</span>':'');
+  algoHl('');
 }
 function cancelManual(){
   if(!manual)return;
   manual=null;phaseViz=null;hlLine='';code();
-  $('phase').innerHTML=DEFAULT_PHASE;draw();
+  $('phase').innerHTML=DEFAULT_PHASE;algoHl('');draw();
 }
 function animateStep(done){
   if(stepI>=sigs.length-1){done&&done();return;}
