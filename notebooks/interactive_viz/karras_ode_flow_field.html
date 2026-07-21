@@ -1,0 +1,279 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Flow Field a Sampler Follows</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.8px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 11px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:120px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:150px;accent-color:var(--ac);}
+  .v{font-family:monospace;font-weight:700;color:var(--ac);min-width:44px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  canvas#cv{width:100%;display:block;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:crosshair;}
+  .story{margin-top:10px;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  .inforow{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;align-items:stretch;}
+  .inspect{flex:1 1 380px;min-width:300px;border-left:5px solid var(--out);}
+  .inspect h4{margin:0 0 4px;font-size:12.5px;color:var(--out);}
+  .inspect .body{font-size:12.2px;color:var(--soft);line-height:1.55;}
+  .inspect .body b{color:var(--ink);}
+  .inspect .body code{background:#eef2fb;border-radius:4px;padding:0 4px;font-size:11.3px;}
+  .code{flex:1 1 430px;min-width:300px;background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.4px;line-height:1.62;overflow-x:auto;white-space:pre;}
+  .code .ln{display:block;border-radius:4px;padding:0 4px;margin:0 -2px;transition:background .12s;}
+  .code .ln.rng{background:rgba(123,92,214,.16);}
+  .code .ln.cur{background:rgba(123,92,214,.52);box-shadow:inset 2.5px 0 0 #b9a5ec;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:8px;line-height:1.5;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>Before Any Sampler: the Arrow Field They All Follow</h1>
+<p class="sub">Every point in data space feels a pull <code>d = (x − denoised) / σ</code> — "away from your cleaned-up self, per unit of σ".
+Move DOWN this field as σ shrinks and you are sampling. Data here is a 2-D toy: three teal clusters instead of images, so the entire field is visible at once.
+<b>Drag σ to morph the field · CLICK ANYWHERE to dissect the arrow at that point · chips replay each regime · ▶ releases walkers.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① What one arrow means</button>
+  <button class="chip" data-s="1">② High σ: one blurry magnet</button>
+  <button class="chip" data-s="2">③ Low σ: three sharp magnets</button>
+  <button class="chip" data-s="3">④ Following the field = sampling</button>
+</div>
+<div class="selrow">
+  <button class="play" id="walk">▶ Release 60 walkers</button>
+  <button class="reset" id="clr">↺ Clear walkers</button>
+  <span class="div"></span>
+  σ <input type="range" id="sig" min="-2.53" max="2.4" step="0.01" value="1.1"><span class="v" id="sigv">3.0</span>
+  <span class="div"></span>
+  <label style="cursor:pointer;"><input type="checkbox" id="stream" checked> streamlines</label>
+</div>
+
+<div class="wrap">
+<div class="card"><canvas id="cv" width="1000" height="560"></canvas></div>
+<div class="story" id="story"></div>
+<div class="inforow">
+  <div class="card inspect">
+    <h4 id="insT">Click the field to dissect an arrow</h4>
+    <div class="body" id="insB">Clicking shows the three actors at that point: your position <b>x</b>, the model's cleaned-up estimate <b style="color:#16a3a3">denoised = D(x,σ)</b>, and the resulting direction <b style="color:#7b5cd6">d = (x−denoised)/σ</b> that every sampler in the next cells will consume.</div>
+  </div>
+  <div class="code" id="code"></div>
+</div>
+<p class="legend"><b class="o">teal blobs</b> = the data (three clusters) · grey arrows = the pull field at the current σ ·
+<b class="a">purple</b> = the dissected arrow &amp; walkers · <b class="i">orange ✕</b> = the model's denoised estimate for the clicked point ·
+faint drifting specks = streamlines showing where the field carries things</p>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+const W=1000,H=560;
+// world coords [-6,6]x[-4.2,4.2] mapped to canvas
+const SX=x=>W/2+x*76, SY=y=>H/2-y*62;
+const IX=px=>(px-W/2)/76, IY=py=>-(py-H/2)/62;
+const MU=[[-3,-1.8],[2.8,-2.2],[0.2,2.9]], PI=[0.4,0.35,0.25], PV=0.45*0.45;
+function sig(){return Math.exp(+$('sig').value);}
+// exact posterior denoiser for the GMM
+function denoise(x,y,s){
+  const s2=s*s;let ws=0,dx=0,dy=0;
+  for(let k=0;k<3;k++){
+    const vx=x-MU[k][0],vy=y-MU[k][1],v=PV+s2;
+    const w=PI[k]*Math.exp(-(vx*vx+vy*vy)/(2*v))/v;
+    ws+=w;
+    dx+=w*(PV*x+s2*MU[k][0])/v;
+    dy+=w*(PV*y+s2*MU[k][1])/v;
+  }
+  return [dx/ws,dy/ws];
+}
+// ---------- code ----------
+const CODE_LINES=[
+ {t:'dn',h:'def <span class="fn">denoise</span>(model, x, sig):              <span class="cm"># the EDM wrapper from above</span>'},
+ {t:'dn',h:'    c_skip, c_out, c_in = <span class="fn">scalings</span>(sig)'},
+ {t:'dn',h:'    return model((x*c_in, sig))*c_out + x*c_skip   <span class="cm"># ≈ E[x₀ | x]  (here: exact)</span>'},
+ {h:' '},
+ {t:'d',h:'d = (x - denoised) / sig      <span class="cm"># THE arrow: "noise direction", per unit σ</span>'},
+ {h:' '},
+ {h:'<span class="cm"># one Euler step of every sampler in the next cells:</span>'},
+ {t:'e',h:'x = x + d * (sig_next - sig)  <span class="cm"># sig_next &lt; sig ⇒ move AGAINST d, toward data</span>'},
+];
+$('code').innerHTML=CODE_LINES.map(l=>`<span class="ln">${l.h||' '}</span>`).join('');
+const lnEls=[...$('code').querySelectorAll('.ln')];
+let rngTags=['dn','d'],curTag=null;
+function codeHl(){lnEls.forEach((el,i)=>{const t=CODE_LINES[i].t;
+  el.classList.toggle('rng',!!t&&rngTags.includes(t));
+  el.classList.toggle('cur',!!t&&t===curTag);});}
+// ---------- state ----------
+let probe=null;          // {x,y}
+let walkers=[];          // {x,y,s} descending sigma
+let specks=[];           // streamline particles
+let sweepT=null;
+for(let i=0;i<260;i++)specks.push({x:(Math.random()*12-6),y:(Math.random()*8.4-4.2),a:Math.random()});
+// ---------- draw ----------
+function drawField(){
+  ctx.clearRect(0,0,W,H);
+  const s=sig();
+  // data blobs
+  for(let k=0;k<3;k++){
+    const g=ctx.createRadialGradient(SX(MU[k][0]),SY(MU[k][1]),4,SX(MU[k][0]),SY(MU[k][1]),56);
+    g.addColorStop(0,'rgba(22,163,163,0.5)');g.addColorStop(1,'rgba(22,163,163,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(SX(MU[k][0]),SY(MU[k][1]),56,0,7);ctx.fill();
+    ctx.fillStyle='#0f7d7d';ctx.font='700 11px "Segoe UI"';ctx.textAlign='center';
+    ctx.fillText('data cluster '+(k+1),SX(MU[k][0]),SY(MU[k][1])+4);
+  }
+  // arrows on a grid
+  const step=0.62;
+  for(let x=-5.7;x<=5.7;x+=step)for(let y=-3.9;y<=3.9;y+=step){
+    const [dx,dy]=denoise(x,y,s);
+    let vx=(x-dx)/s, vy=(y-dy)/s;                 // d
+    const m=Math.hypot(vx,vy);if(m<1e-9)continue;
+    const L=Math.min(24,6+m*14);                   // arrow length px
+    // draw pointing TOWARD data (i.e. -d), since sampling moves against d
+    const ux=-vx/m,uy=-vy/m;
+    const x1=SX(x),y1=SY(y),x2=x1+ux*L,y2=y1-uy*L;
+    const shade=Math.min(0.85,0.25+m*0.4);
+    ctx.strokeStyle=`rgba(90,107,134,${shade})`;ctx.lineWidth=1.6;
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    const a=Math.atan2(y2-y1,x2-x1);
+    ctx.beginPath();ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-6*Math.cos(a-0.44),y2-6*Math.sin(a-0.44));
+    ctx.lineTo(x2-6*Math.cos(a+0.44),y2-6*Math.sin(a+0.44));
+    ctx.closePath();ctx.fillStyle=`rgba(90,107,134,${shade})`;ctx.fill();
+  }
+  // streamline specks
+  if($('stream').checked){
+    ctx.fillStyle='rgba(123,92,214,0.5)';
+    specks.forEach(p=>{
+      const [dx,dy]=denoise(p.x,p.y,s);
+      const vx=(p.x-dx)/s,vy=(p.y-dy)/s;
+      p.x-=vx*0.012*s;p.y-=vy*0.012*s;   // drift toward data at rate ∝ field
+      p.a+=0.008;
+      if(p.a>1||Math.abs(p.x)>6||Math.abs(p.y)>4.2){p.x=Math.random()*12-6;p.y=Math.random()*8.4-4.2;p.a=0;}
+      ctx.globalAlpha=0.55*Math.sin(Math.PI*p.a);
+      ctx.beginPath();ctx.arc(SX(p.x),SY(p.y),1.8,0,7);ctx.fill();
+    });
+    ctx.globalAlpha=1;
+  }
+  // walkers
+  walkers.forEach(wk=>{
+    ctx.fillStyle='#7b5cd6';ctx.strokeStyle='#fff';ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.arc(SX(wk.x),SY(wk.y),4.5,0,7);ctx.fill();ctx.stroke();
+  });
+  // probe dissection
+  if(probe){
+    const [dx,dy]=denoise(probe.x,probe.y,s);
+    const vx=(probe.x-dx)/s,vy=(probe.y-dy)/s;
+    // x point
+    ctx.fillStyle='#25324a';ctx.beginPath();ctx.arc(SX(probe.x),SY(probe.y),6,0,7);ctx.fill();
+    ctx.font='800 12px "Segoe UI"';ctx.textAlign='left';
+    ctx.fillText('x (you are here)',SX(probe.x)+10,SY(probe.y)-8);
+    // denoised point
+    ctx.strokeStyle='#f6921e';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(SX(dx)-7,SY(dy)-7);ctx.lineTo(SX(dx)+7,SY(dy)+7);
+    ctx.moveTo(SX(dx)+7,SY(dy)-7);ctx.lineTo(SX(dx)-7,SY(dy)+7);ctx.stroke();
+    ctx.fillStyle='#c9791a';
+    ctx.fillText('denoised = D(x, σ)',SX(dx)+11,SY(dy)+4);
+    // dashed connector
+    ctx.setLineDash([5,4]);ctx.strokeStyle='#93a0ba';ctx.lineWidth=1.6;
+    ctx.beginPath();ctx.moveTo(SX(probe.x),SY(probe.y));ctx.lineTo(SX(dx),SY(dy));ctx.stroke();
+    ctx.setLineDash([]);
+    // purple arrow -d (the move direction)
+    const m=Math.hypot(vx,vy),ux=-vx/m,uy=-vy/m,L=64;
+    const x2=SX(probe.x)+ux*L,y2=SY(probe.y)-uy*L;
+    ctx.strokeStyle='#7b5cd6';ctx.lineWidth=4;
+    ctx.beginPath();ctx.moveTo(SX(probe.x),SY(probe.y));ctx.lineTo(x2,y2);ctx.stroke();
+    const a=Math.atan2(y2-SY(probe.y),x2-SX(probe.x));
+    ctx.fillStyle='#7b5cd6';ctx.beginPath();ctx.moveTo(x2,y2);
+    ctx.lineTo(x2-11*Math.cos(a-0.42),y2-11*Math.sin(a-0.42));
+    ctx.lineTo(x2-11*Math.cos(a+0.42),y2-11*Math.sin(a+0.42));ctx.closePath();ctx.fill();
+    ctx.font='800 12px "Segoe UI"';
+    ctx.fillText('move direction −d',x2+8,y2);
+  }
+  // HUD
+  ctx.fillStyle='#25324a';ctx.font='800 22px "Segoe UI"';ctx.textAlign='left';
+  ctx.fillText('σ = '+(s<0.15?s.toFixed(2):s.toFixed(1)),16,32);
+  ctx.font='600 11px "Segoe UI"';ctx.fillStyle='#5a6b86';
+  ctx.fillText(s>2?'arrows all agree: “head for the middle”':s>0.4?'arrows starting to choose sides':'arrows commit: nearest cluster wins',16,50);
+}
+// ---------- stages ----------
+const STORIES=[
+ `<b>① One arrow, three actors.</b> Click anywhere. At your click point <b>x</b>, the model reports its best guess of the clean data, <b style="color:#c9791a">denoised = D(x,σ)</b> (orange ✕ — here computed exactly for the toy clusters, playing the role of the trained network). The gap between them, divided by σ, is <code>d</code> — and moving <em>against</em> it (purple arrow) is moving toward cleanliness. Every sampler in the coming cells is just a policy for how boldly to follow these arrows.`,
+ `<b>② High σ: one blurry magnet.</b> Replay glides σ up to ~11. With that much assumed noise, the model can't tell which cluster you belong to — its denoised estimate collapses toward the <em>average of all data</em>, so every arrow points at one imaginary center-of-mass. Note the arrows are also long: far from data, the pull is strong. This is why the first giant stride of the Karras schedule is safe — out here the field is smooth and unanimous.`,
+ `<b>③ Low σ: three sharp magnets.</b> Replay glides σ down to 0.08. Now the model trusts fine detail: D(x,σ) snaps to the <em>nearest</em> cluster and the field shatters into three basins with genuine decision boundaries between them. Probe near a boundary: a tiny nudge flips which cluster claims you. This is why late steps must be small — the field changes direction quickly, and a big Euler leap would overshoot into the wrong basin.`,
+ `<b>④ Following the field IS sampling.</b> Press ▶: 60 walkers start scattered (as if drawn at σ_max) and repeatedly apply <code>x += d·(σ_next−σ)</code> while σ runs down the Karras ladder. Watch them ride the ②-field toward the middle first, then split three ways as the ③-field emerges — arriving distributed across clusters roughly like the data (40/35/25%). That two-phase motion — <em>consensus, then commitment</em> — is exactly what you'll see as trajectories in the next visualizations.`,
+];
+let stage=0;
+function setStage(s){stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('story').innerHTML=STORIES[s];
+  rngTags=s===0?['dn','d']:s===3?['d','e']:['d'];
+  curTag=s===3?'e':s===0?'d':null;codeHl();
+}
+function replay(){
+  clearInterval(sweepT);
+  if(stage===0){probe={x:1.1,y:0.6};return;}
+  if(stage===1){glide(+$('sig').value,2.4);return;}
+  if(stage===2){glide(+$('sig').value,-2.53);return;}
+  if(stage===3){launchWalkers();return;}
+}
+function glide(a,b){let v=a;
+  sweepT=setInterval(()=>{v+=(b-a)/90;$('sig').value=v;syncSig();
+    if((b>a&&v>=b)||(b<a&&v<=b))clearInterval(sweepT);},35);}
+// walkers follow Karras ladder
+function karras(n){const s=[];const r=7,mx=11,mn=0.05;
+  for(let i=0;i<n;i++){const t=i/(n-1);
+    s.push(Math.pow(Math.pow(mx,1/r)+t*(Math.pow(mn,1/r)-Math.pow(mx,1/r)),r));}
+  s.push(0);return s;}
+let walkT=null;
+function launchWalkers(){
+  clearInterval(walkT);
+  const lad=karras(48);let i=0;
+  walkers=[];for(let k=0;k<60;k++){let u=0,v=0;while(!u)u=Math.random();v=Math.random();
+    const r1=Math.sqrt(-2*Math.log(u)),th=2*Math.PI*v;
+    walkers.push({x:r1*Math.cos(th)*lad[0]*0.42,y:r1*Math.sin(th)*lad[0]*0.35});}
+  $('sig').value=Math.log(lad[0]);syncSig();
+  walkT=setInterval(()=>{
+    if(i>=lad.length-1){clearInterval(walkT);curTag=null;codeHl();return;}
+    const s=lad[i],sn=lad[i+1];
+    walkers.forEach(w=>{const [dx,dy]=denoise(w.x,w.y,Math.max(s,1e-3));
+      const vx=(w.x-dx)/Math.max(s,1e-3),vy=(w.y-dy)/Math.max(s,1e-3);
+      w.x+=vx*(sn-s);w.y+=vy*(sn-s);});
+    i++;$('sig').value=Math.log(Math.max(sn,0.08));syncSig();
+    curTag='e';codeHl();
+  },110);
+}
+// ---------- interactions ----------
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect();
+  probe={x:IX((e.clientX-r.left)/r.width*W), y:IY((e.clientY-r.top)/r.height*H)};
+  const s=sig(),[dx,dy]=denoise(probe.x,probe.y,s);
+  const m=Math.hypot(probe.x-dx,probe.y-dy);
+  $('insT').textContent=`arrow at (${probe.x.toFixed(1)}, ${probe.y.toFixed(1)}), σ = ${s.toFixed(2)}`;
+  $('insB').innerHTML=`denoised lands at (<b>${dx.toFixed(1)}, ${dy.toFixed(1)}</b>) — ${s>2?'near the overall data mean: at high σ all clusters blur into one':'inside the nearest cluster: at low σ the model commits'}. |x − denoised| = <b>${m.toFixed(2)}</b>, so |d| = ${ (m/s).toFixed(2)}. One Euler step with Δσ = −1 would move you ${ (m/s).toFixed(2)} units along the purple arrow.`;
+  curTag='d';codeHl();
+});
+function syncSig(){const s=sig();$('sigv').textContent=s<0.15?s.toFixed(2):s.toFixed(1);}
+$('sig').oninput=()=>{clearInterval(sweepT);syncSig();};
+$('walk').onclick=launchWalkers;
+$('clr').onclick=()=>{clearInterval(walkT);walkers=[];};
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{setStage(+c.dataset.s);replay();});
+// ---------- loop ----------
+function loop(){drawField();requestAnimationFrame(loop);}
+setStage(0);probe={x:1.1,y:0.6};syncSig();loop();
+// ---------- height ----------
+function chh(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:chh()},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);
+setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>

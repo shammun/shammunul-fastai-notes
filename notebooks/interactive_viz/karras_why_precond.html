@@ -1,0 +1,341 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why Pre-conditioning? The Prediction Problem</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.8px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 11px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:105px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:130px;accent-color:var(--ac);}
+  .v{font-family:monospace;font-weight:700;color:var(--ac);min-width:44px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;}
+  /* image pipeline */
+  .imgs{display:flex;gap:8px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .slot{text-align:center;transition:opacity .25s;}
+  .slot canvas{width:104px;height:104px;image-rendering:pixelated;border-radius:8px;border:3px solid var(--line);display:block;background:#fff;}
+  .slot .cap{font-size:10.6px;font-weight:700;color:var(--soft);margin-top:3px;line-height:1.3;}
+  .slot .shape{font-family:monospace;font-size:9.6px;color:var(--ac);}
+  .slot.dim{opacity:.32;}
+  .slot.hot canvas{border-color:var(--ac);box-shadow:0 0 0 3px rgba(123,92,214,.22);}
+  .slot.inC canvas{border-color:var(--in);} .slot.outC canvas{border-color:var(--out);} .slot.acC canvas{border-color:var(--ac);}
+  .op{align-self:center;font-size:19px;font-weight:800;color:var(--soft);padding:0 1px;transition:color .2s, transform .2s;}
+  .op.hot{color:var(--ac);transform:scale(1.25);}
+  .op .oplab{display:block;font-size:9px;font-weight:700;text-align:center;color:var(--soft);}
+  /* shortcut meter */
+  .meterCard{flex:1 1 300px;min-width:270px;}
+  .meterCard h4{margin:0 0 6px;font-size:12.5px;color:var(--ink);}
+  .barwrap{height:26px;border-radius:8px;border:1px solid var(--line);overflow:hidden;display:flex;margin:4px 0 2px;}
+  .barwrap .seg1{background:repeating-linear-gradient(45deg,#cfd8e8,#cfd8e8 6px,#dde5f2 6px,#dde5f2 12px);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#5a6b86;transition:width .25s;white-space:nowrap;overflow:hidden;}
+  .barwrap .seg2{background:linear-gradient(90deg,#8d6fe0,#7b5cd6);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;transition:width .25s;white-space:nowrap;overflow:hidden;}
+  .meterNote{font-size:11.3px;color:var(--soft);line-height:1.5;}
+  .meterNote b{color:var(--ink);}
+  /* signal curve */
+  .curveCard{flex:1 1 380px;min-width:300px;}
+  svg text{font-family:"Segoe UI",sans-serif;}
+  /* blend bar */
+  .blend{margin-top:6px;}
+  .blendbar{position:relative;height:18px;border-radius:9px;background:linear-gradient(90deg,var(--out),var(--ac) 50%,var(--in));opacity:.85;}
+  .blenddot{position:absolute;top:-5px;width:28px;height:28px;border-radius:50%;background:#fff;border:3.5px solid var(--ac);transform:translateX(-50%);box-shadow:0 3px 8px rgba(37,50,74,.25);transition:left .2s;}
+  .blendlabs{display:flex;justify-content:space-between;font-size:10px;color:var(--soft);font-weight:700;margin-top:3px;}
+  .story{margin-top:10px;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  .inforow{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;align-items:stretch;}
+  .inspect{flex:1 1 380px;min-width:300px;border-left:5px solid var(--out);}
+  .inspect h4{margin:0 0 4px;font-size:12.5px;color:var(--out);}
+  .inspect .body{font-size:12.2px;color:var(--soft);line-height:1.55;}
+  .inspect .body b{color:var(--ink);}
+  .inspect .body code{background:#eef2fb;border-radius:4px;padding:0 4px;font-size:11.3px;}
+  .code{flex:1 1 430px;min-width:300px;background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.4px;line-height:1.62;overflow-x:auto;white-space:pre;}
+  .code .ln{display:block;border-radius:4px;padding:0 4px;margin:0 -2px;transition:background .12s;}
+  .code .ln.rng{background:rgba(123,92,214,.16);}
+  .code .ln.cur{background:rgba(123,92,214,.52);box-shadow:inset 2.5px 0 0 #b9a5ec;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:8px;line-height:1.5;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.n{color:var(--neg);}
+</style></head><body>
+<h1>Why Pre-conditioning? Pick the Network's Homework Carefully</h1>
+<p class="sub">A diffusion network is shown a <b style="color:var(--in)">noisy image</b> and must output a <b style="color:var(--ac)">target</b>.
+But <em>which</em> target? Predict the noise and the job is trivial when the image is drowned in noise; predict the clean image and it's trivial
+when there's barely any. EDM's answer: predict <b>only the part the input can't already tell you</b>.
+<b>Click the ①–⑤ chips (each replays its own demo) · drag σ · click the noisy image for fresh noise.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① The setup</button>
+  <button class="chip" data-s="1">② Target = noise ε</button>
+  <button class="chip" data-s="2">③ Target = clean x₀</button>
+  <button class="chip" data-s="3">④ EDM: the c_skip blend</button>
+  <button class="chip" data-s="4">⑤ Sweep all σ</button>
+</div>
+<div class="selrow">
+  <button class="play" id="play">▶ Replay stage</button>
+  <button class="reset" id="rr">🎲 New noise</button>
+  <span class="div"></span>
+  noise level σ <input type="range" id="sig" min="-3.9" max="3.7" step="0.01" value="-1.1">
+  <span class="v" id="sigv">0.33</span>
+  <span class="div"></span>
+  <button class="stepb sp" data-v="-3.5">σ=0.03 tiny</button>
+  <button class="stepb sp" data-v="-1.1">σ≈σ_data</button>
+  <button class="stepb sp" data-v="3.4">σ=30 huge</button>
+</div>
+
+<div class="wrap">
+<div class="card">
+  <div class="imgs" id="imgs">
+    <div class="slot outC" id="sl_x0"><canvas id="cv_x0" width="16" height="16"></canvas><div class="cap">clean image x₀<div class="shape">std ≈ σ_data = 0.33</div></div></div>
+    <div class="op" id="op_plus">+<span class="oplab">&nbsp;</span></div>
+    <div class="slot inC" id="sl_n"><canvas id="cv_n" width="16" height="16"></canvas><div class="cap">noise n·σ<div class="shape">std = σ = <span id="nstd">0.33</span></div></div></div>
+    <div class="op" id="op_eq">=<span class="oplab">&nbsp;</span></div>
+    <div class="slot inC" id="sl_in" title="click for new noise"><canvas id="cv_in" width="16" height="16"></canvas><div class="cap">what the network SEES<div class="shape">noised = x₀ + n·σ</div></div></div>
+    <div class="op" id="op_arr">→<span class="oplab">must<br>output</span></div>
+    <div class="slot acC hot" id="sl_t"><canvas id="cv_t" width="16" height="16"></canvas><div class="cap" id="cap_t">the TARGET<div class="shape" id="shape_t">= ?</div></div></div>
+  </div>
+  <div class="blend">
+    <div class="blendbar"><div class="blenddot" id="bdot" style="left:50%"></div></div>
+    <div class="blendlabs"><span>c_skip = 1 · σ tiny: keep the input, learn the correction</span><span id="blendmid">c_skip = 0.50</span><span>c_skip = 0 · σ huge: input useless, learn from scratch</span></div>
+  </div>
+</div>
+
+<div class="row" style="margin-top:12px;">
+  <div class="card meterCard">
+    <h4>🕵️ The copy-paste shortcut meter</h4>
+    <div style="font-size:11px;color:var(--soft);margin-bottom:2px;">How much of the current <b>target</b> could the network produce by trivially transforming its input, learning nothing?</div>
+    <div class="barwrap"><div class="seg1" id="cheat" style="width:50%">shortcut</div><div class="seg2" id="learn" style="width:50%">real learning</div></div>
+    <div class="meterNote" id="meterNote">—</div>
+  </div>
+  <div class="card curveCard">
+    <h4 style="margin:0 0 4px;font-size:12.5px;">📉 Learning signal across all σ (the whole story in one plot)</h4>
+    <svg id="curve" viewBox="0 0 460 168" style="width:100%;height:auto;display:block;"></svg>
+  </div>
+</div>
+
+<div class="story" id="story"></div>
+
+<div class="inforow">
+  <div class="card inspect">
+    <h4 id="insT">How to read this page</h4>
+    <div class="body" id="insB">The five pictures on top are one training example being assembled, left to right. The purple-framed one is the network's homework. Click any picture to interrogate it; the chips replay each argument.</div>
+  </div>
+  <div class="code" id="code"></div>
+</div>
+
+<p class="legend"><b class="o">teal</b> = clean data side · <b class="i">orange</b> = noise / network-input side · <b class="a">purple</b> = the target & everything EDM chooses ·
+striped grey = effort wasted on the copy-paste shortcut · the ✏️ dot on the σ-plot is your current σ</p>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const SIG_DATA=0.33;
+// ---------- toy image ----------
+const IMG=[ // 16x16 smiley, values in [-.6,.6]
+];
+const px=new Float32Array(256);
+(function(){ // draw smiley into px
+  for(let y=0;y<16;y++)for(let x=0;x<16;x++){
+    const dx=x-7.5,dy=y-7.5,r=Math.hypot(dx,dy);
+    let v=-0.5;                       // dark bg
+    if(r<7) v=0.45;                   // face
+    if(r<7&&((x==5&&y==6)||(x==10&&y==6)||(x==5&&y==5)||(x==10&&y==5))) v=-0.55; // eyes
+    if(r<7&&y==10&&x>=5&&x<=10) v=-0.55;
+    if(r<7&&y==9&&(x==4||x==11)) v=-0.55;
+    px[y*16+x]=v*SIG_DATA/0.33;      // std ~ sig_data
+  }
+})();
+let noise=new Float32Array(256);
+function reroll(){for(let i=0;i<256;i++){let u=0,v=0;while(!u)u=Math.random();v=Math.random();noise[i]=Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}}
+reroll();
+function draw(cv,fn,scale){ // fn(i)->value; auto range [-3sd,3sd] with sd=scale
+  const x=cv.getContext('2d'),im=x.createImageData(16,16);
+  for(let i=0;i<256;i++){
+    let t=(fn(i)/(2.6*scale)+1)/2; t=Math.max(0,Math.min(1,t));
+    const c=Math.round(18+t*230);
+    im.data[i*4]=c;im.data[i*4+1]=c;im.data[i*4+2]=c;im.data[i*4+3]=255;
+  }
+  x.putImageData(im,0,0);
+}
+// ---------- state ----------
+let mode=3;      // 1=eps 2=x0 3=edm (stage 0 shows edm), stage drives mode
+let stage=0, playing=false, timer=null, sweepT=null;
+function sig(){return Math.exp(+$('sig').value);}
+function cskip(s){return SIG_DATA*SIG_DATA/(s*s+SIG_DATA*SIG_DATA);}
+function cout(s){return s*SIG_DATA/Math.sqrt(s*s+SIG_DATA*SIG_DATA);}
+function cin(s){return 1/Math.sqrt(s*s+SIG_DATA*SIG_DATA);}
+// shortcut fraction per mode (didactic but principled):
+// eps-target: corr(input, eps)^2 = sig^2/(sig^2+sd^2)  -> variance of target explainable by a scaled copy of input
+// x0-target : corr(input, x0)^2  = sd^2/(sig^2+sd^2)
+// edm-target: 0 by construction (target ⟂ input in the population sense)
+function shortcut(m,s){const t=s*s/(s*s+SIG_DATA*SIG_DATA);
+  return m===1?t:m===2?1-t:0;}
+// ---------- code panel ----------
+const CODE_LINES=[
+ {h:'<span class="cm"># one training example, three possible homeworks ─────────────</span>'},
+ {t:'mk',h:'noised = x0 + noise * sig            <span class="cm"># what the network sees</span>'},
+ {h:' '},
+ {t:'a',h:'<span class="cm"># Option A (DDPM): predict the noise</span>'},
+ {t:'a2',h:'target = noise                        <span class="cm"># trivial when sig ≫ σ_data: noised≈noise·sig</span>'},
+ {h:' '},
+ {t:'b',h:'<span class="cm"># Option B: predict the clean image</span>'},
+ {t:'b2',h:'target = x0                           <span class="cm"># trivial when sig ≪ σ_data: noised≈x0</span>'},
+ {h:' '},
+ {t:'c',h:'<span class="cm"># EDM (this notebook): predict only the NEW information</span>'},
+ {t:'c1',h:'c_skip = sig_data**2 / (sig**2 + sig_data**2)   <span class="cm"># "how much of noised is reusable"</span>'},
+ {t:'c2',h:'c_out  = sig*sig_data / (sig**2+sig_data**2)**<span class="num">0.5</span>  <span class="cm"># scales target to std 1</span>'},
+ {t:'c3',h:'target = (x0 - c_skip*noised) / c_out <span class="cm"># the part x0 that noised can\'t explain</span>'},
+];
+$('code').innerHTML=CODE_LINES.map(l=>`<span class="ln">${l.h||' '}</span>`).join('');
+const lnEls=[...$('code').querySelectorAll('.ln')];
+let rngTags=[],curTag=null;
+function codeHl(){lnEls.forEach((el,i)=>{const t=CODE_LINES[i].t;
+  el.classList.toggle('rng',!!t&&rngTags.some(r=>t===r||t.startsWith(r)));
+  el.classList.toggle('cur',!!t&&t===curTag);});}
+// ---------- curve panel ----------
+function curveSVG(){
+  const W=460,H=168,L=44,R=10,T=16,B=26,pw=W-L-R,ph=H-T-B;
+  const X=lg=>L+ (lg+3.9)/(3.7+3.9)*pw;   // logsig -3.9..3.7
+  const Y=v=>T+(1-v)*ph;
+  let path=(m,col,dash)=>{let d='';for(let i=0;i<=120;i++){const lg=-3.9+i/120*7.6,s=Math.exp(lg);
+    const v=1-shortcut(m,s);d+=(i?'L':'M')+X(lg).toFixed(1)+','+Y(v).toFixed(1);}
+    return `<path d="${d}" fill="none" stroke="${col}" stroke-width="2.6" ${dash?`stroke-dasharray="${dash}"`:''}/>`;}
+  const sd=X(Math.log(SIG_DATA));
+  return `
+   <rect x="${L}" y="${T}" width="${pw}" height="${ph}" fill="#f8fbff" stroke="#dde5f2"/>
+   <line x1="${sd}" y1="${T}" x2="${sd}" y2="${T+ph}" stroke="#93a0ba" stroke-dasharray="3 3"/>
+   <text x="${sd}" y="${T-4}" font-size="9" fill="#5a6b86" text-anchor="middle">σ = σ_data</text>
+   ${path(1,'#f6921e')}${path(2,'#16a3a3')}${path(3,'#7b5cd6')}
+   <text x="${X(2.9)}" y="${Y(1-shortcut(1,Math.exp(2.9)))-6}" font-size="10" font-weight="700" fill="#f6921e" text-anchor="middle">predict ε</text>
+   <text x="${X(-3.1)}" y="${Y(1-shortcut(2,Math.exp(-3.1)))-6}" font-size="10" font-weight="700" fill="#16a3a3" text-anchor="middle">predict x₀</text>
+   <text x="${X(0.6)}" y="${Y(1)-4}" font-size="10" font-weight="700" fill="#7b5cd6" text-anchor="middle">EDM target: 100% everywhere</text>
+   <text x="${L-6}" y="${Y(1)+3}" font-size="9" fill="#5a6b86" text-anchor="end">100%</text>
+   <text x="${L-6}" y="${Y(0)+3}" font-size="9" fill="#5a6b86" text-anchor="end">0%</text>
+   <text x="${L-34}" y="${T+ph/2}" font-size="9.5" fill="#5a6b86" transform="rotate(-90 ${L-34} ${T+ph/2})" text-anchor="middle">real learning signal</text>
+   <text x="${L+pw/2}" y="${H-6}" font-size="10" fill="#5a6b86" text-anchor="middle">noise level σ (log scale) →</text>
+   <text x="${X(-3.5)}" y="${H-6}" font-size="9" fill="#93a0ba">0.02</text>
+   <text x="${X(3.4)}" y="${H-6}" font-size="9" fill="#93a0ba" text-anchor="end">30</text>
+   <circle id="cdot" cx="0" cy="0" r="5.5" fill="#fff" stroke="#25324a" stroke-width="2.5"/>
+   <text id="cdotlab" x="0" y="0" font-size="9.5" font-weight="700" fill="#25324a">✏️ you</text>`;
+}
+$('curve').innerHTML=curveSVG();
+function moveDot(){
+  const lg=+$('sig').value, m=mode;
+  const W=460,L=44,R=10,T=16,B=26,pw=W-L-R,ph=168-T-B;
+  const x=L+(lg+3.9)/(3.7+3.9)*pw, y=T+(1-(1-shortcut(m===3?3:m,sig())))*ph;
+  const dot=$('cdot'),lab=$('cdotlab');
+  dot.setAttribute('cx',x);dot.setAttribute('cy',y);
+  lab.setAttribute('x',x+9);lab.setAttribute('y',y+4);
+}
+// ---------- stories / stages ----------
+const STORIES=[
+ `<b>① The setup.</b> Every training example is built left→right: take a clean image <b>x₀</b> (typical pixel std = <b>σ_data ≈ 0.33</b> for fashion-MNIST), add Gaussian noise scaled by a randomly drawn <b>σ</b>, and hand the sum to the network. The only open design question of this whole notebook: <b>what should the purple box — the homework — contain?</b> Drag σ and watch the middle image drown and resurface. Then visit ②③④.`,
+ `<b>② Homework A: "output the noise ε".</b> Sounds fine — until σ gets big. Push σ to 30: the input is now ≈ noise·σ, so the network can score near-perfectly by <b>copying its input and dividing by σ</b>. The shortcut meter maxes out, and the <b style="color:#f6921e">orange curve</b> in the σ-plot collapses on the right: at high noise, ε-prediction teaches the network almost nothing — training compute burned on copy-paste.`,
+ `<b>③ Homework B: "output the clean x₀".</b> The mirror-image failure. Pull σ to 0.03: the input already <em>is</em> x₀ (barely dusted), so copying the input scores perfectly. The <b style="color:#16a3a3">teal curve</b> collapses on the <em>left</em>. Neither pure choice works across the whole σ range a diffusion model must master.`,
+ `<b>④ EDM's homework: subtract the shortcut first.</b> <code>c_skip</code> measures exactly how much of the input is reusable as-is, and the target becomes <code>(x0 − c_skip·noised)/c_out</code> — <b>only the information the input cannot already provide</b>, rescaled to std 1. Watch the blend dot: at tiny σ, c_skip→1 (input is nearly the answer, so the target is the small correction); at huge σ, c_skip→0 (input is useless, target is essentially x₀ itself... expressed in noise-units). The shortcut meter now reads ~0 <em>at every σ</em>.`,
+ `<b>⑤ The sweep.</b> Sit back: σ glides from 0.03 to 30 and back while everything updates — the drowning image, c_skip draining from 1 to 0, and the ✏️ dot riding the flat purple line while orange and teal each crash at one end. That flat purple line — <b>full learning signal at every noise level</b> — is the entire reason the next cells define <code>scalings()</code>.`,
+];
+const STAGE_MODE=[3,1,2,3,3];
+const STAGE_RNG=[['mk'],['a','mk'],['b','mk'],['c','mk'],['a','b','c','mk']];
+const STAGE_CUR=['mk','a2','b2','c3',null]; // the ONE line each stage is 'about'
+function setStage(s){
+  stage=s;mode=STAGE_MODE[s];
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('story').innerHTML=STORIES[s];
+  rngTags=STAGE_RNG[s];curTag=STAGE_CUR[s];codeHl();
+  render();
+}
+// per-stage replay animations
+function replay(){
+  clearInterval(sweepT);clearTimeout(timer);
+  const steps=[];
+  if(stage===0){ // walk the assembly: highlight slots in order with code cur
+    const seq=[['sl_x0',null],['op_plus',null],['sl_n',null],['op_eq','mk'],['sl_in','mk'],['op_arr',null],['sl_t',null]];
+    let i=0;
+    const tick=()=>{document.querySelectorAll('.slot,.op').forEach(e=>e.classList.remove('hot'));
+      if(i>=seq.length){$('sl_t').classList.add('hot');curTag='mk';codeHl();return;}
+      const [id,tag]=seq[i];$(id).classList.add('hot');curTag=tag;codeHl();i++;timer=setTimeout(tick,650);};
+    tick();return;
+  }
+  if(stage===1){animSig(-1.1,3.4,'a2');return;}
+  if(stage===2){animSig(-1.1,-3.5,'b2');return;}
+  if(stage===3){ // walk the three EDM lines, then sweep sigma on the target line
+    curTag='c1';codeHl();
+    timer=setTimeout(()=>{curTag='c2';codeHl();
+      timer=setTimeout(()=>{animSig(3.4,-3.5,'c3');},700);},700);
+    return;}
+  if(stage===4){ // full sweep out and back
+    let dir=1,v=-3.9;
+    sweepT=setInterval(()=>{v+=dir*0.05;if(v>3.7){dir=-1;v=3.7;}if(v<-3.9){clearInterval(sweepT);}
+      $('sig').value=v;render();},40);
+  }
+}
+function animSig(from,to,tag){
+  let v=from;const d=(to-from)/60;
+  $('sig').value=from;curTag=tag;codeHl();render();
+  sweepT=setInterval(()=>{v+=d;$('sig').value=v;render();
+    if((d>0&&v>=to)||(d<0&&v<=to))clearInterval(sweepT);},45);
+}
+// ---------- inspect ----------
+const INSPECT={
+ sl_x0:['clean image x₀','A sample from the dataset, scaled so pixels live in roughly [-1,1]. Its per-pixel standard deviation is <b>σ_data ≈ 0.33</b> — the yard-stick every formula in this notebook is calibrated against.'],
+ sl_n:['the noise n·σ','Pure Gaussian noise, one fresh draw per training example, multiplied by the σ drawn for this example. Its std is exactly σ — compare it with the σ slider.'],
+ sl_in:['noised = x₀ + n·σ  (network input)','This is <em>all the network gets</em> (plus the number σ). Total variance = σ_data² + σ² — which is why it will later be multiplied by <code>c_in = 1/√(σ²+σ_data²)</code> to have std 1. Click me to reroll the noise!'],
+ sl_t:['the target (the homework)','What the loss compares the network output against. Switch chips ②③④ to change the homework and watch this image and the shortcut meter transform.'],
+};
+document.querySelectorAll('.slot').forEach(sl=>sl.addEventListener('click',()=>{
+  if(sl.id==='sl_in')reroll();
+  const inf=INSPECT[sl.id];if(inf){$('insT').textContent=inf[0];$('insB').innerHTML=inf[1];}
+  render();
+}));
+// ---------- render ----------
+function render(){
+  const s=sig(),cs=cskip(s),co=cout(s);
+  $('sigv').textContent=s<0.1?s.toFixed(3):s.toFixed(2);
+  $('nstd').textContent=s<0.1?s.toFixed(3):s.toFixed(2);
+  draw($('cv_x0'),i=>px[i],SIG_DATA);
+  draw($('cv_n'),i=>noise[i]*s,Math.max(s,SIG_DATA));
+  draw($('cv_in'),i=>px[i]+noise[i]*s,Math.sqrt(s*s+SIG_DATA*SIG_DATA));
+  let tf,tsd,cap,shape;
+  if(mode===1){tf=i=>noise[i];tsd=1;cap='the TARGET = noise ε';shape='just the raw noise';}
+  else if(mode===2){tf=i=>px[i];tsd=SIG_DATA;cap='the TARGET = clean x₀';shape='just the clean image';}
+  else{tf=i=>(px[i]-cs*(px[i]+noise[i]*s))/co;tsd=1;cap='the TARGET (EDM)';shape='(x₀ − c_skip·noised)/c_out';}
+  draw($('cv_t'),tf,tsd);
+  $('cap_t').innerHTML=cap+`<div class="shape">${shape}</div>`;
+  // blend
+  $('bdot').style.left=((1-cs)*100)+'%';
+  $('blendmid').textContent='c_skip = '+cs.toFixed(2)+'  (share of input worth keeping)';
+  // shortcut meter
+  const sc=shortcut(mode,s);
+  $('cheat').style.width=(sc*100)+'%';$('cheat').textContent=sc>0.12?`shortcut ${(sc*100).toFixed(0)}%`:'';
+  $('learn').style.width=((1-sc)*100)+'%';$('learn').textContent=(1-sc)>0.12?`real learning ${((1-sc)*100).toFixed(0)}%`:'';
+  const mn={1:`ε-target: the input is a <b>${(100*s*s/(s*s+SIG_DATA*SIG_DATA)).toFixed(0)}% noise</b> mixture, so that share of the target is recoverable by rescaling the input.`,
+            2:`x₀-target: the input is a <b>${(100*SIG_DATA*SIG_DATA/(s*s+SIG_DATA*SIG_DATA)).toFixed(0)}% signal</b> mixture, so that share of the target is a free copy.`,
+            3:`EDM target: the reusable share (c_skip·noised) was <b>subtracted before grading</b> — nothing is left to copy at ANY σ. 100% of the loss is real learning.`}[mode];
+  $('meterNote').innerHTML=mn;
+  moveDot();
+}
+// ---------- controls ----------
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{clearInterval(sweepT);clearTimeout(timer);setStage(+c.dataset.s);replay();});
+$('play').onclick=()=>{replay();};
+$('rr').onclick=()=>{reroll();render();};
+$('sig').oninput=()=>{clearInterval(sweepT);render();};
+document.querySelectorAll('.sp').forEach(b=>b.onclick=()=>{clearInterval(sweepT);$('sig').value=+b.dataset.v;render();});
+setStage(0);render();
+// ---------- height ----------
+function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);
+setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>

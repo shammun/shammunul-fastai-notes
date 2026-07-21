@@ -1,0 +1,454 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Down the Noise Mountain — Sampling in 3D</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:1000px;line-height:1.45;}
+  .stagebar{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.8px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 11px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:105px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:100px;accent-color:var(--ac);}
+  .v{font-family:monospace;font-weight:700;color:var(--ac);min-width:36px;display:inline-block;}
+  .wrap{max-width:1080px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  #c3d{display:block;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:grab;width:100%;height:470px;touch-action:none;}
+  .pills{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:8px auto 0;}
+  .pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:3px 8px;cursor:pointer;text-align:center;min-width:64px;transition:all .15s;}
+  .pill:hover{border-color:var(--ac);}
+  .pill .t{font-size:9px;font-weight:700;color:var(--soft);}
+  .pill .s{font-family:monospace;font-size:10.4px;color:var(--ink);}
+  .pill.on{border-color:var(--ac);background:#f4efff;box-shadow:0 3px 10px rgba(123,92,214,.25);}
+  .pill.on .t{color:var(--ac);}
+  .story{margin-top:8px;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  .inforow{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;align-items:stretch;}
+  .inspect{flex:1 1 360px;min-width:290px;border-left:5px solid var(--out);}
+  .inspect h4{margin:0 0 4px;font-size:12.5px;color:var(--out);}
+  .inspect .body{font-size:12.2px;color:var(--soft);line-height:1.55;}
+  .inspect .body b{color:var(--ink);}
+  .inspect .body code{background:#eef2fb;border-radius:4px;padding:0 4px;font-size:11.3px;}
+  .code{flex:1.3 1 440px;min-width:300px;background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11px;line-height:1.6;overflow:auto;white-space:pre;max-height:360px;}
+  .code .ln{display:block;border-radius:4px;padding:0 4px;margin:0 -2px;transition:background .12s;}
+  .code .ln.rng{background:rgba(123,92,214,.16);}
+  .code .ln.cur{background:rgba(123,92,214,.52);box-shadow:inset 2.5px 0 0 #b9a5ec;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;line-height:1.5;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}.legend b.n{color:var(--neg);}
+  .fallback{padding:26px;text-align:center;color:var(--soft);display:none;}
+</style></head><body>
+<h1>Down the Noise Mountain — <code>sample_euler</code> as a Physical Descent</h1>
+<p class="sub"><b>Height = noise level σ</b> (log scale) · the <b>floor is data space</b> — the 2-D toy world with three teal clusters standing in for image-space.
+Sampling is literally a descent: start in the orange cloud at the summit, take one stride per rung of the Karras ladder, land on the floor.
+<b>Drag to rotate · scroll to zoom · click a particle to make it the hero 🟠 · click any ring · chips ①–⑤ replay their part · ⏮⏭ one rung at a time.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① The two spaces</button>
+  <button class="chip" data-s="1">② The σ-ladder (rings)</button>
+  <button class="chip" data-s="2">③ Anatomy of one stride</button>
+  <button class="chip" data-s="3">④ Full Euler descent</button>
+  <button class="chip" data-s="4">⑤ Heun's second look</button>
+</div>
+<div class="selrow">
+  <button class="stepb" id="back">⏮ 1 rung</button>
+  <button class="play" id="play">▶ Play all</button>
+  <button class="stepb" id="fwd">1 rung ⏭</button>
+  <button class="reset" id="reset">↺ Reset</button>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="v" id="spv">1×</span>
+  rungs <input id="n" type="range" min="6" max="30" step="1" value="14"><span class="v" id="nv">14</span>
+  <span class="div"></span>
+  <button class="reset" id="cam">📷 view</button>
+</div>
+
+<div class="wrap">
+<div class="card"><canvas id="c3d"></canvas>
+  <div class="fallback" id="fb">3-D library failed to load — please check your connection and reload.</div>
+  <div class="pills" id="pills"></div>
+</div>
+<div class="story" id="story"></div>
+<div class="inforow">
+  <div class="card inspect">
+    <h4 id="insT">How to read the mountain</h4>
+    <div class="body" id="insB">Every purple ball is one sample being generated. Its height tells you its current σ; its floor position is its current guess in data space. The dashed vertical drop under the hero ball is its "shadow" — where it currently sits in data space if you ignore the noise axis.</div>
+  </div>
+  <div class="code" id="code"></div>
+</div>
+<p class="legend"><b class="i">orange cloud</b> = pure-noise starting points at σ_max · rings = the Karras rungs (spacing shrinks downward!) ·
+<b class="a">purple balls</b> = samples, hero ball is bigger &amp; orange-rimmed · <b class="o">teal discs</b> = data clusters on the floor ·
+<b class="n">red ghost</b> (stage ⑤) = uncorrected Euler for the hero · purple flag = the model's clean-guess D(x,σ)</p>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+if(!window.THREE){$('fb').style.display='block';$('c3d').style.display='none';return;}
+// ================= math =================
+const MU=[[-3,-1.8],[2.8,-2.2],[0.2,2.9]], PI=[0.4,0.35,0.25], PV=0.45*0.45;
+const SMAX=11,SMINL=0.05,RHO=7,HMAX=8,WSC=0.55;
+function denoise2(x,y,s){const s2=s*s;let ws=0,dx=0,dy=0;
+  for(let k=0;k<3;k++){const vx=x-MU[k][0],vy=y-MU[k][1],v=PV+s2;
+    const w=PI[k]*Math.exp(-(vx*vx+vy*vy)/(2*v))/v;ws+=w;
+    dx+=w*(PV*x+s2*MU[k][0])/v;dy+=w*(PV*y+s2*MU[k][1])/v;}
+  return [dx/ws,dy/ws];}
+function randn(){let u=0,v=0;while(!u)u=Math.random();v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function ladder(n){const s=[];for(let i=0;i<n;i++){const t=i/(n-1);
+  s.push(Math.pow(Math.pow(SMAX,1/RHO)+t*(Math.pow(SMINL,1/RHO)-Math.pow(SMAX,1/RHO)),RHO));}
+  s.push(0);return s;}
+function hOf(s){if(s<=SMINL)return 0;return HMAX*(Math.log(s)-Math.log(SMINL))/(Math.log(SMAX)-Math.log(SMINL));}
+function colSig(s){ // teal(low) -> purple(mid) -> orange(high)
+  const t=Math.max(0,Math.min(1,(Math.log(Math.max(s,SMINL))-Math.log(SMINL))/(Math.log(SMAX)-Math.log(SMINL))));
+  const a=new THREE.Color(0x16a3a3),b=new THREE.Color(0x7b5cd6),c=new THREE.Color(0xf6921e);
+  return t<0.5?a.clone().lerp(b,t*2):b.clone().lerp(c,(t-0.5)*2);}
+// trajectories
+let N=14, sigs=ladder(N), NP=26, seeds=[], trajE=[], trajH=[];
+function precompute(){
+  sigs=ladder(N);
+  trajE=[];trajH=[];
+  for(let p=0;p<NP;p++){
+    const s0=seeds[p];
+    // Euler
+    let e=[[s0[0],s0[1]]];let x=s0[0],y=s0[1];
+    for(let i=0;i<sigs.length-1;i++){const s=sigs[i],sn=sigs[i+1];
+      const [dx,dy]=denoise2(x,y,s);x+=(x-dx)/s*(sn-s);y+=(y-dy)/s*(sn-s);e.push([x,y]);}
+    trajE.push(e);
+    // Heun
+    let h=[[s0[0],s0[1]]];x=s0[0];y=s0[1];
+    for(let i=0;i<sigs.length-1;i++){const s=sigs[i],sn=sigs[i+1];
+      const [dx,dy]=denoise2(x,y,s);const d1x=(x-dx)/s,d1y=(y-dy)/s;
+      const gx=x+d1x*(sn-s),gy=y+d1y*(sn-s);
+      if(sn>1e-6){const [ex,ey]=denoise2(gx,gy,sn);const d2x=(gx-ex)/sn,d2y=(gy-ey)/sn;
+        x+=(d1x+d2x)/2*(sn-s);y+=(d1y+d2y)/2*(sn-s);}else{x=gx;y=gy;}
+      h.push([x,y]);}
+    trajH.push(h);
+  }
+}
+function reseed(){seeds=[];for(let p=0;p<NP;p++)seeds.push([randn()*SMAX*0.38,randn()*SMAX*0.3]);}
+reseed();precompute();
+// ================= scene =================
+const canvas=$('c3d');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(46,2,0.1,300);
+scene.add(new THREE.AmbientLight(0xffffff,0.85));
+const dl=new THREE.DirectionalLight(0xffffff,0.55);dl.position.set(8,14,10);scene.add(dl);
+const group=new THREE.Group();scene.add(group);
+function W(x){return x*WSC;}
+// crisp text sprites
+function makeLabel(lines,{size=24,color='#25324a',mono=false,bold=true}={}){
+  const c=document.createElement('canvas'),x=c.getContext('2d');
+  const font=`${bold?'700':'400'} ${size}px ${mono?'Consolas,monospace':'"Segoe UI",sans-serif'}`;
+  x.font=font;
+  const w=Math.max(...lines.map(t=>x.measureText(t).width))+20,h=lines.length*(size+8)+12;
+  c.width=w*2;c.height=h*2;x.scale(2,2);x.font=font;x.textAlign='center';x.textBaseline='middle';x.fillStyle=color;
+  lines.forEach((t,i)=>x.fillText(t,w/2,10+(size+8)*i+size/2));
+  const tx=new THREE.CanvasTexture(c);tx.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,depthTest:false,transparent:true}));
+  const k=0.0135;sp.scale.set(w*k,h*k,1);sp.renderOrder=6;
+  return sp;
+}
+// floor
+const grid=new THREE.GridHelper(16,16,0xd4dcec,0xe9eef8);group.add(grid);
+const floorLab=makeLabel(['DATA SPACE  (the floor)'],{size:22,color:'#5a6b86'});
+floorLab.position.set(0,0.35,7.4);group.add(floorLab);
+// clusters
+MU.forEach((m,k)=>{
+  const disc=new THREE.Mesh(new THREE.CylinderGeometry(0.95,0.95,0.06,40),
+    new THREE.MeshLambertMaterial({color:0x16a3a3,transparent:true,opacity:0.55}));
+  disc.position.set(W(m[0]),0.03,W(m[1]));group.add(disc);
+  const lab=makeLabel([`cluster ${k+1} · ${PI[k]*100}%`],{size:19,color:'#0f7d7d'});
+  lab.position.set(W(m[0]),0.75,W(m[1]));group.add(lab);
+});
+// axis riser + label
+(function(){
+  const mat=new THREE.LineBasicMaterial({color:0x93a0ba});
+  const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-7.4,0,-7.4),new THREE.Vector3(-7.4,HMAX+0.6,-7.4)]);
+  group.add(new THREE.Line(g,mat));
+  const lab=makeLabel(['log σ','(noise level)'],{size:21,color:'#5a6b86'});
+  lab.position.set(-7.4,HMAX+1.4,-7.4);group.add(lab);
+})();
+// noise cloud at summit
+const cloud=new THREE.Group();
+for(let i=0;i<130;i++){
+  const s=new THREE.Mesh(new THREE.SphereGeometry(0.075,7,7),
+    new THREE.MeshBasicMaterial({color:0xf6921e,transparent:true,opacity:0.5}));
+  s.position.set(randn()*2.3,hOf(SMAX)+randn()*0.28,randn()*1.9);
+  cloud.add(s);
+}
+group.add(cloud);
+const cloudLab=makeLabel(['x ~ N(0, σ_max²) — pure noise','every sample starts up here'],{size:19,color:'#c9791a'});
+cloudLab.position.set(0,hOf(SMAX)+1.35,0);group.add(cloudLab);
+// rings (rebuilt on n change)
+let ringGrp=new THREE.Group();group.add(ringGrp);
+let ringMeshes=[];
+function buildRings(){
+  group.remove(ringGrp);ringGrp=new THREE.Group();ringMeshes=[];
+  sigs.slice(0,-1).forEach((s,i)=>{
+    const R=Math.min(6.4,0.8+ W(s)*2.2);
+    const pts=[];for(let a=0;a<=64;a++)pts.push(new THREE.Vector3(Math.cos(a/64*2*Math.PI)*R,0,Math.sin(a/64*2*Math.PI)*R));
+    const g=new THREE.BufferGeometry().setFromPoints(pts);
+    const ln=new THREE.Line(g,new THREE.LineBasicMaterial({color:colSig(s),transparent:true,opacity:0.7}));
+    ln.position.y=hOf(s);ringGrp.add(ln);
+    // invisible torus for clicking
+    const tor=new THREE.Mesh(new THREE.TorusGeometry(R,0.22,6,40),new THREE.MeshBasicMaterial({visible:false}));
+    tor.rotation.x=Math.PI/2;tor.position.y=hOf(s);tor.userData={rung:i};ringGrp.add(tor);ringMeshes.push(tor);
+    if(i===0||i===Math.floor((sigs.length-1)/2)||s<0.5&&sigs[i-1]>=0.5){
+      const lab=makeLabel([`σ = ${s<0.1?s.toFixed(2):s.toFixed(1)}`],{size:18,color:'#5a6b86',mono:true});
+      lab.position.set(R+0.9,hOf(s),0);ringGrp.add(lab);
+    }
+  });
+  group.add(ringGrp);
+}
+buildRings();
+// particles + trails
+const balls=[],trailLines=[];
+const heroRim=new THREE.Mesh(new THREE.SphereGeometry(0.34,18,18),
+  new THREE.MeshBasicMaterial({color:0xf6921e,wireframe:true,transparent:true,opacity:0.9}));
+group.add(heroRim);
+for(let p=0;p<NP;p++){
+  const b=new THREE.Mesh(new THREE.SphereGeometry(0.17,14,14),
+    new THREE.MeshLambertMaterial({color:0x7b5cd6}));
+  b.userData={pi:p};group.add(b);balls.push(b);
+  const g=new THREE.BufferGeometry();
+  const l=new THREE.Line(g,new THREE.LineBasicMaterial({color:0x7b5cd6,transparent:true,opacity:0.35}));
+  group.add(l);trailLines.push(l);
+}
+// hero shape label
+const heroLab=makeLabel(['hero'],{size:17,color:'#c9791a'});group.add(heroLab);
+// anatomy props (stage 2): flag at D(x,σ), arrow, drop line
+const flag=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.55,10),new THREE.MeshLambertMaterial({color:0x7b5cd6}));
+flag.visible=false;group.add(flag);
+const flagLab=makeLabel(['D(x,σ) — the model\'s','clean-image guess'],{size:17,color:'#7b5cd6'});
+flagLab.visible=false;group.add(flagLab);
+let arrowObj=null;
+const dropMat=new THREE.LineDashedMaterial({color:0x93a0ba,dashSize:0.22,gapSize:0.14});
+let dropLine=new THREE.Line(new THREE.BufferGeometry(),dropMat);group.add(dropLine);
+const strideLab=makeLabel(['stride: x += d · (σ_next − σ)'],{size:16,color:'#25324a'});
+strideLab.visible=false;group.add(strideLab);
+// heun ghost
+const ghostBall=new THREE.Mesh(new THREE.SphereGeometry(0.17,12,12),
+  new THREE.MeshBasicMaterial({color:0xd64545,transparent:true,opacity:0.8}));
+ghostBall.visible=false;group.add(ghostBall);
+const ghostLab=makeLabel(['plain Euler would land here'],{size:16,color:'#d64545'});
+ghostLab.visible=false;group.add(ghostLab);
+let ghostTrail=new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:0xd64545,transparent:true,opacity:0.55}));
+group.add(ghostTrail);
+// ================= p → scene sync =================
+let p=0, hero=0, stage=0, playing=false, targetP=null;
+function posAt(traj,pp){
+  const i=Math.max(0,Math.min(sigs.length-2,Math.floor(pp)));
+  const f=Math.min(1,pp-i);
+  const a=traj[i],b=traj[i+1];
+  const x=a[0]+(b[0]-a[0])*f, y=a[1]+(b[1]-a[1])*f;
+  const s=sigs[i]+(sigs[i+1]-sigs[i])*f;
+  return [W(x),hOf(s),W(y),s];
+}
+function sync(){
+  const useH=stage===4;
+  balls.forEach((b,i)=>{
+    const tr=(useH&&i===hero)?trajH[i]:trajE[i];
+    const [x,h,z,s]=posAt(tr,p);
+    b.position.set(x,h+0.17,z);
+    b.material.color.copy(i===hero?new THREE.Color(0x8d6fe0):colSig(Math.max(s,SMINL)).lerp(new THREE.Color(0x7b5cd6),0.5));
+    // trail
+    const pts=[];const upto=Math.min(tr.length-1,Math.ceil(p));
+    for(let k=0;k<=upto;k++){const q=posAt(tr,Math.min(k,p));pts.push(new THREE.Vector3(q[0],q[1]+0.17,q[2]));}
+    trailLines[i].geometry.dispose();trailLines[i].geometry=new THREE.BufferGeometry().setFromPoints(pts);
+    trailLines[i].material.opacity=i===hero?0.85:0.22;
+    trailLines[i].material.color.set(i===hero?0xf6921e:0x7b5cd6);
+  });
+  const hb=balls[hero];
+  heroRim.position.copy(hb.position);
+  heroLab.position.set(hb.position.x,hb.position.y+0.75,hb.position.z);
+  // drop shadow line for hero
+  dropLine.geometry.dispose();
+  dropLine.geometry=new THREE.BufferGeometry().setFromPoints([hb.position.clone(),new THREE.Vector3(hb.position.x,0.02,hb.position.z)]);
+  dropLine.computeLineDistances&&dropLine.computeLineDistances();
+  // anatomy (stage 2) at current integer rung
+  const i=Math.max(0,Math.min(sigs.length-2,Math.floor(p)));
+  const showAn=stage===2;
+  flag.visible=flagLab.visible=strideLab.visible=showAn;
+  if(arrowObj){group.remove(arrowObj);arrowObj=null;}
+  if(showAn){
+    const s=sigs[i];
+    const cur=trajE[hero][i];
+    const [dx,dy]=denoise2(cur[0],cur[1],Math.max(s,1e-3));
+    flag.position.set(W(dx),0.35,W(dy));
+    flagLab.position.set(W(dx),1.15,W(dy));
+    const from=new THREE.Vector3(W(cur[0]),hOf(s)+0.17,W(cur[1]));
+    const nxt=trajE[hero][i+1];
+    const to=new THREE.Vector3(W(nxt[0]),hOf(sigs[i+1])+0.17,W(nxt[1]));
+    const dir=to.clone().sub(from);const len=dir.length();
+    if(len>0.01){
+      arrowObj=new THREE.ArrowHelper(dir.clone().normalize(),from,len,0x25324a,Math.min(0.5,len*0.3),Math.min(0.3,len*0.18));
+      group.add(arrowObj);
+    }
+    strideLab.position.copy(from.clone().add(to).multiplyScalar(0.5)).add(new THREE.Vector3(0,0.7,0));
+  }
+  // heun ghost (stage 4)
+  const showGhost=stage===4;
+  ghostBall.visible=ghostLab.visible=showGhost;
+  if(showGhost){
+    const [gx,gh,gz]=posAt(trajE[hero],p);
+    ghostBall.position.set(gx,gh+0.17,gz);
+    ghostLab.position.set(gx,gh+0.85,gz);
+    const pts=[];const upto=Math.min(trajE[hero].length-1,Math.ceil(p));
+    for(let k=0;k<=upto;k++){const q=posAt(trajE[hero],Math.min(k,p));pts.push(new THREE.Vector3(q[0],q[1]+0.17,q[2]));}
+    ghostTrail.geometry.dispose();ghostTrail.geometry=new THREE.BufferGeometry().setFromPoints(pts);
+    ghostTrail.visible=true;
+  }else ghostTrail.visible=false;
+  // pills + code line
+  syncPills();syncCode();
+}
+// ================= pills =================
+function buildPills(){
+  const el=$('pills');el.innerHTML='';
+  sigs.forEach((s,i)=>{
+    if(i===sigs.length-1)return;
+    const d=document.createElement('div');d.className='pill';
+    d.innerHTML=`<div class="t">rung ${i}</div><div class="s">σ ${s<0.1?s.toFixed(2):s.toFixed(1)}</div>`;
+    d.onclick=()=>{stopPlay();p=i;sync();inspectRung(i);};
+    el.appendChild(d);
+  });
+  const d=document.createElement('div');d.className='pill';
+  d.innerHTML=`<div class="t">done</div><div class="s">σ = 0</div>`;
+  d.onclick=()=>{stopPlay();p=sigs.length-1;sync();};
+  el.appendChild(d);
+}
+function syncPills(){
+  const i=Math.min(sigs.length-1,Math.round(p));
+  [...$('pills').children].forEach((c,k)=>c.classList.toggle('on',k===i));
+}
+// ================= code =================
+const CODE_LINES=[
+ {t:'e',h:'<span class="cm"># ─── EULER (what stages ①–④ animate) ───────────────────</span>'},
+ {t:'e',h:'sigs = <span class="fn">sigmas_karras</span>(n)          <span class="cm"># the rings, top to floor</span>'},
+ {t:'e',h:'x = torch.randn(bs, ...) * sigs[<span class="num">0</span>]  <span class="cm"># the orange summit cloud</span>'},
+ {t:'e',h:'for i in range(len(sigs)-<span class="num">1</span>):'},
+ {t:'e.den',h:'    denoised = <span class="fn">denoise</span>(model, x, sigs[i])   <span class="cm"># purple flag on the floor</span>'},
+ {t:'e.dir',h:'    d = (x - denoised) / sigs[i]            <span class="cm"># the arrow</span>'},
+ {t:'e.step',h:'    x = x + d * (sigs[i+<span class="num">1</span>] - sigs[i])       <span class="cm"># one stride down to the next ring</span>'},
+ {h:' '},
+ {t:'h',h:'<span class="cm"># ─── HEUN (stage ⑤: hero uses this, red ghost = Euler) ───</span>'},
+ {t:'h.den',h:'    denoised = <span class="fn">denoise</span>(model, x, sigs[i])'},
+ {t:'h.dir',h:'    d  = (x - denoised) / sigs[i]'},
+ {t:'h.step',h:'    x2 = x + d * (sigs[i+<span class="num">1</span>] - sigs[i])      <span class="cm"># provisional (the ghost)</span>'},
+ {t:'h.den2',h:'    denoised2 = <span class="fn">denoise</span>(model, x2, sigs[i+<span class="num">1</span>]) <span class="cm"># 2nd call, at the landing</span>'},
+ {t:'h.corr',h:'    x = x + (d + (x2-denoised2)/sigs[i+<span class="num">1</span>])/<span class="num">2</span> * (sigs[i+<span class="num">1</span>]-sigs[i])'},
+];
+$('code').innerHTML=CODE_LINES.map(l=>`<span class="ln">${l.h||' '}</span>`).join('');
+const lnEls=[...$('code').querySelectorAll('.ln')];
+function syncCode(){
+  const kind=stage===4?'h':'e';
+  const f=p-Math.floor(p);
+  const tag=p>=sigs.length-1?null:(f<0.35?kind+'.den':f<0.55?kind+'.dir':kind+'.step');
+  lnEls.forEach((el,i)=>{const t=CODE_LINES[i].t;
+    el.classList.toggle('rng',!!t&&(t===kind||t.startsWith(kind+'.')));
+    el.classList.toggle('cur',!!t&&t===tag);});
+}
+// ================= stories =================
+const STORIES=[
+ `<b>① Two spaces glued by one axis.</b> The floor is the whole world the data lives in — three teal clusters (stand-ins for "the manifold of real images"). The vertical axis is <b>log σ</b>: how much noise a point is assumed to carry. A "sample being generated" is a point with both properties at once — a position <em>and</em> a noise level — so it lives in the air. The dashed line under the hero ball is its shadow: its current answer if you asked "so what's the image right now?". Drag to orbit; the geometry is the whole story.`,
+ `<b>② The ladder becomes rings.</b> Each ring is one rung of <code>sigmas_karras</code> at its height. Two things to see from the side: <b>ring spacing collapses toward the floor</b> — the giant-strides-then-baby-steps schedule from the previous viz, now literal; and <b>ring radius shrinks</b> too — at σ=11 samples wander a huge territory, near the floor they're confined to the clusters. Click any ring to interrogate its rung. Change the <b>rungs</b> slider and watch the ladder re-space itself.`,
+ `<b>③ Anatomy of one stride.</b> Freeze on the hero ball. Three sub-moves, matching the three highlighted code lines: <b>(1)</b> the model looks at the hero's position and plants the <b>purple flag on the floor</b> — "if you're asking, the clean image is <em>there</em>" (D(x,σ)); <b>(2)</b> position minus flag, over σ, gives the direction d; <b>(3)</b> one straight stride along d, sized by the ladder gap, lands on the next ring — <em>slightly</em> toward the flag. Press ⏭ repeatedly: early flags point at the blur between clusters; late flags commit to one cluster. The ball never jumps to the flag — it only leans toward it, one ring at a time.`,
+ `<b>④ The full descent.</b> Play. All 26 samples pour out of the orange cloud and ride the same recipe. Watch the shape of the flow: a fast vertical plunge through the widely-spaced upper rings while everyone drifts toward the center (the high-σ "one blurry magnet" regime), then the paths <b>fan out into three streams</b> as the rings tighten and the flags commit. The landing pattern on the floor should mirror the cluster weights 40/35/25 — generation = transporting a blob of noise onto the data distribution.`,
+ `<b>⑤ Heun's second look.</b> Now the hero (orange trail) runs Heun while a <b style="color:#d64545">red ghost</b> replays its plain-Euler self. Where trajectories curve — mid-descent, as the field starts choosing clusters — the ghost cuts corners; Heun probes the landing point with a second model call and averages the two slopes, hugging the bend. The gap between ghost and hero <em>is</em> the discretization error Heun buys back — at the cost of 2× model calls per rung, which is why the notebook compares Heun-n against Euler-2n.`,
+];
+const CHIP_RANGE=[{a:0,b:0},{a:0,b:0},{a:0,b:0},{a:0,b:1e9},{a:0,b:1e9}];
+function setStage(s,keep){
+  stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('story').innerHTML=STORIES[s];
+  if(!keep)sync();
+}
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+  stopPlay();const s=+c.dataset.s;setStage(s,true);
+  if(s===3||s===4){p=0;sync();startPlay();}
+  else if(s===2){p=Math.min(sigs.length-2,Math.max(2,Math.floor(p)));sync();}
+  else {sync();}
+});
+// ================= inspect =================
+function inspectRung(i){
+  const s=sigs[i];
+  $('insT').textContent=`rung ${i}: σ = ${s<0.1?s.toFixed(3):s.toFixed(2)}`;
+  $('insB').innerHTML=`Height ${hOf(s).toFixed(1)} on the log-σ axis. Gap down to the next ring: Δσ = <b>${(s-sigs[i+1]).toFixed(2)}</b>${i===0?' — the single biggest stride of the whole descent':''}. ${s>2?'Up here the model\'s flags all point at the data centroid — strides are huge and safe.':s>0.4?'The transition zone: flags are choosing clusters, trajectories bend the most — this is where Heun earns its keep.':'Fine-detail zone: tiny strides, flags locked onto one cluster.'}`;
+}
+// ================= controls =================
+let raf=null,last=0;
+function stopPlay(){playing=false;$('play').innerHTML='▶ Play all';}
+function startPlay(){playing=true;$('play').innerHTML='⏸ Pause';}
+$('play').onclick=()=>{if(playing)stopPlay();else{if(p>=sigs.length-1)p=0;startPlay();}};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(sigs.length-1,Math.floor(p)+1);sync();};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p)-1);sync();};
+$('reset').onclick=()=>{stopPlay();reseed();precompute();p=0;sync();};
+$('speed').oninput=e=>$('spv').textContent=(+e.target.value).toFixed(2).replace(/\.?0+$/,'')+'×';
+$('n').oninput=e=>{N=+e.target.value;$('nv').textContent=N;stopPlay();precompute();buildRings();buildPills();p=Math.min(p,sigs.length-1);sync();};
+// camera
+let th=0.7,ph=0.42,dist=21;
+function setCam(){
+  camera.position.set(Math.cos(th)*Math.cos(ph)*dist, Math.sin(ph)*dist+3.2, Math.sin(th)*Math.cos(ph)*dist);
+  camera.lookAt(0,3.2,0);
+}
+$('cam').onclick=()=>{th=0.7;ph=0.42;dist=21;setCam();};
+let drag=false,px_,py_;
+canvas.addEventListener('pointerdown',e=>{drag=true;px_=e.clientX;py_=e.clientY;canvas.style.cursor='grabbing';});
+addEventListener('pointermove',e=>{if(!drag)return;
+  th+=(e.clientX-px_)*0.006;ph=Math.max(0.06,Math.min(1.35,ph+(e.clientY-py_)*0.004));
+  px_=e.clientX;py_=e.clientY;setCam();});
+addEventListener('pointerup',()=>{drag=false;canvas.style.cursor='grab';});
+canvas.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(9,Math.min(40,dist+e.deltaY*0.02));setCam();},{passive:false});
+// click: ray pick particle or ring
+const ray=new THREE.Raycaster(),mou=new THREE.Vector2();
+let downXY=null;
+canvas.addEventListener('pointerdown',e=>{downXY=[e.clientX,e.clientY];});
+canvas.addEventListener('pointerup',e=>{
+  if(!downXY)return;
+  const moved=Math.hypot(e.clientX-downXY[0],e.clientY-downXY[1]);downXY=null;
+  if(moved>6)return;
+  const r=canvas.getBoundingClientRect();
+  mou.x=((e.clientX-r.left)/r.width)*2-1;mou.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(mou,camera);
+  const hitB=ray.intersectObjects(balls);
+  if(hitB.length){hero=hitB[0].object.userData.pi;
+    $('insT').textContent='new hero adopted 🟠';
+    $('insB').innerHTML='This ball\'s trail is now orange and all stage-③/⑤ props follow it. Every ball runs the identical code — only its random start differs.';
+    sync();return;}
+  const hitR=ray.intersectObjects(ringMeshes);
+  if(hitR.length){inspectRung(hitR[0].object.userData.rung);}
+});
+// ================= loop =================
+function resize(){
+  const w=canvas.clientWidth,h=canvas.clientHeight;
+  if(canvas.width!==w*devicePixelRatio||canvas.height!==h*devicePixelRatio){
+    renderer.setSize(w,h,false);renderer.setPixelRatio(devicePixelRatio);
+    camera.aspect=w/h;camera.updateProjectionMatrix();}
+}
+function tick(t){
+  raf=requestAnimationFrame(tick);
+  const dt=Math.min(0.05,(t-last)/1000);last=t;
+  if(playing){
+    p+=dt* +$('speed').value*(stage===2?0.9:2.0);
+    if(p>=sigs.length-1){p=sigs.length-1;stopPlay();}
+    sync();
+  }
+  resize();renderer.render(scene,camera);
+}
+buildPills();setCam();setStage(0);sync();requestAnimationFrame(tick);
+// ================= height =================
+function chh(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:chh()},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);
+setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>

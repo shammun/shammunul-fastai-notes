@@ -1,0 +1,534 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sampler Playground — Euler, Ancestral, Heun, LMS on a Toy Distribution</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:940px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 13px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .ctrl{display:flex;gap:10px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin:0 0 8px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:100px;accent-color:var(--ac);}
+  .v{font-family:monospace;font-weight:700;color:var(--ac);min-width:38px;display:inline-block;}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  canvas#cv{border-radius:10px;border:1px solid var(--line);display:block;cursor:crosshair;background:#fbfdff;}
+  .sigbar{position:relative;height:20px;border-radius:999px;margin:8px 2px 0;background:linear-gradient(90deg,#16a3a3,#7b5cd6 45%,#f6921e);cursor:pointer;}
+  .sigknob{position:absolute;top:-4px;width:28px;height:28px;margin-left:-14px;background:#fff;border:3px solid var(--ink);border-radius:50%;box-shadow:0 3px 8px rgba(37,50,74,.3);transition:left .1s;pointer-events:none;}
+  .siglab{display:flex;justify-content:space-between;font-size:10px;color:var(--soft);margin:3px 4px 0;font-weight:700;}
+  .stat{font-size:12px;color:var(--soft);text-align:center;margin-top:6px;}
+  .stat b{color:var(--ac);font-family:monospace;}
+  .phase{font-size:12.3px;line-height:1.5;background:#f4efff;border-left:4px solid var(--ac);border-radius:8px;padding:7px 10px;margin-top:7px;min-height:40px;color:var(--ink);}
+  .phase b{color:var(--ac);}
+  .subtag{display:inline-block;background:var(--ac);color:#fff;border-radius:999px;font-size:10px;font-weight:800;padding:1px 8px;margin-right:5px;vertical-align:1px;}
+  .nexthint{color:var(--soft);font-style:italic;font-size:11px;}
+  .key{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;font-size:10.6px;color:var(--soft);margin-top:7px;line-height:1.4;}
+  .key span{display:flex;align-items:center;gap:4px;white-space:nowrap;}
+  .kd{display:inline-block;width:9px;height:9px;border-radius:50%;}
+  .kl{display:inline-block;width:16px;height:0;border-top:2.5px solid;}
+  .kr{display:inline-block;width:10px;height:10px;border-radius:50%;border:2.5px dashed #f6921e;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.7;width:400px;max-width:96vw;overflow-x:auto;white-space:pre;min-height:260px;}
+  .code .hl{background:rgba(123,92,214,.5);border-radius:4px;padding:1px 3px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;max-width:940px;margin-left:auto;margin-right:auto;line-height:1.5;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+  .knob{display:flex;align-items:center;gap:5px;}
+</style></head><body>
+<h1>Sampler Playground: Watch Euler, Ancestral, Heun &amp; LMS Actually Sample</h1>
+<p class="sub">The <b class="o" style="color:var(--out)">teal blobs</b> are the &ldquo;dataset&rdquo; (a 3-cluster toy distribution) whose ideal denoiser
+D(x,&sigma;) we can compute exactly &mdash; so this is <b>real diffusion sampling</b>, not a cartoon. Particles start as
+<b style="color:var(--in)">orange pure noise</b> at &sigma;<sub>max</sub> and must land on the data. Switch samplers, change the step count,
+add ancestral noise (&eta;) or Heun churn, and <b>click anywhere on the σ progress bar to jump to that stage</b> —
+the line of code being executed lights up on the right, and the <b>purple bar under the canvas narrates each line in plain words while the canvas acts it out</b>
+(the key at the bottom of the card decodes every mark). Want finer control? <b>⏵ Substep advances one code line per click</b>, fully self-paced.
+Click on the canvas to drop an extra particle.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-k="euler">Euler</button>
+  <button class="chip" data-k="anc">Euler Ancestral</button>
+  <button class="chip" data-k="heun">Heun (2nd order)</button>
+  <button class="chip" data-k="lms">LMS (multi-step)</button>
+</div>
+
+<div class="ctrl">
+  <button class="play" id="play">&#9654; Play</button>
+  <button class="stepb" id="step">Step</button>
+  <button class="stepb" id="substep" title="advance ONE code line / sub-step at a time — fully self-paced">⏵ Substep</button>
+  <button class="reset" id="reset">&#8635; Reset particles</button>
+  <span style="width:1px;height:22px;background:var(--line);"></span>
+  <span class="knob">steps <input type="range" id="nst" min="4" max="60" value="18"><span class="v" id="nstv">18</span></span>
+  <span class="knob">particles <input type="range" id="np" min="6" max="120" value="40"><span class="v" id="npv">40</span></span>
+  <span class="knob">speed <input type="range" id="spd" min="1" max="10" value="1"><span class="v" id="spdv">1x</span></span>
+  <span class="knob" id="etaw" style="display:none;">η <input type="range" id="eta" min="0" max="100" value="100"><span class="v" id="etav">1.0</span></span>
+  <span class="knob" id="chw" style="display:none;">churn <input type="range" id="chu" min="0" max="80" value="40"><span class="v" id="chuv">0.4</span></span>
+  <span class="knob" id="ordw" style="display:none;">order <input type="range" id="ord" min="1" max="4" value="4"><span class="v" id="ordv">4</span></span>
+  <label style="display:flex;gap:5px;align-items:center;font-weight:700;"><input type="checkbox" id="trails" checked> trails</label>
+</div>
+
+<div class="main">
+  <div class="card">
+    <p class="cap">2D data space<br><small>each dot = one &ldquo;image&rdquo; being generated &mdash; click to add a particle</small></p>
+    <canvas id="cv" width="520" height="420"></canvas>
+    <div class="sigbar" id="sigbar"><div class="sigknob" id="knob"></div></div>
+    <div class="siglab"><span style="color:var(--out)">σ = 0 (data)</span><span>← click to jump to any stage →</span><span style="color:var(--in)">σ = σ_max (noise)</span></div>
+    <p class="stat" id="stat"></p>
+    <div class="phase" id="phase"></div>
+    <div class="key">
+      <span><i class="kd" style="background:rgba(22,163,163,.65)"></i> small teal dots = the DATASET (3 clusters)</span>
+      <span><i class="kd" style="background:#7b5cd6;border:1.5px solid #fff;box-shadow:0 0 0 1px #7b5cd6;width:11px;height:11px;"></i> big dot = one sample being generated (color = its current σ)</span>
+      <span><i class="kl" style="border-color:#b9a5ec"></i> thin colored line = that sample's path so far</span>
+      <span><i class="kl" style="border-color:rgba(123,92,214,.8)"></i>→<i class="kd" style="background:rgba(123,92,214,.8);width:7px;height:7px;"></i> purple arrow &amp; dot = the model's clean guess D(x,σ)</span>
+      <span><i class="kd" style="background:#d64545;width:8px;height:8px;"></i> red dot = Heun's trial landing (gets corrected)</span>
+      <span><i class="kr"></i> orange ring = fresh noise injected (Ancestral)</span>
+      <span>⭐ orange-rimmed dot = the <b>hero</b> — its moves get labelled live</span>
+    </div>
+  </div>
+  <div class="card">
+    <p class="cap" id="codecap">Euler — 1 model call / step<br><small>the highlighted line is executing</small></p>
+    <div class="code" id="code"></div>
+  </div>
+</div>
+<p class="legend">Trajectory color follows the noise level: <b class="i">orange = high &sigma;</b> &rarr; <b class="a">purple = mid</b> &rarr; <b class="o">teal = low &sigma;</b>.
+Things to try: with only 4&ndash;6 steps, compare Euler's straight-line hops with Heun's gently bent segments (Heun evaluates the slope twice per step —
+that's what &ldquo;2nd order&rdquo; looks like; on real images this shows up as sharper results per model call);
+Ancestral with &eta;=1 (jittery paths, more diverse endpoints) vs &eta;=0 (collapses to plain Euler); LMS order 1 (=Euler) vs order 4 (smoother with the same model calls).</p>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+const W=cv.width,H=cv.height;
+// world coords: x,y in [-6,6]
+const S=W/12;
+const wx=x=>W/2+x*S, wy=y=>H/2-y*(H/12);
+// --- toy data: 3-component GMM ---
+const MUs=[[-3,-1.8],[2.8,-2.2],[0.2,2.9]], PVAR=0.45*0.45, PIs=[0.4,0.35,0.25];
+let dataPts=[];
+function randn(){let u=0,v=0;while(!u)u=Math.random();v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+for(let k=0;k<3;k++)for(let i=0;i<Math.round(90*PIs[k]);i++)dataPts.push([MUs[k][0]+randn()*0.45,MUs[k][1]+randn()*0.45]);
+// exact posterior-mean denoiser for the GMM: D(x,σ)=Σ w_k(x) (pvar·x + σ²·μ_k)/(pvar+σ²)
+function denoise(p,sig){
+  const v=PVAR+sig*sig; let lw=[],mx=-1e18;
+  for(let k=0;k<3;k++){const dx=p[0]-MUs[k][0],dy=p[1]-MUs[k][1];
+    const l=Math.log(PIs[k])-(dx*dx+dy*dy)/(2*v); lw.push(l); if(l>mx)mx=l;}
+  let Z=0,ws=lw.map(l=>{const w=Math.exp(l-mx);Z+=w;return w;});
+  let ox=0,oy=0;
+  for(let k=0;k<3;k++){const w=ws[k]/Z;
+    ox+=w*(PVAR*p[0]+sig*sig*MUs[k][0])/v; oy+=w*(PVAR*p[1]+sig*sig*MUs[k][1])/v;}
+  return [ox,oy];
+}
+// --- schedule ---
+const SMAX=12,SMIN=0.02,RHO=7;
+function sched(n){const out=[],a=Math.pow(SMAX,1/RHO),b=Math.pow(SMIN,1/RHO);
+  for(let i=0;i<n;i++)out.push(Math.pow(a+i/(n-1)*(b-a),RHO)); out.push(0); return out;}
+// --- state ---
+let KIND='euler', NST=18, NP=40, ETA=1, CHURN=0.4, ORDER=4;
+let sigs=sched(NST), particles=[], hist=[], dhist=[], stepI=0, playing=false, timer=null, subphase=0;
+let phaseViz=null, flashes=[], manual=null; const HERO=0;
+const DEFAULT_PHASE='Press <b>▶ Play</b> (or <b>Step</b>) to watch each sampling step run its code lines one at a time, narrated here in plain words while the canvas acts them out. Prefer full control? <b>⏵ Substep</b> advances exactly ONE sub-step (one code line) per click — read at your own pace. Speed slider is at 1× (slowest); raise it any time. The ⭐ hero dot gets its own labels.';
+function initParticles(){
+  clearTimeout(timer);
+  particles=[];hist=[];dhist=[];stepI=0;subphase=0;
+  for(let i=0;i<NP;i++){const p=[randn()*SMAX,randn()*SMAX];particles.push(p);hist.push([[...p]]);}
+  dhist=particles.map(()=>[]);
+  phaseViz=null;flashes=[];manual=null;
+  $('phase').innerHTML=DEFAULT_PHASE;
+  draw();syncKnob();code();stat();
+}
+// --- one sampler step for all particles (returns list of code-line phases used) ---
+function stepAll(){
+  if(stepI>=sigs.length-1)return false;
+  const i=stepI,sig=sigs[i],sig2=sigs[i+1];
+  particles=particles.map((x,pi)=>{
+    let p=[...x];
+    if(KIND==='euler'){
+      const d0=denoise(p,sig), d=[(p[0]-d0[0])/sig,(p[1]-d0[1])/sig];
+      p=[p[0]+d[0]*(sig2-sig), p[1]+d[1]*(sig2-sig)];
+    }else if(KIND==='anc'){
+      const d0=denoise(p,sig);
+      let su=0,sd=sig2;
+      if(ETA>0&&sig2>0){ const vt=sig2*sig2,vf=sig*sig;
+        su=Math.min(sig2,ETA*Math.sqrt(vt*(vf-vt)/vf)); sd=Math.sqrt(Math.max(0,vt-su*su)); }
+      const d=[(p[0]-d0[0])/sig,(p[1]-d0[1])/sig];
+      p=[p[0]+d[0]*(sd-sig)+randn()*su, p[1]+d[1]*(sd-sig)+randn()*su];
+      if(su>0&&pi<14)flashes.push({x:p[0],y:p[1],a:1});
+    }else if(KIND==='heun'){
+      const n=sigs.length, gamma=Math.min(CHURN/(n-1),Math.SQRT2-1);
+      const sh=sig*(1+gamma);
+      if(gamma>0){const add=Math.sqrt(sh*sh-sig*sig);p=[p[0]+randn()*add,p[1]+randn()*add];}
+      const d0=denoise(p,sh), d=[(p[0]-d0[0])/sh,(p[1]-d0[1])/sh], dt=sig2-sh;
+      let p2=[p[0]+d[0]*dt,p[1]+d[1]*dt];
+      if(sig2>0){
+        const d1=denoise(p2,sig2), d2=[(p2[0]-d1[0])/sig2,(p2[1]-d1[1])/sig2];
+        const dp=[(d[0]+d2[0])/2,(d[1]+d2[1])/2];
+        p2=[p[0]+dp[0]*dt,p[1]+dp[1]*dt];
+      }
+      p=p2;
+    }else{ // lms
+      const d0=denoise(p,sig), d=[(p[0]-d0[0])/sig,(p[1]-d0[1])/sig];
+      dhist[pi].push(d); if(dhist[pi].length>ORDER)dhist[pi].shift();
+      const cur=Math.min(i+1,ORDER,dhist[pi].length);
+      const co=lmsCoeffs(cur,sigs,i);
+      const ds=dhist[pi].slice(-cur).reverse();
+      let dx=0,dy=0; for(let j=0;j<cur;j++){dx+=co[j]*ds[j][0];dy+=co[j]*ds[j][1];}
+      p=[p[0]+dx,p[1]+dy];
+    }
+    hist[pi].push([...p]);
+    return p;
+  });
+  stepI++;
+  return true;
+}
+// numeric integral of Lagrange basis (Simpson, 40 panels)
+function lmsCoeffs(order,t,i){
+  const out=[];
+  for(let j=0;j<order;j++){
+    const f=tau=>{let pr=1;for(let k=0;k<order;k++){if(k===j)continue;pr*=(tau-t[i-k])/(t[i-j]-t[i-k]);}return pr;};
+    const a=t[i],b=t[i+1],n=40,h=(b-a)/n;let s=f(a)+f(b);
+    for(let m=1;m<n;m++)s+=f(a+m*h)*(m%2?4:2);
+    out.push(s*h/3);
+  }
+  return out;
+}
+// non-mutating preview of what THIS rung's step will do to a particle (for overlays)
+function previewFor(p,pi){
+  const i=stepI,sig=sigs[i],sig2=sigs[i+1];
+  const d0=denoise(p,sig), d=[(p[0]-d0[0])/sig,(p[1]-d0[1])/sig];
+  const out={guess:d0,d:d};
+  if(KIND==='euler'){out.next=[p[0]+d[0]*(sig2-sig),p[1]+d[1]*(sig2-sig)];}
+  else if(KIND==='anc'){
+    let su=0,sd=sig2;
+    if(ETA>0&&sig2>0){const vt=sig2*sig2,vf=sig*sig;
+      su=Math.min(sig2,ETA*Math.sqrt(vt*(vf-vt)/vf));sd=Math.sqrt(Math.max(0,vt-su*su));}
+    out.next=[p[0]+d[0]*(sd-sig),p[1]+d[1]*(sd-sig)];out.su=su;out.sd=sd;}
+  else if(KIND==='heun'){
+    const n=sigs.length,g=Math.min(CHURN/(n-1),Math.SQRT2-1),sh=sig*(1+g);
+    const dh0=denoise(p,sh),dh=[(p[0]-dh0[0])/sh,(p[1]-dh0[1])/sh],dt=sig2-sh;
+    const p2=[p[0]+dh[0]*dt,p[1]+dh[1]*dt];
+    out.guess=dh0;out.mid=p2;
+    if(sig2>0){const d1=denoise(p2,sig2),d2=[(p2[0]-d1[0])/sig2,(p2[1]-d1[1])/sig2];
+      out.guess2=d1;
+      out.next=[p[0]+(dh[0]+d2[0])/2*dt,p[1]+(dh[1]+d2[1])/2*dt];}
+    else out.next=p2;}
+  else{
+    const hcopy=dhist[pi].concat([d]).slice(-ORDER);
+    const cur=Math.min(stepI+1,ORDER,hcopy.length);
+    const co=lmsCoeffs(cur,sigs,stepI);const ds=hcopy.slice(-cur).reverse();
+    let dx=0,dy=0;for(let j=0;j<cur;j++){dx+=co[j]*ds[j][0];dy+=co[j]*ds[j][1];}
+    out.next=[p[0]+dx,p[1]+dy];}
+  return out;
+}
+// jump to a target step (recompute deterministically-ish from stored history start)
+function jumpTo(target){
+  target=Math.max(0,Math.min(sigs.length-1,target));
+  if(target<stepI){ // rewind using history
+    particles=hist.map(h=>[...h[Math.min(target,h.length-1)]]);
+    hist=hist.map(h=>h.slice(0,target+1));
+    dhist=dhist.map(()=>[]); // LMS history cannot be rewound exactly; rebuild empty
+    stepI=target;
+  } else { while(stepI<target && stepAll()); }
+  draw();syncKnob();code();stat();
+}
+// --- drawing ---
+function colSig(sig){
+  const t=Math.max(0,Math.min(1,Math.log(Math.max(sig,SMIN))/Math.log(SMAX)));
+  // teal(0) -> purple(0.45) -> orange(1)
+  function lerp(a,b,u){return a.map((v,i)=>Math.round(v+(b[i]-v)*u));}
+  const teal=[22,163,163],pur=[123,92,214],org=[246,146,30];
+  const c=t<0.45?lerp(teal,pur,t/0.45):lerp(pur,org,(t-0.45)/0.55);
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // faint grid
+  ctx.strokeStyle='#eef2f8';ctx.lineWidth=1;
+  for(let g=-5;g<=5;g++){ctx.beginPath();ctx.moveTo(wx(g),0);ctx.lineTo(wx(g),H);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,wy(g));ctx.lineTo(W,wy(g));ctx.stroke();}
+  // data blobs
+  ctx.fillStyle='rgba(22,163,163,.5)';
+  dataPts.forEach(p=>{ctx.beginPath();ctx.arc(wx(p[0]),wy(p[1]),2.4,0,7);ctx.fill();});
+  // trails
+  if($('trails').checked){
+    ctx.lineWidth=1.4;
+    hist.forEach(h=>{ if(h.length<2)return;
+      for(let i=1;i<h.length;i++){
+        ctx.strokeStyle=colSig(sigs[Math.min(i-1,sigs.length-1)]);
+        ctx.globalAlpha=0.55;
+        ctx.beginPath();ctx.moveTo(wx(h[i-1][0]),wy(h[i-1][1]));ctx.lineTo(wx(h[i][0]),wy(h[i][1]));ctx.stroke();
+      }});
+    ctx.globalAlpha=1;
+  }
+  // cluster name tags so the teal dots read as "the dataset"
+  MUs.forEach((m,k)=>label(wx(m[0]),wy(m[1])+4,'data cluster '+(k+1)+' · '+(PIs[k]*100)+'%','#0f7d7d','center'));
+  // particles + denoiser arrows for a few
+  const sig=sigs[Math.min(stepI,sigs.length-1)];
+  particles.forEach((p,i)=>{
+    if(i<8&&sig>0.02){ const d=denoise(p,Math.max(sig,0.02));
+      ctx.strokeStyle='rgba(123,92,214,.55)';ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.moveTo(wx(p[0]),wy(p[1]));ctx.lineTo(wx(d[0]),wy(d[1]));ctx.stroke();
+      ctx.fillStyle='rgba(123,92,214,.55)';ctx.beginPath();ctx.arc(wx(d[0]),wy(d[1]),2.2,0,7);ctx.fill();}
+    ctx.fillStyle=colSig(sig);
+    ctx.strokeStyle='#fff';ctx.lineWidth=1.4;
+    ctx.beginPath();ctx.arc(wx(p[0]),wy(p[1]),4.6,0,7);ctx.fill();ctx.stroke();
+    if(i===HERO){ctx.strokeStyle='#f6921e';ctx.lineWidth=2.2;
+      ctx.beginPath();ctx.arc(wx(p[0]),wy(p[1]),7.4,0,7);ctx.stroke();}
+  });
+  if(particles[HERO]&&!phaseViz)label(wx(particles[HERO][0])+11,wy(particles[HERO][1])-9,'hero','#c9791a');
+  drawPhaseViz();
+  // ancestral fresh-noise rings
+  flashes=flashes.filter(f=>f.a>0);
+  flashes.forEach(f=>{ctx.strokeStyle=`rgba(246,146,30,${f.a})`;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(wx(f.x),wy(f.y),(1-f.a)*20+5,0,7);ctx.stroke();f.a-=0.03;});
+}
+function label(x,y,txt,col,anchor){
+  ctx.font='700 10.5px "Segoe UI"';ctx.textAlign=anchor||'left';
+  ctx.lineWidth=3;ctx.strokeStyle='rgba(255,255,255,.92)';ctx.strokeText(txt,x,y);
+  ctx.fillStyle=col;ctx.fillText(txt,x,y);ctx.textAlign='left';
+}
+function arrow(x1,y1,x2,y2,col,wdt,dash){
+  ctx.strokeStyle=col;ctx.lineWidth=wdt;ctx.setLineDash(dash||[]);
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([]);
+  const a=Math.atan2(y2-y1,x2-x1);
+  ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-8*Math.cos(a-0.42),y2-8*Math.sin(a-0.42));
+  ctx.lineTo(x2-8*Math.cos(a+0.42),y2-8*Math.sin(a+0.42));ctx.closePath();ctx.fill();
+}
+function drawPhaseViz(){
+  if(!phaseViz)return;
+  const ph=phaseViz.phase;
+  phaseViz.list.forEach(it=>{
+    const hero=it.pi===HERO,[px,py]=it.p,pv=it.pv;
+    const X=wx(px),Y=wy(py);
+    if(ph==='e2'||ph==='l1'){ // the model call: bold guess arrows
+      arrow(X,Y,wx(pv.guess[0]),wy(pv.guess[1]),'rgba(123,92,214,.95)',2.4);
+      if(hero)label(wx(pv.guess[0])+8,wy(pv.guess[1])-6,ph==='e2'?"model's clean guess D(x,σ)":"store d in memory","#7b5cd6");
+    }else if(ph==='e3'){ // direction d, pointing AWAY from the guess
+      const dx=X-wx(pv.guess[0]),dy=Y-wy(pv.guess[1]),m=Math.hypot(dx,dy)||1;
+      arrow(X,Y,X+dx/m*34,Y+dy/m*34,'#25324a',2.4);
+      if(hero)label(X+dx/m*38,Y+dy/m*38,'d = (x − guess)/σ  … we will move AGAINST it','#25324a');
+    }else if(ph==='e4'||ph==='l3'||ph==='a1'){ // the hop
+      arrow(X,Y,wx(pv.next[0]),wy(pv.next[1]),'#25324a',2,[6,4]);
+      if(hero)label((X+wx(pv.next[0]))/2+8,(Y+wy(pv.next[1]))/2,
+        ph==='a1'?'overshoot down to σ_down':ph==='l3'?'hop along the FITTED curve':'the hop: straight to the next rung','#25324a');
+    }else if(ph==='a2'){ // fresh-noise scale ring
+      const r=Math.max(3,pv.su*S);
+      ctx.strokeStyle='rgba(246,146,30,.9)';ctx.lineWidth=2;ctx.setLineDash([4,3]);
+      ctx.beginPath();ctx.arc(wx(pv.next[0]),wy(pv.next[1]),r,0,7);ctx.stroke();ctx.setLineDash([]);
+      if(hero)label(wx(pv.next[0])+r+5,wy(pv.next[1]),'fresh noise lands anywhere in here (σ_up)','#c9791a');
+    }else if(ph==='h0'){
+      if(hero)label(X+10,Y-10,'churn: small random kick UP in σ first','#c9791a');
+    }else if(ph==='h1'){ // trial landing
+      arrow(X,Y,wx(pv.mid[0]),wy(pv.mid[1]),'rgba(214,69,69,.9)',2,[6,4]);
+      ctx.fillStyle='#d64545';ctx.beginPath();ctx.arc(wx(pv.mid[0]),wy(pv.mid[1]),4,0,7);ctx.fill();
+      if(hero)label(wx(pv.mid[0])+8,wy(pv.mid[1])-6,'trial Euler landing (provisional!)','#d64545');
+    }else if(ph==='h2'){ // second look from the trial point
+      ctx.fillStyle='#d64545';ctx.beginPath();ctx.arc(wx(pv.mid[0]),wy(pv.mid[1]),4,0,7);ctx.fill();
+      if(pv.guess2){arrow(wx(pv.mid[0]),wy(pv.mid[1]),wx(pv.guess2[0]),wy(pv.guess2[1]),'rgba(123,92,214,.95)',2.2);}
+      if(hero)label(wx(pv.mid[0])+8,wy(pv.mid[1])+12,'2nd model call FROM the trial point','#7b5cd6');
+    }else if(ph==='h3'){ // corrected hop
+      ctx.globalAlpha=0.35;ctx.fillStyle='#d64545';
+      ctx.beginPath();ctx.arc(wx(pv.mid[0]),wy(pv.mid[1]),4,0,7);ctx.fill();ctx.globalAlpha=1;
+      arrow(X,Y,wx(pv.next[0]),wy(pv.next[1]),'#0f7d7d',2.4);
+      if(hero)label(wx(pv.next[0])+8,wy(pv.next[1]),'corrected hop: average of BOTH slopes','#0f7d7d');
+    }else if(ph==='l2'){
+      if(hero)label(X+10,Y-10,'fit a curve through the remembered directions','#7b5cd6');
+    }
+  });
+}
+// --- code panels with per-kind line ids ---
+const CODE={
+euler:{cap:'Euler — 1 model call / step',
+ lines:[
+ ['','def <span class="fn">sample_euler</span>(x, sigs, i, model):'],
+ ['e1','    sig, sig2 = sigs[i], sigs[i+<span class="num">1</span>]'],
+ ['e2','    denoised = <span class="fn">denoise</span>(model, x, sig)   <span class="cm"># purple arrows</span>'],
+ ['e3','    d = (x - denoised) / sig            <span class="cm"># direction</span>'],
+ ['e4','    return x + d * (sig2 - sig)         <span class="cm"># one straight hop</span>']]},
+anc:{cap:'Euler Ancestral — Euler + fresh noise',
+ lines:[
+ ['','def <span class="fn">sample_euler_ancestral</span>(x, sigs, i, model, eta):'],
+ ['e1','    sig, sig2 = sigs[i], sigs[i+<span class="num">1</span>]'],
+ ['e2','    denoised = <span class="fn">denoise</span>(model, x, sig)'],
+ ['a1','    sig_down, sig_up = <span class="fn">get_ancestral_step</span>(sig, sig2, eta)'],
+ ['e3','    x = x + (x - denoised)/sig * (sig_down - sig)  <span class="cm"># overshoot lower…</span>'],
+ ['a2','    return x + randn_like(x) * sig_up              <span class="cm"># …then re-noise up</span>']]},
+heun:{cap:'Heun — 2 model calls / step (2nd order)',
+ lines:[
+ ['','def <span class="fn">sample_heun</span>(x, sigs, i, model, s_churn):'],
+ ['h0','    x += eps * sqrt(sig_hat² - sig²)     <span class="cm"># optional churn</span>'],
+ ['e2','    denoised = <span class="fn">denoise</span>(model, x, sig)    <span class="cm"># slope HERE</span>'],
+ ['e3','    d = (x - denoised) / sig'],
+ ['h1','    x_2 = x + d * dt                     <span class="cm"># trial Euler hop</span>'],
+ ['h2','    d_2 = (x_2 - <span class="fn">denoise</span>(model, x_2, sig2)) / sig2  <span class="cm"># slope THERE</span>'],
+ ['h3','    return x + (d + d_2)/<span class="num">2</span> * dt          <span class="cm"># hop with avg slope</span>']]},
+lms:{cap:'LMS — 1 model call / step, remembers the past',
+ lines:[
+ ['','def <span class="fn">sample_lms</span>(model, steps, order):'],
+ ['e2','    denoised = <span class="fn">denoise</span>(model, x, sig)'],
+ ['e3','    d = (x - denoised) / sig'],
+ ['l1','    ds.append(d); ds = ds[-order:]        <span class="cm"># memory of slopes</span>'],
+ ['l2','    coeffs = [lms_coeff(order, sigs, i, j) …]  <span class="cm"># ∫ Lagrange poly</span>'],
+ ['l3','    x = x + sum(c*d for c,d in zip(coeffs, reversed(ds)))']]}};
+let hlLine='';
+function code(){
+  const c=CODE[KIND];
+  $('codecap').innerHTML=c.cap+'<br><small>the highlighted line is executing</small>';
+  $('code').innerHTML=c.lines.map(([id,tx])=>`<span ${id&&id===hlLine?'class="hl"':''}>${tx}</span>`).join('\n');
+}
+// --- UI ---
+function stat(){
+  const i=Math.min(stepI,sigs.length-1);
+  const off=particles.filter(p=>Math.abs(p[0])>6||Math.abs(p[1])>6).length;
+  let extra='';
+  if(off>0)extra=` &nbsp;|&nbsp; <span style="color:#c9791a">${off}/${particles.length} samples outside the view — pure noise is huge (σ_max = ${SMAX}); they rush in within the first hops</span>`;
+  if(stepI>=sigs.length-1){
+    const cnt=[0,0,0];
+    particles.forEach(p=>{let b=0,bd=1e18;MUs.forEach((m,k)=>{const d=(p[0]-m[0])**2+(p[1]-m[1])**2;if(d<bd){bd=d;b=k;}});cnt[b]++;});
+    const tot=particles.length||1;
+    extra=` &nbsp;— done. landings: <b>${cnt.map(c=>Math.round(100*c/tot)+'%').join(' / ')}</b> (data truly is 40 / 35 / 25%)`;
+  }
+  $('stat').innerHTML=`step <b>${stepI}</b> / ${sigs.length-1} &nbsp;|&nbsp; σ = <b>${sigs[i].toFixed(sigs[i]<0.1?3:2)}</b>`+extra;
+}
+function syncKnob(){
+  const i=Math.min(stepI,sigs.length-1);
+  const t=Math.log(Math.max(sigs[i],SMIN))/Math.log(SMAX);
+  $('knob').style.left=(Math.max(0,Math.min(1,t))*100)+'%';
+}
+function phaseSeq(){
+  if(KIND==='euler')return['e1','e2','e3','e4'];
+  if(KIND==='anc')return['e1','e2','a1','e3','a2'];
+  if(KIND==='heun')return CHURN>0?['h0','e2','e3','h1','h2','h3']:['e2','e3','h1','h2','h3'];
+  return['e2','e3','l1','l2','l3'];
+}
+function phrase(id){
+  const i=Math.min(stepI,sigs.length-1),sig=sigs[i],sig2=(i+1<sigs.length?sigs[i+1]:0);
+  const f=v=>(typeof v==='number'&&isFinite(v))?(v<0.1?v.toFixed(3):v.toFixed(2)):'…';
+  const hv=phaseViz&&phaseViz.list[0]?phaseViz.list[0].pv:null;
+  const P={
+   e1:`<b>rung ${i}/${sigs.length-1}:</b> current noise level σ = <b>${f(sig)}</b>, next rung σ = <b>${f(sig2)}</b>. One step = getting every sample from the first to the second.`,
+   e2:`<b>ask the model once per sample:</b> "if you had to guess the clean point, where is it?" Its answers are the small purple dots — each purple arrow connects a sample to its own guess.`,
+   e3:`<b>form the direction d</b> = (sample − guess)/σ. It points <em>away</em> from clean (dark arrows), so the sampler will move <em>against</em> it.`,
+   e4:`<b>hop!</b> Each sample slides straight along its dashed arrow to the next rung — one hop, no second thoughts. Watch the hero's label.`,
+   a1:`<b>split the rung:</b> instead of stopping at σ = ${f(sig2)}, glide deterministically further down to σ_down = <b>${hv?f(hv.sd):'…'}</b>, keeping σ_up = <b>${hv?f(hv.su):'…'}</b> in reserve (η = ${ETA.toFixed(1)}).`,
+   a2:`<b>re-noise:</b> add FRESH random noise of scale σ_up — each sample lands somewhere inside its orange dashed circle. This forgetting is what makes Ancestral non-deterministic and more diverse.`,
+   h0:`<b>churn:</b> before descending, kick each sample slightly UP in noise (a small random step) — controlled re-noising inside a 2nd-order method.`,
+   h1:`<b>trial hop:</b> take the plain-Euler hop provisionally — the red dots are where it WOULD land. Nothing is committed yet.`,
+   h2:`<b>second look:</b> a SECOND model call, made from the red trial point at σ = ${f(sig2)} — this is the extra cost (2 calls/step) that buys 2nd-order accuracy.`,
+   h3:`<b>correct:</b> redo the hop using the <em>average</em> of the two slopes (teal arrows). Where the path curves, this hugs the bend that Euler would cut.`,
+   l1:`<b>remember:</b> store this rung's direction d in a rolling memory of the last ${ORDER} (currently holding ${Math.min(dhist[HERO]?dhist[HERO].length+1:1,ORDER)}).`,
+   l2:`<b>fit:</b> fit a degree-${Math.min(stepI+1,ORDER)} polynomial through the remembered directions — curvature information for FREE (no extra model call).`,
+   l3:`<b>hop along the fitted curve</b> instead of a straight line — the dashed arrows already lean into the bend.`,
+  };
+  return P[id]||'';
+}
+function beginPhases(){
+  const seq=phaseSeq();
+  const ids=[];for(let j=0;j<Math.min(8,particles.length);j++)ids.push(j);
+  phaseViz={phase:seq[0],list:ids.map(j=>({pi:j,p:[...particles[j]],pv:previewFor(particles[j],j)}))};
+  return seq;
+}
+function applyPhase(seq,k,isManual){
+  hlLine=seq[k];code();
+  phaseViz.phase=seq[k];
+  $('phase').innerHTML=(isManual?`<span class="subtag">sub-step ${k+1} / ${seq.length}</span>`:'')
+    +phrase(seq[k])
+    +(isManual?' <span class="nexthint">— press ⏵ Substep for the next sub-step</span>':'');
+  draw();
+}
+function finishStep(isManual){
+  phaseViz=null;stepAll();draw();syncKnob();stat();hlLine='';code();
+  $('phase').innerHTML=stepI>=sigs.length-1
+    ? `<b>done.</b> σ = 0: every sample is the model's final clean answer. Check the landing shares in the line above against the true cluster weights — that agreement is what "sampling the distribution" means.`
+    : `<b>rung ${stepI-1} complete</b> — all samples now sit at σ = ${sigs[stepI]<0.1?sigs[stepI].toFixed(3):sigs[stepI].toFixed(2)}. ${stepI<3?'Early hops are HUGE (look at the trails streaming in from off-screen — pure noise lives far outside this view).':stepI>sigs.length-4?'Final hops are tiny: fine placement inside a cluster.':'Mid-descent: samples are choosing their cluster.'}`
+    +(isManual&&stepI<sigs.length-1?' <span class="nexthint">— ⏵ Substep again to begin the next step\'s sub-steps.</span>':'');
+}
+function cancelManual(){
+  if(!manual)return;
+  manual=null;phaseViz=null;hlLine='';code();
+  $('phase').innerHTML=DEFAULT_PHASE;draw();
+}
+function animateStep(done){
+  if(stepI>=sigs.length-1){done&&done();return;}
+  const seq=beginPhases();let k=0;
+  const sp=+$('spd').value;
+  (function tick(){
+    applyPhase(seq,k,false);
+    k++;
+    if(k<seq.length){timer=setTimeout(tick,1600/sp);}
+    else{timer=setTimeout(()=>{finishStep(false);done&&done();},1600/sp);}
+  })();
+}
+function loop(){
+  if(!playing)return;
+  if(stepI>=sigs.length-1){playing=false;$('play').innerHTML='&#9654; Play';return;}
+  animateStep(()=>{timer=setTimeout(loop,600/+$('spd').value);});
+}
+$('play').addEventListener('click',function(){
+  manual=null;
+  playing=!playing;this.innerHTML=playing?'&#10074;&#10074; Pause':'&#9654; Play';
+  if(playing){if(stepI>=sigs.length-1)initParticles();loop();}else clearTimeout(timer);
+});
+$('step').addEventListener('click',()=>{playing=false;clearTimeout(timer);manual=null;$('play').innerHTML='&#9654; Play';
+  if(stepI>=sigs.length-1)return;animateStep();});
+$('substep').addEventListener('click',()=>{
+  playing=false;clearTimeout(timer);$('play').innerHTML='&#9654; Play';
+  if(stepI>=sigs.length-1)return;
+  if(!manual){const seq=beginPhases();manual={seq,k:0};applyPhase(seq,0,true);}
+  else{
+    manual.k++;
+    if(manual.k<manual.seq.length)applyPhase(manual.seq,manual.k,true);
+    else{finishStep(true);manual=null;}
+  }
+});
+$('reset').addEventListener('click',()=>{playing=false;clearTimeout(timer);$('play').innerHTML='&#9654; Play';initParticles();});
+$('nst').addEventListener('input',e=>{NST=+e.target.value;$('nstv').textContent=NST;sigs=sched(NST);initParticles();});
+$('np').addEventListener('input',e=>{NP=+e.target.value;$('npv').textContent=NP;initParticles();});
+$('spd').addEventListener('input',e=>$('spdv').textContent=e.target.value+'x');
+$('eta').addEventListener('input',e=>{cancelManual();ETA=+e.target.value/100;$('etav').textContent=ETA.toFixed(1);});
+$('chu').addEventListener('input',e=>{cancelManual();CHURN=+e.target.value/100;$('chuv').textContent=CHURN.toFixed(1);});
+$('ord').addEventListener('input',e=>{cancelManual();ORDER=+e.target.value;$('ordv').textContent=ORDER;});
+document.querySelectorAll('.stagebar .chip').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('.stagebar .chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');
+  KIND=c.dataset.k;
+  $('etaw').style.display=KIND==='anc'?'flex':'none';
+  $('chw').style.display=KIND==='heun'?'flex':'none';
+  $('ordw').style.display=KIND==='lms'?'flex':'none';
+  hlLine='';phaseViz=null;initParticles();
+}));
+// click sigma bar to jump to a stage
+$('sigbar').addEventListener('click',e=>{
+  const r=e.currentTarget.getBoundingClientRect();
+  const t=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)); // 0=left=σ0, 1=right=σmax
+  const targetSig=Math.exp(t*Math.log(SMAX));                 // approx log scale
+  // find nearest step index
+  let best=0,bd=1e18;
+  sigs.forEach((s,i)=>{const d=Math.abs(Math.log(Math.max(s,SMIN))-Math.log(Math.max(targetSig,SMIN)));if(d<bd){bd=d;best=i;}});
+  playing=false;clearTimeout(timer);$('play').innerHTML='&#9654; Play';hlLine='';phaseViz=null;manual=null;
+  jumpTo(best);
+  $('phase').innerHTML=`<b>jumped to rung ${stepI}</b> (σ = ${sigs[Math.min(stepI,sigs.length-1)].toFixed(2)}) — press <b>▶ Play</b> to continue the descent from here.`;
+});
+cv.addEventListener('click',e=>{
+  const r=cv.getBoundingClientRect();
+  const x=((e.clientX-r.left)*(W/r.width)-W/2)/S, y=(H/2-(e.clientY-r.top)*(H/r.height))/(H/12);
+  particles.push([x,y]);hist.push([[x,y]]);dhist.push([]);
+  draw();
+});
+(function renderLoop(){draw();requestAnimationFrame(renderLoop);})();
+function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+addEventListener('load',postH);addEventListener('resize',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);
+initParticles(); setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

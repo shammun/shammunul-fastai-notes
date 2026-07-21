@@ -1,0 +1,553 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ride the EDM Wrapper — c_skip·x + c_out·F(c_in·x, σ) in 3D</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:1000px;line-height:1.45;}
+  .stagebar{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.8px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 11px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:6px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:105px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  input[type=range]{width:130px;accent-color:var(--ac);}
+  .v{font-family:monospace;font-weight:700;color:var(--ac);min-width:44px;display:inline-block;}
+  .wrap{max-width:1560px;margin:0 auto;}
+  .layout{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;}
+  .layout .left{flex:1.35 1 600px;min-width:460px;display:flex;flex-direction:column;}
+  .layout .left .card.viz{flex:1;display:flex;flex-direction:column;}
+  .layout .left canvas#c3d{flex:1;min-height:420px;}
+  .layout .right{flex:1 1 430px;min-width:360px;display:flex;flex-direction:column;gap:10px;min-height:0;}
+  .layout .right .phase{margin-top:0;}
+  .layout .right .story{margin-top:0;}
+  .layout .right .inspect{flex:0 0 auto;}
+  .layout .right .code{flex:1 1 auto;min-height:150px;max-height:none;overflow:auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 11px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  #c3d{display:block;border-radius:10px;background:linear-gradient(180deg,#f8fbff,#eef3fb);cursor:grab;width:100%;height:440px;touch-action:none;}
+  .pills{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:8px auto 0;}
+  .pill{border:2px solid var(--line);background:#fff;border-radius:10px;padding:3px 8px;cursor:pointer;text-align:center;min-width:78px;transition:all .15s;}
+  .pill:hover{border-color:var(--ac);}
+  .pill .t{font-size:9px;font-weight:700;color:var(--soft);}
+  .pill .s{font-family:monospace;font-size:10.4px;color:var(--ink);}
+  .pill.on{border-color:var(--ac);background:#f4efff;box-shadow:0 3px 10px rgba(123,92,214,.25);}
+  .pill.on .t{color:var(--ac);}
+  .formula{font-family:"SF Mono",Consolas,monospace;font-size:14.5px;text-align:center;margin:0 0 7px;color:var(--soft);letter-spacing:.2px;}
+  .formula .tm{border-radius:6px;padding:2px 5px;transition:all .15s;font-weight:700;}
+  .formula .tcs{color:#0f7d7d;} .formula .tco{color:#7b5cd6;} .formula .tF{color:#7b5cd6;} .formula .tci{color:#c9791a;} .formula .tden{color:#25324a;}
+  .formula .tm.on{background:#f4efff;box-shadow:0 0 0 2px var(--ac);}
+  .formula i{font-style:normal;font-size:10.5px;color:var(--soft);font-weight:400;}
+  .phase{font-size:12.3px;line-height:1.5;background:#f4efff;border-left:4px solid var(--ac);border-radius:8px;padding:7px 10px;margin-top:8px;min-height:38px;color:var(--ink);}
+  .phase b{color:var(--ac);}
+  .phase sub{font-size:.7em;}
+  .phase code{background:#e7e0f7;border-radius:4px;padding:0 4px;font-size:11px;}
+  .legtag{display:inline-block;background:var(--ac);color:#fff;border-radius:999px;font-size:10px;font-weight:800;padding:1px 8px;margin-right:5px;vertical-align:1px;}
+  .story{margin-top:8px;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  .inspect{border-left:5px solid var(--out);}
+  .inspect h4{margin:0 0 4px;font-size:12.5px;color:var(--out);}
+  .inspect .body{font-size:12.2px;color:var(--soft);line-height:1.55;}
+  .inspect .body b{color:var(--ink);}
+  .inspect .body code{background:#eef2fb;border-radius:4px;padding:0 4px;font-size:11.3px;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.2px;line-height:1.6;overflow:auto;white-space:pre;max-height:340px;}
+  .code .ln{display:block;border-radius:4px;padding:0 4px;margin:0 -2px;transition:background .12s;}
+  .code .ln.rng{background:rgba(123,92,214,.16);}
+  .code .ln.cur{background:rgba(123,92,214,.52);box-shadow:inset 2.5px 0 0 #b9a5ec;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .code .live{color:#ffd479;font-weight:700;}
+  .code .live.flash{background:rgba(255,212,121,.28);border-radius:4px;padding:0 3px;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;line-height:1.5;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+  .fallback{padding:26px;text-align:center;color:var(--soft);display:none;}
+</style></head><body>
+<h1>Ride the EDM Wrapper — <code>denoised = c_skip·x + c_out·model(c_in·x, σ)</code></h1>
+<p class="sub">The wrapper the samplers call at every rung, laid out as a physical machine. The <b style="color:var(--in)">orange box is the noisy tensor</b>; it takes the low road through the network while a <b style="color:var(--out)">teal copy rides the skip highway</b> over the top. The σ dial (left) sets the width of every gate. <b>Drag to rotate · scroll to zoom · click any part · drag σ and watch the highway breathe · chips replay their leg of the trip.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① Meet the machine</button>
+  <button class="chip" data-s="1">② The ×c_in gate</button>
+  <button class="chip" data-s="2">③ Through the network</button>
+  <button class="chip" data-s="3">④ The blend at +</button>
+  <button class="chip" data-s="4">⑤ Sweep σ: watch it re-rig</button>
+</div>
+<div class="selrow">
+  <button class="stepb" id="back">⏮</button>
+  <button class="play" id="play">▶ Play trip</button>
+  <button class="stepb" id="fwd">⏭</button>
+  <button class="reset" id="reset">↺</button>
+  <span class="div"></span>
+  σ <input id="sig" type="range" min="-4.6" max="4.38" step="0.01" value="-1.109"><span class="v" id="sigv">0.33</span>
+  <span class="div"></span>
+  speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"><span class="v" id="spv">1×</span>
+</div>
+
+<div class="wrap">
+<div class="layout">
+  <div class="left">
+    <div class="card viz">
+      <div class="formula">
+        <span class="tm tden" id="tm_den">denoised</span> =
+        <span class="tm tcs" id="tm_cs">c_skip·x <i id="tv_cs"></i></span> +
+        <span class="tm tco" id="tm_co">c_out <i id="tv_co"></i></span> ·
+        <span class="tm tF" id="tm_F">F(</span><span class="tm tci" id="tm_ci">c_in·x <i id="tv_ci"></i></span><span class="tm tF" id="tm_F2">, σ)</span>
+      </div>
+      <canvas id="c3d"></canvas>
+      <div class="fallback" id="fb">3-D library failed to load — please check your connection and reload.</div>
+      <div class="pills" id="pills"></div>
+    </div>
+  </div>
+  <div class="right">
+    <div class="phase" id="phase">Press <b>▶ Play trip</b> to ride the tensor through the machine — this bar narrates each leg of the trip and the formula (top-left) lights up the term being computed. <b>⏮ ⏭</b> jump one leg at a time. Click <b>any part</b> — boxes, gates, the teal highway, the σ dial — to inspect it AND light up its code lines.</div>
+    <div class="story" id="story"></div>
+    <div class="card inspect">
+      <h4 id="insT">Click any part of the machine</h4>
+      <div class="body" id="insB">Boxes, gates, the highway, the σ dial — everything answers with its role and its live value at the current σ.</div>
+    </div>
+    <div class="code" id="code"></div>
+  </div>
+</div>
+<p class="legend"><b class="i">orange box</b> = the tensor x (face shows the noisy image) · <b class="a">purple box</b> = the trained network F ·
+<b class="o">teal highway</b> = the c_skip·x shortcut — its thickness IS c_skip · gate ring sizes = the live dial values ·
+the purple pulse rising from the σ dial = σ being told to the network directly</p>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+if(!window.THREE){$('fb').style.display='block';$('c3d').style.display='none';return;}
+const SD=0.33;
+function sigv(){return Math.exp(+$('sig').value);}
+function dials(s){const tv=s*s+SD*SD;return {cs:SD*SD/tv,co:s*SD/Math.sqrt(tv),ci:1/Math.sqrt(tv)};}
+// ================= scene =================
+const canvas=$('c3d');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(44,2,0.1,200);
+scene.add(new THREE.AmbientLight(0xffffff,0.85));
+const dl=new THREE.DirectionalLight(0xffffff,0.6);dl.position.set(6,12,9);scene.add(dl);
+const group=new THREE.Group();scene.add(group);
+function makeLabel(lines,{size=24,color='#25324a',mono=false,bold=true}={}){
+  const c=document.createElement('canvas'),x=c.getContext('2d');
+  const font=`${bold?'700':'400'} ${size}px ${mono?'Consolas,monospace':'"Segoe UI",sans-serif'}`;
+  x.font=font;
+  const w=Math.max(...lines.map(t=>x.measureText(t).width))+20,h=lines.length*(size+8)+12;
+  c.width=w*2;c.height=h*2;x.scale(2,2);x.font=font;x.textAlign='center';x.textBaseline='middle';x.fillStyle=color;
+  lines.forEach((t,i)=>x.fillText(t,w/2,10+(size+8)*i+size/2));
+  const tx=new THREE.CanvasTexture(c);tx.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tx,depthTest:false,transparent:true}));
+  const k=0.0135;sp.scale.set(w*k,h*k,1);sp.renderOrder=6;
+  return sp;
+}
+const grid=new THREE.GridHelper(30,26,0xd4dcec,0xe9eef8);grid.position.y=-3.4;group.add(grid);
+// waypoints along x-axis
+const WP=[-9.5,-5.4,-1.2,3.2,6.6,9.6]; // x_t, cin gate, net, cout gate, +, denoised
+// noisy-image texture on the tensor face
+function imgTex(noisy){
+  const c=document.createElement('canvas');c.width=32;c.height=32;const x=c.getContext('2d');
+  for(let j=0;j<32;j++)for(let i=0;i<32;i++){
+    const dxx=i-15.5,dyy=j-15.5,r=Math.hypot(dxx,dyy);
+    let v=r<12?0.75:0.25;
+    if(r<12&&((i>9&&i<13&&j>10&&j<14)||(i>19&&i<23&&j>10&&j<14)))v=0.1;
+    if(r<12&&j>20&&j<23&&i>10&&i<22)v=0.1;
+    v=v*(1-noisy)+ (0.15+0.7*Math.random())*noisy;
+    const g=Math.round(40+v*200);
+    x.fillStyle=`rgb(${g},${g},${g})`;x.fillRect(i,j,1,1);
+  }
+  const t=new THREE.CanvasTexture(c);t.magFilter=THREE.NearestFilter;return t;
+}
+// boxes
+function box(x,w,h,d,color,edge){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshLambertMaterial({color}));
+  m.position.x=x;group.add(m);
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry),new THREE.LineBasicMaterial({color:edge}));
+  e.position.x=x;group.add(e);
+  return m;
+}
+const xtBox=box(WP[0],2.3,2.3,2.3,0xf6921e,0xc9791a);
+xtBox.material=new THREE.MeshLambertMaterial({color:0xffb464,map:imgTex(0.65)});
+const xtLab=makeLabel(['x — the noisy tensor','(what the sampler hands in)'],{size:25,color:'#c9791a'});
+xtLab.position.set(WP[0],2.2,0);group.add(xtLab);
+const netBox=box(WP[2]+1,4.4,3.1,2.7,0x7b5cd6,0x5f45ad);
+const netLab=makeLabel(['NETWORK F(·, σ)','the only learned part'],{size:27,color:'#7b5cd6'});
+netLab.position.set(WP[2]+1,2.6,0);group.add(netLab);
+const outBox=box(WP[5],2.3,2.3,2.3,0x16a3a3,0x0f7d7d);
+const outLab=makeLabel(['denoised','best guess of clean x₀'],{size:25,color:'#0f7d7d'});
+outLab.position.set(WP[5],2.2,0);group.add(outLab);
+// gates (torus rings whose radius shows the dial value)
+function gate(x,color){
+  const g=new THREE.Mesh(new THREE.TorusGeometry(1.4,0.16,10,40),new THREE.MeshLambertMaterial({color}));
+  g.position.x=x;g.rotation.y=Math.PI/2;group.add(g);return g;
+}
+const cinGate=gate(WP[1],0xf6921e);
+const cinLab=makeLabel(['×c_in'],{size:27,color:'#c9791a',mono:true});cinLab.position.set(WP[1],2.75,0);group.add(cinLab);
+const cinVal=makeLabel(['—'],{size:24,color:'#25324a',mono:true});cinVal.position.set(WP[1],-2.1,0);group.add(cinVal);
+const coutGate=gate(WP[3],0x7b5cd6);
+const coutLab=makeLabel(['×c_out'],{size:27,color:'#7b5cd6',mono:true});coutLab.position.set(WP[3],2.75,0);group.add(coutLab);
+const coutVal=makeLabel(['—'],{size:24,color:'#25324a',mono:true});coutVal.position.set(WP[3],-2.1,0);group.add(coutVal);
+// + junction
+const plus=new THREE.Mesh(new THREE.SphereGeometry(0.75,20,20),new THREE.MeshLambertMaterial({color:0x16a3a3}));
+plus.position.x=WP[4];group.add(plus);
+const plusLab=makeLabel(['+  the blend'],{size:25,color:'#0f7d7d'});plusLab.position.set(WP[4],1.7,0);group.add(plusLab);
+// pipe (low road)
+(function(){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,WP[5]-WP[0],8),
+    new THREE.MeshBasicMaterial({color:0xb6c2d9}));
+  m.rotation.z=Math.PI/2;m.position.x=(WP[0]+WP[5])/2;group.add(m);
+})();
+// skip highway (curved tube whose radius = c_skip)
+let hw=null,hwLab=makeLabel(['skip highway: c_skip · x','thickness = c_skip'],{size:24,color:'#0f7d7d'});
+hwLab.position.set((WP[0]+WP[4])/2,6.0,0);group.add(hwLab);
+function buildHighway(cs){
+  if(hw){group.remove(hw);hw.geometry.dispose();}
+  const curve=new THREE.CatmullRomCurve3([
+    new THREE.Vector3(WP[0],1.2,0),
+    new THREE.Vector3(WP[0]+2,4.6,0),
+    new THREE.Vector3((WP[0]+WP[4])/2,5.3,0),
+    new THREE.Vector3(WP[4]-1.6,4.4,0),
+    new THREE.Vector3(WP[4],0.8,0)]);
+  hw=new THREE.Mesh(new THREE.TubeGeometry(curve,40,0.06+cs*0.5,10,false),
+    new THREE.MeshLambertMaterial({color:0x16a3a3,transparent:true,opacity:0.35+cs*0.6}));
+  group.add(hw);hw.userData.part='hw';
+  return curve;
+}
+let hwCurve=buildHighway(0.5);
+// sigma dial (left front) + riser into the net
+const dialBase=new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,0.3,24),new THREE.MeshLambertMaterial({color:0x8d6fe0}));
+dialBase.position.set(WP[2]+1,-3.1,3.6);group.add(dialBase);
+const dialLab=makeLabel(['σ dial — drag the slider'],{size:24,color:'#7b5cd6'});
+dialLab.position.set(WP[2]+1,-1.9,3.6);group.add(dialLab);
+const dialNeedle=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.12,0.95),
+  new THREE.MeshLambertMaterial({color:0x25324a}));
+dialNeedle.position.set(WP[2]+1,-2.9,3.6);group.add(dialNeedle);
+const sigValLab=makeLabel(['σ = —'],{size:24,color:'#25324a',mono:true});
+sigValLab.position.set(WP[2]+1,-2.42,3.6);group.add(sigValLab);
+(function(){
+  const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(WP[2]+1,-3.0,3.6),new THREE.Vector3(WP[2]+1,-1.6,0.5)]);
+  group.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:0x8d6fe0})));
+})();
+const sigPulse=new THREE.Mesh(new THREE.SphereGeometry(0.16,10,10),new THREE.MeshBasicMaterial({color:0x8d6fe0}));
+group.add(sigPulse);
+// skip packet + main tensor
+const tensor=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.5,1.5),new THREE.MeshLambertMaterial({color:0xffb464,map:imgTex(0.65)}));
+group.add(tensor);
+const tenLab=makeLabel(['x'],{size:26,color:'#c9791a',mono:true});group.add(tenLab);
+const packet=new THREE.Mesh(new THREE.SphereGeometry(0.34,14,14),new THREE.MeshLambertMaterial({color:0x16a3a3}));
+group.add(packet);
+const pktLab=makeLabel(['c_skip · x'],{size:21,color:'#0f7d7d',mono:true});group.add(pktLab);
+// clickable registry
+const clickables=[{o:xtBox,part:'xt'},{o:cinGate,part:'cin'},{o:netBox,part:'net'},{o:coutGate,part:'cout'},{o:plus,part:'plus'},{o:outBox,part:'out'},{o:dialBase,part:'dial'}];
+// ================= code =================
+const CODE_LINES=[
+ {t:'s',h:'def <span class="fn">scalings</span>(sig):'},
+ {t:'s',h:'    totvar = sig**<span class="num">2</span> + sig_data**<span class="num">2</span>            <span class="live" id="lv_v"></span>'},
+ {t:'s.k',h:'    c_skip = sig_data**<span class="num">2</span>/totvar          <span class="cm"># highway thickness</span> <span class="live" id="lv_k"></span>'},
+ {t:'s.o',h:'    c_out  = sig*sig_data/totvar**<span class="num">0.5</span>    <span class="cm"># output gate</span> <span class="live" id="lv_o"></span>'},
+ {t:'s.i',h:'    c_in   = <span class="num">1</span>/totvar**<span class="num">0.5</span>             <span class="cm"># input gate</span> <span class="live" id="lv_i"></span>'},
+ {h:' '},
+ {t:'d',h:'def <span class="fn">denoise</span>(model, x, sig):             <span class="cm"># the machine below</span>'},
+ {t:'d',h:'    c_skip, c_out, c_in = <span class="fn">scalings</span>(sig)'},
+ {t:'d.in',h:'    net_in = c_in * x                    <span class="cm"># ② squeeze through the orange gate</span>'},
+ {t:'d.f',h:'    raw = model((net_in, sig))           <span class="cm"># ③ σ enters via the purple riser</span>'},
+ {t:'d.out',h:'    raw = raw * c_out                    <span class="cm"># ④a size the new information</span>'},
+ {t:'d.mix',h:'    return raw + x * c_skip              <span class="cm"># ④b …and add the highway copy</span>'},
+];
+$('code').innerHTML=CODE_LINES.map(l=>`<span class="ln">${l.h||' '}</span>`).join('');
+const lnEls=[...$('code').querySelectorAll('.ln')];
+let rngTags=['d'],curTag=null;
+function codeHl(){lnEls.forEach((el,i)=>{const t=CODE_LINES[i].t;
+  el.classList.toggle('rng',!!t&&rngTags.some(r=>t===r||t.startsWith(r+'.')));
+  el.classList.toggle('cur',!!t&&t===curTag);});}
+// ================= p → sync =================
+// p in [0,5]: 0=at x, 1=at cin gate, 2=in net, 3=at cout gate, 4=at +, 5=at denoised
+let p=0,playing=false,stage=0;
+let _lastS=null,_lastTenTxt=null,_lastCin=null,_lastCout=null;
+let selCode=null,selObj=null,sweeping=false,_lastNarr='';
+function clearSel(){
+  if(selObj&&selObj.material&&selObj.material.emissive)selObj.material.emissive.setHex(0x000000);
+  selObj=null;selCode=null;
+  rngTags=STAGE_RNG[stage];   // hand the range tint back to the active stage
+}
+function narrText(seg,d,s){
+  const f=v=>v<0.05?v.toFixed(3):v<10?v.toFixed(2):v.toFixed(1);
+  const N={
+   0:`<span class="legtag">leg 1/5</span><b>the input x.</b> The orange box is the noisy tensor a sampler is holding at σ = ${f(s)} — its face is a noisy image, its std is √(σ² + σ<sub>data</sub>²) = <b>${Math.sqrt(s*s+0.33*0.33).toFixed(2)}</b>. That runaway scale is the problem this whole machine solves. It now rolls toward the orange gate…`,
+   1:`<span class="legtag">leg 2/5</span><b>through ×c_in = ${d.ci.toFixed(2)}.</b> The gate squeezes (or amplifies) the tensor so it leaves with <b>std exactly 1</b> — whatever σ is. Watch the gate ring's size: drag σ and it re-opens. One consistent diet for the network at every noise level.`,
+   2:`<span class="legtag">leg 3/5</span><b>inside the network F.</b> The only learned part of the machine. Note the <b>purple pulse climbing from the σ dial</b> into the box: σ is passed to F directly, so it knows which regime it's in even though its input always <em>looks</em> std-1.`,
+   3:`<span class="legtag">leg 4/5</span><b>through ×c_out = ${d.co.toFixed(3)}.</b> The network's std-1 answer is resized to the natural size of the <em>missing information</em> at this σ — near zero at tiny σ (the input already is the answer, little to add), growing with σ and saturating at σ<sub>data</sub> = 0.33 (at heavy noise the missing information is essentially the whole clean image, whose natural scale IS σ<sub>data</sub>).`,
+   4:`<span class="legtag">leg 5/5</span><b>the blend at ＋.</b> Two arrivals: from below, the resized network contribution; from above, the <b>teal ball riding the highway</b> delivers c_skip·x = ${d.cs.toFixed(2)}·x — an untouched copy of the input. The highway's thickness IS c_skip: ${(100*d.cs).toFixed(0)}% of the raw input survives right now.`,
+   5:`<b>arrived: denoised</b> — the machine's answer, the model's best guess of clean x₀. Every sampler consumes exactly this. Now drag <b>σ</b> and watch the machine re-rig (gates resize, highway breathes), or hit ⏮ / ▶ to ride again.`,
+  };
+  return N[seg];
+}
+function narrate(seg,d,s){
+  if(sweeping)return;
+  const key=stage+':'+seg;
+  if(key===_lastNarr)return;_lastNarr=key;
+  $('phase').innerHTML=narrText(seg,d,s);
+}
+function lerp(a,b,t){return a+(b-a)*t;}
+function sync(){
+  const s=sigv(),d=dials(s);
+  // gates & highway reflect dials (only rebuild when σ changed)
+  if(s!==_lastS){
+    cinGate.scale.y=cinGate.scale.z=0.35+Math.min(d.ci*SD*2.2,1.35);
+    coutGate.scale.y=coutGate.scale.z=0.35+Math.min(d.co*3.4,1.35);
+    hwCurve=buildHighway(d.cs);
+    const cinTxt='c_in = '+d.ci.toFixed(2);
+    if(cinTxt!==_lastCin){updateValLabel(cinVal,cinTxt);_lastCin=cinTxt;}
+    const coutTxt='c_out = '+d.co.toFixed(3);
+    if(coutTxt!==_lastCout){updateValLabel(coutVal,coutTxt);_lastCout=coutTxt;}
+    $('tv_cs').textContent='='+d.cs.toFixed(2);
+    $('tv_co').textContent='='+d.co.toFixed(3);
+    $('tv_ci').textContent='='+d.ci.toFixed(2);
+    // the scalings() lines display their CURRENT outputs, live
+    $('lv_v').textContent='→ '+(s*s+SD*SD<0.05?(s*s+SD*SD).toFixed(3):(s*s+SD*SD).toFixed(2));
+    $('lv_k').textContent='→ '+d.cs.toFixed(2);
+    $('lv_o').textContent='→ '+d.co.toFixed(3);
+    $('lv_i').textContent='→ '+d.ci.toFixed(2);
+    // the dial itself responds: needle sweeps 270° across the slider's log range
+    const ang=(+$('sig').value+4.6)/(4.38+4.6);
+    dialNeedle.rotation.y=(0.75-1.5*Math.max(0,Math.min(1,ang)))*Math.PI;
+    updateValLabel(sigValLab,'σ = '+(s<0.05?s.toFixed(3):s<10?s.toFixed(2):s.toFixed(1)));
+    _lastS=s;
+  }
+  // tensor position along waypoints
+  const seg=Math.max(0,Math.min(4.999,p));
+  const i=Math.floor(seg),f=seg-i;
+  tensor.position.x=lerp(WP[i],WP[i+1],f);
+  tensor.position.y=0;
+  // size morph: after cin gate the tensor is "standardized" (unit size); after cout regains c_out flavor
+  let sc=1;
+  if(p<1)sc=1+0.5*Math.min(1,Math.log(1+s)/2);             // raw size grows a bit with sigma
+  else if(p<3)sc=0.85;                                      // std-1 inside the net
+  else sc=0.85;
+  tensor.scale.setScalar(sc*(p>=2&&p<3?1+0.12*Math.sin(Date.now()/130):1));
+  // face noisiness fades after the net (it "denoises")
+  tenLab.position.set(tensor.position.x,tensor.position.y+1.6,0);
+  const tt=p<1?'x':p<2?'c_in·x  (std 1)':p<3?'F(c_in·x, σ)':p<4?'c_out·F(...)':'denoised';
+  if(tt!==_lastTenTxt){updateValLabel(tenLab,tt);_lastTenTxt=tt;}
+  // skip packet rides highway during p in [0.3, 4]
+  const u=Math.max(0,Math.min(1,(p-0.25)/3.75));
+  const hp=hwCurve.getPoint(u);
+  packet.position.copy(hp);
+  packet.scale.setScalar(0.5+d.cs*1.1);
+  pktLab.position.set(hp.x,hp.y+0.85,hp.z);
+  packet.visible=pktLab.visible=p>0.1&&p<4.6;
+  // sigma pulse rides riser while in net
+  const pu=(Date.now()/900)%1;
+  sigPulse.position.set(WP[2]+1,-3.0+pu*1.4,3.6-pu*3.1);
+  sigPulse.visible=p>=1&&p<3.2;
+  // output box color blend: teal mix of highway+net contributions
+  outBox.material.color.setHex(p>=4.7?0x16a3a3:0x9fd8d5);
+  // code highlight: a clicked part owns it; otherwise it follows the trip segment
+  const leg=p<1?0:p<2?1:p<3?2:p<4?3:p<4.99?4:5;
+  if(selCode){rngTags=selCode.rng;curTag=selCode.cur;}
+  else curTag=leg===0||leg===5?null:leg===1?'d.in':leg===2?'d.f':leg===3?'d.out':'d.mix';
+  codeHl();
+  // light up the formula term being computed
+  ['tm_den','tm_cs','tm_co','tm_F','tm_F2','tm_ci'].forEach(id=>$(id).classList.remove('on'));
+  if(leg===1)$('tm_ci').classList.add('on');
+  else if(leg===2){$('tm_F').classList.add('on');$('tm_F2').classList.add('on');$('tm_ci').classList.add('on');}
+  else if(leg===3)$('tm_co').classList.add('on');
+  else if(leg===4){$('tm_cs').classList.add('on');$('tm_co').classList.add('on');$('tm_F').classList.add('on');$('tm_F2').classList.add('on');}
+  else if(leg===5)$('tm_den').classList.add('on');
+  narrate(leg,d,s);
+  $('sigv').textContent=s<0.05?s.toFixed(3):s<10?s.toFixed(2):s.toFixed(1);
+  syncPills();
+}
+function updateValLabel(sprite,text){
+  const c=document.createElement('canvas'),x=c.getContext('2d');
+  const size=24;const font=`700 ${size}px Consolas,monospace`;x.font=font;
+  const w=x.measureText(text).width+20,h=size+20;
+  c.width=w*2;c.height=h*2;x.scale(2,2);x.font=font;x.textAlign='center';x.textBaseline='middle';
+  x.fillStyle='#25324a';x.fillText(text,w/2,h/2);
+  sprite.material.map&&sprite.material.map.dispose();
+  sprite.material.map=new THREE.CanvasTexture(c);sprite.material.map.minFilter=THREE.LinearFilter;
+  sprite.material.needsUpdate=true;
+  const k=0.0135;sprite.scale.set(w*k,h*k,1);
+}
+// ================= pills =================
+const PILLS=[['x','the input',0],['×c_in','gate ②',1],['F(·,σ)','network ③',2],['×c_out','gate ④a',3],['+ skip','blend ④b',4],['denoised','result',5]];
+(function(){
+  const el=$('pills');
+  PILLS.forEach(([s,t,pp])=>{
+    const d=document.createElement('div');d.className='pill';
+    d.innerHTML=`<div class="t">${t}</div><div class="s">${s}</div>`;
+    d.onclick=()=>{stopPlay();clearSel();_lastNarr='';p=pp;sync();};
+    el.appendChild(d);
+  });
+})();
+function syncPills(){
+  const i=Math.min(5,Math.round(p));
+  [...$('pills').children].forEach((c,k)=>c.classList.toggle('on',k===i));
+}
+// ================= stories =================
+const STORIES=[
+ `<b>① Meet the machine.</b> This is <code>denoise()</code> — the exact function every sampler calls once (or twice, for Heun) per rung. One input x takes <b>two roads at once</b>: the low road through two gates and the network, and the <b>teal highway</b> over the top carrying a ×c_skip copy of x untouched. All three gates are set by a single knob — σ. Nothing else in the machine is adjustable; only the purple network box contains learned weights. Press ▶ to ride through once, or click any part.`,
+ `<b>② The ×c_in gate.</b> The replay walks x up to the orange gate. Its job: divide by √(σ² + σ<sub>data</sub>²) so the network always receives a std-1 tensor. Watch the gate's ring size as you drag σ — at σ = 80 the gate is nearly closed (c_in ≈ 0.0125: the wild input must be crushed 80-fold), at σ = 0.01 it's wide open (c_in ≈ 3: the tiny input is gently amplified to standard size). Same network diet at every noise level.`,
+ `<b>③ Through the network.</b> Inside the purple box the only learned computation happens — and note the <b>purple pulse rising from the σ dial into the box</b>: σ is passed to the network directly (as an embedding), so F knows which regime it's operating in even though its input always <em>looks</em> std-1. The output is the network's std-1 estimate of the "new information" — exactly the target it was trained on in noisify().`,
+ `<b>④ The blend.</b> Two arrivals at the + sphere: from below, the network's contribution resized by <b>×c_out</b> (how much new information is worth at this σ); from above, the highway delivers <b>c_skip·x</b> (how much of the raw input was trustworthy). Their sum is the denoised estimate. The two weights are complementary by construction: what the input can provide, the network needn't; what it can't, the network must.`,
+ `<b>⑤ Sweep σ and watch the machine re-rig itself.</b> The replay glides σ from 0.01 to 80. Low σ: <b>fat highway, tiny c_out</b> — denoised ≈ x, the network only whispers corrections; this is why the wrapper is <em>exactly right</em> in the clean limit. High σ: the highway starves to a thread and c_out takes over — denoised is almost entirely the network's reconstruction. One smooth interpolation between "trust the input" and "trust the model", controlled by one number. That's the whole of EDM pre-conditioning.`,
+];
+const STAGE_RNG=[['d'],['s.i','d.in'],['d.f'],['s.k','s.o','d.out','d.mix'],['s','d']];
+let sweepT=null;
+function setStage(s){
+  stage=s;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('story').innerHTML=STORIES[s];
+  rngTags=STAGE_RNG[s];codeHl();
+}
+const KICK=[
+ 'Watch the whole trip once with <b>▶ Play trip</b> — each leg is narrated here as the tensor reaches it.',
+ '<b>Focus: the orange ×c_in gate.</b> The replay walks the tensor up to it; then drag σ and watch the ring re-size.',
+ '<b>Focus: inside the network.</b> The replay parks the tensor in the purple box — watch the σ pulse climbing the riser.',
+ '<b>Focus: the two arrivals at ＋.</b> Low road (×c_out) meets the teal highway delivery (c_skip·x).',
+ '<b>Watch the machine re-rig itself</b> as σ sweeps 0.01 → 80: the highway starves from fat to thread, gates resize, formula weights flip.',
+];
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{
+  stopPlay();clearInterval(sweepT);sweeping=false;clearSel();_lastNarr='';
+  const s=+c.dataset.s;setStage(s);
+  if(s===0){p=0;sync();}
+  if(s===1){p=0.2;sync();animTo(1.6);}
+  if(s===2){p=1.6;sync();animTo(3.0);}
+  if(s===3){p=3.0;sync();animTo(5.0);}
+  if(s===4){p=5;sync();sweepSig();}
+  // show the stage's kickoff line first; leg narration takes over at the next leg change
+  $('phase').innerHTML=KICK[s];
+  _lastNarr=stage+':'+(p<1?0:p<2?1:p<3?2:p<4?3:p<4.99?4:5);
+});
+function animTo(target){startPlay(target);}
+function sweepSig(){
+  sweeping=true;
+  let v=-4.6;$('sig').value=v;sync();
+  sweepT=setInterval(()=>{v+=0.09;$('sig').value=v;sync();
+    if(v>=4.38){clearInterval(sweepT);sweeping=false;}},40);
+}
+// ================= inspect =================
+const INS={
+ xt:()=>['x — the noisy tensor',`Whatever the sampler currently holds at noise level σ = ${sigv().toFixed(2)}. Std ≈ √(σ² + σ<sub>data</sub>²) = <b>${Math.sqrt(sigv()**2+SD*SD).toFixed(2)}</b> — the scale problem the two gates solve.`],
+ cin:()=>['gate ②: ×c_in',`Live value <b>${dials(sigv()).ci.toFixed(3)}</b>. Sets the network's input to std 1 exactly. Ring size in the scene tracks this number.`],
+ net:()=>['the network F',`The only learned part. Receives (c_in·x, σ) — the σ arrives via the purple riser as an embedding. Trained (in noisify) so its std-1 output is precisely the information x lacks.`],
+ cout:()=>['gate ④a: ×c_out',`Live value <b>${dials(sigv()).co.toFixed(3)}</b>. Rescales the std-1 network output to the natural size of the missing information: c_out rises from 0 (clean input needs nothing added) and saturates at σ<sub>data</sub> = 0.33 for large σ (the missing information becomes the whole image). Exactly the std of x₀ − c_skip·noised.`],
+ plus:()=>['the + junction',`denoised = c_skip·x + c_out·F(c_in·x, σ). Currently ${(100*dials(sigv()).cs).toFixed(0)}% of the raw input survives via the highway.`],
+ out:()=>['denoised',`The wrapper's answer: the model's best guess of clean data. Every sampler consumes exactly this, computing d = (x − denoised)/σ.`],
+ dial:()=>['the σ dial',`One number rigs the whole machine: c_skip=${dials(sigv()).cs.toFixed(2)}, c_out=${dials(sigv()).co.toFixed(3)}, c_in=${dials(sigv()).ci.toFixed(3)}. Drag the σ slider above to turn it. Don't confuse the two sigmas: <b>σ</b> is this variable knob; <b>σ<sub>data</sub> = 0.33</b> is the dataset's fixed clean-image scale that every formula measures σ against.`],
+ hw:()=>['the skip highway',`Carries c_skip·x = <b>${dials(sigv()).cs.toFixed(2)}</b>·x straight to the blend, untouched by any weights. Its tube thickness and opacity are drawn from c_skip live.`],
+};
+const ray=new THREE.Raycaster(),mou=new THREE.Vector2();
+let downXY=null;
+canvas.addEventListener('pointerdown',e=>{downXY=[e.clientX,e.clientY];});
+canvas.addEventListener('pointerup',e=>{
+  if(!downXY)return;
+  const moved=Math.hypot(e.clientX-downXY[0],e.clientY-downXY[1]);downXY=null;
+  if(moved>6)return;
+  const r=canvas.getBoundingClientRect();
+  mou.x=((e.clientX-r.left)/r.width)*2-1;mou.y=-((e.clientY-r.top)/r.height)*2+1;
+  ray.setFromCamera(mou,camera);
+  const objs=clickables.map(c=>c.o).concat(hw?[hw]:[]);
+  const hit=ray.intersectObjects(objs);
+  if(hit.length){
+    const o=hit[0].object;
+    const part=o===hw?'hw':clickables.find(c=>c.o===o).part;
+    const [t,b]=INS[part]();$('insT').textContent=t;$('insB').innerHTML=b;
+    const CODEMAP={
+      xt:{rng:['d'],cur:null},
+      cin:{rng:['s.i','d.in'],cur:'d.in'},
+      net:{rng:['d.f'],cur:'d.f'},
+      cout:{rng:['s.o','d.out'],cur:'d.out'},
+      plus:{rng:['s.k','d.mix'],cur:'d.mix'},
+      out:{rng:['d.mix'],cur:'d.mix'},
+      hw:{rng:['s.k','d.mix'],cur:'s.k'},
+      dial:{rng:['s'],cur:null},
+    };
+    clearSel();
+    selObj=o;
+    if(o.material&&o.material.emissive)o.material.emissive.setHex(0x35265e);
+    selCode=CODEMAP[part]||null;
+    $('phase').innerHTML=`<b>inspecting: ${t}.</b> Its code lines are highlighted on the right. Press ▶ or a stage chip to hand the highlight back to the animation.`;
+    _lastNarr='';
+  }
+});
+// ================= controls =================
+let raf=null,last=0,goal=null;
+function stopPlay(){playing=false;goal=null;$('play').innerHTML='▶ Play trip';}
+function startPlay(g){clearSel();_lastNarr='';playing=true;goal=g===undefined?5:g;$('play').innerHTML='⏸ Pause';}
+$('play').onclick=()=>{if(playing)stopPlay();else{if(p>=5)p=0;startPlay(5);}};
+$('fwd').onclick=()=>{stopPlay();p=Math.min(5,Math.floor(p)+1);sync();};
+$('back').onclick=()=>{stopPlay();p=Math.max(0,Math.ceil(p)-1);sync();};
+$('reset').onclick=()=>{stopPlay();clearInterval(sweepT);p=0;$('sig').value=-1.109;userZoomed=false;dist=fitDist();setCam();sync();};
+let sigFocusT=null;
+function sigDragNarrate(){
+  const s=sigv(),d=dials(s),tv=s*s+SD*SD;
+  const f=(v,n)=>v.toFixed(n);
+  const leg=p<1?0:p<2?1:p<3?2:p<4?3:p<4.99?4:5;
+  _lastNarr=stage+':'+leg;   // block leg narration from overriding while dragging
+  $('phase').innerHTML=`<b>σ = ${s<0.05?f(s,3):s<10?f(s,2):f(s,1)}</b> turns every dial through <code>scalings()</code> (the highlighted block, live values in yellow):
+  <code>totvar</code> = σ² + σ<sub>data</sub>² = <b>${tv<0.05?f(tv,3):f(tv,2)}</b> →
+  <span style="color:#0f7d7d;font-weight:700"><code>c_skip</code> = σ<sub>data</sub>² / <code>totvar</code> = ${f(d.cs,2)}</span> ${d.cs>0.6?'(fat highway: mostly reuse the input)':d.cs<0.1?'(highway starved: input barely trusted)':'(highway part-open)'} ·
+  <span style="color:#7b5cd6;font-weight:700"><code>c_out</code> = σ·σ<sub>data</sub> / √(<code>totvar</code>) = ${f(d.co,3)}</span> ${d.co>0.25?'(purple gate wide: lots of new information to size)':'(purple gate narrow)'} ·
+  <span style="color:#c9791a;font-weight:700"><code>c_in</code> = 1 / √(<code>totvar</code>) = ${f(d.ci,2)}</span> ${d.ci>1.5?'(orange gate amplifies the small input up to std 1)':'(orange gate squeezes the big input down to std 1)'}.
+  One number rigs the whole machine. <span style="color:#5a6b86;font-size:11.4px">(σ = the <em>variable</em> noise level you are turning · σ<sub>data</sub> = 0.33 = the dataset's <em>fixed</em> clean-image scale it is measured against.)</span>`;
+}
+$('sig').oninput=()=>{clearInterval(sweepT);sweeping=false;
+  clearSel();
+  selCode={rng:['s'],cur:null};      // scalings() owns the code highlight while dragging
+  document.querySelectorAll('.code .live').forEach(e=>e.classList.add('flash'));
+  sigDragNarrate();
+  clearTimeout(sigFocusT);
+  sigFocusT=setTimeout(()=>{selCode=null;rngTags=STAGE_RNG[stage];
+    document.querySelectorAll('.code .live').forEach(e=>e.classList.remove('flash'));
+    _lastNarr='';sync();},1800);
+  sync();};
+$('speed').oninput=e=>$('spv').textContent=(+e.target.value).toFixed(2).replace(/\.?0+$/,'')+'×';
+// camera
+let th=0.24,ph=0.34,dist=16,userZoomed=false;
+function fitDist(){ // closest distance that fits the machine's width AND height
+  const a=camera.aspect||2.2, t=Math.tan(camera.fov/2*Math.PI/180);
+  return Math.max(13.4/(t*a)+1.9, 15.4);
+}
+function setCam(){
+  camera.position.set(Math.sin(th)*Math.cos(ph)*dist, Math.sin(ph)*dist+1.5, Math.cos(th)*Math.cos(ph)*dist);
+  camera.lookAt(0,1.1,0);
+}
+let drag=false,px_,py_;
+canvas.addEventListener('pointerdown',e=>{drag=true;px_=e.clientX;py_=e.clientY;canvas.style.cursor='grabbing';});
+addEventListener('pointermove',e=>{if(!drag)return;
+  th+=(e.clientX-px_)*0.006;ph=Math.max(-0.2,Math.min(1.2,ph+(e.clientY-py_)*0.004));
+  px_=e.clientX;py_=e.clientY;setCam();});
+addEventListener('pointerup',()=>{drag=false;canvas.style.cursor='grab';});
+canvas.addEventListener('wheel',e=>{e.preventDefault();userZoomed=true;dist=Math.max(9,Math.min(38,dist+e.deltaY*0.02));setCam();},{passive:false});
+// ================= loop =================
+function resize(){
+  const w=canvas.clientWidth,h=canvas.clientHeight;
+  if(canvas.width!==w*devicePixelRatio||canvas.height!==h*devicePixelRatio){
+    renderer.setSize(w,h,false);renderer.setPixelRatio(devicePixelRatio);
+    camera.aspect=w/h;camera.updateProjectionMatrix();
+    if(!userZoomed){dist=fitDist();setCam();}}
+}
+function tick(t){
+  requestAnimationFrame(tick);
+  const dt=Math.min(0.05,(t-last)/1000);last=t;
+  if(playing){
+    p+=dt* +$('speed').value*0.9;
+    if(goal!==null&&p>=goal){p=goal;stopPlay();}
+    if(p>=5){p=5;stopPlay();}
+  }
+  sync();resize();renderer.render(scene,camera);
+}
+setCam();setStage(0);sync();requestAnimationFrame(tick);
+// ================= height =================
+function chh(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:chh()},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);
+setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>

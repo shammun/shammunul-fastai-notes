@@ -1,0 +1,337 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Three Dials: c_skip, c_out, c_in</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:980px;line-height:1.45;}
+  .stagebar{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-bottom:6px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.8px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 11px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .pb{cursor:pointer;}
+  .pb:hover{filter:drop-shadow(0 0 5px rgba(123,92,214,.7));}
+  .pb.sel{filter:drop-shadow(0 0 6px rgba(22,163,163,.95));}
+  .selrow{display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin-bottom:8px;}
+  .selrow .div{width:1px;height:22px;background:var(--line);}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:105px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  input[type=range]{width:120px;accent-color:var(--ac);}
+  .v{font-family:monospace;font-weight:700;color:var(--ac);min-width:42px;display:inline-block;}
+  .wrap{max-width:1060px;margin:0 auto;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;}
+  svg text{font-family:"Segoe UI",sans-serif;}
+  .story{margin-top:10px;background:#fff;border:1px solid var(--line);border-left:5px solid var(--ac);border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.55;box-shadow:0 4px 12px rgba(123,92,214,.07);}
+  .story b{color:var(--ac);}
+  .inforow{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;align-items:stretch;}
+  .inspect{flex:1 1 380px;min-width:300px;border-left:5px solid var(--out);}
+  .inspect h4{margin:0 0 4px;font-size:12.5px;color:var(--out);}
+  .inspect .body{font-size:12.2px;color:var(--soft);line-height:1.55;}
+  .inspect .body b{color:var(--ink);}
+  .inspect .body code{background:#eef2fb;border-radius:4px;padding:0 4px;font-size:11.3px;}
+  .code{flex:1 1 430px;min-width:300px;background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.4px;line-height:1.62;overflow-x:auto;white-space:pre;}
+  .code .ln{display:block;border-radius:4px;padding:0 4px;margin:0 -2px;transition:background .12s;}
+  .code .ln.rng{background:rgba(123,92,214,.16);}
+  .code .ln.cur{background:rgba(123,92,214,.52);box-shadow:inset 2.5px 0 0 #b9a5ec;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .vbars{display:flex;gap:16px;justify-content:center;align-items:flex-end;height:120px;margin-top:4px;}
+  .vb{width:64px;border-radius:8px 8px 4px 4px;position:relative;transition:height .2s;}
+  .vb .lab{position:absolute;bottom:-32px;left:50%;transform:translateX(-50%);font-size:9.6px;font-weight:700;color:var(--soft);text-align:center;width:110px;line-height:1.25;}
+  .vb .val{position:absolute;top:-17px;left:50%;transform:translateX(-50%);font-family:monospace;font-size:11px;font-weight:700;}
+  .tick{position:absolute;left:-8px;right:-8px;border-top:2px dashed #93a0ba;font-size:8.6px;color:#5a6b86;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:8px;line-height:1.5;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>The Three Dials of <code>scalings(sig)</code> — and Where Each One Physically Sits</h1>
+<p class="sub">One σ, three numbers. The <b>pipeline</b> below shows where each dial acts on the data; the <b>curves</b> show how each dial
+turns as σ changes; the <b>bars</b> prove the point of it all: input and target pinned at variance 1.
+<b>Drag the ✏️ marker on the plot (or drag σ) · click the ①–④ chips — each replays an animated sweep · move σ_data to re-calibrate everything.</b></p>
+
+<div class="stagebar">
+  <button class="chip on" data-s="0">① The pipeline</button>
+  <button class="chip" data-s="1">② c_in — tame the input</button>
+  <button class="chip" data-s="2">③ c_skip — trust the input?</button>
+  <button class="chip" data-s="3">④ c_out — grade fairly</button>
+  <button class="chip" data-s="4">⑤ The unit-variance proof</button>
+</div>
+<div class="selrow">
+  <button class="play" id="play">▶ Replay stage</button>
+  <span class="div"></span>
+  σ <input type="range" id="sig" min="-5.3" max="4.38" step="0.01" value="-1.109"><span class="v" id="sigv">0.33</span>
+  σ_data <input type="range" id="sd" min="0.1" max="1.5" step="0.01" value="0.33"><span class="v" id="sdv">0.33</span>
+  <span class="div"></span>
+  <button class="stepb sp" data-v="-4.6">σ≈0.01</button>
+  <button class="stepb sp" data-v="-1.109">σ=σ_data</button>
+  <button class="stepb sp" data-v="4.38">σ=80</button>
+</div>
+
+<div class="wrap">
+<div class="card">
+  <svg id="pipe" viewBox="0 0 1000 150" style="width:100%;height:auto;display:block;"></svg>
+</div>
+<div class="row" style="margin-top:12px;">
+  <div class="card" style="flex:2 1 480px;min-width:320px;">
+    <h4 style="margin:0 0 4px;font-size:12.5px;">The dials as functions of σ &nbsp;<span style="color:var(--soft);font-weight:400;">(drag the ✏️ marker!)</span></h4>
+    <svg id="plot" viewBox="0 0 620 260" style="width:100%;height:auto;display:block;cursor:ew-resize;"></svg>
+  </div>
+  <div class="card" style="flex:1 1 300px;min-width:270px;">
+    <h4 style="margin:0 0 2px;font-size:12.5px;">✅ The whole point: everything the network touches has variance 1</h4>
+    <div class="vbars" id="vbars"></div>
+    <div style="height:36px;"></div>
+    <div style="font-size:11.2px;color:var(--soft);line-height:1.5;" id="vnote"></div>
+  </div>
+</div>
+
+<div class="story" id="story"></div>
+
+<div class="inforow">
+  <div class="card inspect">
+    <h4 id="insT">Click any pipeline part — or a curve</h4>
+    <div class="body" id="insB">Each element of the pipeline diagram is clickable — it explains that element at the current σ, with live numbers.</div>
+  </div>
+  <div class="code" id="code"></div>
+</div>
+<p class="legend"><b class="i">orange</b> = input path · <b class="a">purple</b> = the network & its raw output · <b class="o">teal</b> = the reused-input (skip) path and the final denoised estimate ·
+band colors on the plot mark the three σ regimes · ✏️ = your current σ</p>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+let SD=0.33;
+const LGMIN=-5.3,LGMAX=4.38;
+function sig(){return Math.exp(+$('sig').value);}
+const f={
+  cskip:s=>SD*SD/(s*s+SD*SD),
+  cout:s=>s*SD/Math.sqrt(s*s+SD*SD),
+  cin:s=>1/Math.sqrt(s*s+SD*SD),
+};
+// ---------- code ----------
+const CODE_LINES=[
+ {t:'d',h:'def <span class="fn">scalings</span>(sig):'},
+ {t:'v',h:'    totvar = sig**<span class="num">2</span> + sig_data**<span class="num">2</span>          <span class="cm"># total variance of the noised input</span>'},
+ {t:'k',h:'    c_skip = sig_data**<span class="num">2</span> / totvar        <span class="cm"># ② how much input to reuse as-is</span>'},
+ {t:'o',h:'    c_out  = sig*sig_data / totvar**<span class="num">0.5</span>   <span class="cm"># ④ scales net output → target std 1</span>'},
+ {t:'i',h:'    c_in   = <span class="num">1</span> / totvar**<span class="num">0.5</span>            <span class="cm"># ① squashes input → std exactly 1</span>'},
+ {t:'d',h:'    return c_skip, c_out, c_in'},
+ {h:' '},
+ {h:'<span class="cm"># where the dials act (the EDM wrapper, used at inference):</span>'},
+ {t:'i2',h:'net_in   = c_in * noised              <span class="cm"># std(net_in)  = 1  ✓</span>'},
+ {t:'p', h:'raw      = model(net_in, sig)         <span class="cm"># network works in comfy std-1 land</span>'},
+ {t:'m', h:'denoised = c_skip*noised + c_out*raw  <span class="cm"># blend reused input with new info</span>'},
+];
+$('code').innerHTML=CODE_LINES.map(l=>`<span class="ln">${l.h||' '}</span>`).join('');
+const lnEls=[...$('code').querySelectorAll('.ln')];
+let rngTags=[],curTag=null;
+function codeHl(){lnEls.forEach((el,i)=>{const t=CODE_LINES[i].t;
+  el.classList.toggle('rng',!!t&&rngTags.includes(t));
+  el.classList.toggle('cur',!!t&&t===curTag);});}
+// ---------- pipeline diagram ----------
+function pipeSVG(){
+  return `
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#93a0ba"/></marker></defs>
+  <g id="pg">
+   <g id="bx_x" class="pb"><rect x="18" y="52" width="112" height="46" rx="9" fill="#fff4e6" stroke="#f6921e" stroke-width="2.5"/>
+   <text x="74" y="71" text-anchor="middle" font-size="12.5" font-weight="700" fill="#25324a">noised input</text>
+   <text x="74" y="87" text-anchor="middle" font-size="10" fill="#5a6b86">std = √(σ²+σ_d²)</text></g>
+   <line x1="130" y1="75" x2="180" y2="75" stroke="#93a0ba" stroke-width="2.4" marker-end="url(#ar)"/>
+   <g id="bx_cin" class="pb"><circle cx="212" cy="75" r="26" fill="#fff" stroke="#f6921e" stroke-width="3"/>
+     <text x="212" y="71" text-anchor="middle" font-size="11.5" font-weight="800" fill="#f6921e">× c_in</text>
+     <text id="t_cin" x="212" y="85" text-anchor="middle" font-size="10" font-family="monospace" fill="#25324a">2.14</text>
+     <text x="212" y="118" text-anchor="middle" font-size="9.6" fill="#5a6b86">the INPUT dial ①</text></g>
+   <line x1="238" y1="75" x2="288" y2="75" stroke="#93a0ba" stroke-width="2.4" marker-end="url(#ar)"/>
+   <text x="263" y="66" text-anchor="middle" font-size="9.5" font-weight="700" fill="#16a3a3">std = 1 ✓</text>
+   <g id="bx_net" class="pb"><rect x="290" y="42" width="150" height="66" rx="10" fill="#f4efff" stroke="#7b5cd6" stroke-width="3"/>
+   <text x="365" y="68" text-anchor="middle" font-size="13" font-weight="800" fill="#7b5cd6">NETWORK F(·, σ)</text>
+   <text x="365" y="86" text-anchor="middle" font-size="10" fill="#5a6b86">trained target has std 1</text></g>
+   <line x1="440" y1="75" x2="490" y2="75" stroke="#93a0ba" stroke-width="2.4" marker-end="url(#ar)"/>
+   <text x="465" y="66" text-anchor="middle" font-size="9.5" font-weight="700" fill="#7b5cd6">raw, std ≈ 1</text>
+   <g id="bx_cout" class="pb"><circle cx="522" cy="75" r="26" fill="#fff" stroke="#7b5cd6" stroke-width="3"/>
+     <text x="522" y="71" text-anchor="middle" font-size="11" font-weight="800" fill="#7b5cd6">× c_out</text>
+     <text id="t_cout" x="522" y="85" text-anchor="middle" font-size="10" font-family="monospace" fill="#25324a">0.23</text>
+     <text x="522" y="118" text-anchor="middle" font-size="9.6" fill="#5a6b86">the OUTPUT dial ④</text></g>
+   <line x1="548" y1="75" x2="612" y2="75" stroke="#93a0ba" stroke-width="2.4" marker-end="url(#ar)"/>
+   <g id="bx_sum" class="pb"><circle cx="634" cy="75" r="19" fill="#fff" stroke="#16a3a3" stroke-width="3"/>
+   <text x="634" y="80" text-anchor="middle" font-size="16" font-weight="800" fill="#16a3a3">+</text></g>
+   <path id="skipPath" class="pb" d="M 74 52 C 74 8, 634 8, 634 56" fill="none" stroke="#16a3a3" stroke-width="5" opacity="0.8"/>
+   <g id="bx_cskip" class="pb"><rect x="308" y="2" width="120" height="26" rx="13" fill="#e9f8f7" stroke="#16a3a3" stroke-width="2.5"/>
+     <text x="368" y="15" text-anchor="middle" font-size="10.5" font-weight="800" fill="#0f7d7d">× c_skip = <tspan id="t_cskip" font-family="monospace">0.50</tspan></text>
+     <text x="368" y="25" text-anchor="middle" font-size="8.4" fill="#0f7d7d">the TRUST dial ③ — reuse the input</text></g>
+   <line x1="653" y1="75" x2="700" y2="75" stroke="#93a0ba" stroke-width="2.4" marker-end="url(#ar)"/>
+   <g id="bx_den" class="pb"><rect x="702" y="52" width="130" height="46" rx="9" fill="#e9f8f7" stroke="#16a3a3" stroke-width="2.8"/>
+   <text x="767" y="71" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0f7d7d">denoised</text>
+   <text x="767" y="87" text-anchor="middle" font-size="10" fill="#5a6b86">best guess of x₀</text></g>
+   <text x="915" y="60" text-anchor="middle" font-size="10.5" fill="#5a6b86">c_skip·noised</text>
+   <text x="915" y="74" text-anchor="middle" font-size="10.5" fill="#5a6b86">+ c_out·F(c_in·noised, σ)</text>
+   <text x="915" y="92" text-anchor="middle" font-size="10" font-weight="700" fill="#7b5cd6">= denoised</text>
+  </g>`;
+}
+$('pipe').innerHTML=pipeSVG();
+// ---------- plot ----------
+const P={W:620,H:260,L:46,R:14,T:18,B:34};
+function X(lg){return P.L+(lg-LGMIN)/(LGMAX-LGMIN)*(P.W-P.L-P.R);}
+function Y(v){return P.T+(1-v/1.05)*(P.H-P.T-P.B);}
+function curve(fn,col,id,tag){let d='';for(let i=0;i<=160;i++){const lg=LGMIN+i/160*(LGMAX-LGMIN);
+  const v=Math.min(fn(Math.exp(lg)),1.05);d+=(i?'L':'M')+X(lg).toFixed(1)+','+Y(v).toFixed(1);}
+  return `<path id="${id}" d="${d}" fill="none" stroke="${col}" stroke-width="3"/>`
+       +`<path d="${d}" data-t="${tag}" fill="none" stroke="rgba(0,0,0,0)" stroke-width="16" style="cursor:pointer;pointer-events:stroke;"/>`;}
+function plotSVG(){
+  const sdX=X(Math.log(SD));
+  const bandL=`<rect x="${P.L}" y="${P.T}" width="${Math.max(0,X(Math.log(SD)-1.2)-P.L)}" height="${P.H-P.T-P.B}" fill="#e9f8f7" opacity="0.55"/>`;
+  const bandR=`<rect x="${X(Math.log(SD)+1.2)}" y="${P.T}" width="${Math.max(0,P.W-P.R-X(Math.log(SD)+1.2))}" height="${P.H-P.T-P.B}" fill="#fff4e6" opacity="0.6"/>`;
+  return `
+  ${bandL}${bandR}
+  <rect x="${P.L}" y="${P.T}" width="${P.W-P.L-P.R}" height="${P.H-P.T-P.B}" fill="none" stroke="#dde5f2"/>
+  <text x="${(P.L+X(Math.log(SD)-1.2))/2}" y="${P.T+13}" text-anchor="middle" font-size="9.6" font-weight="700" fill="#0f7d7d">σ ≪ σ_data: trust the input</text>
+  <text x="${(X(Math.log(SD)+1.2)+P.W-P.R)/2}" y="${P.T+13}" text-anchor="middle" font-size="9.6" font-weight="700" fill="#c9791a">σ ≫ σ_data: input useless</text>
+  <line x1="${sdX}" y1="${P.T}" x2="${sdX}" y2="${P.H-P.B}" stroke="#93a0ba" stroke-dasharray="3 3"/>
+  <text x="${sdX}" y="${P.H-P.B+13}" text-anchor="middle" font-size="9.5" fill="#5a6b86">σ = σ_data (the crossover)</text>
+  <line x1="${P.L}" y1="${Y(1)}" x2="${P.W-P.R}" y2="${Y(1)}" stroke="#c8d2e6" stroke-dasharray="2 4"/>
+  <text x="${P.L-5}" y="${Y(1)+3}" text-anchor="end" font-size="9" fill="#5a6b86">1</text>
+  <text x="${P.L-5}" y="${Y(0)+3}" text-anchor="end" font-size="9" fill="#5a6b86">0</text>
+  <text x="${(P.L+P.W-P.R)/2}" y="${P.H-4}" text-anchor="middle" font-size="10" fill="#5a6b86">σ (log scale): 0.005 ────────── 80</text>
+  ${curve(f.cskip,'#16a3a3','c_k','k')}${curve(f.cout,'#7b5cd6','c_o','o')}${curve(s=>f.cin(s)*SD,'#f6921e','c_i','i')}
+  <text data-t="k" style="cursor:pointer"  x="${X(Math.log(SD)-2.6)}" y="${Y(f.cskip(Math.exp(Math.log(SD)-2.6)))-7}" font-size="10.5" font-weight="800" fill="#16a3a3">c_skip</text>
+  <text data-t="o" style="cursor:pointer"  x="${X(Math.log(SD)+2.4)}" y="${Y(f.cout(Math.exp(Math.log(SD)+2.4)))-7}" font-size="10.5" font-weight="800" fill="#7b5cd6">c_out</text>
+  <text data-t="i" style="cursor:pointer"  x="${X(Math.log(SD)-2.6)}" y="${Y(f.cin(Math.exp(Math.log(SD)-2.6))*SD)+16}" font-size="10.5" font-weight="800" fill="#f6921e">c_in·σ_data</text>
+  <g id="mk" style="cursor:ew-resize;">
+    <line id="mkl" x1="0" y1="${P.T}" x2="0" y2="${P.H-P.B}" stroke="#25324a" stroke-width="2"/>
+    <circle id="mkc" cx="0" cy="${P.T}" r="9" fill="#fff" stroke="#25324a" stroke-width="2.5"/>
+    <text id="mkt" x="0" y="${P.T+4}" text-anchor="middle" font-size="9.5">✏️</text>
+    <circle id="dk" r="5" fill="#16a3a3" stroke="#fff" stroke-width="2"/>
+    <circle id="do" r="5" fill="#7b5cd6" stroke="#fff" stroke-width="2"/>
+    <circle id="di" r="5" fill="#f6921e" stroke="#fff" stroke-width="2"/>
+  </g>`;
+}
+function rebuildPlot(){$('plot').innerHTML=plotSVG();bindDrag();}
+rebuildPlot();
+function bindDrag(){
+  const svg=$('plot');let dragging=false;
+  const toLg=e=>{const r=svg.getBoundingClientRect();
+    const x=(e.clientX-r.left)/r.width*P.W;
+    return Math.max(LGMIN,Math.min(LGMAX,LGMIN+(x-P.L)/(P.W-P.L-P.R)*(LGMAX-LGMIN)));};
+  svg.onpointerdown=e=>{dragging=true;$('sig').value=toLg(e);render();};
+  svg.onpointermove=e=>{if(dragging){$('sig').value=toLg(e);render();}};
+  addEventListener('pointerup',()=>dragging=false);
+}
+// ---------- variance bars ----------
+function vbars(){
+  const s=sig(),ci=f.cin(s),co=f.cout(s);
+  const raw=Math.sqrt(s*s+SD*SD);
+  const items=[
+    {v:raw,cap:'raw noised input<br>std = √(σ²+σ_d²)',col:'#cfd8e8',txtcol:'#5a6b86'},
+    {v:1,cap:'c_in · noised<br>(what the net sees)',col:'#f6921e',txtcol:'#c9791a'},
+    {v:1,cap:'the training target<br>(x₀−c_skip·noised)/c_out',col:'#7b5cd6',txtcol:'#7b5cd6'},
+  ];
+  const cap=3.2;
+  $('vbars').innerHTML=items.map(it=>{
+    const h=Math.min(it.v,cap)/cap*112;
+    return `<div class="vb" style="height:${h}px;background:${it.col};">
+      <div class="val" style="color:${it.txtcol}">${it.v>=100?it.v.toFixed(0):it.v.toFixed(2)}${it.v>cap?' ⤒':''}</div>
+      <div class="lab">${it.cap}</div></div>`;}).join('');
+  $('vnote').innerHTML=raw>2.5
+    ? `At σ = ${s.toFixed(1)}, the raw input's std is <b>${raw.toFixed(1)}</b> — a network fed that would need wildly different weights than at σ = 0.01. The dials erase the problem: both std-1 bars <b>never move</b> no matter what you do to σ.`
+    : `Drag σ to the extremes and watch: the grey bar breathes with σ, the two colored bars are frozen at 1.00. One network, one comfortable operating range, every noise level.`;
+}
+// ---------- stories ----------
+const STORIES=[
+ `<b>① The pipeline.</b> This diagram is the EDM wrapper the notebook uses everywhere: the noised input takes <em>two roads</em>. The low road passes through the <b style="color:#f6921e">×c_in dial</b> into the network and out through <b style="color:#7b5cd6">×c_out</b>; the high road is the <b style="color:#16a3a3">teal skip highway</b>, carrying a ×c_skip copy of the raw input straight to the <b>+</b> junction. The three dials are not independent knobs someone tuned — each is <em>derived</em> from one requirement. Chips ②–④ take them one at a time; <b>watch the highway's thickness breathe as you drag σ</b>.`,
+ `<b>② c_in — tame the input.</b> The noised input has variance σ² + σ_data² (independent things add in variance). Neural nets hate inputs whose scale swings by 1000×, so we divide by the std: <code>c_in = 1/√(σ²+σ_data²)</code>. Replay sweeps σ from 0.01 to 80: the grey bar goes wild, the orange bar — the thing actually entering the network — <b>never leaves 1.00</b>. That's the entire derivation of dial ①.`,
+ `<b>③ c_skip — how much can we trust the input?</b> The teal dial answers: <em>what fraction of the noised input is worth keeping as-is?</em> Signal-to-total ratio: <code>σ_data²/(σ²+σ_data²)</code>. Watch the replay: at σ→0 the highway is thick (c_skip→1: keep almost everything, the network only patches details); at σ→∞ it thins to nothing (c_skip→0: the input is pure noise, contribute nothing). The crossover sits exactly at σ = σ_data — <b>move the σ_data slider and the crossover follows it</b>. That's why the notebook bothered to measure σ_data = 0.33.`,
+ `<b>④ c_out — grade fairly.</b> Whatever the network must add (the residual after the skip), its natural size varies with σ. If we graded the raw residual, the loss would be dominated by some σ's and ignore others. So the target is divided by its own std, <code>c_out = σ·σ_data/√(σ²+σ_data²)</code>, making every homework worth the same. Note c_out's shape on the plot: small at <em>both</em> extremes (little new info needed when input is nearly clean; and in units of the huge noise, little precision is achievable when it's drowned) and maximal near σ = σ_data — precisely where viz ① showed the task is genuinely hardest.`,
+ `<b>⑤ The proof.</b> The replay sweeps σ across three orders of magnitude while you watch the two colored bars: <b>they do not move</b>. std(network input) = 1 and std(training target) = 1, always, by construction — the numerical check the notebook runs a few cells later (<code>ins.std()≈1, targs.std()≈1</code>) is exactly this picture. This is what lets ONE network with ONE set of weights denoise at every σ.`,
+];
+const STAGE_RNG=[['d','v','k','o','i','i2','p','m'],['v','i','i2'],['k','m'],['o','m'],['i','o','i2','m']];
+const STAGE_CUR=[null,'i','k','o',null];
+let stage=0,sweepT=null;
+function setStage(s){
+  stage=s;
+  document.querySelectorAll('.pb').forEach(p=>p.classList.remove('sel'));
+  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',+c.dataset.s===s));
+  $('story').innerHTML=STORIES[s];
+  rngTags=STAGE_RNG[s];curTag=STAGE_CUR[s];codeHl();
+}
+function replay(){
+  clearInterval(sweepT);
+  const runs={1:[ -4.6,4.38],2:[-4.6,4.38],3:[-4.6,4.38],4:[-4.6,4.38]};
+  if(stage===0){ // pulse pipeline elements in order
+    const seq=['bx_x','bx_cin','bx_net','bx_cout','bx_cskip','bx_sum','bx_den'];let i=0;
+    const tick=()=>{document.querySelectorAll('.pb').forEach(e=>e.style.filter='');
+      if(i>=seq.length)return;
+      $(seq[i]).style.filter='drop-shadow(0 0 6px rgba(123,92,214,.9))';i++;sweepT=setTimeout(tick,600);};
+    tick();return;
+  }
+  const [a,b]=runs[stage];let v=a;$('sig').value=a;render();
+  sweepT=setInterval(()=>{v+=(b-a)/140;$('sig').value=v;render();
+    if(v>=b)clearInterval(sweepT);},40);
+}
+// ---------- inspect ----------
+const INS={
+ bx_x:()=>['the noised input',`x₀ + n·σ. Right now its std is <b>${Math.sqrt(sig()**2+SD*SD).toFixed(2)}</b> — the one quantity in the pipeline whose scale runs wild, which is the problem the dials exist to solve.`],
+ bx_cin:()=>['dial ①: c_in',`Currently <b>${f.cin(sig()).toFixed(3)}</b>. Multiplying the input by this lands its std at exactly 1 for any σ. Highlighted line: <code>c_in = 1/totvar**0.5</code>.`],
+ bx_net:()=>['the network F',`The only learned piece. Thanks to c_in it always receives std-1 inputs, and thanks to c_out it's always graded against std-1 targets — so its weights never need to re-scale themselves per σ. σ is also passed in directly so it knows which regime it's in.`],
+ bx_cout:()=>['dial ④: c_out',`Currently <b>${f.cout(sig()).toFixed(3)}</b>. The network's std-1 output is scaled back to the natural size of the missing information at this σ.`],
+ bx_cskip:()=>['dial ③: c_skip',`Currently <b>${f.cskip(sig()).toFixed(3)}</b> — meaning ${(100*f.cskip(sig())).toFixed(0)}% of the raw input is passed straight through the teal highway. The highway's thickness in the diagram tracks this number.`],
+ bx_sum:()=>['the + junction',`denoised = c_skip·noised + c_out·F(c_in·noised, σ). Reused input meets fresh information. At σ→0 it's ~all highway; at σ→∞ ~all network.`],
+ bx_den:()=>['denoised',`The model's best guess of the clean x₀ given this σ. Every sampler in the second half of the notebook consumes exactly this quantity.`],
+};
+const CODEMAP={
+ bx_x:{rng:['v'],cur:'v'}, bx_cin:{rng:['i','i2'],cur:'i'}, bx_net:{rng:['p'],cur:'p'},
+ bx_cout:{rng:['o','m'],cur:'o'}, bx_cskip:{rng:['k','m'],cur:'k'}, skipPath:{rng:['k','m'],cur:'k'},
+ bx_sum:{rng:['m'],cur:'m'}, bx_den:{rng:['m'],cur:'m'},
+};
+INS.skipPath=INS.bx_cskip;
+function selectPart(id){
+  document.querySelectorAll('.pb').forEach(p=>p.classList.toggle('sel',
+    p.id===id||(id==='skipPath'&&p.id==='bx_cskip')||(id==='bx_cskip'&&p.id==='skipPath')));
+  const inf=INS[id];if(inf){const [t,b]=inf();$('insT').textContent=t;$('insB').innerHTML=b;}
+  const cm=CODEMAP[id];if(cm){rngTags=cm.rng;curTag=cm.cur;codeHl();}
+}
+$('pipe').addEventListener('click',e=>{
+  let el=e.target;while(el&&el!==document.body&&!(el.classList&&el.classList.contains('pb')))el=el.parentNode;
+  if(el&&el.id)selectPart(el.id);
+});
+// clicking a curve (or its label) in the plot selects the matching dial
+$('plot').addEventListener('click',e=>{
+  const t=e.target.getAttribute&&e.target.getAttribute('data-t');
+  if(!t)return;
+  selectPart({k:'bx_cskip',o:'bx_cout',i:'bx_cin'}[t]);
+});
+// ---------- render ----------
+function render(){
+  const s=sig(),cs=f.cskip(s),co=f.cout(s),ci=f.cin(s);
+  $('sigv').textContent=s<0.05?s.toFixed(3):s<10?s.toFixed(2):s.toFixed(1);
+  $('t_cin').textContent=ci.toFixed(ci<0.1?3:2);
+  $('t_cout').textContent=co.toFixed(3);
+  $('t_cskip').textContent=cs.toFixed(2);
+  $('skipPath').setAttribute('stroke-width',(1+cs*11).toFixed(1));
+  $('skipPath').setAttribute('opacity',(0.25+0.65*cs).toFixed(2));
+  // marker
+  const lg=+$('sig').value;
+  const x=X(lg);
+  $('mkl').setAttribute('x1',x);$('mkl').setAttribute('x2',x);
+  $('mkc').setAttribute('cx',x);$('mkt').setAttribute('x',x);
+  $('dk').setAttribute('cx',x);$('dk').setAttribute('cy',Y(cs));
+  $('do').setAttribute('cx',x);$('do').setAttribute('cy',Y(co));
+  $('di').setAttribute('cx',x);$('di').setAttribute('cy',Y(ci*SD));
+  vbars();
+}
+// ---------- controls ----------
+document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{setStage(+c.dataset.s);replay();});
+$('play').onclick=replay;
+$('sig').oninput=()=>{clearInterval(sweepT);render();};
+$('sd').oninput=e=>{SD=+e.target.value;$('sdv').textContent=SD.toFixed(2);rebuildPlot();render();};
+document.querySelectorAll('.sp').forEach(b=>b.onclick=()=>{clearInterval(sweepT);$('sig').value=+b.dataset.v;render();});
+setStage(0);render();
+// ---------- height ----------
+function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+addEventListener('load',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);
+setTimeout(postH,150);setTimeout(postH,600);
+})();
+</script>
+</body></html>

@@ -3,7 +3,6 @@
 <html lang="en">
 <head><meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<link rel="stylesheet" href="../assets/clean-educational.css?v=1780029774">
 <title>23_karras_explained</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
@@ -7508,7 +7507,8 @@ a.anchor-link {
     white-space: normal;
   }
 </style>
-<!-- End of mermaid configuration --></head>
+<!-- End of mermaid configuration --><link rel="stylesheet" href="../assets/clean-educational.css?v=1780615490">
+</head>
 <body class="jp-Notebook" data-jp-theme-light="true" data-jp-theme-name="JupyterLab Light">
 <div class="ce-container">
 <header class="ce-breadcrumb">
@@ -7524,6 +7524,8 @@ a.anchor-link {
     <span class="ce-action-icon">&#9654;</span> Open in Colab
   </a>
 </div>
+<main>
+
 <main>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -7667,6 +7669,44 @@ a.anchor-link {
 </div>
 </div>
 </div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE VISUALIZATIONS -- setup (run this cell ONCE).</span>
+<span class="c1"># Each "🎮 Interactive" cell below loads a standalone HTML file from the</span>
+<span class="c1"># published copy on GitHub Pages, in an isolated &lt;iframe&gt; (its CSS/JS can't leak</span>
+<span class="c1"># into the notebook). It is shown FULL WIDTH and auto-fits its content height.</span>
+<span class="c1"># No local files needed -- the visualizations are read from GitHub.</span>
+<span class="c1"># ============================================================================</span>
+<span class="kn">from</span> <span class="nn">IPython.display</span> <span class="kn">import</span> <span class="n">HTML</span>
+
+<span class="k">def</span> <span class="nf">show_viz</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"600px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Embed an interactive visualization full width; it auto-fits its height.</span>
+<span class="sd">    `path` may be a bare 'interactive_viz/&lt;file&gt;.html' (resolved to the GitHub</span>
+<span class="sd">    Pages copy) or a full https URL."""</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="s2">"https://shammun.github.io/shammunul-fastai-notes/notebooks/"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"http"</span><span class="p">):</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">base</span> <span class="o">+</span> <span class="n">path</span>
+    <span class="k">return</span> <span class="n">HTML</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'&lt;iframe src="</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1">" loading="lazy" allowfullscreen '</span>
+        <span class="sa">f</span><span class="s1">'style="width:100%;height:</span><span class="si">{</span><span class="n">height</span><span class="si">}</span><span class="s1">;border:1px solid #dde5f2;border-radius:12px;'</span>
+        <span class="sa">f</span><span class="s1">'box-shadow:0 8px 24px rgba(123,92,214,.12);background:#fff;"&gt;&lt;/iframe&gt;'</span>
+        <span class="s1">'&lt;script&gt;addEventListener("message",function(e){'</span>
+        <span class="s1">'if(e.data&amp;&amp;e.data.type==="ce-frame-height"&amp;&amp;e.data.height&gt;50){'</span>
+        <span class="s1">'var fs=document.querySelectorAll("iframe");for(var i=0;i&lt;fs.length;i++){'</span>
+        <span class="s1">'if(fs[i].contentWindow===e.source){fs[i].style.height=e.data.height+"px";break;}}}});&lt;/script&gt;'</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -7689,7 +7729,7 @@ a.anchor-link {
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># Dataset configuration</span>
 <span class="n">xl</span><span class="p">,</span> <span class="n">yl</span> <span class="o">=</span> <span class="s1">'image'</span><span class="p">,</span> <span class="s1">'label'</span>
-<span class="n">name</span> <span class="o">=</span> <span class="s2">"fashion_mnist"</span>
+<span class="n">name</span> <span class="o">=</span> <span class="s2">"zalando-datasets/fashion_mnist"</span>
 <span class="n">n_steps</span> <span class="o">=</span> <span class="mi">1000</span>
 <span class="n">bs</span> <span class="o">=</span> <span class="mi">512</span>
 
@@ -7788,6 +7828,51 @@ a.anchor-link {
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Why-Pre-conditioning?-Feel-the-Prediction-Problem">🎮 Interactive: Why Pre-conditioning? Feel the Prediction Problem<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Why-Pre-conditioning?-Feel-the-Prediction-Problem">¶</a></h3><p>Jeremy's argument above is the heart of the whole paper, so before any math, <strong>play with it</strong>. Below, a tiny smiley is
+noised at a σ you control, and the question is <em>what should the network be asked to predict?</em></p>
+<ul>
+<li>Chips <strong>①&ndash;⑤</strong> walk the argument: the setup, then <strong>target = ε</strong> (watch the copy-paste meter &mdash; at high σ the noisy
+input practically <em>is</em> the noise, so echoing the input scores near-perfectly and nothing useful is learned), then
+<strong>target = x₀</strong> (same waste at the <em>other</em> extreme), then <strong>EDM's blended target</strong>, whose shortcut meter reads <strong>0 at
+every σ</strong> &mdash; no free lunch anywhere.</li>
+<li>Chip <strong>⑤ sweeps σ</strong> across the learning-signal plot; you can also drag the ✏️ dot yourself.</li>
+<li>Click any panel in the assembly row to interrogate it &mdash; the matching line of code lights up, and the rest of the code
+stays visible for context.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/karras_why_precond.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/karras_why_precond.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1000px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/karras_why_precond.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:1000px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -7897,7 +7982,7 @@ $$F_\theta\!\Bigl(\;\underbrace{c_{\text{in}}(\sigma)\cdot(\mathbf{y}+\mathbf{n}
 <p><strong>Training goal:</strong> Find the $\theta$ that makes $L(D_\theta)$ as small as possible.</p>
 <h3 id="0.6-%E2%80%94-$%5C%7C%5Ccdot%5C%7C_2%5E2$:-Squared-L2-Norm">0.6 &mdash; $\|\cdot\|_2^2$: Squared L2 Norm<a class="anchor-link" href="#0.6-%E2%80%94-$%5C%7C%5Ccdot%5C%7C_2%5E2$:-Squared-L2-Norm">¶</a></h3>$$\bigl\| D_\theta(\mathbf{y}+\mathbf{n};\,\sigma) - \mathbf{y} \bigr\|_2^2$$<p>This is the <strong>sum of squared pixel-wise differences</strong> &mdash; the most basic measure of "how different are these two images?"</p>
 <p>If images have $d$ pixels (e.g., $d = 32 \times 32 \times 3 = 3072$ for CIFAR-10):</p>
-$$\|\mathbf{a} - \mathbf{b}\|_2^2 = \sum_{i=1}^{d} (a_i - b_i)^2$$<p>So $\|D_\theta(\mathbf{y}+\mathbf{n};\,\sigma) - \mathbf{y}\|_2^2$ means: <em>"For every pixel, compute (predicted pixel &minus; true pixel)$^2$, and sum them all up."</em> A perfect denoiser would give 0.</p>
+$$\|\mathbf{a} - \mathbf{b}\|_2^2 = \sum_{i=1}^{d} (a_i - b_i)^2$$<p>So $\|D_\theta(\mathbf{y}+\mathbf{n};\,\sigma) - \mathbf{y}\|_2^2$ means: <em>"For every pixel, compute (predicted pixel − true pixel)$^2$, and sum them all up."</em> A perfect denoiser would give 0.</p>
 <h3 id="0.7-%E2%80%94-$%5Csigma$,-$%5Csigma_%7B%5Ctext%7Bdata%7D%7D$,-$p_%7B%5Ctext%7Bdata%7D%7D$,-$p_%7B%5Ctext%7Btrain%7D%7D$:-The-Key-Symbols">0.7 &mdash; $\sigma$, $\sigma_{\text{data}}$, $p_{\text{data}}$, $p_{\text{train}}$: The Key Symbols<a class="anchor-link" href="#0.7-%E2%80%94-$%5Csigma$,-$%5Csigma_%7B%5Ctext%7Bdata%7D%7D$,-$p_%7B%5Ctext%7Bdata%7D%7D$,-$p_%7B%5Ctext%7Btrain%7D%7D$:-The-Key-Symbols">¶</a></h3><table>
 <thead>
 <tr>
@@ -8108,10 +8193,10 @@ $$L(\underbrace{D_\theta}_{\text{our model}};\, \underbrace{\sigma}_{\text{fixed
     <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">entire_dataset</span><span class="p">:</span>                    <span class="c1"># E over y ~ p_data</span>
-        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">infinite_noise_samples</span><span class="p">:</span>        <span class="c1"># E over n ~ N(0, σ<sup>2</sup>I)</span>
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">infinite_noise_samples</span><span class="p">:</span>        <span class="c1"># E over n ~ N(0, σ²I)</span>
             <span class="n">noisy_input</span> <span class="o">=</span> <span class="n">y</span> <span class="o">+</span> <span class="n">n</span>                 <span class="c1"># y + n</span>
             <span class="n">prediction</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">noisy_input</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>  <span class="c1"># D_θ(y+n; σ)</span>
-            <span class="n">error</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">prediction</span> <span class="o">-</span> <span class="n">y</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>    <span class="c1"># ‖...‖₂<sup>2</sup></span>
+            <span class="n">error</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">prediction</span> <span class="o">-</span> <span class="n">y</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>    <span class="c1"># ‖...‖₂²</span>
             <span class="n">total</span> <span class="o">+=</span> <span class="n">error</span>
             <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
     <span class="k">return</span> <span class="n">total</span> <span class="o">/</span> <span class="n">count</span>                        <span class="c1"># the E (average)</span>
@@ -8150,7 +8235,7 @@ $$L(\underbrace{D_\theta}_{\text{our model}}) \;=\; \underbrace{\mathbb{E}_{\sig
             <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">all_noise_vectors</span><span class="p">:</span>     <span class="c1"># E over n</span>
                 <span class="n">prediction</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">y</span> <span class="o">+</span> <span class="n">n</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
                 <span class="n">error</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">prediction</span> <span class="o">-</span> <span class="n">y</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
-                <span class="n">total</span> <span class="o">+=</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">error</span>     <span class="c1"># λ(σ) · ‖...‖<sup>2</sup></span>
+                <span class="n">total</span> <span class="o">+=</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">error</span>     <span class="c1"># λ(σ) · ‖...‖²</span>
                 <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
     <span class="k">return</span> <span class="n">total</span> <span class="o">/</span> <span class="n">count</span>
 
@@ -8221,7 +8306,7 @@ $$= c_{\text{out}}(\sigma)^2 \left\| F_\theta\!\bigl(c_{\text{in}}(\sigma)\,\mat
 <p>This is Equation 111. <strong>This step is why the derivation matters</strong> &mdash; it reveals the <strong>effective training target</strong> of $F_\theta$: the expression $\frac{1}{c_{\text{out}}(\sigma)}(\mathbf{y} - c_{\text{skip}}(\sigma)\,\mathbf{x})$.</p>
 <h3 id="Step-3.4-%E2%80%94-Substitute-$%5Cmathbf%7Bx%7D-=-%5Cmathbf%7By%7D-+-%5Cmathbf%7Bn%7D$-and-Include-$%5Clambda(%5Csigma)$">Step 3.4 &mdash; Substitute $\mathbf{x} = \mathbf{y} + \mathbf{n}$ and Include $\lambda(\sigma)$<a class="anchor-link" href="#Step-3.4-%E2%80%94-Substitute-$%5Cmathbf%7Bx%7D-=-%5Cmathbf%7By%7D-+-%5Cmathbf%7Bn%7D$-and-Include-$%5Clambda(%5Csigma)$">¶</a></h3><p>Multiplying by $\lambda(\sigma)$ and taking the expectation:</p>
 $$L(D_\theta) = \mathbb{E}_{\sigma,\,\mathbf{y},\,\mathbf{n}} \left[\; \underbrace{\lambda(\sigma)\,c_{\text{out}}(\sigma)^2}_{\text{effective weight}}\; \left\| \underbrace{F_\theta\!\bigl(c_{\text{in}}(\sigma)\cdot(\mathbf{y}+\mathbf{n});\; c_{\text{noise}}(\sigma)\bigr)}_{\text{network output}} - \underbrace{\frac{1}{c_{\text{out}}(\sigma)}\bigl(\mathbf{y} - c_{\text{skip}}(\sigma)\cdot(\mathbf{y}+\mathbf{n})\bigr)}_{\text{effective training target}} \right\|_2^2 \;\right]$$<blockquote>
-<p><em>"The total loss equals: average over all noise levels, images, and noise vectors of [effective weight &times; (what the network actually outputs &minus; what it should output)$^2$]."</em></p>
+<p><em>"The total loss equals: average over all noise levels, images, and noise vectors of [effective weight &times; (what the network actually outputs − what it should output)$^2$]."</em></p>
 </blockquote>
 <p><strong>This is Equation 8</strong> (= Equation 112 in the appendix). The image shows the inner squared-norm term.</p>
 <p><strong>What Equation 8 looks like in Python pseudocode:</strong></p>
@@ -8331,7 +8416,7 @@ $$= \frac{1}{\sigma^2+\sigma_{\text{data}}^2}\;\mathbb{E}\!\left[\left\|\frac{\s
 </ol>
 <p>Applying these facts:</p>
 $$= \frac{1}{\sigma^2+\sigma_{\text{data}}^2}\left(\underbrace{\frac{\sigma_{\text{data}}^2}{\sigma^2}\,\text{Var}(\mathbf{n})}_{\text{noise contribution}} + \underbrace{\frac{\sigma^2}{\sigma_{\text{data}}^2}\,\text{Var}(\mathbf{y})}_{\text{image contribution}}\right)$$<blockquote>
-<p><em>"Each term contributes: (coefficient<sup>2</sup>) &times; (variance of the variable)."</em></p>
+<p><em>"Each term contributes: (coefficient²) &times; (variance of the variable)."</em></p>
 </blockquote>
 <p>Substituting $\text{Var}(\mathbf{n}) = \sigma^2$ and $\text{Var}(\mathbf{y}) = \sigma_{\text{data}}^2$:</p>
 $$= \frac{1}{\sigma^2+\sigma_{\text{data}}^2}\left(\frac{\sigma_{\text{data}}^2}{\sigma^2}\cdot\sigma^2 + \frac{\sigma^2}{\sigma_{\text{data}}^2}\cdot\sigma_{\text{data}}^2\right) = \frac{1}{\sigma^2+\sigma_{\text{data}}^2}\left(\sigma_{\text{data}}^2 + \sigma^2\right) = 1$$<blockquote>
@@ -8459,6 +8544,51 @@ At LOW noise (sigma &lt;&lt; sig_data):
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-The-Three-Dials-%E2%80%94-c_skip,-c_out,-c_in">🎮 Interactive: The Three Dials &mdash; c_skip, c_out, c_in<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-The-Three-Dials-%E2%80%94-c_skip,-c_out,-c_in">¶</a></h3><p>The three formulas in <code>scalings()</code> are one line each, but their <em>shapes</em> as functions of σ are what make them click.</p>
+<ul>
+<li>The <strong>pipeline diagram</strong> at the top is live: the teal <strong>skip highway's thickness is c_skip</strong>, and each &times;-gate is sized
+by its dial. Click any box or gate to interrogate it with real numbers at the current σ.</li>
+<li><strong>Drag the ✏️ marker</strong> across the dial-curves plot (or press a stage chip &mdash; each one replays a σ-sweep) and watch the
+matching <code>scalings()</code> line light up while the others stay visible.</li>
+<li>Move <strong>σ_data</strong> and notice every crossover tracks σ &asymp; σ_data: the dials are calibrated <em>relative to the data's typical
+size</em> &mdash; exactly why <code>sig_data</code> exists.</li>
+<li>The bars on the right are the punchline: whatever σ you choose, the network's <strong>input variance and target variance are
+pinned at 1.00</strong>. That is the entire purpose of these formulas.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/karras_scalings_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/karras_scalings_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"950px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/karras_scalings_explorer.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:950px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="Log-Normal-Sigma-Sampling">Log-Normal Sigma Sampling<a class="anchor-link" href="#Log-Normal-Sigma-Sampling">¶</a></h2><p>The EDM paper recommends sampling sigma from a <strong>log-normal distribution</strong> during training, rather than uniform. This concentrates samples around the most important noise levels.</p>
 </div>
@@ -8574,6 +8704,49 @@ Result:
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Watch-a-Training-%CF%83-Being-Born">🎮 Interactive: Watch a Training σ Being Born<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Watch-a-Training-%CF%83-Being-Born">¶</a></h3><p>The one-liner <code>(torch.randn([10000]) * 1.2 - 1.2).exp()</code> hides a three-stage pipeline. Chips <strong>①&ndash;③</strong> animate a single
+draw riding through it &mdash; the dot travels the three panels while the matching code line lights up:</p>
+<ol>
+<li><code>z ~ N(0,1)</code>,  2. shift &amp; scale into <code>log σ</code> (still a bell, recentered),  3. exponentiate &mdash; the symmetric bell in</li>
+</ol>
+<p>log-space becomes the lopsided log-normal in σ-space, always positive.</p>
+<p>Chip <strong>④</strong> builds the curriculum histogram draw by draw. Read it against the shaded bands: most mass lands in the teal
+<strong>sweet spot 0.1 &lt; σ &lt; 1</strong> around σ_data, with principled tails into the trivial and hopeless zones. Drag the
+<strong>mean/std sliders</strong> to see how the paper's (−1.2, 1.2) choice shapes where training effort goes.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/karras_lognormal_sampler.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/karras_lognormal_sampler.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"950px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/karras_lognormal_sampler.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:950px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h2 id="Noisify-Function-with-Pre-conditioning">Noisify Function with Pre-conditioning<a class="anchor-link" href="#Noisify-Function-with-Pre-conditioning">¶</a></h2><p>The noisify function now incorporates the Karras scalings and computes the appropriate training target.</p>
 </div>
@@ -8657,7 +8830,52 @@ Result:
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Step-Through-noisify()-Line-by-Line">🎮 Interactive: Step Through <code>noisify()</code> Line by Line<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Step-Through-noisify()-Line-by-Line">¶</a></h3><p>Everything so far &mdash; σ_data, the three dials, log-normal σ &mdash; meets inside this one function. The widget below runs the
+exact same logic live on a toy image:</p>
+<ul>
+<li><strong>Click any stage chip ①&ndash;⑦</strong> to jump straight there (its Python line lights up below), or press <strong>Play</strong> to watch the
+whole pipeline with the matching card glowing at each step.</li>
+<li>The first three panels share <strong>one grayscale scale</strong>, so the <code>+</code> and <code>=</code> between them are literally true on screen &mdash;
+at high σ the clean image visibly fades because the noise really does dwarf it.</li>
+<li>Drag the <strong>σ override</strong> (or hit <strong>↺ new noise + σ</strong> for a fresh log-normal draw) and watch the std read-outs: the raw
+noised image's std explodes with σ, but the <strong>network input</strong> and the <strong>target</strong> always land at std &asymp; 1. That is
+pre-conditioning, verified before your eyes &mdash; the same check the notebook does numerically a few cells below.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/karras_noisify_pipeline.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/karras_noisify_pipeline.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1000px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/karras_noisify_pipeline.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:1000px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -8924,7 +9142,7 @@ Result:
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># Save/load model</span>
 <span class="c1"># torch.save(learn.model, 'models/fashion_karras.pkl')</span>
-<span class="c1"># model = learn.model = torch.load('models/fashion_karras.pkl').cuda()</span>
+<span class="c1"># model = learn.model = torch.load('models/fashion_karras.pkl', weights_only=False).cuda()</span>
 </pre></div>
 </div>
 </div>
@@ -8966,7 +9184,54 @@ Result:
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive-3D:-Ride-the-EDM-Wrapper">🎮 Interactive 3D: Ride the EDM Wrapper<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-3D:-Ride-the-EDM-Wrapper">¶</a></h3><p>The <code>denoise()</code> inversion you just read &mdash; and the sampling-time wrapper coming later &mdash; are the same machine:
+<code>denoised = c_skip·x + c_out·model(c_in·x, σ)</code>. Here it is as a <strong>physical contraption you can orbit</strong> (drag to rotate,
+scroll to zoom):</p>
+<ul>
+<li>The orange tensor takes the low road through the <strong>&times;c_in gate &rarr; network &rarr; &times;c_out gate</strong>, while a teal copy rides the
+<strong>skip highway</strong> over the top &mdash; the highway's <em>thickness is literally c_skip</em>.</li>
+<li>Drag <strong>σ</strong> and watch the machine re-rig itself: gate rings resize, the highway fattens or starves. Chip <strong>⑤</strong> sweeps σ
+end-to-end &mdash; at σ&rarr;0 the network only whispers corrections past a fat highway; at σ&rarr;80 the highway is a thread and the
+network does everything.</li>
+<li><strong>▶ Play trip</strong> sends the tensor through once, with its label morphing (<code>x &rarr; c_in·x &rarr; F &rarr; c_out·F &rarr; denoised</code>) and the
+matching code line lit at each leg. Click any part &mdash; boxes, gates, the highway, the σ dial &mdash; for its live value.</li>
+</ul>
+</div>
+</div>
+</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/karras_edm_blend_3d.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># NOTE: needs internet access (loads three.js from cdnjs).</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/karras_edm_blend_3d.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1000px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/karras_edm_blend_3d.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:1000px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -9152,7 +9417,7 @@ Result:
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># Set up FID evaluation</span>
-<span class="n">cmodel</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">'models/data_aug2.pkl'</span><span class="p">)</span>
+<span class="n">cmodel</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">'models/data_aug.pkl'</span><span class="p">,</span> <span class="n">weights_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="c1"># This model trained on data has pixels between -1 and 1</span>
 <span class="k">del</span><span class="p">(</span><span class="n">cmodel</span><span class="p">[</span><span class="mi">8</span><span class="p">])</span>
 <span class="k">del</span><span class="p">(</span><span class="n">cmodel</span><span class="p">[</span><span class="mi">7</span><span class="p">])</span>
@@ -9188,21 +9453,6 @@ Result:
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: Karras &sigma; schedule vs cosine vs linear</h3>
-  <p class="ce-interactive-hint">Karras (EDM) parameterizes the diffusion process by noise level <code>&sigma;</code> directly &mdash; no &beta;/&alpha; bookkeeping. The Karras schedule is a power-law in &sigma; (rho = 7 by default). <strong>Why it matters:</strong> instead of distributing timesteps uniformly in t, it distributes them so that the model spends more compute where the SNR is changing fastest &mdash; mostly the middle of the schedule.</p>
-  <canvas id="ks-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;"></canvas>
-  <div class="ms-controls">
-    <label>Steps N: <span id="ks-n-val" class="ms-val">20</span></label>
-    <input id="ks-n" type="range" min="5" max="50" step="1" value="20">
-    <label>&rho; (Karras): <span id="ks-rho-val" class="ms-val">7.0</span></label>
-    <input id="ks-rho" type="range" min="1.5" max="12" step="0.1" value="7.0">
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color: var(--ce-text-muted, #697386);">
-    Higher &rho; concentrates sampling steps near the low-&sigma; end (sharp images); lower &rho; spreads them more evenly. The Karras paper's recommended &rho; = 7 was found empirically to minimize FID for a fixed step budget.
-  </p>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9210,7 +9460,6 @@ Result:
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-
 <h3 id="Karras-Sigma-Schedule">Karras Sigma Schedule<a class="anchor-link" href="#Karras-Sigma-Schedule">¶</a></h3><p>The EDM paper proposes an optimal schedule of sigma values for sampling.</p>
 </div>
 </div>
@@ -9316,6 +9565,50 @@ Example with 10 steps:
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-Where-Should-the-Sampling-Steps-Go?">🎮 Interactive: Where Should the Sampling Steps Go?<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-Where-Should-the-Sampling-Steps-Go?">¶</a></h3><p>The static plot above shows <em>one</em> schedule. The explorer below lets you ask the real question: <strong>how does ρ trade
+big early strides against tiny final steps?</strong></p>
+<ul>
+<li>Drag <strong>ρ</strong> from 1 (recovers plain linear spacing &mdash; compare with the grey dashed curve) up to 15 and watch the dots on
+the log-σ ruler migrate toward σ_min, the fine-detail zone.</li>
+<li><strong>Click any dot</strong> to read its exact σ and how much noise (Δσ) that single step removes &mdash; with the defaults, the first
+steps do most of the heavy lifting while dozens of tiny final steps polish detail (the Δσ bar chart makes this vivid).</li>
+<li>The <strong>①&ndash;④ chips</strong> trace how the four lines of <code>sigmas_karras</code> build the curve &mdash; the orange dashed ghost shows the
+intermediate quantity at each stage: even spacing in σ^(1/ρ)-space is what becomes detail-friendly spacing in σ-space.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/karras_schedule_explorer.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/karras_schedule_explorer.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1000px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/karras_schedule_explorer.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:1000px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h3 id="Denoise-Function-for-Sampling">Denoise Function for Sampling<a class="anchor-link" href="#Denoise-Function-for-Sampling">¶</a></h3>
 </div>
@@ -9351,6 +9644,51 @@ Example with 10 steps:
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-The-Arrow-Field-Every-Sampler-Follows">🎮 Interactive: The Arrow Field Every Sampler Follows<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-The-Arrow-Field-Every-Sampler-Follows">¶</a></h3><p>Before meeting any sampler, meet the thing they all consume: at every point, <code>d = (x − denoised) / σ</code> defines a pull.
+The data here is a 2-D toy (three teal clusters standing in for image-space) so the <strong>entire field is visible at once</strong>:</p>
+<ul>
+<li><strong>Click anywhere</strong> to dissect the arrow at that point: your position x, the model's clean-estimate D(x,σ) (orange ✕ &mdash;
+computed exactly for the toy, playing the trained network's role), and the resulting move direction, with live numbers.</li>
+<li><strong>Drag σ</strong> and watch the field morph between the two regimes the chips replay: at high σ, one blurry magnet (every
+arrow points at the data's center of mass &mdash; why the first giant stride is safe); at low σ, three sharp magnets with
+real decision boundaries (why late steps must be tiny).</li>
+<li>Chip <strong>④</strong> releases 60 walkers down a 48-rung Karras ladder &mdash; <em>following the field is sampling</em>, and their two-phase
+motion (consensus, then commitment) is exactly what the next visualizations show as trajectories.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/karras_ode_flow_field.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/karras_ode_flow_field.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1050px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/karras_ode_flow_field.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:1050px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9420,6 +9758,53 @@ x_next = x + direction * step_size
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive-3D:-Down-the-Noise-Mountain">🎮 Interactive 3D: Down the Noise Mountain<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive-3D:-Down-the-Noise-Mountain">¶</a></h3><p>Euler's update, staged as a physical descent you can orbit (drag to rotate, scroll to zoom). <strong>Height = log σ; the floor
+is data space.</strong> Rings are the rungs of <code>sigmas_karras</code> &mdash; watch their spacing collapse toward the floor.</p>
+<ul>
+<li>Chip <strong>③ Anatomy of one stride</strong> is the key one: freeze on the hero ball and step ⏭ rung by rung &mdash; the model plants a
+purple <strong>flag on the floor</strong> (its clean-image guess D(x,σ)), the arrow shows the stride, and the three highlighted
+code lines match the three sub-moves. Early flags point at the blur <em>between</em> clusters; late flags commit.</li>
+<li>Chip <strong>④</strong> plays the full 26-particle descent: a plunge through the wide upper rings while everyone drifts centerward,
+then the fan-out into three streams. Chip <strong>⑤</strong> runs the hero on <strong>Heun</strong> against a red plain-Euler ghost &mdash; the gap
+between them <em>is</em> the discretization error Heun buys back with its second model call.</li>
+<li>Click any <strong>ring</strong> for that rung's numbers, click any <strong>ball</strong> to adopt a new hero, use the <strong>rung pills</strong> to jump,
+and re-space the ladder live with the <strong>rungs</strong> slider.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/karras_sampling_3d.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># NOTE: needs internet access (loads three.js from cdnjs).</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/karras_sampling_3d.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1100px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/karras_sampling_3d.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:1100px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9514,6 +9899,23 @@ x_next = x + direction * step_size
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<blockquote>
+<p><strong>🎮 Try it now:</strong> in the Sampler Playground (after the comparison table below), select <strong>Euler Ancestral</strong> and
+watch the <strong>orange flashes</strong> &mdash; that's the <code>torch.randn_like(x) * sig_up</code> line firing, and the code panel highlights the
+split-the-rung and re-noise lines as it happens. Drag <strong>η</strong> to 0 mid-run and the sampler degenerates into plain Euler
+(σ_up &rarr; 0, no noise re-added); at η = 1 the trails turn jittery and endpoints spread out &mdash; the diversity ancestral
+sampling buys, paid for in reproducibility.</p>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h3 id="Heun-Sampler-(2nd-Order)">Heun Sampler (2nd Order)<a class="anchor-link" href="#Heun-Sampler-(2nd-Order)">¶</a></h3><p>A more accurate ODE solver that evaluates the model twice per step.</p>
 </div>
@@ -9592,6 +9994,22 @@ x_next = x + direction * step_size
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<blockquote>
+<p><strong>🎮 Try it now:</strong> switch the Playground (below) to <strong>Heun</strong> and step one rung at a time: you'll see the
+<strong>red ghosts</strong> appear at the provisional Euler landing while the code panel sits on the <em>second</em> <code>denoise</code> call &mdash;
+then the corrected jump replaces them. That second call is the 2&times; cost printed in the code comment, which is why the
+honest comparison in the FID table is Heun-n against Euler-2n.</p>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
 <h3 id="Main-Sampling-Function">Main Sampling Function<a class="anchor-link" href="#Main-Sampling-Function">¶</a></h3>
 </div>
@@ -9639,21 +10057,6 @@ x_next = x + direction * step_size
 </div>
 </div>
 </div>
-<div class="ce-interactive">
-  <h3>Interactive: ODE samplers &mdash; Euler vs Heun vs LMS</h3>
-  <p class="ce-interactive-hint">All three solve the same probability-flow ODE that drives diffusion sampling. Euler is the simplest (linear extrapolation); Heun is 2nd-order (Euler + a correction step); LMS uses multiple past gradients. <strong>The more accurate the solver, the fewer steps you need for the same quality.</strong> Run them on the same noise/data and compare trajectories.</p>
-  <canvas id="samp-canvas" width="640" height="320"
-          style="width:100%; max-width:640px; height:auto; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb; touch-action:manipulation;"></canvas>
-  <div class="ms-controls">
-    <label>Steps N: <span id="samp-n-val" class="ms-val">10</span></label>
-    <input id="samp-n" type="range" min="3" max="40" step="1" value="10">
-    <button id="samp-run" class="ms-btn">Run all three</button>
-    <button id="samp-reset" class="ms-btn ms-secondary">New noise</button>
-  </div>
-  <div class="ms-controls" style="font-size: 0.86em; color: var(--ce-text-muted, #697386);">
-    <span id="samp-info"></span>
-  </div>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -9661,7 +10064,6 @@ x_next = x + direction * step_size
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <hr/>
-
 <h2 id="Comparing-Samplers">Comparing Samplers<a class="anchor-link" href="#Comparing-Samplers">¶</a></h2>
 </div>
 </div>
@@ -9780,6 +10182,57 @@ x_next = x + direction * step_size
 </div>
 </div>
 </div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h3 id="%F0%9F%8E%AE-Interactive:-The-Sampler-Playground-%E2%80%94-Four-Ways-Down-the-Same-Mountain">🎮 Interactive: The Sampler Playground &mdash; Four Ways Down the Same Mountain<a class="anchor-link" href="#%F0%9F%8E%AE-Interactive:-The-Sampler-Playground-%E2%80%94-Four-Ways-Down-the-Same-Mountain">¶</a></h3><p>Now that the table has named the trade-offs, watch them happen. The teal blobs are a 3-cluster toy dataset whose ideal
+denoiser D(x, σ) has a closed form, so this is genuine diffusion sampling &mdash; same denoiser, same Karras ladder, only the
+stepping policy changes:</p>
+<ul>
+<li>Press <strong>▶ Play</strong> (default speed is deliberately slow &mdash; raise the slider any time), or use <strong>⏵ Substep</strong> to advance
+exactly one code line per click, fully self-paced. Either way the executing line lights up on the right
+while the <strong>purple bar under the canvas narrates it in plain words</strong> and the canvas acts it out (bold purple arrows =
+the model's clean guesses, dashed arrows = the planned hop, <strong>red dots</strong> = Heun's provisional trial landings, <strong>orange
+rings</strong> = Ancestral's fresh-noise injections). The ⭐ hero particle gets its own labels; the key under the canvas
+decodes every mark.</li>
+<li><strong>Click anywhere on the σ progress bar</strong> to jump the whole population to that stage of the descent, and click the
+canvas to drop extra particles.</li>
+<li>Switch chips as you read the cells above: <strong>Ancestral</strong> with η dragged between 0 (collapses to Euler) and 1; <strong>Heun</strong>
+with 4&ndash;6 steps to see trial-then-correct beat straight hops, plus the churn knob; <strong>LMS</strong> order 1 (= Euler) vs 4.</li>
+<li>When a run finishes, the stat line reports <strong>where the samples landed vs the true 40/35/25% cluster weights</strong> &mdash; a
+tiny visual FID.</li>
+</ul>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># ============================================================================</span>
+<span class="c1"># INTERACTIVE -- run this cell. It loads ./interactive_viz/karras_sampler_playground.html</span>
+<span class="c1"># at full width, sized to fit the visualization (setup cell near the top required).</span>
+<span class="c1"># Keep the 'interactive_viz' folder in the SAME directory as this notebook.</span>
+<span class="c1"># ============================================================================</span>
+<span class="n">show_viz</span><span class="p">(</span><span class="s2">"interactive_viz/karras_sampler_playground.html"</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="s2">"1100px"</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="ce-interactive ce-fullbleed">
+<iframe src="interactive_viz/karras_sampler_playground.html" loading="lazy" allowfullscreen
+        style="display:block;width:100%;max-width:100%;height:1100px;border:1px solid #dde5f2;
+               border-radius:12px;box-shadow:0 10px 30px rgba(123,92,214,.12);"></iframe>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper" tabindex="0">
@@ -9977,271 +10430,15 @@ x_next = x + direction * step_size
 </div>
 </div>
 </div>
-<style>
-.ce-interactive .ms-controls { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
-.ce-interactive label { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-text-soft, #3c4257); }
-.ce-interactive input[type="range"] { flex: 1; min-width: 140px; accent-color: var(--ce-purple, #6c5ce7); height: 6px; touch-action: manipulation; }
-.ce-interactive .ms-val { font-family: var(--ce-font-mono, monospace); font-size: 0.9em; color: var(--ce-purple-dark, #4f3dd0); min-width: 70px; text-align: right; }
-.ce-interactive .ms-btn { background: var(--ce-purple, #6c5ce7); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-family: var(--ce-font-body, sans-serif); font-weight: 500; font-size: 0.92em; cursor: pointer; box-shadow: 0 2px 6px rgba(108,92,231,0.28); touch-action: manipulation; }
-.ce-interactive .ms-btn:hover { background: var(--ce-purple-dark, #4f3dd0); }
-.ce-interactive .ms-btn.ms-secondary { background: transparent; color: var(--ce-purple, #6c5ce7); border: 1px solid var(--ce-purple, #6c5ce7); box-shadow: none; }
-</style>
-
-<script>
-(function() {
-'use strict';
-
-function gauss() {
-  var u1 = Math.random(), u2 = Math.random();
-  return Math.sqrt(-2 * Math.log(u1 || 1e-9)) * Math.cos(2 * Math.PI * u2);
-}
-
-// ============================================================================
-// Interactive 1: Karras schedule
-// ============================================================================
-(function karrasSched() {
-  var canvas = document.getElementById('ks-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-
-  var SIGMA_MIN = 0.002, SIGMA_MAX = 80;
-
-  function karras(N, rho) {
-    var ts = [];
-    var minI = Math.pow(SIGMA_MIN, 1 / rho);
-    var maxI = Math.pow(SIGMA_MAX, 1 / rho);
-    for (var i = 0; i < N; i++) {
-      var s = Math.pow(maxI + (i / (N - 1)) * (minI - maxI), rho);
-      ts.push(s);
-    }
-    return ts;
-  }
-  function linearSig(N) {
-    var ts = [];
-    for (var i = 0; i < N; i++) ts.push(SIGMA_MAX - (i / (N - 1)) * (SIGMA_MAX - SIGMA_MIN));
-    return ts;
-  }
-  function cosineSig(N) {
-    var ts = [];
-    for (var i = 0; i < N; i++) {
-      var t = i / (N - 1);
-      var ab = Math.pow(Math.cos(t * Math.PI / 2), 2);
-      ts.push(Math.sqrt((1 - ab) / Math.max(ab, 1e-8)));
-    }
-    return ts;
-  }
-
-  function draw() {
-    var N = parseInt(document.getElementById('ks-n').value);
-    var rho = parseFloat(document.getElementById('ks-rho').value);
-    document.getElementById('ks-n-val').textContent = N;
-    document.getElementById('ks-rho-val').textContent = rho.toFixed(1);
-
-    ctx.clearRect(0, 0, W, H);
-    var m = { l: 56, r: 16, t: 24, b: 40 };
-    var iW = W - m.l - m.r, iH = H - m.t - m.b;
-
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-    for (var i = 0; i <= 4; i++) {
-      var y = m.t + (i / 4) * iH;
-      ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(m.l + iW, y); ctx.stroke();
-    }
-    ctx.fillStyle = '#6b7280'; ctx.font = '11px monospace';
-    for (var i = 0; i <= 4; i++) {
-      var y = m.t + iH - (i / 4) * iH;
-      var v = Math.log10(SIGMA_MIN) + (Math.log10(SIGMA_MAX) - Math.log10(SIGMA_MIN)) * (i / 4);
-      ctx.fillText('10^' + v.toFixed(1), 8, y + 4);
-    }
-    ctx.fillText('sigma (log)', 8, m.t + 14);
-    for (var i = 0; i <= 4; i++) {
-      var x = m.l + (i / 4) * iW;
-      ctx.fillText((i * N / 4).toFixed(0), x - 8, m.t + iH + 16);
-    }
-    ctx.fillText('sampling step index', m.l + iW / 2 - 40, m.t + iH + 30);
-
-    function plotSigmas(sigmas, color, idx, label) {
-      ctx.strokeStyle = color; ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      for (var i = 0; i < sigmas.length; i++) {
-        var x = m.l + (i / Math.max(sigmas.length - 1, 1)) * iW;
-        var sig = Math.max(SIGMA_MIN, Math.min(SIGMA_MAX, sigmas[i]));
-        var frac = (Math.log10(sig) - Math.log10(SIGMA_MIN)) / (Math.log10(SIGMA_MAX) - Math.log10(SIGMA_MIN));
-        var y = m.t + iH - frac * iH;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        ctx.fillStyle = color;
-        ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.stroke();
-      ctx.fillStyle = color; ctx.fillRect(m.l + 12 + idx * 110, 12, 14, 4);
-      ctx.fillStyle = '#374151'; ctx.font = '11px sans-serif';
-      ctx.fillText(label, m.l + 12 + idx * 110 + 18, 16);
-    }
-
-    plotSigmas(linearSig(N),       '#dc2626', 0, 'linear sigma');
-    plotSigmas(cosineSig(N),       '#0fb9b1', 1, 'cosine sigma');
-    plotSigmas(karras(N, rho),     '#4f46e5', 2, 'Karras (rho=' + rho.toFixed(1) + ')');
-  }
-
-  document.getElementById('ks-n').addEventListener('input', draw);
-  document.getElementById('ks-rho').addEventListener('input', draw);
-  draw();
-})();
-
-// ============================================================================
-// Interactive 2: Sampler comparison
-// ============================================================================
-(function samplerCompare() {
-  var canvas = document.getElementById('samp-canvas');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var W = canvas.width, H = canvas.height;
-
-  var Npts = 80;
-  var targetPts = [];
-  for (var i = 0; i < Npts; i++) {
-    var u = i / (Npts - 1);
-    var theta = u * 5;
-    var r = 5 + u * 40;
-    targetPts.push([Math.cos(theta) * r, Math.sin(theta) * r]);
-  }
-  var noisePts = [];
-  function resampleNoise() {
-    noisePts = [];
-    for (var i = 0; i < Npts; i++) noisePts.push([gauss() * 50, gauss() * 40]);
-  }
-  resampleNoise();
-
-  // EDM denoiser (using ground truth): D(x; sigma) = the underlying x_0
-  function denoise(pts, sigma) {
-    // Linear blend: as sigma -> 0, output = pts (already denoised);
-    // as sigma is large, output should be closer to clean target.
-    // Use the formula x0_hat = (pts - sigma * eps_true) where eps_true = (pts - target) / sigma
-    return pts.map(function(p, i) {
-      return [targetPts[i][0], targetPts[i][1]];
-    });
-  }
-
-  function sample(method, N) {
-    var rho = 7, sigmaMin = 0.5, sigmaMax = 60;
-    var sigmas = [];
-    var minI = Math.pow(sigmaMin, 1 / rho), maxI = Math.pow(sigmaMax, 1 / rho);
-    for (var i = 0; i < N; i++) sigmas.push(Math.pow(maxI + (i / (N - 1)) * (minI - maxI), rho));
-    sigmas.push(0);
-    var pts = noisePts.map(function(n) { return [n[0], n[1]]; });
-    var path = pts.map(function(p) { return [[p[0], p[1]]]; });
-    for (var k = 0; k < N; k++) {
-      var s_cur = sigmas[k], s_next = sigmas[k + 1];
-      var d = denoise(pts, s_cur);
-      // dx/d(sigma) = (pts - D) / sigma
-      var grad = pts.map(function(p, i) {
-        return [(p[0] - d[i][0]) / s_cur, (p[1] - d[i][1]) / s_cur];
-      });
-      var dt = s_next - s_cur;
-      if (method === 'euler') {
-        pts = pts.map(function(p, i) { return [p[0] + grad[i][0] * dt, p[1] + grad[i][1] * dt]; });
-      } else if (method === 'heun') {
-        var pred = pts.map(function(p, i) { return [p[0] + grad[i][0] * dt, p[1] + grad[i][1] * dt]; });
-        if (s_next > 0) {
-          var d2 = denoise(pred, s_next);
-          var grad2 = pred.map(function(p, i) {
-            return [(p[0] - d2[i][0]) / s_next, (p[1] - d2[i][1]) / s_next];
-          });
-          pts = pts.map(function(p, i) {
-            return [p[0] + 0.5 * (grad[i][0] + grad2[i][0]) * dt,
-                    p[1] + 0.5 * (grad[i][1] + grad2[i][1]) * dt];
-          });
-        } else {
-          pts = pred;
-        }
-      } else { // lms: Adams-Bashforth 2-step
-        if (k === 0) {
-          pts = pts.map(function(p, i) { return [p[0] + grad[i][0] * dt, p[1] + grad[i][1] * dt]; });
-        } else {
-          var prevGrad = path.map(function(pp) {
-            var p = pp[pp.length - 1], pprev = pp[pp.length - 2];
-            // approximate prev gradient from last step
-            return [(p[0] - pprev[0]) / (sigmas[k] - sigmas[k - 1] + 1e-9), (p[1] - pprev[1]) / (sigmas[k] - sigmas[k - 1] + 1e-9)];
-          });
-          pts = pts.map(function(p, i) {
-            return [p[0] + (1.5 * grad[i][0] - 0.5 * prevGrad[i][0]) * dt,
-                    p[1] + (1.5 * grad[i][1] - 0.5 * prevGrad[i][1]) * dt];
-          });
-        }
-      }
-      pts.forEach(function(p, i) { path[i].push([p[0], p[1]]); });
-    }
-    return { pts: pts, path: path };
-  }
-
-  function draw() {
-    var N = parseInt(document.getElementById('samp-n').value);
-    document.getElementById('samp-n-val').textContent = N;
-
-    ctx.clearRect(0, 0, W, H);
-    var cx = W / 2, cy = H / 2;
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
-
-    // Target outline
-    ctx.strokeStyle = 'rgba(15, 185, 177, 0.45)'; ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (var i = 0; i < targetPts.length; i++) {
-      var x = cx + targetPts[i][0], y = cy + targetPts[i][1];
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    var samplers = [
-      { name: 'euler',  color: '#dc2626' },
-      { name: 'heun',   color: '#4f46e5' },
-      { name: 'lms',    color: '#f59e0b' },
-    ];
-    var infoBits = [];
-    samplers.forEach(function(s, idx) {
-      var result = sample(s.name, N);
-      ctx.strokeStyle = s.color; ctx.lineWidth = 0.8;
-      result.path.forEach(function(path) {
-        ctx.beginPath();
-        for (var k = 0; k < path.length; k++) {
-          var x = cx + path[k][0], y = cy + path[k][1];
-          if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.globalAlpha = 0.18;
-        ctx.stroke();
-      });
-      ctx.globalAlpha = 1;
-      // final dots
-      ctx.fillStyle = s.color;
-      result.pts.forEach(function(p) {
-        ctx.beginPath(); ctx.arc(cx + p[0], cy + p[1], 2.2, 0, Math.PI * 2); ctx.fill();
-      });
-      // MSE to target
-      var mse = 0;
-      for (var i = 0; i < result.pts.length; i++) {
-        var dx = result.pts[i][0] - targetPts[i][0], dy = result.pts[i][1] - targetPts[i][1];
-        mse += dx * dx + dy * dy;
-      }
-      mse /= result.pts.length;
-      infoBits.push('<span style="color: ' + s.color + ';">' + s.name + ':</span> MSE ' + mse.toFixed(1));
-      // legend
-      ctx.fillStyle = s.color; ctx.fillRect(14, 14 + idx * 16, 14, 4);
-      ctx.fillStyle = '#374151'; ctx.font = '12px sans-serif';
-      ctx.fillText(s.name, 32, 18 + idx * 16);
-    });
-    document.getElementById('samp-info').innerHTML = infoBits.join(' &nbsp; &middot; &nbsp; ');
-  }
-
-  document.getElementById('samp-n').addEventListener('input', draw);
-  document.getElementById('samp-run').addEventListener('click', draw);
-  document.getElementById('samp-reset').addEventListener('click', function() {
-    resampleNoise();
-    draw();
-  });
-  draw();
-})();
-
+<script id="ce-fullbleed-resize">
+(function(){
+  function fit(f){ try{var d=f.contentDocument; if(d&&d.body){var h=Math.ceil(Math.max(d.body.scrollHeight,d.body.offsetHeight)); if(h>50){f.style.height=(h+8)+"px";return true;}}}catch(e){} return false; }
+  function all(){ document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(fit); }
+  addEventListener("message",function(e){ if(!e.data||e.data.type!=="ce-frame-height"||!(e.data.height>50))return;
+    var ifr=document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)");
+    for(var i=0;i<ifr.length;i++){ if(ifr[i].contentWindow===e.source){ ifr[i].style.height=(e.data.height+8)+"px"; break; } } });
+  document.querySelectorAll(".ce-fullbleed iframe:not(.ce-nofit)").forEach(function(f){ f.addEventListener("load",function(){fit(f);setTimeout(function(){fit(f);},400);setTimeout(function(){fit(f);},1200);}); });
+  addEventListener("resize",all); setInterval(all,1500); all();
 })();
 </script>
 </main>

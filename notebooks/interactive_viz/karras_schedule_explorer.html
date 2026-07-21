@@ -1,0 +1,179 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karras Sigma Schedule Explorer</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:920px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:11.5px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 11px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .main{display:flex;gap:14px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  svg{display:block;}
+  .ctrl{display:flex;gap:11px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin:0 0 8px;}
+  input[type=range]{width:110px;accent-color:var(--ac);}
+  .v{font-family:monospace;font-weight:700;color:var(--ac);min-width:36px;display:inline-block;}
+  label.tg{display:flex;align-items:center;gap:5px;cursor:pointer;font-weight:700;}
+  .info{font-size:12px;background:#f7f9ff;border:1px solid var(--line);border-radius:10px;padding:8px 11px;margin-top:8px;line-height:1.55;min-height:44px;}
+  .info b{color:var(--ac);}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:11.5px;line-height:1.7;max-width:920px;margin:12px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>The Karras Sampling Schedule: Where Do the Steps Go?</h1>
+<p class="sub">At sampling time we must walk &sigma; down from &sigma;<sub>max</sub> to 0 in <b>n</b> steps &mdash; but <i>which</i> &sigma; values should we visit?
+Drag <b>&rho;</b> and watch the steps redistribute: bigger &rho; crowds them near &sigma;<sub>min</sub>, where fine detail is decided.
+<b>Click any dot</b> to inspect its exact &sigma; and step size, and click the &#9312;&ndash;&#9315; chips to trace how the four lines of
+code build the schedule.</p>
+
+<div class="stagebar">
+  <button class="chip" data-s="0">&#9312; linear ramp 0&rarr;1</button>
+  <button class="chip" data-s="1">&#9313; &sigma;<sup>1/&rho;</sup> endpoints</button>
+  <button class="chip" data-s="2">&#9314; interpolate in &sigma;<sup>1/&rho;</sup>-space</button>
+  <button class="chip" data-s="3">&#9315; raise back to power &rho;</button>
+</div>
+
+<div class="ctrl">
+  <span>steps n</span><input type="range" id="n" min="5" max="60" value="15"><span class="v" id="nv">15</span>
+  <span>&rho;</span><input type="range" id="rho" min="10" max="150" value="70"><span class="v" id="rhov">7.0</span>
+  <span>&sigma;<sub>min</sub></span><input type="range" id="smin" min="1" max="50" value="1"><span class="v" id="sminv">0.01</span>
+  <span>&sigma;<sub>max</sub></span><input type="range" id="smax" min="20" max="150" value="80"><span class="v" id="smaxv">80</span>
+  <span style="width:1px;height:22px;background:var(--line);"></span>
+  <label class="tg"><input type="checkbox" id="lin" checked> compare: linear spacing</label>
+</div>
+
+<div class="main">
+  <div class="card">
+    <p class="cap">&sigma;<sub>i</sub> vs step i<br><small>the curve everyone plots — click any dot</small></p>
+    <svg id="plot" width="440" height="270"></svg>
+  </div>
+  <div class="card">
+    <p class="cap">Same steps on the noise axis<br><small>log-σ ruler: where the visits actually land</small></p>
+    <svg id="ruler" width="440" height="150"></svg>
+    <p class="cap" style="margin-top:8px;">Step sizes &Delta;&sigma;<br><small>huge strides at high σ, baby steps near 0</small></p>
+    <svg id="bars" width="440" height="110"></svg>
+  </div>
+</div>
+<div style="display:flex;justify-content:center;"><div class="info" id="info" style="max-width:900px;flex:1;">Drag &rho; or click a dot / stage chip.</div></div>
+
+<div class="code">def <span class="fn">sigmas_karras</span>(n, sigma_min=<span class="num">0.01</span>, sigma_max=<span class="num">80.</span>, rho=<span class="num">7.</span>):
+<span id="q0">    ramp = torch.linspace(<span class="num">0</span>, <span class="num">1</span>, n)                                <span class="cm"># ① n evenly spaced points</span></span>
+<span id="q1">    min_inv_rho = sigma_min ** (<span class="num">1</span>/rho); max_inv_rho = sigma_max ** (<span class="num">1</span>/rho)  <span class="cm"># ② warp the endpoints</span></span>
+<span id="q2">    interp = max_inv_rho + ramp * (min_inv_rho - max_inv_rho)          <span class="cm"># ③ straight line in warped space</span></span>
+<span id="q3">    sigmas = interp ** rho                                             <span class="cm"># ④ un-warp → curved in σ-space</span></span>
+    return torch.cat([sigmas, tensor([<span class="num">0.</span>])])                    <span class="cm"># append exact 0 (clean)</span></div>
+<p class="legend"><b class="a">purple = Karras schedule</b> &nbsp;&bull;&nbsp; <b style="color:#b9c4d8;">grey dashed = linear spacing</b> &nbsp;&bull;&nbsp; dot color runs <b class="i">orange (high &sigma;)</b> &rarr; <b class="o">teal (low &sigma;)</b>. &rho;=7 is the paper's sweet spot; &rho;=1 recovers plain linear spacing.</p>
+
+<script>
+(function(){
+let N=15,RHO=7,SMIN=0.01,SMAX=80,showLin=true,sel=-1,stage=-1;
+const $=id=>document.getElementById(id);
+function sched(){const out=[];const a=Math.pow(SMAX,1/RHO),b=Math.pow(SMIN,1/RHO);
+  for(let i=0;i<N;i++){const r=i/(N-1);out.push(Math.pow(a+r*(b-a),RHO));}out.push(0);return out;}
+function linsched(){const out=[];for(let i=0;i<N;i++)out.push(SMAX+(SMIN-SMAX)*i/(N-1));out.push(0);return out;}
+function col(s){ // orange->teal by log sigma
+  const t=Math.max(0,Math.min(1,(Math.log(Math.max(s,SMIN))-Math.log(SMIN))/(Math.log(SMAX)-Math.log(SMIN))));
+  const o=[246,146,30],e=[22,163,163];
+  const c=o.map((v,i)=>Math.round(e[i]+(v-e[i])*t));return `rgb(${c[0]},${c[1]},${c[2]})`;}
+function mk(svg,t,a){const e=document.createElementNS('http://www.w3.org/2000/svg',t);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e;}
+
+function drawPlot(){
+  const svg=$('plot');svg.innerHTML='';
+  const W=440,H=270,L=44,R=12,T=12,B=30,s=sched(),ls=linsched();
+  mk(svg,'rect',{x:L,y:T,width:W-L-R,height:H-T-B,fill:'#fbfdff',stroke:'#dde5f2'});
+  const X=i=>L+i/N*(W-L-R), Y=v=>T+(1-v/SMAX)*(H-T-B);
+  [0,SMAX/2,SMAX].forEach(v=>{mk(svg,'line',{x1:L,y1:Y(v),x2:W-R,y2:Y(v),stroke:'#eef2f8'});
+    mk(svg,'text',{x:L-5,y:Y(v)+3,'text-anchor':'end','font-size':10,fill:'#5a6b86'}).textContent=Math.round(v);});
+  mk(svg,'text',{x:(L+W-R)/2,y:H-4,'text-anchor':'middle','font-size':11,fill:'#5a6b86','font-weight':700}).textContent='step i';
+  // stage overlays: show intermediate quantities as ghost curve
+  if(stage>=0&&stage<3){
+    const a=Math.pow(SMAX,1/RHO),b=Math.pow(SMIN,1/RHO);
+    let vals;
+    if(stage===0)vals=[...Array(N)].map((_,i)=>i/(N-1)*SMAX);            // ramp scaled for display
+    else if(stage===1)vals=[...Array(N)].map(()=>null);
+    else vals=[...Array(N)].map((_,i)=>{const r=i/(N-1);return (a+r*(b-a))/a*SMAX;});
+    if(stage!==1){let d='';vals.forEach((v,i)=>d+=(i?'L':'M')+X(i)+','+Y(v));
+      mk(svg,'path',{d,fill:'none',stroke:'#f6921e','stroke-width':2,'stroke-dasharray':'5 4',opacity:.8});}
+  }
+  if(showLin){let d='';ls.forEach((v,i)=>d+=(i?'L':'M')+X(i)+','+Y(v));
+    mk(svg,'path',{d,fill:'none',stroke:'#b9c4d8','stroke-width':2,'stroke-dasharray':'4 4'});}
+  let d='';s.forEach((v,i)=>d+=(i?'L':'M')+X(i)+','+Y(v));
+  mk(svg,'path',{d,fill:'none',stroke:'#7b5cd6','stroke-width':2.5});
+  s.forEach((v,i)=>{const c=mk(svg,'circle',{cx:X(i),cy:Y(v),r:i===sel?7:5,fill:col(v),
+    stroke:i===sel?'#25324a':'#fff','stroke-width':2,cursor:'pointer'});
+    c.addEventListener('click',()=>{sel=i;update(false);});});
+}
+function drawRuler(){
+  const svg=$('ruler');svg.innerHTML='';
+  const W=440,H=150,L=14,R=14,y1=44,y2=96,s=sched(),ls=linsched();
+  const lo=Math.log(Math.max(SMIN,1e-4)),hi=Math.log(SMAX);
+  const X=v=>L+(Math.log(Math.max(v,SMIN))-lo)/(hi-lo)*(W-L-R);
+  mk(svg,'text',{x:L,y:y1-16,'font-size':10.5,fill:'#7b5cd6','font-weight':700}).textContent='Karras (ρ='+RHO.toFixed(1)+')';
+  mk(svg,'text',{x:L,y:y2-16,'font-size':10.5,fill:'#8a97b0','font-weight':700}).textContent='linear spacing';
+  [[y1,s,'#7b5cd6'],[y2,showLin?ls:[], '#b9c4d8']].forEach(([yy,arr])=>{
+    mk(svg,'line',{x1:L,y1:yy,x2:W-R,y2:yy,stroke:'#dde5f2','stroke-width':2});
+    arr.forEach((v,i)=>{if(v<=0)return;const c=mk(svg,'circle',{cx:X(v),cy:yy,r:i===sel&&yy===y1?7:4.5,fill:col(v),stroke:i===sel&&yy===y1?'#25324a':'#fff','stroke-width':1.5,cursor:'pointer'});
+      c.addEventListener('click',()=>{sel=i;update(false);});});
+  });
+  [0.01,0.1,1,10,80].filter(v=>v>=SMIN*0.99&&v<=SMAX*1.01).forEach(v=>{
+    mk(svg,'line',{x1:X(v),y1:y2+8,x2:X(v),y2:y2+13,stroke:'#5a6b86'});
+    mk(svg,'text',{x:X(v),y:y2+25,'text-anchor':'middle','font-size':10,fill:'#5a6b86'}).textContent=v;});
+  mk(svg,'text',{x:(W)/2,y:y2+38,'text-anchor':'middle','font-size':10.5,fill:'#5a6b86','font-weight':700}).textContent='σ (log axis) — see how Karras piles dots on the left (fine-detail zone)';
+}
+function drawBars(){
+  const svg=$('bars');svg.innerHTML='';
+  const W=440,H=110,L=14,R=12,B=18,s=sched();
+  const ds=[];for(let i=0;i<s.length-1;i++)ds.push(s[i]-s[i+1]);
+  const mx=Math.max(...ds),bw=(W-L-R)/ds.length;
+  ds.forEach((v,i)=>{const h=Math.max(1.5,v/mx*(H-B-8));
+    const r=mk(svg,'rect',{x:L+i*bw+1,y:H-B-h,width:Math.max(1,bw-2),height:h,fill:col(s[i]),opacity:i===sel?1:.75,
+      stroke:i===sel?'#25324a':'none','stroke-width':1.5,rx:2,cursor:'pointer'});
+    r.addEventListener('click',()=>{sel=i;update(false);});});
+  mk(svg,'line',{x1:L,y1:H-B,x2:W-R,y2:H-B,stroke:'#dde5f2'});
+  mk(svg,'text',{x:W/2,y:H-4,'text-anchor':'middle','font-size':10.5,fill:'#5a6b86','font-weight':700}).textContent='|Δσ| per step — first steps do the heavy lifting';
+}
+const STAGE_TXT=[
+`<b>&#9312; ramp:</b> start with n perfectly even points from 0 to 1 (orange dashed line: perfectly boring, equally spaced). If we mapped these straight onto &sigma; we'd get linear spacing — the grey curve.`,
+`<b>&#9313; warp the endpoints:</b> compute &sigma;<sub>min</sub><sup>1/&rho;</sup> and &sigma;<sub>max</sub><sup>1/&rho;</sup>. Taking the 1/&rho;-th root squashes big numbers far more than small ones — with &rho;=7, 80 becomes ${Math.pow(80,1/7).toFixed(2)} while 0.01 becomes ${Math.pow(0.01,1/7).toFixed(2)}. The gap between them shrinks asymmetrically.`,
+`<b>&#9314; interpolate:</b> place the even ramp <i>in the warped space</i> (orange dashed line — still a straight line there).`,
+`<b>&#9315; un-warp:</b> raise everything to the power &rho;. The straight line becomes the purple curve: values near &sigma;<sub>max</sub> spread out (few, giant steps), values near &sigma;<sub>min</sub> bunch up (many, tiny steps). That's the whole trick — even spacing in &sigma;<sup>1/&rho;</sup>-space = detail-friendly spacing in &sigma;-space.`];
+function update(updSel=true){
+  if(updSel)sel=-1;
+  $('nv').textContent=N; $('rhov').textContent=RHO.toFixed(1);
+  $('sminv').textContent=SMIN.toFixed(2); $('smaxv').textContent=SMAX;
+  drawPlot();drawRuler();drawBars();
+  ['q0','q1','q2','q3'].forEach((id,i)=>$(id).classList.toggle('hl',i===stage));
+  const info=$('info');
+  if(sel>=0){const s=sched();const nxt=sel<s.length-1?s[sel+1]:null;
+    info.innerHTML=`<b>Step ${sel}</b> of ${N}: &sigma; = <b>${s[sel].toFixed(s[sel]<0.1?4:2)}</b>`+
+      (nxt!==null?` &nbsp;&rarr;&nbsp; next &sigma; = ${nxt.toFixed(nxt<0.1?4:2)}, so this step removes &Delta;&sigma; = <b>${(s[sel]-nxt).toFixed(s[sel]-nxt<0.1?4:2)}</b> of noise. `+(sel<N/4?'An early, coarse stride — bulk noise removal, composition forming.':(sel>3*N/4?'A late, tiny stride — polishing fine textures and edges.':'A mid-range stride — shapes and structure emerging.')):'');
+  } else if(stage>=0){ info.innerHTML=STAGE_TXT[stage]; }
+  else { info.innerHTML=`With n=${N}, &rho;=${RHO.toFixed(1)}: the first step alone removes &Delta;&sigma; = <b>${(sched()[0]-sched()[1]).toFixed(1)}</b> of noise while the last removes just <b>${(sched()[N-1]).toFixed(3)}</b>. Try &rho;=1 (linear) vs &rho;=10 and watch the ruler dots migrate.`; }
+  postH();
+}
+$('n').addEventListener('input',e=>{N=+e.target.value;update();});
+$('rho').addEventListener('input',e=>{RHO=+e.target.value/10;update();});
+$('smin').addEventListener('input',e=>{SMIN=+e.target.value/100;update();});
+$('smax').addEventListener('input',e=>{SMAX=+e.target.value;update();});
+$('lin').addEventListener('change',e=>{showLin=e.target.checked;update();});
+document.querySelectorAll('.stagebar .chip').forEach((c,i)=>c.addEventListener('click',()=>{
+  stage = (stage===i)? -1 : i; sel=-1;
+  document.querySelectorAll('.stagebar .chip').forEach((x,j)=>x.classList.toggle('on',j===stage));
+  update(false);
+}));
+function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+addEventListener('load',postH); addEventListener('resize',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);
+update(); setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log-Normal Sigma Sampling — Animated</title>
+<style>
+  :root{--ink:#25324a;--soft:#5a6b86;--line:#dde5f2;--in:#f6921e;--out:#16a3a3;--ac:#7b5cd6;--bg:#eef3fb;--neg:#d64545;}
+  *{box-sizing:border-box;}html,body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);}
+  body{background:radial-gradient(1100px 500px at 30% -10%,#f3f7ff,var(--bg)),var(--bg);padding:12px 14px 10px;}
+  h1{font-size:17px;margin:0 0 2px;text-align:center;}
+  .sub{text-align:center;color:var(--soft);font-size:12px;margin:0 auto 7px;max-width:900px;line-height:1.45;}
+  .stagebar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{font-family:inherit;font-weight:700;font-size:12px;border:2px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer;transition:all .15s;}
+  .chip:hover{border-color:var(--ac);color:var(--ac);}
+  .chip.on{border-color:var(--ac);background:var(--ac);color:#fff;box-shadow:0 4px 12px rgba(123,92,214,.3);}
+  .main{display:flex;gap:14px;justify-content:center;align-items:stretch;flex-wrap:wrap;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 6px 16px rgba(123,92,214,.08);}
+  .cap{text-align:center;font-size:12px;font-weight:700;margin:0 0 5px;}
+  .cap small{display:block;font-weight:400;color:var(--soft);font-size:10.5px;}
+  svg{display:block;}
+  .bigv{text-align:center;font-family:"SF Mono",Consolas,monospace;font-size:15px;font-weight:800;margin-top:2px;}
+  button{font-family:inherit;font-weight:700;font-size:12.5px;border:none;border-radius:9px;padding:6px 13px;cursor:pointer;}
+  .play{background:var(--ac);color:#fff;min-width:84px;}
+  .stepb{background:#ece7fb;color:var(--ac);}
+  .reset{background:#fff;color:var(--soft);border:1.5px solid var(--line);}
+  .ctrl{display:flex;gap:10px;align-items:center;justify-content:center;font-size:12px;color:var(--soft);flex-wrap:wrap;margin:8px 0 4px;}
+  input[type=range]{width:120px;accent-color:var(--ac);}
+  .v{font-family:monospace;font-weight:700;color:var(--ac);min-width:44px;display:inline-block;}
+  .code{background:#1f2940;color:#dce6f5;border-radius:10px;padding:9px 12px;font-family:"SF Mono",Consolas,monospace;font-size:12px;line-height:1.7;max-width:880px;margin:12px auto 0;overflow-x:auto;white-space:pre;}
+  .code .hl{background:rgba(123,92,214,.45);border-radius:4px;padding:1px 4px;}
+  .code .cm{color:#7d8db0;}.code .num{color:#f6b86e;}.code .fn{color:#7ce0d3;}
+  .stat{text-align:center;font-size:11.5px;color:var(--soft);margin-top:4px;}
+  .stat b{color:var(--ac);font-family:monospace;}
+  .legend{text-align:center;font-size:10.5px;color:var(--soft);margin-top:6px;}
+  .legend b.i{color:var(--in);}.legend b.o{color:var(--out);}.legend b.a{color:var(--ac);}
+</style></head><body>
+<h1>How a Training &sigma; Is Born: z &rarr; log&thinsp;&sigma; &rarr; &sigma;</h1>
+<p class="sub">Every training image gets a random noise level. <b>Press Play</b> (or Step, or click a stage chip) to watch one draw
+flow through the three-line recipe: a standard normal <b>z</b>, shifted &amp; scaled into <b>log&thinsp;&sigma;</b>, then exponentiated
+into <b>&sigma;</b>. The histogram accumulates draws &mdash; note how the bell curve on the log axis becomes a lopsided
+&ldquo;log-normal&rdquo; on the real axis: most mass at <i>medium</i> noise, long tail to high noise, never negative.</p>
+
+<div class="stagebar">
+  <button class="chip on" data-st="0">&#9312; z ~ N(0,1)</button>
+  <button class="chip" data-st="1">&#9313; log&sigma; = z&middot;std + mean</button>
+  <button class="chip" data-st="2">&#9314; &sigma; = exp(log&sigma;)</button>
+</div>
+
+<div class="ctrl">
+  <button class="play" id="play">&#9654; Play</button>
+  <button class="stepb" id="step">Step &#9312;&rarr;&#9314;</button>
+  <button class="stepb" id="b100">+100 draws</button>
+  <button class="reset" id="reset">Reset</button>
+  <span style="width:1px;height:22px;background:var(--line);"></span>
+  <span>speed</span><input type="range" id="spd" min="1" max="10" value="4"><span class="v" id="spdv">4x</span>
+  <span style="width:1px;height:22px;background:var(--line);"></span>
+  <span>mean</span><input type="range" id="mu" min="-30" max="5" value="-12"><span class="v" id="muv">-1.2</span>
+  <span>std</span><input type="range" id="sdv_" min="3" max="25" value="12"><span class="v" id="sdvv">1.2</span>
+</div>
+
+<div class="main">
+  <div class="card">
+    <p class="cap">&#9312; draw z from N(0,&thinsp;1)<br><small>torch.randn()</small></p>
+    <svg id="p1" width="250" height="120"></svg>
+    <div class="bigv" style="color:var(--in);" id="zv">z = ?</div>
+  </div>
+  <div class="card">
+    <p class="cap">&#9313; shift &amp; scale &rarr; log&thinsp;&sigma;<br><small>a normal again, centered at <b>mean</b></small></p>
+    <svg id="p2" width="250" height="120"></svg>
+    <div class="bigv" style="color:var(--ac);" id="lv">logσ = ?</div>
+  </div>
+  <div class="card">
+    <p class="cap">&#9314; exponentiate &rarr; &sigma;<br><small>guaranteed positive, skewed right</small></p>
+    <svg id="p3" width="250" height="120"></svg>
+    <div class="bigv" style="color:var(--out);" id="sv">σ = ?</div>
+  </div>
+</div>
+
+<div class="main" style="margin-top:12px;">
+  <div class="card">
+    <p class="cap">Accumulated histogram of &sigma; (log-scaled x-axis)<br><small>this is the curve from the paper's figure — the training-time noise-level distribution</small></p>
+    <svg id="hist" width="790" height="180"></svg>
+    <p class="stat" id="stat">0 draws &nbsp;|&nbsp; median σ ≈ – &nbsp;|&nbsp; share in [0.1,&thinsp;1]: –</p>
+  </div>
+</div>
+
+<div class="code"><span class="cm"># the one-liner from this notebook, unrolled — the highlighted line is the current stage</span>
+<span id="c0">z         = torch.randn([<span class="num">10000</span>])          <span class="cm"># ① standard normal</span></span>
+<span id="c1">log_sigma = z * <span class="num">1.2</span> + (<span class="num">-1.2</span>)              <span class="cm"># ② scale by std, shift by mean</span></span>
+<span id="c2">sigma     = log_sigma.exp()               <span class="cm"># ③ back to σ-space (always &gt; 0)</span></span>
+<span class="cm"># equivalently:  sig_samp = (torch.randn([10000]) * 1.2 - 1.2).exp()</span></div>
+<p class="legend"><b class="i">orange = raw z</b> &nbsp;&bull;&nbsp; <b class="a">purple = log&thinsp;&sigma;</b> &nbsp;&bull;&nbsp; <b class="o">teal = final &sigma;</b>. Median &sigma; = e<sup>mean</sup> &asymp; 0.30 for mean = &minus;1.2 &mdash; conveniently near &sigma;<sub>data</sub>, the &ldquo;most informative&rdquo; regime.</p>
+
+<script>
+(function(){
+let MU=-1.2, SDV=1.2;
+let z=null, ls=null, sg=null, stage=-1;
+let draws=[];                       // accumulated sigmas
+let playing=false, timer=null;
+
+function randn(){let u=0,v=0;while(!u)u=Math.random();v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+
+function mk(svg,t,a){const e=document.createElementNS('http://www.w3.org/2000/svg',t);for(const k in a)e.setAttribute(k,a[k]);svg.appendChild(e);return e;}
+function gauss(svg,W,H,mu,sd,lo,hi,color,marker,markerColor){
+  svg.innerHTML='';
+  mk(svg,'rect',{x:0,y:0,width:W,height:H,fill:'#fbfdff',stroke:'#eef2f8',rx:8});
+  const X=v=>(v-lo)/(hi-lo)*(W-16)+8, pk=1/(sd*Math.sqrt(2*Math.PI));
+  let d='';
+  for(let i=0;i<=120;i++){const v=lo+(hi-lo)*i/120;
+    const y=H-12-(Math.exp(-((v-mu)**2)/(2*sd*sd))*pk)/pk*(H-32);
+    d+=(i?'L':'M')+X(v).toFixed(1)+','+y.toFixed(1);}
+  mk(svg,'path',{d,fill:'none',stroke:color,'stroke-width':2.5});
+  mk(svg,'line',{x1:8,y1:H-12,x2:W-8,y2:H-12,stroke:'#dde5f2'});
+  [lo,mu,hi].forEach(v=>mk(svg,'text',{x:X(v),y:H-2,'text-anchor':'middle','font-size':9.5,fill:'#5a6b86'}).textContent=(+v.toFixed(1)));
+  if(marker!==null&&marker>=lo&&marker<=hi){
+    mk(svg,'line',{x1:X(marker),y1:14,x2:X(marker),y2:H-12,stroke:markerColor,'stroke-width':2.5});
+    mk(svg,'circle',{cx:X(marker),cy:H-12,r:5,fill:markerColor,stroke:'#fff','stroke-width':2});
+  }
+}
+function expPanel(svg,W,H,sigma){
+  svg.innerHTML='';
+  mk(svg,'rect',{x:0,y:0,width:W,height:H,fill:'#fbfdff',stroke:'#eef2f8',rx:8});
+  // log-normal pdf on linear sigma axis 0..4
+  const lo=0,hi=4,X=v=>(v-lo)/(hi-lo)*(W-16)+8;
+  let d='',pk=0;const pts=[];
+  for(let i=1;i<=140;i++){const v=lo+(hi-lo)*i/140;
+    const p=Math.exp(-((Math.log(v)-MU)**2)/(2*SDV*SDV))/(v*SDV*Math.sqrt(2*Math.PI));
+    pts.push([v,p]); if(p>pk)pk=p;}
+  pts.forEach(([v,p],i)=>{const y=H-12-(p/pk)*(H-32);d+=(i?'L':'M')+X(v).toFixed(1)+','+y.toFixed(1);});
+  mk(svg,'path',{d,fill:'none',stroke:'#16a3a3','stroke-width':2.5});
+  mk(svg,'line',{x1:8,y1:H-12,x2:W-8,y2:H-12,stroke:'#dde5f2'});
+  [0,1,2,3,4].forEach(v=>mk(svg,'text',{x:X(v),y:H-2,'text-anchor':'middle','font-size':9.5,fill:'#5a6b86'}).textContent=v);
+  if(sigma!==null&&sigma<=hi){
+    mk(svg,'line',{x1:X(sigma),y1:14,x2:X(sigma),y2:H-12,stroke:'#16a3a3','stroke-width':2.5});
+    mk(svg,'circle',{cx:X(sigma),cy:H-12,r:5,fill:'#16a3a3',stroke:'#fff','stroke-width':2});
+  }else if(sigma!==null){
+    mk(svg,'text',{x:W-12,y:22,'text-anchor':'end','font-size':10,fill:'#f6921e','font-weight':700}).textContent='σ='+sigma.toFixed(1)+' → off chart ↗';
+  }
+}
+function hist(){
+  const svg=document.getElementById('hist');svg.innerHTML='';
+  const W=790,H=180,L=10,B=26;
+  mk(svg,'rect',{x:0,y:0,width:W,height:H,fill:'#fbfdff',stroke:'#eef2f8',rx:8});
+  const lo=Math.log(0.005),hi=Math.log(80),nb=46,bins=new Array(nb).fill(0);
+  draws.forEach(s=>{const t=(Math.log(s)-lo)/(hi-lo);if(t>=0&&t<1)bins[Math.floor(t*nb)]++;});
+  const mx=Math.max(1,...bins), bw=(W-2*L)/nb;
+  bins.forEach((c,i)=>{ if(!c)return; const h=(c/mx)*(H-B-16);
+    mk(svg,'rect',{x:L+i*bw+1,y:H-B-h,width:bw-2,height:h,fill:'#16a3a3',opacity:.8,rx:2});});
+  [0.01,0.1,0.3,1,10,80].forEach(s=>{const x=L+(Math.log(s)-lo)/(hi-lo)*(W-2*L);
+    mk(svg,'line',{x1:x,y1:H-B,x2:x,y2:H-B+4,stroke:'#5a6b86'});
+    mk(svg,'text',{x:x,y:H-10,'text-anchor':'middle','font-size':10,fill:'#5a6b86'}).textContent=s;});
+  mk(svg,'line',{x1:L,y1:H-B,x2:W-L,y2:H-B,stroke:'#dde5f2'});
+  // median marker
+  if(draws.length>4){
+    const sorted=[...draws].sort((a,b)=>a-b), med=sorted[Math.floor(sorted.length/2)];
+    const x=L+(Math.log(med)-lo)/(hi-lo)*(W-2*L);
+    mk(svg,'line',{x1:x,y1:12,x2:x,y2:H-B,stroke:'#7b5cd6','stroke-width':2,'stroke-dasharray':'4 3'});
+    mk(svg,'text',{x:x+4,y:22,'font-size':10,fill:'#7b5cd6','font-weight':700}).textContent='median '+med.toFixed(2);
+  }
+  const inMid=draws.filter(s=>s>=0.1&&s<=1).length;
+  document.getElementById('stat').innerHTML=`<b>${draws.length}</b> draws &nbsp;|&nbsp; median σ ≈ <b>${draws.length>4?[...draws].sort((a,b)=>a-b)[Math.floor(draws.length/2)].toFixed(2):'–'}</b> &nbsp;|&nbsp; share in [0.1,&thinsp;1]: <b>${draws.length?Math.round(100*inMid/draws.length)+'%':'–'}</b>`;
+}
+
+function setStage(s){
+  stage=s;
+  document.querySelectorAll('.stagebar .chip').forEach((c,i)=>c.classList.toggle('on',i===s));
+  ['c0','c1','c2'].forEach((id,i)=>document.getElementById(id).classList.toggle('hl',i===s));
+  gauss(document.getElementById('p1'),250,120,0,1,-4,4,'#f6921e', s>=0?z:null,'#f6921e');
+  gauss(document.getElementById('p2'),250,120,MU,SDV,MU-3.5*SDV,MU+3.5*SDV,'#7b5cd6', s>=1?ls:null,'#7b5cd6');
+  expPanel(document.getElementById('p3'),250,120, s>=2?sg:null);
+  document.getElementById('zv').textContent = s>=0&&z!==null? 'z = '+z.toFixed(3):'z = ?';
+  document.getElementById('lv').textContent = s>=1&&ls!==null? 'logσ = '+z.toFixed(2)+'·'+SDV.toFixed(1)+' + ('+MU.toFixed(1)+') = '+ls.toFixed(3):'logσ = ?';
+  document.getElementById('sv').textContent = s>=2&&sg!==null? 'σ = e^'+ls.toFixed(2)+' = '+sg.toFixed(3):'σ = ?';
+  postH();
+}
+function advance(){
+  if(stage===-1||stage===2){ z=randn(); ls=null; sg=null; setStage(0); return; }
+  if(stage===0){ ls=z*SDV+MU; setStage(1); return; }
+  if(stage===1){ sg=Math.exp(ls); draws.push(sg); setStage(2); hist(); return; }
+}
+function loop(){
+  if(!playing)return;
+  advance();
+  const sp=+document.getElementById('spd').value;
+  timer=setTimeout(loop, 950/sp);
+}
+document.getElementById('play').addEventListener('click',function(){
+  playing=!playing; this.innerHTML=playing?'&#10074;&#10074; Pause':'&#9654; Play';
+  if(playing)loop(); else clearTimeout(timer);
+});
+document.getElementById('step').addEventListener('click',advance);
+document.getElementById('b100').addEventListener('click',()=>{
+  for(let i=0;i<100;i++)draws.push(Math.exp(randn()*SDV+MU)); hist();
+});
+document.getElementById('reset').addEventListener('click',()=>{
+  draws=[];z=ls=sg=null;stage=-1;playing=false;clearTimeout(timer);
+  document.getElementById('play').innerHTML='&#9654; Play'; hist(); setStage(-1);
+  document.querySelectorAll('.stagebar .chip').forEach(c=>c.classList.remove('on'));
+});
+document.getElementById('spd').addEventListener('input',e=>document.getElementById('spdv').textContent=e.target.value+'x');
+document.getElementById('mu').addEventListener('input',e=>{MU=+e.target.value/10;document.getElementById('muv').textContent=MU.toFixed(1);draws=[];hist();setStage(Math.max(stage,0));});
+document.getElementById('sdv_').addEventListener('input',e=>{SDV=+e.target.value/10;document.getElementById('sdvv').textContent=SDV.toFixed(1);draws=[];hist();setStage(Math.max(stage,0));});
+document.querySelectorAll('.stagebar .chip').forEach((c,i)=>c.addEventListener('click',()=>{
+  if(z===null){z=randn();}
+  if(i>=1&&ls===null)ls=z*SDV+MU;
+  if(i>=2&&sg===null){sg=Math.exp(ls);draws.push(sg);hist();}
+  setStage(i);
+}));
+
+function ch(){return Math.ceil(Math.max(document.body.scrollHeight,document.body.offsetHeight));}
+function postH(){if(window.parent!==window)window.parent.postMessage({type:'ce-frame-height',height:ch()},'*');}
+addEventListener('load',postH); addEventListener('resize',postH);
+if(window.ResizeObserver)new ResizeObserver(postH).observe(document.body);
+hist(); setStage(-1); setTimeout(postH,150); setTimeout(postH,600);
+})();
+</script>
+</body></html>
