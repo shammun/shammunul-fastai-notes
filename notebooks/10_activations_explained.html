@@ -8101,32 +8101,235 @@ a.anchor-link {
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-python"><pre><span></span><span class="c1"># =====================================================</span>
-<span class="c1"># TRAINING HELPER FUNCTION</span>
+<span class="c1"># IMPORTS</span>
 <span class="c1"># =====================================================</span>
+<span class="kn">import</span> <span class="nn">math</span><span class="o">,</span> <span class="nn">torch</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">fastcore.all</span> <span class="k">as</span> <span class="nn">fc</span>
+<span class="kn">from</span> <span class="nn">collections.abc</span> <span class="kn">import</span> <span class="n">Mapping</span>
+<span class="kn">from</span> <span class="nn">operator</span> <span class="kn">import</span> <span class="n">attrgetter</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span>
+
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">optim</span>
+<span class="kn">import</span> <span class="nn">torch.nn.functional</span> <span class="k">as</span> <span class="nn">F</span>
 
 <span class="k">try</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">torcheval.metrics</span> <span class="kn">import</span> <span class="n">MulticlassAccuracy</span>
+    <span class="kn">from</span> <span class="nn">torcheval.metrics</span> <span class="kn">import</span> <span class="n">MulticlassAccuracy</span><span class="p">,</span> <span class="n">Mean</span>
 <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
     <span class="kn">import</span> <span class="nn">subprocess</span>
     <span class="n">subprocess</span><span class="o">.</span><span class="n">check_call</span><span class="p">([</span><span class="s1">'pip'</span><span class="p">,</span> <span class="s1">'install'</span><span class="p">,</span> <span class="s1">'torcheval'</span><span class="p">])</span>
-    <span class="kn">from</span> <span class="nn">torcheval.metrics</span> <span class="kn">import</span> <span class="n">MulticlassAccuracy</span>
+    <span class="kn">from</span> <span class="nn">torcheval.metrics</span> <span class="kn">import</span> <span class="n">MulticlassAccuracy</span><span class="p">,</span> <span class="n">Mean</span>
 
+<span class="kn">from</span> <span class="nn">fastprogress</span> <span class="kn">import</span> <span class="n">progress_bar</span><span class="p">,</span> <span class="n">master_bar</span>
+
+
+<span class="c1"># =====================================================</span>
+<span class="c1"># DEVICE HELPERS</span>
+<span class="c1"># =====================================================</span>
+<span class="n">def_device</span> <span class="o">=</span> <span class="s1">'mps'</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">mps</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s1">'cuda'</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s1">'cpu'</span>
+
+<span class="k">def</span> <span class="nf">to_device</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">def_device</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span> <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span> <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="n">v</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">x</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">x</span><span class="p">)(</span><span class="n">to_device</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">x</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">to_cpu</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span> <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="n">to_cpu</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">x</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span> <span class="k">return</span> <span class="p">[</span><span class="n">to_cpu</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">x</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span> <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">to_cpu</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">float</span><span class="p">()</span> <span class="k">if</span> <span class="n">res</span><span class="o">.</span><span class="n">dtype</span><span class="o">==</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span> <span class="k">else</span> <span class="n">res</span>
+
+
+<span class="c1"># =====================================================</span>
+<span class="c1"># EXCEPTIONS + CALLBACK BASE</span>
+<span class="c1"># =====================================================</span>
+<span class="k">class</span> <span class="nc">CancelFitException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span> <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">CancelBatchException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span> <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">CancelEpochException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span> <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">Callback</span><span class="p">():</span> <span class="n">order</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="k">def</span> <span class="nf">run_cbs</span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span> <span class="n">method_nm</span><span class="p">,</span> <span class="n">learn</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">attrgetter</span><span class="p">(</span><span class="s1">'order'</span><span class="p">)):</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">method_nm</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span> <span class="n">method</span><span class="p">(</span><span class="n">learn</span><span class="p">)</span>
+
+
+<span class="c1"># =====================================================</span>
+<span class="c1"># CALLBACKS</span>
+<span class="c1"># =====================================================</span>
+<span class="k">class</span> <span class="nc">MetricsCB</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">ms</span><span class="p">,</span> <span class="o">**</span><span class="n">metrics</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">ms</span><span class="p">:</span> <span class="n">metrics</span><span class="p">[</span><span class="nb">type</span><span class="p">(</span><span class="n">o</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">]</span> <span class="o">=</span> <span class="n">o</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="n">metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_metrics</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_metrics</span><span class="p">[</span><span class="s1">'loss'</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">Mean</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span> <span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">before_fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span>
+    <span class="k">def</span> <span class="nf">before_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="p">[</span><span class="n">o</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_metrics</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
+
+    <span class="k">def</span> <span class="nf">after_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+        <span class="n">log</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">v</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_metrics</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="n">log</span><span class="p">[</span><span class="s1">'epoch'</span><span class="p">]</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">epoch</span>
+        <span class="n">log</span><span class="p">[</span><span class="s1">'train'</span><span class="p">]</span> <span class="o">=</span> <span class="s1">'train'</span> <span class="k">if</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">training</span> <span class="k">else</span> <span class="s1">'eval'</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">(</span><span class="n">log</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">after_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+        <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="o">*</span><span class="n">_</span> <span class="o">=</span> <span class="n">to_cpu</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">values</span><span class="p">():</span> <span class="n">m</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">to_cpu</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span><span class="p">),</span> <span class="n">y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">to_cpu</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">loss</span><span class="p">),</span> <span class="n">weight</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+
+<span class="k">class</span> <span class="nc">DeviceCB</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">def_device</span><span class="p">):</span> <span class="n">fc</span><span class="o">.</span><span class="n">store_attr</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">before_fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s1">'to'</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">before_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="n">to_device</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">TrainCB</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_inp</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span> <span class="o">=</span> <span class="n">n_inp</span>
+    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">preds</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span><span class="p">])</span>
+    <span class="k">def</span> <span class="nf">get_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss_func</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span><span class="p">,</span> <span class="o">*</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">n_inp</span><span class="p">:])</span>
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">zero_grad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">ProgressCB</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
+    <span class="n">order</span> <span class="o">=</span> <span class="n">MetricsCB</span><span class="o">.</span><span class="n">order</span><span class="o">+</span><span class="mi">1</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="o">=</span> <span class="n">plot</span>
+    <span class="k">def</span> <span class="nf">before_fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+        <span class="n">learn</span><span class="o">.</span><span class="n">epochs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mbar</span> <span class="o">=</span> <span class="n">master_bar</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">epochs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">first</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">learn</span><span class="p">,</span> <span class="s1">'metrics'</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">losses</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">val_losses</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">first</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mbar</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">d</span><span class="p">),</span> <span class="n">table</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">first</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mbar</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">table</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">before_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">dl</span> <span class="o">=</span> <span class="n">progress_bar</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">dl</span><span class="p">,</span> <span class="n">leave</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mbar</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">after_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+        <span class="n">learn</span><span class="o">.</span><span class="n">dl</span><span class="o">.</span><span class="n">comment</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">learn</span><span class="o">.</span><span class="n">loss</span><span class="si">:</span><span class="s1">.3f</span><span class="si">}</span><span class="s1">'</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">learn</span><span class="p">,</span> <span class="s1">'metrics'</span><span class="p">)</span> <span class="ow">and</span> <span class="n">learn</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">val_losses</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">mbar</span><span class="o">.</span><span class="n">update_graph</span><span class="p">([[</span><span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">losses</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">losses</span><span class="p">],[</span><span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">epoch</span><span class="p">)</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">val_losses</span><span class="p">]])</span>
+
+    <span class="k">def</span> <span class="nf">after_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">learn</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">learn</span><span class="p">,</span> <span class="s1">'metrics'</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">val_losses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">all_metrics</span><span class="p">[</span><span class="s1">'loss'</span><span class="p">]</span><span class="o">.</span><span class="n">compute</span><span class="p">())</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">mbar</span><span class="o">.</span><span class="n">update_graph</span><span class="p">([[</span><span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">losses</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">losses</span><span class="p">],[</span><span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="n">x</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">val_losses</span><span class="p">]])</span>
+
+
+<span class="c1"># =====================================================</span>
+<span class="c1"># LEARNER</span>
+<span class="c1"># =====================================================</span>
+<span class="k">class</span> <span class="nc">with_cbs</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nm</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">nm</span> <span class="o">=</span> <span class="n">nm</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">_f</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">o</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="sa">f</span><span class="s1">'before_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nm</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+                <span class="n">f</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="n">o</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="sa">f</span><span class="s1">'after_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nm</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+            <span class="k">except</span> <span class="nb">globals</span><span class="p">()[</span><span class="sa">f</span><span class="s1">'Cancel</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nm</span><span class="o">.</span><span class="n">title</span><span class="p">()</span><span class="si">}</span><span class="s1">Exception'</span><span class="p">]:</span> <span class="k">pass</span>
+            <span class="k">finally</span><span class="p">:</span> <span class="n">o</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="sa">f</span><span class="s1">'cleanup_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nm</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_f</span>
+
+
+<span class="k">class</span> <span class="nc">Learner</span><span class="p">():</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">dls</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">loss_func</span><span class="o">=</span><span class="n">F</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">opt_func</span><span class="o">=</span><span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">):</span>
+        <span class="n">cbs</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="p">(</span><span class="n">cbs</span><span class="p">)</span>
+        <span class="n">fc</span><span class="o">.</span><span class="n">store_attr</span><span class="p">()</span>
+
+    <span class="nd">@with_cbs</span><span class="p">(</span><span class="s1">'batch'</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_one_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">predict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'after_predict'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_loss</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'after_loss'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'after_backward'</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'after_step'</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+
+    <span class="nd">@with_cbs</span><span class="p">(</span><span class="s1">'epoch'</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_one_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">batch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dl</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">_one_batch</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">one_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">training</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">training</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span> <span class="k">if</span> <span class="n">training</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">valid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_one_epoch</span><span class="p">()</span>
+
+    <span class="nd">@with_cbs</span><span class="p">(</span><span class="s1">'fit'</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train</span><span class="p">,</span> <span class="n">valid</span><span class="p">):</span>
+        <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">epochs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">train</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">one_epoch</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">valid</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()(</span><span class="bp">self</span><span class="o">.</span><span class="n">one_epoch</span><span class="p">)(</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">valid</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">cbs</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="p">(</span><span class="n">cbs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">cbs</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cbs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_epochs</span> <span class="o">=</span> <span class="n">n_epochs</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">epochs</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_epochs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">lr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="n">lr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lr</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_func</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_func</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fit</span><span class="p">(</span><span class="n">train</span><span class="p">,</span> <span class="n">valid</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">cbs</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cbs</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'predict'</span><span class="p">,</span><span class="s1">'get_loss'</span><span class="p">,</span><span class="s1">'backward'</span><span class="p">,</span><span class="s1">'step'</span><span class="p">,</span><span class="s1">'zero_grad'</span><span class="p">):</span> <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method_nm</span><span class="p">):</span> <span class="n">run_cbs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cbs</span><span class="p">,</span> <span class="n">method_nm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">training</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">training</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-python"><pre><span></span><span class="c1"># =====================================================</span>
+<span class="c1"># TRAINING HELPER FUNCTION</span>
+<span class="c1"># =====================================================</span>
 <span class="n">metrics</span> <span class="o">=</span> <span class="n">MetricsCB</span><span class="p">(</span><span class="n">accuracy</span><span class="o">=</span><span class="n">MulticlassAccuracy</span><span class="p">())</span>
 <span class="n">cbs</span> <span class="o">=</span> <span class="p">[</span><span class="n">TrainCB</span><span class="p">(),</span> <span class="n">DeviceCB</span><span class="p">(),</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">ProgressCB</span><span class="p">(</span><span class="n">plot</span><span class="o">=</span><span class="kc">True</span><span class="p">)]</span>
 
 <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">xtra_cbs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Train a model with standard callbacks + optional extras.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Arguments:</span>
 <span class="sd">        model     - The model to train</span>
 <span class="sd">        epochs    - Number of epochs</span>
 <span class="sd">        xtra_cbs  - Additional callbacks (e.g., for activation stats)</span>
-<span class="sd">    </span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        The Learner object</span>
 <span class="sd">    """</span>
-    <span class="n">learn</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dls</span><span class="p">,</span> <span class="n">loss_func</span><span class="o">=</span><span class="n">F</span><span class="o">.</span><span class="n">cross_entropy</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>  <span class="n">cbs</span><span class="o">=</span><span class="n">cbs</span><span class="o">+</span><span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="p">(</span><span class="n">xtra_cbs</span><span class="p">))</span>
+    <span class="n">learn</span> <span class="o">=</span> <span class="n">Learner</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dls</span><span class="p">,</span> <span class="n">loss_func</span><span class="o">=</span><span class="n">F</span><span class="o">.</span><span class="n">cross_entropy</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="n">cbs</span><span class="o">+</span><span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="p">(</span><span class="n">xtra_cbs</span><span class="p">))</span>
     <span class="n">learn</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">epochs</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">learn</span>
 </pre></div>
@@ -8569,10 +8772,24 @@ nn.Module.__call__(self=learn.model, images_tensor)
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h4 id="Mean-near-zero:">Mean near zero:<a class="anchor-link" href="#Mean-near-zero:">¶</a></h4><p>By plotting the metrics, we observe a repeating cycle where the activation means start close to zero, increase at an exponential rate, and then sharply crash back down.</p>
+<h4 id="The-problem-with-a-mean-near-zero:">The problem with a mean near zero:<a class="anchor-link" href="#The-problem-with-a-mean-near-zero:">¶</a></h4><p>When the mean of the activations drops too close to zero, it means the inputs to that layer are also hovering near zero. Because the network relies on matrix multiplications, this results in outputs near zero, creating "dead units" that are unable to do any work.</p>
+<h4 id="Standard-deviation-pattern:">Standard deviation pattern:<a class="anchor-link" href="#Standard-deviation-pattern:">¶</a></h4><p>Standard deviations follow a similar exponentially increasing and crashing pattern. The standard deviations tell an even stronger story. If the standard deviation drops close to zero, it indicates that all the activations are practically the exact same number. Combined with a mean of zero, it means absolutely nothing is going on within those layers.</p>
+<h4 id="The-Ideal-State:">The Ideal State:<a class="anchor-link" href="#The-Ideal-State:">¶</a></h4><p>To ensure a model is training properly and in a stable manner, you generally want the mean of the activations to stay around 0 and the standard deviation to stay around 1 consistently throughout the training process</p>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <p><strong>What to look for:</strong></p>
 <ol>
-<li><strong>Means near 0</strong> - Activations centered around 0 (good for ReLU input)</li>
-<li><strong>Stable stds</strong> - Standard deviations that don't explode or vanish</li>
+<li><strong>Means near 0</strong> - Activations centered around 0 (good for ReLU input). Mean needs to be centered around 0.</li>
+<li><strong>Stable stds</strong> - Standard deviations that don't explode or vanish -- they need to be close to 1. stds all near zero means almost all the values are the same.</li>
 <li><strong>Consistency across layers</strong> - Similar statistics in all layers</li>
 </ol>
 <p><strong>Problems with this approach:</strong></p>
@@ -10832,16 +11049,16 @@ Flatten                            └─ ReLU
 <span class="k">def</span> <span class="nf">get_hist</span><span class="p">(</span><span class="n">h</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Get histogram data as a 2D image for visualization.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Arguments:</span>
 <span class="sd">        h - A hook with stats[2] containing histogram tensors</span>
-<span class="sd">    </span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        A 2D tensor where:</span>
 <span class="sd">        - Rows = histogram bins (activation magnitude)</span>
 <span class="sd">        - Columns = batches (time)</span>
 <span class="sd">        - Values = log(count + 1) for better visualization</span>
-<span class="sd">    </span>
+
 <span class="sd">    The .log1p() (log(x+1)) helps visualize small counts.</span>
 <span class="sd">    """</span>
     <span class="c1"># Stack all histograms: (n_batches, 40) -&gt; (40, n_batches) after .t()</span>
@@ -10849,10 +11066,11 @@ Flatten                            └─ ReLU
 
 <span class="k">def</span> <span class="nf">get_min</span><span class="p">(</span><span class="n">h</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    What percentages or fraction of the activations are nearly zero</span>
 <span class="sd">    Get the fraction of activations in the smallest bin (near zero).</span>
-<span class="sd">    </span>
+
 <span class="sd">    This helps detect "dead" ReLUs - neurons that always output 0.</span>
-<span class="sd">    </span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        A 1D tensor with the fraction of near-zero activations per batch.</span>
 <span class="sd">    """</span>
@@ -11025,6 +11243,375 @@ Flatten                            └─ ReLU
 </li>
 </ul>
 <hr/>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="Activation-Histograms-%E2%80%94-From-histc-to-the-Color-Plot">Activation Histograms — From <code>histc</code> to the Color Plot<a class="anchor-link" href="#Activation-Histograms-%E2%80%94-From-histc-to-the-Color-Plot">¶</a></h1><h2 id="The-Question">The Question<a class="anchor-link" href="#The-Question">¶</a></h2><p>Three lines produce that grid of colourful panels, and each one sits in a different place in the notebook.</p>
+<p><strong>Line 1 — the last of the three appends inside <code>append_stats(hook, mod, inp, outp)</code>:</strong></p>
+<div class="highlight"><pre><span></span><span class="n">hook</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">acts</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">histc</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+</pre></div>
+<p><em>What confused me:</em> what exactly comes back from this call? How many values are in it, and what does each one represent? Where do the bins come from, what range of activations does each bin cover, and how is the number sitting in each bin worked out?</p>
+<p><strong>Line 2 — the entire body of <code>get_hist(h)</code>:</strong></p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_hist</span><span class="p">(</span><span class="n">h</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">.</span><span class="n">t</span><span class="p">()</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">.</span><span class="n">log1p</span><span class="p">()</span>
+</pre></div>
+<p><em>What confused me:</em> why <code>.t()</code>, and why <code>.log1p()</code>? Reading the line gives no hint what either is for.</p>
+<p><strong>Line 3 — inside the plotting loop, where <code>get_hist(h)</code> is called and its result handed to matplotlib:</strong></p>
+<div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axes</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">hc</span><span class="p">):</span>
+    <span class="n">im</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">get_hist</span><span class="p">(</span><span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">aspect</span><span class="o">=</span><span class="s1">'auto'</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">'lower'</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">'viridis'</span><span class="p">)</span>
+</pre></div>
+<p><em>What confused me:</em> this is a nested call, so it reads inside-out — <code>get_hist(h)</code> runs first and returns something, <code>.numpy()</code> is called on <em>that</em> return value, and the result becomes <code>imshow</code>'s first argument. So what does <code>.numpy()</code> change about what <code>get_hist(h)</code> produced? And where does the <em>picture</em> come from — nothing here says "make an image." Once the plot appears, the axes read <em>Batch</em> and <em>Activation Magnitude</em> even though neither was ever passed to <code>imshow</code>.</p>
+<p>Two answers up front, because the rest depends on them.</p>
+<p><strong><code>.numpy()</code> changes nothing about the numbers.</strong> <code>get_hist(h)</code> returns a <code>torch.Tensor</code> of shape <code>(40, 60)</code>; <code>.numpy()</code> returns an <code>ndarray</code> of shape <code>(40, 60)</code> holding the identical values in the identical positions. Only the container type changes, because matplotlib cannot consume a torch tensor.</p>
+<p><strong>An image <em>is</em> a 2-D array of numbers.</strong> <code>imshow</code> takes the array you hand it and picks a colour for each number. Everything before that is arranging counts into the right grid.</p>
+<hr/>
+<h2 id="The-Setup:-Which-Code-Lives-Where">The Setup: Which Code Lives Where<a class="anchor-link" href="#The-Setup:-Which-Code-Lives-Where">¶</a></h2><div class="highlight"><pre><span></span><span class="c1"># ── 1. THE HOOK FUNCTION ─────────────────────────────────────────</span>
+<span class="c1"># We define it; PyTorch calls it — once per hooked layer, per batch.</span>
+<span class="k">def</span> <span class="nf">append_stats</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="n">mod</span><span class="p">,</span> <span class="n">inp</span><span class="p">,</span> <span class="n">outp</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="s1">'stats'</span><span class="p">):</span> <span class="n">hook</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="p">([],</span> <span class="p">[],</span> <span class="p">[])</span>
+    <span class="n">acts</span> <span class="o">=</span> <span class="n">to_cpu</span><span class="p">(</span><span class="n">outp</span><span class="p">)</span>
+    <span class="n">hook</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">acts</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+    <span class="n">hook</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">acts</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+    <span class="n">hook</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">acts</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">histc</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>   <span class="c1"># ← the histogram line</span>
+
+<span class="c1"># ── 2. REGISTRATION AND TRAINING ─────────────────────────────────</span>
+<span class="n">hc</span> <span class="o">=</span> <span class="n">HooksCallback</span><span class="p">(</span><span class="n">append_stats</span><span class="p">,</span> <span class="n">mod_filter</span><span class="o">=</span><span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">))</span>
+<span class="n">fit</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">xtra_cbs</span><span class="o">=</span><span class="p">[</span><span class="n">hc</span><span class="p">])</span>       <span class="c1"># append_stats fires ~60× per layer here</span>
+
+<span class="c1"># ── 3. THE READER ────────────────────────────────────────────────</span>
+<span class="c1"># We define it AND we call it — after training is over.</span>
+<span class="k">def</span> <span class="nf">get_hist</span><span class="p">(</span><span class="n">h</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">.</span><span class="n">t</span><span class="p">()</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">.</span><span class="n">log1p</span><span class="p">()</span>
+
+<span class="c1"># ── 4. THE PLOTTING LOOP ──────────────────────────────────────────</span>
+<span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axes</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">hc</span><span class="p">):</span>
+    <span class="n">im</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">get_hist</span><span class="p">(</span><span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">aspect</span><span class="o">=</span><span class="s1">'auto'</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">'lower'</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s1">'viridis'</span><span class="p">)</span>
+</pre></div>
+<p><strong>The order things happen:</strong> during <code>fit()</code>, every hooked Conv2d produces output and PyTorch immediately calls <code>append_stats</code> with it — we never call it ourselves. Across 60 batches and 5 hooked layers it runs 300 times, leaving each hook with its own list of 60 histograms. Training ends, then the plotting loop calls <code>get_hist(h)</code> once per hook.</p>
+<p>So <strong><code>append_stats</code> writes during training, <code>get_hist</code> reads after training, and <code>imshow</code> receives <code>get_hist</code>'s return value</strong> — one panel per hook.</p>
+<hr/>
+<h2 id="Inside-append_stats:-What-histc(40,-0,-10)-Returns">Inside <code>append_stats</code>: What <code>histc(40, 0, 10)</code> Returns<a class="anchor-link" href="#Inside-append_stats:-What-histc(40,-0,-10)-Returns">¶</a></h2><p>Not the activations. <strong>Counts.</strong> <code>histc(40, 0, 10)</code> cuts the range 0 → 10 into 40 buckets of width <strong>0.25</strong> and counts how many values fall in each, so the output length is the number of <em>bins</em>. Feed it 8 numbers or 1.6 million — you get back exactly 40 numbers either way.</p>
+<h3 id="A-worked-example-with-4-bins">A worked example with 4 bins<a class="anchor-link" href="#A-worked-example-with-4-bins">¶</a></h3><p>Shrinking to <code>histc(4, 0, 10)</code> gives edges <code>[0, 2.5, 5, 7.5, 10]</code>. One toy batch of eight layer outputs:</p>
+<pre><code>acts        [ 0.1   0.4  -0.2   3.0   1.1  -0.9   0.3   2.0]
+acts.abs()  [ 0.1   0.4   0.2   3.0   1.1   0.9   0.3   2.0]
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>values</th>
+<th>bucket</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.1, 0.4, 0.2, 1.1, 0.9, 0.3, 2.0</td>
+<td>all below 2.5 → <strong>bin 0</strong></td>
+</tr>
+<tr>
+<td>3.0</td>
+<td>between 2.5 and 5 → <strong>bin 1</strong></td>
+</tr>
+<tr>
+<td>—</td>
+<td>nothing reaches 5 or 7.5</td>
+</tr>
+</tbody>
+</table>
+<pre><code>histc → [7., 1., 0., 0.]
+</code></pre>
+<p>Seven small values, one medium, nothing large. That is all a histogram is.</p>
+<h3 id="The-10-is-a-hand-picked-ceiling,-and-values-above-it-are-deleted">The <code>10</code> is a hand-picked ceiling, and values above it are deleted<a class="anchor-link" href="#The-10-is-a-hand-picked-ceiling,-and-values-above-it-are-deleted">¶</a></h3><p>A second batch exposes something important:</p>
+<pre><code>batch 1
+  acts.abs()  [ 0.1   0.0   0.1   9.5   0.2   0.05  0.3  12.0]
+  histc    →  [6. 0. 0. 1.]      sum = 7 of 8   ← a value went missing
+</code></pre>
+<p>Eight values went in; the counts total <strong>seven</strong>. The <code>12.0</code> exceeded the ceiling, and <code>torch.histc</code> <strong>discards out-of-range values</strong> rather than clipping them into the top bin. So the <code>10</code> is not the layer's maximum output — it is a scale someone chose, meaning <em>"if activations exceed this, something has already gone wrong."</em> The top of the plot is a cliff edge, not a summit, and the only way to notice is that the output <em>sum</em> falls short of the number of activations.</p>
+<p><strong>Why <code>.abs()</code>?</strong> The hook is on <code>nn.Conv2d</code>, so these are pre-activation outputs and can be negative. <code>histc</code> starts at 0, so <code>.abs()</code> folds the negative side up and we track magnitude — discarding the sign, which matters when we interpret the result later.</p>
+<p><strong>What accumulates.</strong> The hook fires once per batch, so after 60 batches <code>hook.stats[2]</code> is a plain Python <strong>list of 60 tensors, each of length 40</strong>. Nothing image-shaped yet.</p>
+<hr/>
+<h2 id="Inside-get_hist:-Reshaping-the-List-Into-a-Grid">Inside <code>get_hist</code>: Reshaping the List Into a Grid<a class="anchor-link" href="#Inside-get_hist:-Reshaping-the-List-Into-a-Grid">¶</a></h2><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_hist</span><span class="p">(</span><span class="n">h</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">.</span><span class="n">t</span><span class="p">()</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">.</span><span class="n">log1p</span><span class="p">()</span>
+</pre></div>
+<p><strong><code>torch.stack(...)</code> → <code>(2, 4)</code>, one row per batch</strong></p>
+<pre><code>[[7., 1., 0., 0.],     ← batch 0
+ [6., 0., 0., 1.]]     ← batch 1
+</code></pre>
+<p><strong><code>.t()</code> → <code>(4, 2)</code>, one row per bin</strong></p>
+<pre><code>[[7., 6.],    ← bin 0 across batches 0, 1
+ [1., 0.],    ← bin 1
+ [0., 0.],    ← bin 2
+ [0., 1.]]    ← bin 3
+</code></pre>
+<p><strong>This transpose is what makes the final plot readable.</strong> After it each <strong>column is one batch</strong>, with that batch's bin values running <strong>vertically</strong> up the column — so a vertical slice of the finished image is one complete histogram, stood on its end. Sixty batches gives sixty such columns side by side and time reads left to right. Skip the <code>.t()</code> and the picture comes out rotated 90°, unreadable as a timeline.</p>
+<p><strong><code>.float()</code></strong> guarantees a float dtype; <strong><code>.log1p()</code></strong> applies <code>log(x + 1)</code> elementwise, leaving the shape unchanged.</p>
+<hr/>
+<h2 id="Why-log1p-Is-Not-Optional">Why <code>log1p</code> Is Not Optional<a class="anchor-link" href="#Why-log1p-Is-Not-Optional">¶</a></h2><p>Real counts from a 40-bin, 60-batch run over 40,000 activations per batch:</p>
+<pre><code>batch  0  bins 0-7:  [15177 12066 7455 3461 1303 420 96 18]
+batch 18  bins 0-7:  [  880   833  891  895  909 934 880 840]
+batch 30  bins 0-7:  [40000     0    0    0    0   0   0   0]
+</code></pre>
+<p>Counts span 0 to 40,000, and <code>imshow</code> colours by rescaling against the global maximum. Without <code>log1p</code>:</p>
+<pre><code>[bin  0, batch  0]  15177  →  norm 0.37943  →  #2c738e
+[bin  7, batch  0]     18  →  norm 0.00045  →  #440154
+[bin  7, batch 30]      0  →  norm 0.00000  →  #440154
+</code></pre>
+<p>A bin holding <strong>18 activations</strong> and a bin holding <strong>zero</strong> come out as the same pixel colour — everything except the largest cell collapses into indistinguishable darkness. <code>log1p</code> fixes this by compressing the top of the range and expanding the bottom:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:right">raw count</th>
+<th style="text-align:right"><code>log1p</code></th>
+<th style="text-align:right">normalised</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right">0</td>
+<td style="text-align:right">0.0000</td>
+<td style="text-align:right">0.0000</td>
+</tr>
+<tr>
+<td style="text-align:right">18</td>
+<td style="text-align:right">2.9444</td>
+<td style="text-align:right">0.2779</td>
+</tr>
+<tr>
+<td style="text-align:right">420</td>
+<td style="text-align:right">6.0426</td>
+<td style="text-align:right">0.5702</td>
+</tr>
+<tr>
+<td style="text-align:right">3,461</td>
+<td style="text-align:right">8.1496</td>
+<td style="text-align:right">0.7691</td>
+</tr>
+<tr>
+<td style="text-align:right">15,177</td>
+<td style="text-align:right">9.6276</td>
+<td style="text-align:right">0.9086</td>
+</tr>
+<tr>
+<td style="text-align:right">40,000</td>
+<td style="text-align:right">10.5967</td>
+<td style="text-align:right">1.0000</td>
+</tr>
+</tbody>
+</table>
+<p>A count of 18 now sits at 0.28 — a visible blue instead of black — so the sparse high-magnitude bins become legible, which is exactly where the diagnostic information lives. The <code>+1</code> exists because <code>log(0)</code> is <code>-inf</code>.</p>
+<p>The consequence is that <strong>the colour scale is now logarithmic</strong>, so the gap between green and yellow is far larger than it looks: here green ≈ 2,500 counts and bright yellow ≈ 40,000.</p>
+<hr/>
+<h2 id="Inside-the-Plotting-Loop:-.numpy()-and-imshow">Inside the Plotting Loop: <code>.numpy()</code> and <code>imshow</code><a class="anchor-link" href="#Inside-the-Plotting-Loop:-.numpy()-and-imshow">¶</a></h2><p>As established, <code>.numpy()</code> only swaps the container. It works because <code>to_cpu(outp)</code> in <code>append_stats</code> already moved things off the GPU and detached them from the graph. What arrives at <code>imshow</code> is a <code>(40, 60)</code> <code>float64</code> ndarray, min 0.0000 and max 10.5967, where row <code>i</code> = bin <code>i</code> and column <code>j</code> = batch <code>j</code>.</p>
+<h3 id="The-three-steps-imshow-performs">The three steps imshow performs<a class="anchor-link" href="#The-three-steps-imshow-performs">¶</a></h3><p><strong>Rescale.</strong> No <code>vmin</code>/<code>vmax</code> were passed, so matplotlib takes them from the data: <code>norm = (arr - arr.min()) / (arr.max() - arr.min())</code>, putting everything in [0, 1].</p>
+<p><strong>Look up a colour.</strong> <code>cmap='viridis'</code> is a function from <code>[0, 1]</code> to RGBA, returning shape <code>(40, 60, 4)</code>.</p>
+<p><strong>Paint.</strong> Element <code>[i, j]</code> becomes the pixel at row <code>i</code>, column <code>j</code>.</p>
+<p>Real pixels traced through — this is the entire "conversion to an image":</p>
+<pre><code>arr[ 0,  5] =  8.7400  →  norm 0.8248  →  #8bd546   yellow-green
+arr[12,  5] =  5.6419  →  norm 0.5324  →  #1e988a   teal
+arr[ 0, 30] = 10.5967  →  norm 1.0000  →  #fde724   bright yellow
+arr[39, 30] =  0.0000  →  norm 0.0000  →  #440154   dark purple
+</code></pre>
+<p><strong><code>origin='lower'</code></strong> matters because images conventionally number rows top-down, so by default <code>arr[0]</code> — bin 0, the smallest activations — would be drawn at the <strong>top</strong>. This flips it.</p>
+<p><strong><code>aspect='auto'</code></strong> matters because the default <code>'equal'</code> forces square pixels, rendering a 40 × 60 array as a squat box that will not fill the subplot. It is also why 60 columns look like a smooth gradient rather than discrete stripes.</p>
+<hr/>
+<h2 id="Why-the-Axes-Say-%22Batch%22-and-%22Activation-Magnitude%22">Why the Axes Say "Batch" and "Activation Magnitude"<a class="anchor-link" href="#Why-the-Axes-Say-%22Batch%22-and-%22Activation-Magnitude%22">¶</a></h2><p><code>imshow</code> labels its axes with <strong>array indices</strong>, and <code>set_xlabel</code>/<code>set_ylabel</code> are just strings naming what those indices mean after our <code>.t()</code>. Column index = batch, because <code>.t()</code> put time on the horizontal axis — column 30 <em>is</em> batch 30. Row index = bin = magnitude, because row 7 holds magnitudes 1.75–2.00 and row 20 holds 5.00–5.25, so going up genuinely means larger activations.</p>
+<p><strong>One caveat:</strong> with no <code>extent</code> passed, imshow sets the axis limits to pixel coordinates — y from −0.5 to 39.5. So the y-axis ticks run <strong>0 to 40</strong>, which are bin indices, not magnitudes. Convert with <code>magnitude = bin_index × 0.25</code>, so <code>20</code> on the axis means an activation of 5.0. One keyword fixes it:</p>
+<div class="highlight"><pre><span></span><span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">get_hist</span><span class="p">(</span><span class="n">h</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">aspect</span><span class="o">=</span><span class="s1">'auto'</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="s1">'lower'</span><span class="p">,</span>
+          <span class="n">cmap</span><span class="o">=</span><span class="s1">'viridis'</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">n_batches</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">])</span>
+</pre></div>
+<hr/>
+<h2 id="Reading-the-Finished-Plot">Reading the Finished Plot<a class="anchor-link" href="#Reading-the-Finished-Plot">¶</a></h2><p><strong>What the colours mean.</strong> Viridis is a one-dimensional ramp encoding only how big the (log) count is — magnitude is the <em>y-position</em>, never the colour.</p>
+<table>
+<thead>
+<tr>
+<th>colour</th>
+<th>count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dark purple</td>
+<td>≈ 0 — no activations of that magnitude</td>
+</tr>
+<tr>
+<td>blue</td>
+<td>tens</td>
+</tr>
+<tr>
+<td>teal</td>
+<td>hundreds</td>
+</tr>
+<tr>
+<td>green</td>
+<td>a few thousand</td>
+</tr>
+<tr>
+<td>bright yellow</td>
+<td>the largest count in that panel</td>
+</tr>
+</tbody>
+</table>
+<p>So yellow low down means huge numbers of tiny activations; yellow high up would mean huge numbers of enormous ones. <strong>One trap:</strong> each subplot calls <code>imshow</code> separately, so <strong>every panel normalises to its own min and max</strong> — yellow in the layer-1 panel and yellow in the layer-5 panel are not the same count, each only meaning "the busiest bin in <em>this</em> layer.</p>
+<h3 id="What-this-figure-shows">What this figure shows<a class="anchor-link" href="#What-this-figure-shows">¶</a></h3><p>Every panel has a yellow stripe pinned to the bottom throughout — most activations always sit below magnitude ~0.5, which by itself is normal. <strong>What matters is what sits above it.</strong></p>
+<table>
+<thead>
+<tr>
+<th>batches</th>
+<th>pattern</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0–17</td>
+<td>green → teal → blue climbing from the bottom</td>
+<td>healthy spread of magnitudes</td>
+</tr>
+<tr>
+<td>~18</td>
+<td>narrow bright column reaching rows 30–40</td>
+<td>explosion; distribution smeared to magnitudes 7.5–10</td>
+</tr>
+<tr>
+<td>19–59</td>
+<td>near-total black above a razor-thin bottom line</td>
+<td>collapse; everything under 0.25</td>
+</tr>
+</tbody>
+</table>
+<p>Numbers from the same run make it concrete:</p>
+<pre><code>batch  5  (healthy)     bin 0 =  6,247   →  15.6% of all activations
+batch 18  (exploding)   bin 0 =    880   →   2.2%   (26.8% blew past the ceiling)
+batch 30  (collapsed)   bin 0 = 40,000   → 100.0%
+</code></pre>
+<p>At batch 18 more than a quarter of activations exceeded 10 and were silently discarded, so the bright column is only three-quarters of the explosion. By batch 30 every one of the 40,000 values is under 0.25 — that layer is not "mostly small," it is entirely flat. Layer 1 is the exception: it keeps a broad green block up to row ~20, still producing varied output, but nothing downstream is using it.</p>
+<hr/>
+<h2 id="The-Follow-Up-Plot,-and-What-%22Dead%22-Actually-Means">The Follow-Up Plot, and What "Dead" Actually Means<a class="anchor-link" href="#The-Follow-Up-Plot,-and-What-%22Dead%22-Actually-Means">¶</a></h2><p>Turning "it looks dark" into a number — for this run it jumps to ≈1.0 at batch 19 and flatlines:</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_min</span><span class="p">(</span><span class="n">h</span><span class="p">):</span>
+    <span class="n">h1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">h</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span><span class="o">.</span><span class="n">t</span><span class="p">()</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">h1</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">h1</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>      <span class="c1"># fraction in the bottom 2 bins</span>
+</pre></div>
+<p>But calling those units <em>dead</em> is a claim about <strong>the gradient being zero, not the value being small</strong>. For <code>a = max(0, z)</code> the local derivative is 1 when <code>z &gt; 0</code> and <strong>exactly 0</strong> otherwise, so a unit with negative pre-activation contributes no gradient to its weights. That is survivable for one batch; the failure is when a bad update pushes the bias so negative that the unit is off for every input it will ever see, after which it never updates again.</p>
+<p>And <code>get_min</code> cannot separate that from "small but healthy":</p>
+<table>
+<thead>
+<tr>
+<th>unit</th>
+<th style="text-align:right"><code>get_min</code></th>
+<th style="text-align:right">std(out)</th>
+<th style="text-align:right">exactly 0</th>
+<th style="text-align:right">gradient flows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>healthy</td>
+<td style="text-align:right">0.395</td>
+<td style="text-align:right">0.9469</td>
+<td style="text-align:right">25.5%</td>
+<td style="text-align:right">74.5%</td>
+</tr>
+<tr>
+<td>small but alive</td>
+<td style="text-align:right"><strong>1.000</strong></td>
+<td style="text-align:right">0.0419</td>
+<td style="text-align:right">37.7%</td>
+<td style="text-align:right">62.3%</td>
+</tr>
+<tr>
+<td>truly dead</td>
+<td style="text-align:right"><strong>1.000</strong></td>
+<td style="text-align:right">0.0000</td>
+<td style="text-align:right">100.0%</td>
+<td style="text-align:right">0.0%</td>
+</tr>
+</tbody>
+</table>
+<p>The middle unit scores identically to the dead one, yet its output still varies and gradient flows through 62% of its samples — add a BatchNorm and it is fine. So <code>get_min</code> answers <em>"is the distribution collapsed against zero?"</em> and we infer <em>"probably dead."</em> The honest discriminator is whether the output <strong>varies with the input</strong>: a unit emitting a constant 0.2 is as useless as one emitting 0.</p>
+<p>One wrinkle is specific to this notebook. Our hook is on <code>nn.Conv2d</code>, so we captured pre-activation outputs and <code>.abs()</code> folded the sign away, meaning bin 0 mixes "slightly negative, about to be zeroed by the next ReLU" with "slightly positive, will survive." Strictly this plot measures <em>signal collapse in the conv output</em> rather than literal ReLU death — though here it changes nothing, since after batch 18 essentially 100% of the output sits within 0.25 of zero while the inputs are order-1.</p>
+<p>For certainty rather than a proxy, hook the post-ReLU module and measure <code>(acts == 0).float().mean()</code>, or count channels whose std across the batch is ≈ 0.</p>
+<hr/>
+<h2 id="The-Pipeline-at-a-Glance">The Pipeline at a Glance<a class="anchor-link" href="#The-Pipeline-at-a-Glance">¶</a></h2><table>
+<thead>
+<tr>
+<th>code</th>
+<th>shape in</th>
+<th>shape out</th>
+<th>what it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>acts.abs()</code></td>
+<td><code>(1024, 8, 14, 14)</code></td>
+<td>same</td>
+<td>fold negatives up; track magnitude</td>
+</tr>
+<tr>
+<td><code>.histc(40, 0, 10)</code></td>
+<td>any</td>
+<td><code>(40,)</code></td>
+<td>count into 40 buckets of width 0.25; <strong>discard anything &gt; 10</strong></td>
+</tr>
+<tr>
+<td><code>hook.stats[2]</code></td>
+<td>—</td>
+<td>list of 60 × <code>(40,)</code></td>
+<td>one histogram appended per batch</td>
+</tr>
+<tr>
+<td><code>torch.stack(...)</code></td>
+<td>list</td>
+<td><code>(60, 40)</code></td>
+<td>rows = batches</td>
+</tr>
+<tr>
+<td><code>.t()</code></td>
+<td><code>(60, 40)</code></td>
+<td><code>(40, 60)</code></td>
+<td>rows = bins, <strong>columns = batches</strong></td>
+</tr>
+<tr>
+<td><code>.float().log1p()</code></td>
+<td><code>(40, 60)</code></td>
+<td><code>(40, 60)</code></td>
+<td>compress the count range so sparse bins stay visible</td>
+</tr>
+<tr>
+<td><code>.numpy()</code></td>
+<td>tensor</td>
+<td>ndarray</td>
+<td>hand it to matplotlib</td>
+</tr>
+<tr>
+<td><code>imshow(..., cmap='viridis')</code></td>
+<td><code>(40, 60)</code></td>
+<td>picture</td>
+<td>rescale to [0,1] → colour lookup → paint</td>
+</tr>
+<tr>
+<td><code>origin='lower'</code></td>
+<td>—</td>
+<td>—</td>
+<td>put bin 0 at the bottom</td>
+</tr>
+<tr>
+<td><code>aspect='auto'</code></td>
+<td>—</td>
+<td>—</td>
+<td>stretch pixels to fill the axes</td>
+</tr>
+</tbody>
+</table>
+<hr/>
+<h2 id="Traps-Worth-Knowing">Traps Worth Knowing<a class="anchor-link" href="#Traps-Worth-Knowing">¶</a></h2><p>The ceiling is the easiest thing to forget: anything above 10 is deleted rather than clipped, so during an explosion the plot understates how bad things are, and comparing <code>sum(counts)</code> against the activation count is the only way to notice. The y-axis ticks are likewise bin indices running 0–40, not magnitudes running 0–10, unless you pass <code>extent=</code>.</p>
+<p>Brightness is only meaningful <em>within</em> a panel, never across panels, since <code>log1p</code> makes the scale logarithmic and each subplot normalises independently. And a yellow stripe along the bottom is not automatically bad news — early in training it is the normal shape of an activation distribution; late in training, with nothing but black above it, it is the signature of a layer that has stopped working.</p>
 </div>
 </div>
 </div>
