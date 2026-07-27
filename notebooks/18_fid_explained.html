@@ -9192,6 +9192,675 @@ Wall time: 1min 47s
 </div>
 </div>
 </div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=04def2ef">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="How-capture_preds()-Actually-Works-%E2%80%94-A-Line-by-Line-Execution-Trace">How <code>capture_preds()</code> Actually Works — A Line-by-Line Execution Trace<a class="anchor-link" href="#How-capture_preds()-Actually-Works-%E2%80%94-A-Line-by-Line-Execution-Trace">¶</a></h1><div class="highlight"><pre><span></span><span class="n">clearn</span> <span class="o">=</span> <span class="n">TrainLearner</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">,</span>                          <span class="c1"># feature extractor (classifier with its head chopped off)</span>
+    <span class="n">DataLoaders</span><span class="p">([],</span> <span class="p">[(</span><span class="n">s</span><span class="p">,</span> <span class="n">yb</span><span class="p">)]),</span>     <span class="c1"># empty train loader; validation = ONE batch of generated images</span>
+    <span class="n">loss_func</span><span class="o">=</span><span class="n">fc</span><span class="o">.</span><span class="n">noop</span><span class="p">,</span>              <span class="c1"># placeholder</span>
+    <span class="n">cbs</span><span class="o">=</span><span class="p">[</span><span class="n">DeviceCB</span><span class="p">()],</span>
+    <span class="n">opt_func</span><span class="o">=</span><span class="kc">None</span>                   <span class="c1"># no optimizer</span>
+<span class="p">)</span>
+
+<span class="n">feats2</span><span class="p">,</span> <span class="n">y2</span> <span class="o">=</span> <span class="n">clearn</span><span class="o">.</span><span class="n">capture_preds</span><span class="p">()</span>
+<span class="n">feats2</span> <span class="o">=</span> <span class="n">feats2</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+<span class="n">feats2</span><span class="o">.</span><span class="n">shape</span>
+</pre></div>
+<p><strong>The one-sentence answer:</strong> <code>capture_preds()</code> does not contain an inference loop. It runs
+<strong>one epoch of the ordinary miniai training loop with the training half switched off</strong>, and
+attaches a temporary <code>Callback</code> that copies <code>learn.preds</code> and <code>learn.batch[1]</code> to the CPU after
+every batch. <code>feats2</code> is the concatenation of those copied <code>learn.preds</code>; <code>y2</code> is the
+concatenation of those copied <code>learn.batch[1]</code>.</p>
+<p>Everything below is the long version: which functions fire, in what order, and which single line
+of code actually produces each returned tensor.</p>
+<hr/>
+<h2 id="1.-Where-the-code-lives">1. Where the code lives<a class="anchor-link" href="#1.-Where-the-code-lives">¶</a></h2><table>
+<thead>
+<tr>
+<th>Object</th>
+<th>Defined in notebook</th>
+<th>Exported to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Learner</code>, <code>TrainLearner</code>, <code>Callback</code>, <code>run_cbs</code>, <code>with_cbs</code>, <code>to_cpu</code>, <code>DeviceCB</code></td>
+<td><code>nbs/09_learner.ipynb</code></td>
+<td><code>miniai/learner.py</code></td>
+</tr>
+<tr>
+<td><code>CapturePreds</code>, <code>capture_preds</code></td>
+<td><code>nbs/14_augment.ipynb</code></td>
+<td><code>miniai/augment.py</code></td>
+</tr>
+<tr>
+<td><code>DataLoaders</code></td>
+<td><code>nbs/05_datasets.ipynb</code></td>
+<td><code>miniai/datasets.py</code></td>
+</tr>
+<tr>
+<td><code>to_device</code>, <code>def_device</code></td>
+<td><code>nbs/03_backprop.ipynb</code> / conv</td>
+<td><code>miniai/conv.py</code></td>
+</tr>
+<tr>
+<td><code>noop</code>, <code>patch</code>, <code>L</code></td>
+<td>—</td>
+<td><code>fastcore</code></td>
+</tr>
+</tbody>
+</table>
+<p>This split is the first thing that trips people up: <code>capture_preds</code> is a <strong>method on <code>Learner</code></strong>,
+but you will never find it inside <code>class Learner</code>. It is bolted on afterwards, from a completely
+different notebook, using <code>@fc.patch</code>:</p>
+<div class="highlight"><pre><span></span><span class="nd">@fc</span><span class="o">.</span><span class="n">patch</span>
+<span class="k">def</span> <span class="nf">capture_preds</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">Learner</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inps</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span> <span class="o">...</span>
+</pre></div>
+<p><code>fc.patch</code> reads the type annotation on the first parameter (<code>self: Learner</code>) and does the
+equivalent of <code>Learner.capture_preds = capture_preds</code>. Because <code>TrainLearner</code> subclasses
+<code>Learner</code>, <code>clearn.capture_preds()</code> resolves through normal Python attribute lookup.</p>
+<hr/>
+<h2 id="2.-The-complete-cast-of-code">2. The complete cast of code<a class="anchor-link" href="#2.-The-complete-cast-of-code">¶</a></h2><p>Everything that will execute, gathered in one place. Read it once now; the trace in §3 refers
+back to it.</p>
+<h3 id="miniai/augment.py"><code>miniai/augment.py</code><a class="anchor-link" href="#miniai/augment.py">¶</a></h3><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">CapturePreds</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">before_fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_inps</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">all_preds</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">all_targs</span> <span class="o">=</span> <span class="p">[],[],[]</span>
+    <span class="k">def</span> <span class="nf">after_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_inps</span><span class="o">.</span> <span class="n">append</span><span class="p">(</span><span class="n">to_cpu</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_preds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">to_cpu</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_targs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">to_cpu</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="k">def</span> <span class="nf">after_fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_preds</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">all_targs</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">all_inps</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">all_preds</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">all_targs</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">all_inps</span><span class="p">])</span>
+
+<span class="nd">@fc</span><span class="o">.</span><span class="n">patch</span>
+<span class="k">def</span> <span class="nf">capture_preds</span><span class="p">(</span><span class="bp">self</span><span class="p">:</span> <span class="n">Learner</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inps</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">cp</span> <span class="o">=</span> <span class="n">CapturePreds</span><span class="p">()</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="p">[</span><span class="n">cp</span><span class="p">]</span><span class="o">+</span><span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="p">(</span><span class="n">cbs</span><span class="p">))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">all_preds</span><span class="p">,</span><span class="n">cp</span><span class="o">.</span><span class="n">all_targs</span>
+    <span class="k">if</span> <span class="n">inps</span><span class="p">:</span> <span class="n">res</span> <span class="o">=</span> <span class="n">res</span><span class="o">+</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">all_inps</span><span class="p">,)</span>
+    <span class="k">return</span> <span class="n">res</span>
+</pre></div>
+<h3 id="miniai/learner.py"><code>miniai/learner.py</code><a class="anchor-link" href="#miniai/learner.py">¶</a></h3><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">run_cbs</span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span> <span class="n">method_nm</span><span class="p">,</span> <span class="n">learn</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">cbs</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">attrgetter</span><span class="p">(</span><span class="s1">'order'</span><span class="p">)):</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">method_nm</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span> <span class="n">method</span><span class="p">(</span><span class="n">learn</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">with_cbs</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nm</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">nm</span> <span class="o">=</span> <span class="n">nm</span>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">_f</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">o</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="sa">f</span><span class="s1">'before_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nm</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+                <span class="n">f</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="n">o</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="sa">f</span><span class="s1">'after_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nm</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+            <span class="k">except</span> <span class="nb">globals</span><span class="p">()[</span><span class="sa">f</span><span class="s1">'Cancel</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nm</span><span class="o">.</span><span class="n">title</span><span class="p">()</span><span class="si">}</span><span class="s1">Exception'</span><span class="p">]:</span> <span class="k">pass</span>
+            <span class="k">finally</span><span class="p">:</span> <span class="n">o</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="sa">f</span><span class="s1">'cleanup_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nm</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">_f</span>
+
+<span class="k">def</span> <span class="nf">to_cpu</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span> <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="n">to_cpu</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">x</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span> <span class="k">return</span> <span class="p">[</span><span class="n">to_cpu</span><span class="p">(</span><span class="n">o</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">x</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span> <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">to_cpu</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">float</span><span class="p">()</span> <span class="k">if</span> <span class="n">res</span><span class="o">.</span><span class="n">dtype</span><span class="o">==</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span> <span class="k">else</span> <span class="n">res</span>
+
+<span class="k">class</span> <span class="nc">DeviceCB</span><span class="p">(</span><span class="n">Callback</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">def_device</span><span class="p">):</span> <span class="n">fc</span><span class="o">.</span><span class="n">store_attr</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">before_fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s1">'to'</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">before_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learn</span><span class="p">):</span> <span class="n">learn</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="n">to_device</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">Learner</span><span class="p">():</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">dls</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">loss_func</span><span class="o">=</span><span class="n">F</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">opt_func</span><span class="o">=</span><span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">):</span>
+        <span class="n">cbs</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="p">(</span><span class="n">cbs</span><span class="p">)</span>
+        <span class="n">fc</span><span class="o">.</span><span class="n">store_attr</span><span class="p">()</span>
+
+    <span class="nd">@with_cbs</span><span class="p">(</span><span class="s1">'batch'</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_one_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">predict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'after_predict'</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_loss</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'after_loss'</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'after_backward'</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'after_step'</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+
+    <span class="nd">@with_cbs</span><span class="p">(</span><span class="s1">'epoch'</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_one_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">batch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dl</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">_one_batch</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">one_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">training</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">training</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">train</span> <span class="k">if</span> <span class="n">training</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">valid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_one_epoch</span><span class="p">()</span>
+
+    <span class="nd">@with_cbs</span><span class="p">(</span><span class="s1">'fit'</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train</span><span class="p">,</span> <span class="n">valid</span><span class="p">):</span>
+        <span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">epochs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">train</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">one_epoch</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">valid</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()(</span><span class="bp">self</span><span class="o">.</span><span class="n">one_epoch</span><span class="p">)(</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">valid</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">cbs</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="p">(</span><span class="n">cbs</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">cbs</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cbs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_epochs</span> <span class="o">=</span> <span class="n">n_epochs</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">epochs</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_epochs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">lr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="n">lr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lr</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_func</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_func</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_fit</span><span class="p">(</span><span class="n">train</span><span class="p">,</span> <span class="n">valid</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">cbs</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cbs</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'predict'</span><span class="p">,</span><span class="s1">'get_loss'</span><span class="p">,</span><span class="s1">'backward'</span><span class="p">,</span><span class="s1">'step'</span><span class="p">,</span><span class="s1">'zero_grad'</span><span class="p">):</span> <span class="k">return</span> <span class="n">partial</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">callback</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method_nm</span><span class="p">):</span> <span class="n">run_cbs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cbs</span><span class="p">,</span> <span class="n">method_nm</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">training</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">training</span>
+
+<span class="k">class</span> <span class="nc">TrainLearner</span><span class="p">(</span><span class="n">Learner</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>    <span class="bp">self</span><span class="o">.</span><span class="n">preds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">def</span> <span class="nf">get_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>   <span class="bp">self</span><span class="o">.</span><span class="n">loss</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss_func</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>   <span class="bp">self</span><span class="o">.</span><span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>       <span class="bp">self</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">zero_grad</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>  <span class="bp">self</span><span class="o">.</span><span class="n">opt</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+</pre></div>
+<h3 id="miniai/datasets.py-and-miniai/conv.py"><code>miniai/datasets.py</code> and <code>miniai/conv.py</code><a class="anchor-link" href="#miniai/datasets.py-and-miniai/conv.py">¶</a></h3><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">DataLoaders</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">dls</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">train</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">valid</span> <span class="o">=</span> <span class="n">dls</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">to_device</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">def_device</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span> <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span> <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="n">v</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="n">x</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="n">x</span><span class="p">)(</span><span class="n">to_device</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">x</span><span class="p">)</span>
+</pre></div>
+<h3 id="fastcore"><code>fastcore</code><a class="anchor-link" href="#fastcore">¶</a></h3><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">noop</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span> <span class="k">return</span> <span class="n">x</span>    <span class="c1"># returns its first argument, ignores the rest</span>
+</pre></div>
+<hr/>
+<h2 id="3.-The-trace:-what-happens,-in-order">3. The trace: what happens, in order<a class="anchor-link" href="#3.-The-trace:-what-happens,-in-order">¶</a></h2><p>Assume the FID setup: <code>s</code> is a batch of 256 generated 1×32×32 images, <code>yb</code> is a dummy label
+tensor, and <code>model</code> is the trained classifier with layers 8 and 7 deleted, so its output is
+<code>(batch, 512, 1, 1)</code>.</p>
+<p>State before the call: <code>clearn.cbs == [DeviceCB()]</code>, <code>clearn.opt_func is None</code>,
+<code>clearn.loss_func is fc.noop</code>, <code>clearn.dls.train == []</code>, <code>clearn.dls.valid == [(s, yb)]</code>.</p>
+<hr/>
+<p><strong>Step 1 — <code>capture_preds</code> body, line 1</strong></p>
+<div class="highlight"><pre><span></span><span class="n">cp</span> <span class="o">=</span> <span class="n">CapturePreds</span><span class="p">()</span>
+</pre></div>
+<p>An empty callback object. It has no lists yet — <code>all_preds</code> does not exist until <code>before_fit</code>
+runs. <code>cp</code> is a plain local variable; the only reason its data survives the call is that
+<code>capture_preds</code> returns references to its attributes at the end.</p>
+<p><strong>Step 2 — <code>capture_preds</code> body, line 2</strong></p>
+<div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cbs</span><span class="o">=</span><span class="p">[</span><span class="n">cp</span><span class="p">]</span><span class="o">+</span><span class="n">fc</span><span class="o">.</span><span class="n">L</span><span class="p">(</span><span class="n">cbs</span><span class="p">))</span>
+</pre></div>
+<p><code>cbs=None</code> was passed by you, so <code>fc.L(None)</code> is an empty list and the argument is just <code>[cp]</code>.
+Note <code>train=False</code>: this is the switch that turns the training loop into an inference loop.</p>
+<p><strong>Step 3 — inside <code>fit</code>: the callback list is temporarily extended</strong></p>
+<div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">cbs</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cbs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+</pre></div>
+<p><code>clearn.cbs</code> is now <code>[DeviceCB(), cp]</code>. This is the entire registration mechanism — there is no
+hook API, no handles. The learner simply holds a list of objects and later calls methods on them
+by name.</p>
+<p><strong>Step 4 — inside <code>fit</code>: bookkeeping</strong></p>
+<div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">n_epochs</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">epochs</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">lr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="n">lr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lr</span>          <span class="c1"># 0.1, never used</span>
+<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt_func</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">opt</span> <span class="o">=</span> <span class="o">...</span>     <span class="c1"># opt_func is None → falsy → NO optimizer is built</span>
+</pre></div>
+<p>This <code>if</code> is exactly why <code>opt_func=None</code> is safe. With the default <code>optim.SGD</code>, this line would
+try to build an optimizer over <code>model.parameters()</code> — harmless but pointless.</p>
+<p><strong>Step 5 — <code>self._fit(False, True)</code> — but <code>_fit</code> is wrapped</strong></p>
+<p><code>_fit</code> was decorated with <code>@with_cbs('fit')</code>, so calling it actually calls the closure <code>_f</code>,
+which first does:</p>
+<div class="highlight"><pre><span></span><span class="n">o</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'before_fit'</span><span class="p">)</span>   <span class="err">→</span>   <span class="n">run_cbs</span><span class="p">([</span><span class="n">DeviceCB</span><span class="p">(),</span> <span class="n">cp</span><span class="p">],</span> <span class="s1">'before_fit'</span><span class="p">,</span> <span class="n">clearn</span><span class="p">)</span>
+</pre></div>
+<p><code>run_cbs</code> sorts the callbacks by their <code>order</code> attribute (both are <code>0</code>, and Python's sort is
+stable, so insertion order wins), then for each one does <code>getattr(cb, 'before_fit', None)</code> and
+calls it if present:</p>
+<ol>
+<li><code>DeviceCB.before_fit(learn)</code> → <code>learn.model.to('cuda')</code></li>
+<li><code>CapturePreds.before_fit(learn)</code> → <strong><code>cp.all_inps, cp.all_preds, cp.all_targs = [], [], []</code></strong></li>
+</ol>
+<p>The three accumulator lists now exist. This is the initialisation of your two eventual return
+values.</p>
+<p><strong>Step 6 — the real <code>_fit</code> body runs</strong></p>
+<div class="highlight"><pre><span></span><span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">epoch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">epochs</span><span class="p">:</span>              <span class="c1"># exactly one iteration</span>
+    <span class="k">if</span> <span class="n">train</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">one_epoch</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>          <span class="c1"># train=False → SKIPPED, dls.train is never touched</span>
+    <span class="k">if</span> <span class="n">valid</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()(</span><span class="bp">self</span><span class="o">.</span><span class="n">one_epoch</span><span class="p">)(</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+<p><code>torch.no_grad()(self.one_epoch)</code> wraps the bound method in the no-grad context manager and calls
+the result with <code>False</code>. <strong>This is where gradient tracking is disabled</strong> — not inside
+<code>capture_preds</code>, not inside <code>CapturePreds</code>. It is inherited from the ordinary validation pass.</p>
+<p><strong>Step 7 — <code>one_epoch(training=False)</code></strong></p>
+<div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>                     <span class="c1"># ← eval mode: BatchNorm uses running stats, Dropout off</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">dl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dls</span><span class="o">.</span><span class="n">valid</span>                    <span class="c1"># ← [(s, yb)]</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">_one_epoch</span><span class="p">()</span>
+</pre></div>
+<p>Two consequences worth naming:</p>
+<ul>
+<li><code>model.train(False)</code> also makes the <code>Learner.training</code> property <code>False</code>, which will matter in
+step 11.</li>
+<li><code>self.dl</code> is your list <code>[(s, yb)]</code>. It is not a <code>DataLoader</code> at all. Nothing in the loop
+requires it to be one — it only has to be iterable and yield <code>(x, y)</code> tuples.</li>
+</ul>
+<p><strong>Step 8 — <code>_one_epoch</code> is wrapped by <code>@with_cbs('epoch')</code></strong></p>
+<div class="highlight"><pre><span></span><span class="n">o</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'before_epoch'</span><span class="p">)</span>   <span class="c1"># neither DeviceCB nor CapturePreds defines it → run_cbs does nothing</span>
+</pre></div>
+<p><code>run_cbs</code> is deliberately forgiving: <code>getattr(cb, method_nm, None)</code> returns <code>None</code> for missing
+methods and they are silently skipped. A callback only implements the events it cares about.</p>
+<p>Then the body:</p>
+<div class="highlight"><pre><span></span><span class="k">for</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dl</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_one_batch</span><span class="p">()</span>
+</pre></div>
+<p>First (and only) iteration: <code>self.iter = 0</code>, <code>self.batch = (s, yb)</code> — still on the CPU at this
+moment, since <code>s</code> came back from <code>sample()</code> and was reassigned with <code>s = samples[-1]*2-1</code>.</p>
+<p><strong>Step 9 — <code>_one_batch</code> is wrapped by <code>@with_cbs('batch')</code></strong></p>
+<div class="highlight"><pre><span></span><span class="n">o</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'before_batch'</span><span class="p">)</span>   <span class="err">→</span>   <span class="n">DeviceCB</span><span class="o">.</span><span class="n">before_batch</span><span class="p">(</span><span class="n">learn</span><span class="p">)</span>
+                             <span class="err">→</span>   <span class="n">learn</span><span class="o">.</span><span class="n">batch</span> <span class="o">=</span> <span class="n">to_device</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">,</span> <span class="s1">'cuda'</span><span class="p">)</span>
+</pre></div>
+<p><code>to_device</code> hits the <code>type(x)(to_device(o, device) for o in x)</code> branch because <code>learn.batch</code> is a
+tuple, so it rebuilds the tuple with both elements moved to the GPU. <code>learn.batch</code> is now
+<code>(s_cuda, yb_cuda)</code>.</p>
+<p><strong>Step 10 — the forward pass. This is the line that computes your features.</strong></p>
+<div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">predict</span><span class="p">()</span>                     <span class="c1"># TrainLearner.predict</span>
+    <span class="err">→</span> <span class="bp">self</span><span class="o">.</span><span class="n">preds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+<p><code>self.batch[0]</code> is the 256 generated images on the GPU. <code>self.model</code> is the decapitated
+classifier. So:</p>
+<pre><code>learn.preds  ←  model(s_cuda)      shape (256, 512, 1, 1), on cuda, no grad
+</code></pre>
+<p><strong>There is your <code>feats2</code>.</strong> Nothing more sophisticated happens to it. Everything after this point
+is copying and reshaping.</p>
+<p>(Side note on <code>TrainLearner</code> vs plain <code>Learner</code>: <code>TrainLearner</code> defines <code>predict</code> as a real
+method. A bare <code>Learner</code> has no <code>predict</code>, so <code>Learner.__getattr__</code> intercepts the name and
+returns <code>partial(self.callback, 'predict')</code>, which fires <code>TrainCB.predict</code> instead. Same result,
+different plumbing. That is why <code>capture_preds</code> works with both.)</p>
+<p>Then <code>o.callback('after_predict')</code> — nobody implements it here.</p>
+<p><strong>Step 11 — the loss is computed and thrown away</strong></p>
+<div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">get_loss</span><span class="p">()</span>                    <span class="c1"># TrainLearner.get_loss</span>
+    <span class="err">→</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss_func</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="err">→</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">fc</span><span class="o">.</span><span class="n">noop</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">yb_cuda</span><span class="p">)</span>
+    <span class="err">→</span> <span class="bp">self</span><span class="o">.</span><span class="n">loss</span> <span class="o">=</span> <span class="n">preds</span>             <span class="c1"># noop returns its first argument</span>
+</pre></div>
+<p><code>_one_batch</code> calls <code>get_loss()</code> unconditionally — there is no <code>if self.training</code> guard around it.
+That is the entire reason you must pass a callable <code>loss_func</code>. <code>fc.noop</code> swallows the call.
+Passing <code>loss_func=None</code> would raise <code>TypeError: 'NoneType' object is not callable</code> right here.</p>
+<p>Then <code>o.callback('after_loss')</code>.</p>
+<p><strong>Step 12 — the training half is skipped</strong></p>
+<div class="highlight"><pre><span></span><span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="p">:</span>      <span class="c1"># property → self.model.training → False (set in step 7)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">backward</span><span class="p">();</span> <span class="o">...</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">();</span> <span class="o">...</span><span class="p">;</span> <span class="bp">self</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+</pre></div>
+<p>The condition is <code>False</code>, so <code>backward</code>, <code>opt.step</code>, and <code>opt.zero_grad</code> never run. This is the
+second reason <code>opt_func=None</code> is safe: <code>self.opt</code> was never created, and nothing ever asks for it.</p>
+<p><strong>Step 13 — the capture. This is where the return values are collected.</strong></p>
+<p>Still inside the <code>with_cbs('batch')</code> wrapper:</p>
+<div class="highlight"><pre><span></span><span class="n">o</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'after_batch'</span><span class="p">)</span>   <span class="err">→</span>   <span class="n">run_cbs</span><span class="p">([</span><span class="n">DeviceCB</span><span class="p">(),</span> <span class="n">cp</span><span class="p">],</span> <span class="s1">'after_batch'</span><span class="p">,</span> <span class="n">clearn</span><span class="p">)</span>
+</pre></div>
+<p><code>DeviceCB</code> has no <code>after_batch</code>. <code>CapturePreds.after_batch</code> runs:</p>
+<div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">all_inps</span> <span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">to_cpu</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>   <span class="c1"># the 256 generated images   (256, 1, 32, 32)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">all_preds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">to_cpu</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">preds</span><span class="p">))</span>      <span class="c1"># the features               (256, 512, 1, 1)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">all_targs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">to_cpu</span><span class="p">(</span><span class="n">learn</span><span class="o">.</span><span class="n">batch</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>   <span class="c1"># the dummy labels           (256,)</span>
+</pre></div>
+<p><code>to_cpu</code> does <code>x.detach().cpu()</code> and upcasts <code>float16 → float32</code> if needed. <code>detach()</code> matters
+because in a real training run <code>preds</code> would carry a graph; here <code>no_grad</code> already handled it,
+but <code>to_cpu</code> is used everywhere so it is defensive in both cases.</p>
+<p>After this single batch:</p>
+<pre><code>cp.all_preds == [tensor of shape (256, 512, 1, 1)]     ← a LIST with one element
+cp.all_targs == [tensor of shape (256,)]
+cp.all_inps  == [tensor of shape (256, 1, 32, 32)]
+</code></pre>
+<p>Then <code>o.callback('cleanup_batch')</code>.</p>
+<p><strong>Step 14 — the loop ends</strong></p>
+<p><code>self.dl</code> had one item, so <code>_one_epoch</code>'s <code>for</code> loop finishes. <code>with_cbs('epoch')</code> fires
+<code>after_epoch</code> then <code>cleanup_epoch</code>. <code>one_epoch</code> returns; the <code>no_grad</code> context exits; <code>_fit</code>'s
+<code>for self.epoch</code> loop finishes.</p>
+<p><strong>Step 15 — <code>after_fit</code>: the lists become tensors</strong></p>
+<p><code>with_cbs('fit')</code> now fires:</p>
+<div class="highlight"><pre><span></span><span class="n">o</span><span class="o">.</span><span class="n">callback</span><span class="p">(</span><span class="s1">'after_fit'</span><span class="p">)</span>   <span class="err">→</span>   <span class="n">CapturePreds</span><span class="o">.</span><span class="n">after_fit</span><span class="p">(</span><span class="n">learn</span><span class="p">)</span>
+    <span class="err">→</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_preds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_targs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_inps</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span>
+          <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">all_preds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_targs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_inps</span><span class="p">])</span>
+</pre></div>
+<p><code>torch.cat</code> on a list of one tensor just returns that tensor's contents concatenated along dim 0
+— effectively a no-op here. With a real multi-batch validation loader (cell 13 of the notebook,
+<code>feats, y = learn.capture_preds()</code>), this is the step that glues, say, 40 batches of
+<code>(64, 512, 1, 1)</code> into one <code>(2560, 512, 1, 1)</code>.</p>
+<p>The three attributes are now <strong>tensors, not lists</strong>:</p>
+<pre><code>cp.all_preds : (256, 512, 1, 1)  float
+cp.all_targs : (256,)            long
+cp.all_inps  : (256, 1, 32, 32)  float
+</code></pre>
+<p>Then <code>cleanup_fit</code>.</p>
+<p><strong>Step 16 — <code>fit</code>'s <code>finally</code> block cleans up</strong></p>
+<div class="highlight"><pre><span></span><span class="k">finally</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">cbs</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cbs</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">cb</span><span class="p">)</span>
+</pre></div>
+<p><code>cp</code> is removed from <code>clearn.cbs</code>, which is back to <code>[DeviceCB()]</code>. The learner is left exactly as
+it was found, so you can call <code>capture_preds()</code> again (which <code>ImageEval.get_feats</code> does, once per
+FID evaluation).</p>
+<p><strong>Step 17 — <code>capture_preds</code> returns</strong></p>
+<div class="highlight"><pre><span></span><span class="n">res</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">all_preds</span><span class="p">,</span> <span class="n">cp</span><span class="o">.</span><span class="n">all_targs</span>      <span class="c1"># a 2-tuple of tensors</span>
+<span class="k">if</span> <span class="n">inps</span><span class="p">:</span> <span class="n">res</span> <span class="o">=</span> <span class="n">res</span> <span class="o">+</span> <span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">all_inps</span><span class="p">,)</span>   <span class="c1"># inps=False here, so no third element</span>
+<span class="k">return</span> <span class="n">res</span>
+</pre></div>
+<p>Tuple unpacking at the call site assigns:</p>
+<pre><code>feats2 = cp.all_preds     (256, 512, 1, 1)
+y2     = cp.all_targs     (256,)
+</code></pre>
+<p><strong>Step 18 — your two post-processing lines</strong></p>
+<div class="highlight"><pre><span></span><span class="n">feats2</span> <span class="o">=</span> <span class="n">feats2</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+</pre></div>
+<p><code>.float()</code> guarantees float32 (a no-op unless the model ran in mixed precision). <code>.squeeze()</code>
+drops the two trailing size-1 spatial dims: <code>(256, 512, 1, 1) → (256, 512)</code>. That is the matrix
+<code>_calc_stats</code> will take the mean and covariance of.</p>
+<hr/>
+<h2 id="4.-The-call-tree-at-a-glance">4. The call tree at a glance<a class="anchor-link" href="#4.-The-call-tree-at-a-glance">¶</a></h2><pre><code>clearn.capture_preds()                                   [miniai/augment.py]
+│
+├─ cp = CapturePreds()
+│
+└─ Learner.fit(1, train=False, cbs=[cp])                 [miniai/learner.py]
+   ├─ clearn.cbs = [DeviceCB(), cp]
+   ├─ opt_func is None → no optimizer
+   │
+   └─ Learner._fit(train=False, valid=True)      ── wrapped by with_cbs('fit')
+      ├─ callback('before_fit')
+      │     ├─ DeviceCB.before_fit      → model.to('cuda')
+      │     └─ CapturePreds.before_fit  → all_inps/all_preds/all_targs = [], [], []
+      │
+      ├─ torch.no_grad()( Learner.one_epoch )(False)
+      │  ├─ model.train(False)                    → eval mode
+      │  ├─ self.dl = dls.valid = [(s, yb)]
+      │  └─ Learner._one_epoch()          ── wrapped by with_cbs('epoch')
+      │     ├─ callback('before_epoch')            (nobody implements)
+      │     └─ for iter, batch in enumerate(dl):
+      │        └─ Learner._one_batch()    ── wrapped by with_cbs('batch')
+      │           ├─ callback('before_batch')
+      │           │     └─ DeviceCB.before_batch  → batch = to_device(batch)
+      │           ├─ TrainLearner.predict()       → preds = model(batch[0])   ★ FEATURES
+      │           ├─ callback('after_predict')
+      │           ├─ TrainLearner.get_loss()      → loss = fc.noop(preds, yb) (discarded)
+      │           ├─ callback('after_loss')
+      │           ├─ if self.training: ...        → False, skipped entirely
+      │           ├─ callback('after_batch')
+      │           │     └─ CapturePreds.after_batch → append to_cpu(preds), to_cpu(batch[1])  ★ CAPTURE
+      │           └─ callback('cleanup_batch')
+      │     ├─ callback('after_epoch')
+      │     └─ callback('cleanup_epoch')
+      │
+      ├─ callback('after_fit')
+      │     └─ CapturePreds.after_fit    → torch.cat each list into a tensor   ★ ASSEMBLE
+      └─ callback('cleanup_fit')
+   └─ finally: clearn.cbs.remove(cp)
+</code></pre>
+<hr/>
+<h2 id="5.-Every-callback-event,-and-who-answers-it">5. Every callback event, and who answers it<a class="anchor-link" href="#5.-Every-callback-event,-and-who-answers-it">¶</a></h2><table>
+<thead>
+<tr>
+<th>Event fired</th>
+<th><code>DeviceCB</code></th>
+<th><code>CapturePreds</code></th>
+<th>Net effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>before_fit</code></td>
+<td>✔ model → GPU</td>
+<td>✔ create 3 empty lists</td>
+<td>setup</td>
+</tr>
+<tr>
+<td><code>before_epoch</code></td>
+<td>—</td>
+<td>—</td>
+<td>nothing</td>
+</tr>
+<tr>
+<td><code>before_batch</code></td>
+<td>✔ batch → GPU</td>
+<td>—</td>
+<td>inputs on device</td>
+</tr>
+<tr>
+<td><code>after_predict</code></td>
+<td>—</td>
+<td>—</td>
+<td>nothing</td>
+</tr>
+<tr>
+<td><code>after_loss</code></td>
+<td>—</td>
+<td>—</td>
+<td>nothing</td>
+</tr>
+<tr>
+<td><code>after_batch</code></td>
+<td>—</td>
+<td>✔ append 3 CPU copies</td>
+<td><strong>capture</strong></td>
+</tr>
+<tr>
+<td><code>cleanup_batch</code></td>
+<td>—</td>
+<td>—</td>
+<td>nothing</td>
+</tr>
+<tr>
+<td><code>after_epoch</code></td>
+<td>—</td>
+<td>—</td>
+<td>nothing</td>
+</tr>
+<tr>
+<td><code>cleanup_epoch</code></td>
+<td>—</td>
+<td>—</td>
+<td>nothing</td>
+</tr>
+<tr>
+<td><code>after_fit</code></td>
+<td>—</td>
+<td>✔ <code>torch.cat</code> the 3 lists</td>
+<td><strong>assemble</strong></td>
+</tr>
+<tr>
+<td><code>cleanup_fit</code></td>
+<td>—</td>
+<td>—</td>
+<td>nothing</td>
+</tr>
+</tbody>
+</table>
+<p><code>run_cbs</code> uses <code>getattr(cb, method_nm, None)</code> and skips missing methods, so all the dashes above
+cost nothing.</p>
+<hr/>
+<h2 id="6.-So-where-do-feats2-and-y2-come-from,-precisely?">6. So where do <code>feats2</code> and <code>y2</code> come from, precisely?<a class="anchor-link" href="#6.-So-where-do-feats2-and-y2-come-from,-precisely?">¶</a></h2><table>
+<thead>
+<tr>
+<th></th>
+<th><code>feats2</code></th>
+<th><code>y2</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Produced by</td>
+<td><code>self.preds = self.model(self.batch[0])</code> in <code>TrainLearner.predict</code></td>
+<td>nothing — it is your input <code>yb</code>, round-tripped</td>
+</tr>
+<tr>
+<td>Copied by</td>
+<td><code>all_preds.append(to_cpu(learn.preds))</code></td>
+<td><code>all_targs.append(to_cpu(learn.batch[1]))</code></td>
+</tr>
+<tr>
+<td>Assembled by</td>
+<td><code>torch.cat(all_preds)</code> in <code>after_fit</code></td>
+<td><code>torch.cat(all_targs)</code> in <code>after_fit</code></td>
+</tr>
+<tr>
+<td>Shape here</td>
+<td><code>(256, 512, 1, 1)</code> → <code>(256, 512)</code> after <code>.squeeze()</code></td>
+<td><code>(256,)</code></td>
+</tr>
+<tr>
+<td>Meaning here</td>
+<td>512-D Inception-style feature vector per generated image</td>
+<td><strong>meaningless</strong> — a dummy tensor</td>
+</tr>
+</tbody>
+</table>
+<p><code>y2</code> deserves emphasis because it is the part that most often confuses people: <strong>the model never
+computes it.</strong> <code>capture_preds</code> returns targets because its original use in <code>14_augment.ipynb</code> was
+comparing predictions against ground truth. For FID on generated images there is no ground truth,
+so the notebook passes a throwaway <code>yb</code> purely to satisfy <code>learn.batch[1]</code>, and then ignores <code>y2</code>
+forever. In <code>ImageEval</code> the same idea appears as <code>tensor([0])</code>:</p>
+<div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">get_feats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">samp</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">learn</span><span class="o">.</span><span class="n">dls</span> <span class="o">=</span> <span class="n">DataLoaders</span><span class="p">([],[(</span><span class="n">samp</span><span class="p">,</span> <span class="n">tensor</span><span class="p">([</span><span class="mi">0</span><span class="p">]))])</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">learn</span><span class="o">.</span><span class="n">capture_preds</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>   <span class="c1"># note the [0]: targets discarded</span>
+</pre></div>
+<p>Contrast with cell 13, where the same call is made on the real Fashion-MNIST validation loader:</p>
+<div class="highlight"><pre><span></span><span class="n">feats</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">learn</span><span class="o">.</span><span class="n">capture_preds</span><span class="p">()</span>   <span class="c1"># here y IS the true class labels, and feats is (n, 512, 1, 1)</span>
+</pre></div>
+<p>Same function, same mechanism; the meaning of the second return value depends entirely on what
+your dataloader yields as <code>batch[1]</code>.</p>
+<hr/>
+<h2 id="7.-Shape-and-device-timeline-for-one-batch">7. Shape and device timeline for one batch<a class="anchor-link" href="#7.-Shape-and-device-timeline-for-one-batch">¶</a></h2><table>
+<thead>
+<tr>
+<th>Moment</th>
+<th><code>learn.batch[0]</code></th>
+<th><code>learn.preds</code></th>
+<th>Device</th>
+<th>Grad</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>yielded by <code>self.dl</code></td>
+<td><code>(256,1,32,32)</code></td>
+<td>—</td>
+<td>cpu</td>
+<td>—</td>
+</tr>
+<tr>
+<td>after <code>DeviceCB.before_batch</code></td>
+<td><code>(256,1,32,32)</code></td>
+<td>—</td>
+<td>cuda</td>
+<td>—</td>
+</tr>
+<tr>
+<td>after <code>predict()</code></td>
+<td><code>(256,1,32,32)</code></td>
+<td><code>(256,512,1,1)</code></td>
+<td>cuda</td>
+<td>off (<code>no_grad</code>)</td>
+</tr>
+<tr>
+<td>after <code>to_cpu</code> in <code>after_batch</code></td>
+<td>copy on cpu</td>
+<td>copy on cpu</td>
+<td>cpu</td>
+<td>detached</td>
+</tr>
+<tr>
+<td>after <code>torch.cat</code> in <code>after_fit</code></td>
+<td><code>(256,1,32,32)</code></td>
+<td><code>(256,512,1,1)</code></td>
+<td>cpu</td>
+<td>detached</td>
+</tr>
+<tr>
+<td>after <code>.float().squeeze()</code></td>
+<td>—</td>
+<td><code>(256,512)</code></td>
+<td>cpu</td>
+<td>detached</td>
+</tr>
+</tbody>
+</table>
+<hr/>
+<h2 id="8.-Why-each-constructor-argument-is-required-%E2%80%94-mapped-to-the-trace">8. Why each constructor argument is required — mapped to the trace<a class="anchor-link" href="#8.-Why-each-constructor-argument-is-required-%E2%80%94-mapped-to-the-trace">¶</a></h2><table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Which line would break without it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DataLoaders([], [(s, yb)])</code></td>
+<td><code>one_epoch</code> does <code>self.dl = self.dls.valid</code>, then <code>_one_epoch</code> iterates it. The train slot is never read because <code>train=False</code>, so <code>[]</code> is fine.</td>
+</tr>
+<tr>
+<td>the <code>yb</code> inside the tuple</td>
+<td><code>CapturePreds.after_batch</code> reads <code>learn.batch[1]</code>, and <code>get_loss</code> reads it too. A bare tensor instead of a 2-tuple raises <code>IndexError</code>.</td>
+</tr>
+<tr>
+<td><code>loss_func=fc.noop</code></td>
+<td><code>_one_batch</code> calls <code>self.get_loss()</code> unconditionally (step 11). <code>None</code> → <code>TypeError</code>.</td>
+</tr>
+<tr>
+<td><code>cbs=[DeviceCB()]</code></td>
+<td>Without it the model stays wherever it is and the batch stays on the CPU → device mismatch in <code>model(self.batch[0])</code>.</td>
+</tr>
+<tr>
+<td><code>opt_func=None</code></td>
+<td><code>fit</code> guards with <code>if self.opt_func:</code>, so this simply skips optimizer construction. Leaving the default <code>optim.SGD</code> also works, it just wastes a little memory.</td>
+</tr>
+<tr>
+<td><code>.squeeze()</code> afterwards</td>
+<td>The model's head was deleted (<code>del model[8]; del model[7]</code>), so the output keeps its <code>1×1</code> spatial dims.</td>
+</tr>
+</tbody>
+</table>
+<hr/>
+<h2 id="9.-The-hand-written-equivalent">9. The hand-written equivalent<a class="anchor-link" href="#9.-The-hand-written-equivalent">¶</a></h2><p>If you wanted <code>feats2</code> without miniai at all, this is what the whole machinery boils down to:</p>
+<div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">'cuda'</span><span class="p">)</span>
+<span class="n">preds</span><span class="p">,</span> <span class="n">targs</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">xb</span><span class="p">,</span> <span class="n">yb</span> <span class="ow">in</span> <span class="p">[(</span><span class="n">s</span><span class="p">,</span> <span class="n">yb</span><span class="p">)]:</span>                 <span class="c1"># i.e. for xb, yb in dls.valid</span>
+        <span class="n">xb</span><span class="p">,</span> <span class="n">yb</span> <span class="o">=</span> <span class="n">xb</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">'cuda'</span><span class="p">),</span> <span class="n">yb</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s1">'cuda'</span><span class="p">)</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">xb</span><span class="p">)</span>
+        <span class="n">preds</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">())</span>
+        <span class="n">targs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">yb</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">())</span>
+<span class="n">feats2</span><span class="p">,</span> <span class="n">y2</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">preds</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">targs</span><span class="p">)</span>
+<span class="n">feats2</span> <span class="o">=</span> <span class="n">feats2</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+</pre></div>
+<p>The miniai version is longer to read but buys three things: the <code>DeviceCB</code> logic is shared with
+training, you can pass extra callbacks through <code>capture_preds(cbs=...)</code> (e.g. <code>ProgressCB</code> for a
+progress bar, or a hooks callback to grab intermediate activations at the same time), and the
+same loop is exercised in inference that you already trust from training — so there is only one
+loop to debug.</p>
+<hr/>
+<h2 id="10.-Practical-notes-and-gotchas">10. Practical notes and gotchas<a class="anchor-link" href="#10.-Practical-notes-and-gotchas">¶</a></h2><ul>
+<li><strong><code>inps=True</code></strong> gives a third return value, the concatenated input batches:
+<code>preds, targs, inps = learn.capture_preds(inps=True)</code>. That was its original purpose in
+<code>14_augment.ipynb</code> — finding which images a classifier got wrong.</li>
+<li><strong>Everything accumulates in CPU RAM before <code>torch.cat</code>.</strong> Peak usage is roughly <em>2×</em> the total
+feature tensor plus the full copy of every input image, because the list of per-batch tensors
+and the concatenated result coexist for a moment. On a large <code>sz</code> in Colab this is the line that
+runs you out of memory, and <code>all_inps</code> (full images, always captured even when <code>inps=False</code>) is
+usually the biggest offender.</li>
+<li><strong>It requires the outputs to be concatenable.</strong> If your model returns a tuple or a dict per
+batch, <code>torch.cat</code> in <code>after_fit</code> will fail.</li>
+<li><strong>It is not idempotent-hostile:</strong> because <code>fit</code> removes <code>cp</code> in a <code>finally</code>, you can call
+<code>capture_preds()</code> repeatedly on the same learner. <code>ImageEval.fid</code> relies on this — it swaps
+<code>self.learn.dls</code> and calls again.</li>
+<li><strong>The whole thing is a single epoch by construction</strong> (<code>self.fit(1, ...)</code>), so anything that
+depends on <code>learn.n_epochs</code> or <code>learn.epoch</code> sees <code>1</code> and <code>0</code>.</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=aa60e12e">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
